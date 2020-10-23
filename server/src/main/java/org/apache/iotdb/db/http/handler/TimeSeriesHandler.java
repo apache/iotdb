@@ -41,57 +41,61 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class TimeSeriesHandler extends Handler {
-    public JsonElement handle(HttpMethod httpMethod, JsonElement json)
-            throws AuthException, MetadataException, QueryProcessException,
-            StorageEngineException, UnsupportedHttpMethodException {
-        checkLogin();
-        if (HttpMethod.POST.equals(httpMethod)) {
-            JsonArray jsonArray = json.getAsJsonArray();
-            for (Object object : jsonArray) {
-                JsonObject jsonObject = (JsonObject) object;
-                String path = jsonObject.get(HttpConstant.TIME_SERIES).getAsString();
-                String dataType = jsonObject.get(HttpConstant.DATATYPE).getAsString();
-                String encoding = jsonObject.get(HttpConstant.ENCODING).getAsString();
-                String alias = null;
-                if (jsonObject.get(HttpConstant.ALIAS) != null) {
-                    alias = jsonObject.get(HttpConstant.ALIAS).getAsString();
-                }
-                CompressionType compression;
-                if (jsonObject.get(HttpConstant.COMPRESSION) == null) {
-                    compression = TSFileDescriptor.getInstance().getConfig().getCompressor();
-                } else {
-                    compression = CompressionType.valueOf(jsonObject.get(HttpConstant.COMPRESSION).getAsString().toUpperCase());
-                }
-                JsonArray properties = jsonObject.getAsJsonArray(HttpConstant.PROPERTIES);
-                JsonArray tags = jsonObject.getAsJsonArray(HttpConstant.TAGS);
-                JsonArray attributes = jsonObject.getAsJsonArray(HttpConstant.ATTRIBUTES);
-                CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(path),
-                        TSDataType.valueOf(dataType.toUpperCase()), TSEncoding.valueOf(encoding.toUpperCase()), compression,
-                        jsonArrayToMap(properties), jsonArrayToMap(tags), jsonArrayToMap(attributes), alias);
-                if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-                    throw new AuthException(String.format("%s can't be created by %s", path, username));
-                }
-                if (!executor.processNonQuery(plan)) {
-                    throw new QueryProcessException(String.format("%s can't be created successfully", path));
-                }
-            }
-            JsonObject result = new JsonObject();
-            result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-            return result;
-        } else {
-            throw new UnsupportedHttpMethodException(httpMethod.toString());
-        }
-    }
 
-    private Map<String, String> jsonArrayToMap(JsonArray array) {
-        if (array == null) {
-            return null;
+  public JsonElement handle(HttpMethod httpMethod, JsonElement json)
+      throws AuthException, MetadataException, QueryProcessException,
+      StorageEngineException, UnsupportedHttpMethodException {
+    checkLogin();
+    if (HttpMethod.POST.equals(httpMethod)) {
+      JsonArray jsonArray = json.getAsJsonArray();
+      for (Object object : jsonArray) {
+        JsonObject jsonObject = (JsonObject) object;
+        String path = jsonObject.get(HttpConstant.TIME_SERIES).getAsString();
+        String dataType = jsonObject.get(HttpConstant.DATATYPE).getAsString();
+        String encoding = jsonObject.get(HttpConstant.ENCODING).getAsString();
+        String alias = null;
+        if (jsonObject.get(HttpConstant.ALIAS) != null) {
+          alias = jsonObject.get(HttpConstant.ALIAS).getAsString();
         }
-        Map<String, String> map = new HashMap<>();
-        for (JsonElement object : array) {
-            JsonObject json = object.getAsJsonObject();
-            map.put(json.getAsJsonPrimitive(HttpConstant.KEY).getAsString(), json.getAsJsonPrimitive(HttpConstant.VALUE).getAsString());
+        CompressionType compression;
+        if (jsonObject.get(HttpConstant.COMPRESSION) == null) {
+          compression = TSFileDescriptor.getInstance().getConfig().getCompressor();
+        } else {
+          compression = CompressionType
+              .valueOf(jsonObject.get(HttpConstant.COMPRESSION).getAsString().toUpperCase());
         }
-        return map;
+        JsonArray properties = jsonObject.getAsJsonArray(HttpConstant.PROPERTIES);
+        JsonArray tags = jsonObject.getAsJsonArray(HttpConstant.TAGS);
+        JsonArray attributes = jsonObject.getAsJsonArray(HttpConstant.ATTRIBUTES);
+        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(path),
+            TSDataType.valueOf(dataType.toUpperCase()), TSEncoding.valueOf(encoding.toUpperCase()),
+            compression,
+            jsonArrayToMap(properties), jsonArrayToMap(tags), jsonArrayToMap(attributes), alias);
+        if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+          throw new AuthException(String.format("%s can't be created by %s", path, username));
+        }
+        if (!executor.processNonQuery(plan)) {
+          throw new QueryProcessException(String.format("%s can't be created successfully", path));
+        }
+      }
+      JsonObject result = new JsonObject();
+      result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+      return result;
+    } else {
+      throw new UnsupportedHttpMethodException(httpMethod.toString());
     }
+  }
+
+  private Map<String, String> jsonArrayToMap(JsonArray array) {
+    if (array == null) {
+      return null;
+    }
+    Map<String, String> map = new HashMap<>();
+    for (JsonElement object : array) {
+      JsonObject json = object.getAsJsonObject();
+      map.put(json.getAsJsonPrimitive(HttpConstant.KEY).getAsString(),
+          json.getAsJsonPrimitive(HttpConstant.VALUE).getAsString());
+    }
+    return map;
+  }
 }

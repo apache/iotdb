@@ -37,26 +37,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DeleteTimeSeriesHandler extends Handler {
-    public JsonElement handle(JsonArray json)
-            throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
-            AuthException, IllegalPathException, PathNotExistException {
-        List<PartialPath> timeSeries = new ArrayList<>();
-        for (JsonElement object : json) {
-            PartialPath partialPath = new PartialPath(object.getAsString());
-            if (!IoTDB.metaManager.isPathExist(partialPath)) {
-                throw new PathNotExistException(partialPath.toString());
-            }
-            timeSeries.add(partialPath);
-        }
-        DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(timeSeries);
-        if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-            throw new AuthException(String.format("%s can't be delete by %s", timeSeries, username));
-        }
-        if (!executor.processNonQuery(plan)) {
-            throw new QueryProcessException(String.format("%s can't be created successfully", timeSeries));
-        }
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-        return jsonObject;
+
+  public JsonElement handle(JsonArray json)
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
+      AuthException, IllegalPathException, PathNotExistException {
+    List<PartialPath> timeSeries = new ArrayList<>();
+    for (JsonElement object : json) {
+      PartialPath partialPath = new PartialPath(object.getAsString());
+      if (!IoTDB.metaManager.isPathExist(partialPath)) {
+        throw new PathNotExistException(partialPath.toString());
+      }
+      timeSeries.add(partialPath);
     }
+    DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(timeSeries);
+    if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+      throw new AuthException(String.format("%s can't be delete by %s", timeSeries, username));
+    }
+    if (!executor.processNonQuery(plan)) {
+      throw new QueryProcessException(
+          String.format("%s can't be created successfully", timeSeries));
+    }
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+    return jsonObject;
+  }
 }

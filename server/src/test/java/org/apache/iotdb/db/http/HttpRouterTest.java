@@ -33,7 +33,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class HttpRouterTest extends HttpPrepData{
+public class HttpRouterTest extends HttpPrepData {
 
   @Before
   public void before() {
@@ -48,19 +48,23 @@ public class HttpRouterTest extends HttpPrepData{
 
 
   @Test
-  public void setStorageGroupsByRouter() throws Exception{
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+  public void setStorageGroupsByRouter() throws Exception {
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     JsonArray jsonArray = postStorageGroupsJsonExample();
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS, jsonArray).toString());
-    Assert.assertEquals("[root.ln, root.sg]",mmanager.getAllStorageGroupPaths().toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS, jsonArray).toString());
+    Assert.assertEquals("[root.ln, root.sg]", mmanager.getAllStorageGroupPaths().toString());
   }
 
   @Test
   public void getStorageGroupsByRouter() throws Exception {
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     mmanager.setStorageGroup(new PartialPath("root.ln"));
     mmanager.setStorageGroup(new PartialPath("root.sg"));
-    Assert.assertEquals("[{\"storage group\":\"root.ln\"},{\"storage group\":\"root.sg\"}]", router.route(HttpMethod.GET, HttpConstant.ROUTING_STORAGE_GROUPS, null).toString());
+    Assert.assertEquals("[{\"storage group\":\"root.ln\"},{\"storage group\":\"root.sg\"}]",
+        router.route(HttpMethod.GET, HttpConstant.ROUTING_STORAGE_GROUPS, null).toString());
   }
 
   @Test
@@ -69,96 +73,108 @@ public class HttpRouterTest extends HttpPrepData{
     prepareData();
     JsonArray jsonArray = deleteStorageGroupsJsonExample();
     Assert.assertEquals("[root.test]", mmanager.getAllStorageGroupPaths().toString());
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     router.route(HttpMethod.POST, HttpConstant.ROUTING_STORAGE_GROUPS_DELETE, jsonArray);
     Assert.assertEquals(0, mmanager.getAllStorageGroupPaths().size());
   }
 
   @Test
-  public void createTimeSeriesByRouter() throws Exception{
+  public void createTimeSeriesByRouter() throws Exception {
     JsonArray jsonArray = createTimeSeriesJsonExample();
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES, jsonArray).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES, jsonArray).toString());
     List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
-    Assert.assertEquals("root.sg.d1.s1" ,paths.get(0).getFullPath());
+    Assert.assertEquals("root.sg.d1.s1", paths.get(0).getFullPath());
     Assert.assertEquals("root.sg.d1.s2", paths.get(1).getFullPath());
   }
 
   @Test
-  public void deleteTimeSeriesByRouter() throws Exception{
+  public void deleteTimeSeriesByRouter() throws Exception {
     prepareData();
     JsonArray timeSeries = deleteTimeSeriesJsonExample();
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES_DELETE, timeSeries).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES_DELETE, timeSeries)
+            .toString());
     checkDataAfterDeletingTimeSeries();
   }
 
   @Test
-  public void getTimeSeriesByRouter() throws Exception{
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+  public void getTimeSeriesByRouter() throws Exception {
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     buildMetaDataForGetTimeSeries();
     JsonArray jsonArray = new JsonArray();
     jsonArray.add("root.laptop.*");
     Assert.assertEquals("[" +
-                    "[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
-                    "[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]," +
-                    "[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
+            "[\"root.laptop.d1.1_2\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],"
+            +
+            "[\"root.laptop.d1.\\\"1.2.3\\\"\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"],"
+            +
+            "[\"root.laptop.d1.s1\",\"null\",\"root.laptop\",\"INT32\",\"RLE\",\"SNAPPY\",\"null\",\"null\"]]",
         router.route(HttpMethod.POST, HttpConstant.ROUTING_GET_TIME_SERIES, jsonArray).toString());
   }
 
   @Test
-  public void insertByRouter() throws Exception{
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.GET, LOGIN_URI, null).toString());
+  public void insertByRouter() throws Exception {
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     JsonArray inserts = insertJsonExample(1);
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, HttpConstant.ROUTING_INSERT, inserts).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, HttpConstant.ROUTING_INSERT, inserts).toString());
     checkDataAfterInserting(1);
   }
 
   @Test
-  public void queryByRouter() throws Exception{
+  public void queryByRouter() throws Exception {
     prepareData();
     JsonObject query = queryJsonExample();
-    Assert.assertEquals(SUCCESSFUL_RESPONSE, router.route(HttpMethod.POST, LOGIN_URI, null).toString());
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, LOGIN_URI, null).toString());
     Assert.assertEquals("[{\"name\":\"root.test.m0\"," +
-                    "\"series\":[{\"Time\":2,\"Value\":1}," +
-                    "{\"Time\":3,\"Value\":1}," +
-                    "{\"Time\":4,\"Value\":1}," +
-                    "{\"Time\":5,\"Value\":1}," +
-                    "{\"Time\":6,\"Value\":1}," +
-                    "{\"Time\":7,\"Value\":1}," +
-                    "{\"Time\":8,\"Value\":1}," +
-                    "{\"Time\":9,\"Value\":1}," +
-                    "{\"Time\":10,\"Value\":1}," +
-                    "{\"Time\":11,\"Value\":1}," +
-                    "{\"Time\":12,\"Value\":1}," +
-                    "{\"Time\":13,\"Value\":1}," +
-                    "{\"Time\":14,\"Value\":1}," +
-                    "{\"Time\":15,\"Value\":1}," +
-                    "{\"Time\":16,\"Value\":1}," +
-                    "{\"Time\":17,\"Value\":1}," +
-                    "{\"Time\":18,\"Value\":1}," +
-                    "{\"Time\":19,\"Value\":1}," +
-                    "{\"Time\":20,\"Value\":0}]}," +
-                    "{\"name\":\"root.test.m9\"," +
-                    "\"series\":[{\"Time\":2,\"Value\":1}," +
-                    "{\"Time\":3,\"Value\":1}," +
-                    "{\"Time\":4,\"Value\":1}," +
-                    "{\"Time\":5,\"Value\":1}," +
-                    "{\"Time\":6,\"Value\":1}," +
-                    "{\"Time\":7,\"Value\":1}," +
-                    "{\"Time\":8,\"Value\":1}," +
-                    "{\"Time\":9,\"Value\":1}," +
-                    "{\"Time\":10,\"Value\":1}," +
-                    "{\"Time\":11,\"Value\":1}," +
-                    "{\"Time\":12,\"Value\":1}," +
-                    "{\"Time\":13,\"Value\":1}," +
-                    "{\"Time\":14,\"Value\":1}," +
-                    "{\"Time\":15,\"Value\":1}," +
-                    "{\"Time\":16,\"Value\":1}," +
-                    "{\"Time\":17,\"Value\":1}," +
-                    "{\"Time\":18,\"Value\":1}," +
-                    "{\"Time\":19,\"Value\":1}," +
-                    "{\"Time\":20,\"Value\":0}]}]"
+            "\"series\":[{\"Time\":2,\"Value\":1}," +
+            "{\"Time\":3,\"Value\":1}," +
+            "{\"Time\":4,\"Value\":1}," +
+            "{\"Time\":5,\"Value\":1}," +
+            "{\"Time\":6,\"Value\":1}," +
+            "{\"Time\":7,\"Value\":1}," +
+            "{\"Time\":8,\"Value\":1}," +
+            "{\"Time\":9,\"Value\":1}," +
+            "{\"Time\":10,\"Value\":1}," +
+            "{\"Time\":11,\"Value\":1}," +
+            "{\"Time\":12,\"Value\":1}," +
+            "{\"Time\":13,\"Value\":1}," +
+            "{\"Time\":14,\"Value\":1}," +
+            "{\"Time\":15,\"Value\":1}," +
+            "{\"Time\":16,\"Value\":1}," +
+            "{\"Time\":17,\"Value\":1}," +
+            "{\"Time\":18,\"Value\":1}," +
+            "{\"Time\":19,\"Value\":1}," +
+            "{\"Time\":20,\"Value\":0}]}," +
+            "{\"name\":\"root.test.m9\"," +
+            "\"series\":[{\"Time\":2,\"Value\":1}," +
+            "{\"Time\":3,\"Value\":1}," +
+            "{\"Time\":4,\"Value\":1}," +
+            "{\"Time\":5,\"Value\":1}," +
+            "{\"Time\":6,\"Value\":1}," +
+            "{\"Time\":7,\"Value\":1}," +
+            "{\"Time\":8,\"Value\":1}," +
+            "{\"Time\":9,\"Value\":1}," +
+            "{\"Time\":10,\"Value\":1}," +
+            "{\"Time\":11,\"Value\":1}," +
+            "{\"Time\":12,\"Value\":1}," +
+            "{\"Time\":13,\"Value\":1}," +
+            "{\"Time\":14,\"Value\":1}," +
+            "{\"Time\":15,\"Value\":1}," +
+            "{\"Time\":16,\"Value\":1}," +
+            "{\"Time\":17,\"Value\":1}," +
+            "{\"Time\":18,\"Value\":1}," +
+            "{\"Time\":19,\"Value\":1}," +
+            "{\"Time\":20,\"Value\":0}]}]"
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());
   }
 

@@ -28,27 +28,27 @@ import org.apache.iotdb.db.http.constant.HttpConstant;
 
 public class UsersHandler extends Handler {
 
-    public static boolean userLogin(Map<String, List<String>> p) throws AuthException {
-        List<String> usernameList = p.get(HttpConstant.USERNAME);
-        List<String> passwordList = p.get(HttpConstant.PASSWORD);
-        IAuthorizer authorizer = BasicAuthorizer.getInstance();
-        username = usernameList.get(0);
-        return authorizer.login(usernameList.get(0), passwordList.get(0));
-    }
+  public static boolean userLogin(Map<String, List<String>> p) throws AuthException {
+    List<String> usernameList = p.get(HttpConstant.USERNAME);
+    List<String> passwordList = p.get(HttpConstant.PASSWORD);
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    username = usernameList.get(0);
+    return authorizer.login(usernameList.get(0), passwordList.get(0));
+  }
 
-    public static boolean userLogout(Map<String, List<String>> p) throws AuthException {
-        if (username == null) {
-            throw new AuthException("you have already logout");
-        }
-        List<String> usernameList = p.get(HttpConstant.USERNAME);
-        if (!usernameList.get(0).equals(username)) {
-            throw new AuthException("wrong username");
-        }
-        username = null;
-        return true;
+  public static boolean userLogout(Map<String, List<String>> p) throws AuthException {
+    if (username == null) {
+      throw new AuthException("you have already logout");
     }
+    List<String> usernameList = p.get(HttpConstant.USERNAME);
+    if (!usernameList.get(0).equals(username)) {
+      throw new AuthException("wrong username");
+    }
+    username = null;
+    return true;
+  }
 
-    public static String getUsername() {
-        return username;
-    }
+  public static String getUsername() {
+    return username;
+  }
 }

@@ -29,30 +29,33 @@ import io.netty.handler.ssl.SslContext;
 
 public class HttpSnoopServerInitializer extends ChannelInitializer<SocketChannel> {
 
-    private final SslContext sslCtx;
+  private final SslContext sslCtx;
 
-    HttpSnoopServerInitializer(SslContext sslCtx) {
-        this.sslCtx = sslCtx;
-    }
+  HttpSnoopServerInitializer(SslContext sslCtx) {
+    this.sslCtx = sslCtx;
+  }
 
-    @Override
-    public void initChannel(SocketChannel ch) {
-        CorsConfig corsConfig = CorsConfigBuilder
-                .forAnyOrigin().allowNullOrigin()
-                .allowCredentials()
-                .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, "Access-Control-Allow-Headers", "Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization")
-                .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true").build();
-        ChannelPipeline p = ch.pipeline();
-        if (sslCtx != null) {
-            p.addLast(sslCtx.newHandler(ch.alloc()));
-        }
-        p.addLast(new HttpRequestDecoder());
-        // set 1m max size
-        p.addLast(new HttpObjectAggregator(1048576));
-        p.addLast(new HttpResponseEncoder());
-        p.addLast(new HttpContentCompressor());
-        p.addLast(new CorsHandler(corsConfig));
-        p.addLast(new HttpSnoopServerHandler());
+  @Override
+  public void initChannel(SocketChannel ch) {
+    CorsConfig corsConfig = CorsConfigBuilder
+        .forAnyOrigin().allowNullOrigin()
+        .allowCredentials()
+        .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS,
+            "Access-Control-Allow-Headers", "Origin", "X-Requested-With", "Content-Type", "Accept",
+            "Authorization")
+        .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET", "POST", "PUT",
+            "DELETE", "OPTIONS")
+        .preflightResponseHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true").build();
+    ChannelPipeline p = ch.pipeline();
+    if (sslCtx != null) {
+      p.addLast(sslCtx.newHandler(ch.alloc()));
     }
+    p.addLast(new HttpRequestDecoder());
+    // set 1m max size
+    p.addLast(new HttpObjectAggregator(1048576));
+    p.addLast(new HttpResponseEncoder());
+    p.addLast(new HttpContentCompressor());
+    p.addLast(new CorsHandler(corsConfig));
+    p.addLast(new HttpSnoopServerHandler());
+  }
 }

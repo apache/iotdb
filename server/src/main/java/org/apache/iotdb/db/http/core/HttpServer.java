@@ -38,51 +38,52 @@ import org.slf4j.LoggerFactory;
 
 public class HttpServer {
 
-    private static final boolean SSL = System.getProperty("ssl") != null;
-    private final int port;
-    private ServerBootstrap b;
-    private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
-    private Channel ch;
-    private EventLoopGroup bossGroup;
-    private EventLoopGroup workerGroup;
+  private static final boolean SSL = System.getProperty("ssl") != null;
+  private final int port;
+  private ServerBootstrap b;
+  private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
+  private Channel ch;
+  private EventLoopGroup bossGroup;
+  private EventLoopGroup workerGroup;
 
 
-    public HttpServer(int port) {
-        this.port = port;
-        b = new ServerBootstrap();
+  public HttpServer(int port) {
+    this.port = port;
+    b = new ServerBootstrap();
+  }
+
+  public void start() throws CertificateException, SSLException, InterruptedException {
+    // Configure SSL.
+    final SslContext sslCtx;
+    if (SSL) {
+      SelfSignedCertificate ssc = new SelfSignedCertificate();
+      sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+    } else {
+      sslCtx = null;
     }
+    try {
+      // Configure the server.
+      bossGroup = new NioEventLoopGroup(1);
+      workerGroup = new NioEventLoopGroup();
+      b.group(bossGroup, workerGroup)
+          .channel(NioServerSocketChannel.class)
+          .handler(new LoggingHandler(LogLevel.INFO))
+          .childHandler(new HttpSnoopServerInitializer(sslCtx));
 
-    public void start() throws CertificateException, SSLException, InterruptedException {
-        // Configure SSL.
-        final SslContext sslCtx;
-        if (SSL) {
-            SelfSignedCertificate ssc = new SelfSignedCertificate();
-            sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
-        } else {
-            sslCtx = null;
-        }
-        try {
-            // Configure the server.
-            bossGroup = new NioEventLoopGroup(1);
-            workerGroup = new NioEventLoopGroup();
-            b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO))
-                    .childHandler(new HttpSnoopServerInitializer(sslCtx));
+      ch = b.bind(port).sync().channel();
 
-            ch = b.bind(port).sync().channel();
-
-            logger.info("Open your web browser and navigate to {}://{}:{}/",
-                    (SSL ? "https" : "http"), IoTDBDescriptor.getInstance().getConfig().getHttpAddress(), port);
-        } catch (Exception e) {
-            stop();
-        }
+      logger.info("Open your web browser and navigate to {}://{}:{}/",
+          (SSL ? "https" : "http"), IoTDBDescriptor.getInstance().getConfig().getHttpAddress(),
+          port);
+    } catch (Exception e) {
+      stop();
     }
+  }
 
-    public void stop() throws InterruptedException {
-        bossGroup.shutdownGracefully().sync();
-        workerGroup.shutdownGracefully().sync();
-        ch.closeFuture().sync();
-    }
+  public void stop() throws InterruptedException {
+    bossGroup.shutdownGracefully().sync();
+    workerGroup.shutdownGracefully().sync();
+    ch.closeFuture().sync();
+  }
 
 }

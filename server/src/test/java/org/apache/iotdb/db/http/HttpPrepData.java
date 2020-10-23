@@ -56,6 +56,7 @@ public abstract class HttpPrepData {
 
   private final String processorName = "root.test";
   protected static String[] measurements = new String[10];
+
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
@@ -73,8 +74,11 @@ public abstract class HttpPrepData {
   protected void prepareData() throws MetadataException, StorageEngineException {
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
-          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+      IoTDB.metaManager.createTimeseries(
+          new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
+          dataType,
+          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
     }
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -164,20 +168,22 @@ public abstract class HttpPrepData {
     assertEquals(0, count);
   }
 
-  void buildMetaDataForGetTimeSeries() throws Exception{
+  void buildMetaDataForGetTimeSeries() throws Exception {
     mmanager.setStorageGroup(new PartialPath("root.laptop"));
     CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     mmanager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
-    mmanager.createTimeseries(new PartialPath("root.laptop.d1.1_2"), TSDataType.INT32, TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(), new HashMap<>());
-    mmanager.createTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""), TSDataType.INT32, TSEncoding.RLE,
+    mmanager
+        .createTimeseries(new PartialPath("root.laptop.d1.1_2"), TSDataType.INT32, TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), new HashMap<>());
+    mmanager.createTimeseries(new PartialPath("root.laptop.d1.\"1.2.3\""), TSDataType.INT32,
+        TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), new HashMap<>());
   }
 
   JsonArray insertJsonExample(int i) {
     JsonArray inserts = new JsonArray();
-    for(int j = 0; j < 6; j++) {
+    for (int j = 0; j < 6; j++) {
       JsonObject row = new JsonObject();
       row.addProperty(HttpConstant.IS_NEED_INFER_TYPE, false);
       row.addProperty(HttpConstant.DEVICE_ID, "root.ln.wf01.wt0" + i);
@@ -197,9 +203,9 @@ public abstract class HttpPrepData {
     return inserts;
   }
 
-  void checkDataAfterInserting(int i) throws Exception{
+  void checkDataAfterInserting(int i) throws Exception {
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath("root.ln.wf01.wt0" + i +  ".temperature"));
+    pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".temperature"));
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".status"));
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".hardware"));
     List<TSDataType> dataTypes = new ArrayList<>();

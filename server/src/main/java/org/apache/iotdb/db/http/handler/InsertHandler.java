@@ -34,52 +34,54 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class InsertHandler extends Handler {
-    public JsonElement handle(JsonArray json)
-            throws IllegalPathException, QueryProcessException,
-            StorageEngineException, StorageGroupNotSetException, AuthException {
-        checkLogin();
-        for (JsonElement o : json) {
-            JsonObject object = o.getAsJsonObject();
-            String deviceID = object.get(HttpConstant.DEVICE_ID).getAsString();
-            JsonArray measurements = (JsonArray) object.get(HttpConstant.MEASUREMENTS);
-            long timestamps = object.get(HttpConstant.TIMESTAMP).getAsLong();
-            JsonArray values = (JsonArray) object.get(HttpConstant.VALUES);
-            if (!insertByRow(deviceID, timestamps, getListString(measurements), values)) {
-                throw new QueryProcessException(
-                        String.format("%s can't be inserted successfully", deviceID));
-            }
-        }
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-        return jsonObject;
-    }
 
-    private boolean insertByRow(String deviceId, long time, List<String> measurements, JsonArray values)
-            throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-        InsertRowPlan plan = new InsertRowPlan();
-        plan.setDeviceId(new PartialPath(deviceId));
-        plan.setTime(time);
-        plan.setMeasurements(measurements.toArray(new String[0]));
-        plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-        List<String> valueList = new ArrayList<>();
-        for (JsonElement value : values) {
-            valueList.add(value.getAsString());
-        }
-        plan.setNeedInferType(true);
-        plan.setValues(valueList.toArray(new String[0]));
-        return executor.processNonQuery(plan);
+  public JsonElement handle(JsonArray json)
+      throws IllegalPathException, QueryProcessException,
+      StorageEngineException, StorageGroupNotSetException, AuthException {
+    checkLogin();
+    for (JsonElement o : json) {
+      JsonObject object = o.getAsJsonObject();
+      String deviceID = object.get(HttpConstant.DEVICE_ID).getAsString();
+      JsonArray measurements = (JsonArray) object.get(HttpConstant.MEASUREMENTS);
+      long timestamps = object.get(HttpConstant.TIMESTAMP).getAsLong();
+      JsonArray values = (JsonArray) object.get(HttpConstant.VALUES);
+      if (!insertByRow(deviceID, timestamps, getListString(measurements), values)) {
+        throw new QueryProcessException(
+            String.format("%s can't be inserted successfully", deviceID));
+      }
     }
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+    return jsonObject;
+  }
 
-    /**
-     * transform JsonArray to List<String>
-     */
-    private List<String> getListString(JsonArray jsonArray) {
-        List<String> list = new ArrayList<>();
-        for (JsonElement o : jsonArray) {
-            list.add(o.getAsString());
-        }
-        return list;
+  private boolean insertByRow(String deviceId, long time, List<String> measurements,
+      JsonArray values)
+      throws IllegalPathException, QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+    InsertRowPlan plan = new InsertRowPlan();
+    plan.setDeviceId(new PartialPath(deviceId));
+    plan.setTime(time);
+    plan.setMeasurements(measurements.toArray(new String[0]));
+    plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+    List<String> valueList = new ArrayList<>();
+    for (JsonElement value : values) {
+      valueList.add(value.getAsString());
     }
+    plan.setNeedInferType(true);
+    plan.setValues(valueList.toArray(new String[0]));
+    return executor.processNonQuery(plan);
+  }
+
+  /**
+   * transform JsonArray to List<String>
+   */
+  private List<String> getListString(JsonArray jsonArray) {
+    List<String> list = new ArrayList<>();
+    for (JsonElement o : jsonArray) {
+      list.add(o.getAsString());
+    }
+    return list;
+  }
 
 
 }

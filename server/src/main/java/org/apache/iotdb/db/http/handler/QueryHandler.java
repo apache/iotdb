@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 
-public class QueryHandler extends Handler{
+public class QueryHandler extends Handler {
 
   public JsonElement handle(JsonObject json)
       throws QueryProcessException, MetadataException, AuthException,
@@ -61,23 +61,23 @@ public class QueryHandler extends Handler{
     to = json.get(HttpConstant.TO).getAsLong();
 
     JsonArray timeSeries = json.getAsJsonArray(HttpConstant.TIME_SERIES);
-    if(timeSeries == null) {
+    if (timeSeries == null) {
       JsonObject result = new JsonObject();
       result.addProperty("result", "Has no timeSeries");
       return result;
     }
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    for(JsonElement o : timeSeries) {
+    for (JsonElement o : timeSeries) {
       selectOp.addSelectPath(new PartialPath(o.getAsString()));
     }
     boolean isAggregated;
     fromOp.addPrefixTablePath(new PartialPath(new String[]{""}));
-    if(json.get(HttpConstant.IS_AGGREGATED) != null) {
+    if (json.get(HttpConstant.IS_AGGREGATED) != null) {
       isAggregated = json.get(HttpConstant.IS_AGGREGATED).getAsBoolean();
       JsonArray aggregations = json.getAsJsonArray(HttpConstant.AGGREGATIONS);
       List<String> aggregationsList = new ArrayList<>();
-      for(JsonElement o: aggregations) {
+      for (JsonElement o : aggregations) {
         aggregationsList.add(o.getAsString());
       }
       selectOp.setAggregations(aggregationsList);
@@ -96,13 +96,15 @@ public class QueryHandler extends Handler{
     pathSet.add(SQLConstant.TIME_PATH);
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
-    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, SQLConstant.TIME_PATH, Long.toString(from));
-    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, SQLConstant.TIME_PATH, Long.toString(to));
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO,
+        SQLConstant.TIME_PATH, Long.toString(from));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN,
+        SQLConstant.TIME_PATH, Long.toString(to));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
     queryOp.setFilterOperator(filterOp);
 
-    if(isAggregated) {
+    if (isAggregated) {
       JsonArray fills = json.getAsJsonArray(HttpConstant.FILLS);
       boolean isPoint = json.get(HttpConstant.isPoint).getAsBoolean();
       JsonObject groupBy = json.getAsJsonObject(HttpConstant.GROUP_BY);
@@ -129,19 +131,21 @@ public class QueryHandler extends Handler{
             queryOp.setSlidingStep(queryOp.getUnit());
           }
         }
-        if(fills != null && (step == null || step.equals(""))) {
+        if (fills != null && (step == null || step.equals(""))) {
           queryOp.setFill(true);
           Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
           for (JsonElement o : fills) {
             JsonObject fill = o.getAsJsonObject();
             long duration = parseDuration(fill.get(HttpConstant.DURATION).getAsString());
             PreviousFill previousFill;
-            if (fill.get(HttpConstant.PREVIOUS).getAsString().equals(HttpConstant.PREVIOUS_UNTIL_LAST)) {
+            if (fill.get(HttpConstant.PREVIOUS).getAsString()
+                .equals(HttpConstant.PREVIOUS_UNTIL_LAST)) {
               previousFill = new PreviousFill(duration, true);
             } else {
               previousFill = new PreviousFill(duration);
             }
-            fillTypes.put(TSDataType.valueOf(fill.get(HttpConstant.DATATYPE).getAsString()), previousFill);
+            fillTypes.put(TSDataType.valueOf(fill.get(HttpConstant.DATATYPE).getAsString()),
+                previousFill);
           }
           queryOp.setFillTypes(fillTypes);
         }
@@ -151,14 +155,16 @@ public class QueryHandler extends Handler{
     }
 
     QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOp);
-    if(!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
-      throw new AuthException(String.format("%s can't be queried by %s", plan.getPaths(), username));
+    if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
+      throw new AuthException(
+          String.format("%s can't be queried by %s", plan.getPaths(), username));
     }
     JsonArray result = new JsonArray();
-    QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+    QueryDataSet dataSet = executor.processQuery(plan,
+        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
     List<PartialPath> paths = plan.getPaths();
 
-    for(PartialPath path : paths) {
+    for (PartialPath path : paths) {
       JsonObject dataFrame = new JsonObject();
       JsonArray series = new JsonArray();
       dataFrame.addProperty(HttpConstant.NAME, path.toString());
@@ -166,42 +172,48 @@ public class QueryHandler extends Handler{
       result.add(dataFrame);
     }
 
-    while(dataSet.hasNext()) {
+    while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
       List<Field> fields = rowRecord.getFields();
-      for(int i = 0; i < fields.size(); i ++ ) {
+      for (int i = 0; i < fields.size(); i++) {
         JsonObject dataFrame = result.get(i).getAsJsonObject();
         JsonArray series = dataFrame.getAsJsonArray(HttpConstant.SERIES);
         JsonObject timeAndValues = new JsonObject();
-        switch(fields.get(i).getDataType()) {
+        switch (fields.get(i).getDataType()) {
           case TEXT:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBinaryV().getStringValue());
+            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE,
+                fields.get(i).getBinaryV().getStringValue());
             series.add(timeAndValues);
             break;
           case FLOAT:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getFloatV());
+            timeAndValues
+                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getFloatV());
             series.add(timeAndValues);
             break;
           case INT32:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getIntV());
+            timeAndValues
+                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getIntV());
             series.add(timeAndValues);
             break;
           case INT64:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getLongV());
+            timeAndValues
+                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getLongV());
             series.add(timeAndValues);
             break;
           case BOOLEAN:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBoolV());
+            timeAndValues
+                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBoolV());
             series.add(timeAndValues);
             break;
           case DOUBLE:
             timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getDoubleV());
+            timeAndValues
+                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getDoubleV());
             series.add(timeAndValues);
             break;
           default:
@@ -236,7 +248,7 @@ public class QueryHandler extends Handler{
           unit += durationStr.charAt(i);
         }
         total += DatetimeUtils
-                .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
+            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
         tmp = 0;
       }
     }
