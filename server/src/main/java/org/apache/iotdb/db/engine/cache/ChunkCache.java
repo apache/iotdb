@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
+  private static final Logger BUG_LOGGER = LoggerFactory.getLogger("ZY-DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config
       .getAllocateMemoryForChunkCache();
@@ -115,8 +116,9 @@ public class ChunkCache {
         lock.writeLock().unlock();
       }
     }
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
 
+    BUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
   }
 
   private void printCacheLog(boolean isHit) {

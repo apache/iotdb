@@ -47,6 +47,8 @@ import org.slf4j.LoggerFactory;
 public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
+  private static final Logger BUG_LOGGER = LoggerFactory.getLogger("ZY-DEBUG");
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE = config
       .getAllocateMemoryForTimeSeriesMetaDataCache();
@@ -143,6 +145,8 @@ public class TimeSeriesMetadataCache {
           BloomFilter bloomFilter = reader.readBloomFilter();
           if (bloomFilter != null && !bloomFilter
               .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+
+            BUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
             return null;
           }
           List<TimeseriesMetadata> timeSeriesMetadataList = reader
@@ -161,8 +165,10 @@ public class TimeSeriesMetadataCache {
       }
     }
     if (timeseriesMetadata == null) {
+      BUG_LOGGER.info("The file doesn't this time series " + key);
       return null;
     } else {
+      BUG_LOGGER.info("Get timeseries: " + key.device + "." + key.measurement + " metadata in file: " + key.filePath + " from cache: " + timeseriesMetadata);
       return new TimeseriesMetadata(timeseriesMetadata);
     }
   }
@@ -267,6 +273,15 @@ public class TimeSeriesMetadataCache {
     @Override
     public long getRamSize() {
       return ramSize;
+    }
+
+    @Override
+    public String toString() {
+      return "TimeSeriesMetadataCacheKey{" +
+          "filePath='" + filePath + '\'' +
+          ", device='" + device + '\'' +
+          ", measurement='" + measurement + '\'' +
+          '}';
     }
   }
 

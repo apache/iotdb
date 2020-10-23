@@ -149,4 +149,16 @@ public class TimeseriesMetadata implements Accountable {
   public long getRamSize() {
     return ramSize;
   }
+
+  @Override
+  public String toString() {
+    return "TimeseriesMetadata{" +
+        "startOffsetOfChunkMetaDataList=" + startOffsetOfChunkMetaDataList +
+        ", chunkMetaDataListDataSize=" + chunkMetaDataListDataSize +
+        ", measurementId='" + measurementId + '\'' +
+        ", tsDataType=" + tsDataType +
+        ", statistics=" + statistics +
+        ", modified=" + modified +
+        '}';
+  }
 }

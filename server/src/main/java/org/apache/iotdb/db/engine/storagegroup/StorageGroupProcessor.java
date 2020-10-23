@@ -121,6 +121,8 @@ public class StorageGroupProcessor {
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
+  private static final Logger BUG_LOGGER = LoggerFactory.getLogger("ZY-DEBUG");
+
   /**
    * indicating the file to be loaded already exists locally.
    */
@@ -1153,10 +1155,43 @@ public class StorageGroupProcessor {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
     try {
+      BUG_LOGGER.info("time filter: " + timeFilter);
+      BUG_LOGGER.info("sequenceFileTreeSet size: " + sequenceFileTreeSet.size());
+      sequenceFileTreeSet.forEach(v -> {
+        BUG_LOGGER.info("isSeq: " + v.isSeq());
+        BUG_LOGGER.info("isClosed: " + v.isClosed());
+        BUG_LOGGER.info("deviceId: " + deviceId);
+        BUG_LOGGER.info("startTime: " + v.getStartTime(deviceId));
+        BUG_LOGGER.info("endTime: " + v.getEndTime(deviceId));
+      });
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
           upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
+      BUG_LOGGER.info("seqResources size: " + seqResources.size());
+      seqResources.forEach(v -> {
+        BUG_LOGGER.info("isSeq: " + v.isSeq());
+        BUG_LOGGER.info("isClosed: " + v.isClosed());
+        BUG_LOGGER.info("deviceId: " + deviceId);
+        BUG_LOGGER.info("startTime: " + v.getStartTime(deviceId));
+        BUG_LOGGER.info("endTime: " + v.getEndTime(deviceId));
+      });
+      BUG_LOGGER.info("unSequenceFileList size: " + unSequenceFileList.size());
+      unSequenceFileList.forEach(v -> {
+        BUG_LOGGER.info("isSeq: " + v.isSeq());
+        BUG_LOGGER.info("isClosed: " + v.isClosed());
+        BUG_LOGGER.info("deviceId: " + deviceId);
+        BUG_LOGGER.info("startTime: " + v.getStartTime(deviceId));
+        BUG_LOGGER.info("endTime: " + v.getEndTime(deviceId));
+      });
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
           upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
+      BUG_LOGGER.info("unSequenceFileList size: " + unSequenceFileList.size());
+      unseqResources.forEach(v -> {
+        BUG_LOGGER.info("isSeq: " + v.isSeq());
+        BUG_LOGGER.info("isClosed: " + v.isClosed());
+        BUG_LOGGER.info("deviceId: " + deviceId);
+        BUG_LOGGER.info("startTime: " + v.getStartTime(deviceId));
+        BUG_LOGGER.info("endTime: " + v.getEndTime(deviceId));
+      });
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
