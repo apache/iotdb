@@ -21,9 +21,12 @@ package org.apache.iotdb.db.metadata;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.Map;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -38,6 +41,7 @@ public class MLogWriter {
   private static final String STRING_TYPE = "%s,%s,%s"; 
   private File logFile;
   private BufferedWriter writer;
+  private FileOutputStream fileOutputStream;
   private int lineNumber;
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
@@ -60,33 +64,40 @@ public class MLogWriter {
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
-    writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
-        plan.getPath().getFullPath(), plan.getDataType().serialize(),
-        plan.getEncoding().serialize(), plan.getCompressor().serialize()));
+    StringBuilder buf = new StringBuilder();
+    buf.append(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
+            plan.getPath().getFullPath(), plan.getDataType().serialize(),
+            plan.getEncoding().serialize(), plan.getCompressor().serialize()));
 
-    writer.write(",");
+    buf.append(",");
     if (plan.getProps() != null) {
       boolean first = true;
       for (Map.Entry<String, String> entry : plan.getProps().entrySet()) {
         if (first) {
-          writer.write(String.format("%s=%s", entry.getKey(), entry.getValue()));
+          buf.append(String.format("%s=%s", entry.getKey(), entry.getValue()));
           first = false;
         } else {
-          writer.write(String.format("&%s=%s", entry.getKey(), entry.getValue()));
+          buf.append(String.format("&%s=%s", entry.getKey(), entry.getValue()));
         }
       }
     }
 
-    writer.write(",");
+    buf.append(",");
     if (plan.getAlias() != null) {
-      writer.write(plan.getAlias());
+      buf.append(plan.getAlias());
     }
 
-    writer.write(",");
+    buf.append(",");
     if (offset >= 0) {
-      writer.write(String.valueOf(offset));
+      buf.append(offset);
     }
-    newLine();
+    final String newLine = System.getProperty("line.separator");
+    buf.append(newLine);
+
+    FileChannel channel = new FileOutputStream(logFile, true).getChannel();
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    channel.force(true);
+    ++lineNumber;
   }
 
   public void deleteTimeseries(String path) throws IOException {
