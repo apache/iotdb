@@ -116,8 +116,9 @@ public class ChunkCache {
         lock.writeLock().unlock();
       }
     }
-
-    BUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+    if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+      BUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+    }
     return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
   }
 

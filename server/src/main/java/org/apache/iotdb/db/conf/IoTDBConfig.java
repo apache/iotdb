@@ -600,6 +600,8 @@ public class IoTDBConfig {
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
+  private volatile boolean ZY_ON = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1647,5 +1649,13 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public boolean isZY_ON() {
+    return ZY_ON;
+  }
+
+  public void setZY_ON(boolean ZY_ON) {
+    this.ZY_ON = ZY_ON;
   }
 }

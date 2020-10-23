@@ -145,8 +145,9 @@ public class TimeSeriesMetadataCache {
           BloomFilter bloomFilter = reader.readBloomFilter();
           if (bloomFilter != null && !bloomFilter
               .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-
-            BUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
+            if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+              BUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
+            }
             return null;
           }
           List<TimeseriesMetadata> timeSeriesMetadataList = reader
@@ -165,10 +166,16 @@ public class TimeSeriesMetadataCache {
       }
     }
     if (timeseriesMetadata == null) {
-      BUG_LOGGER.info("The file doesn't this time series " + key);
+      if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+        BUG_LOGGER.info("The file doesn't this time series " + key);
+      }
       return null;
     } else {
-      BUG_LOGGER.info("Get timeseries: " + key.device + "." + key.measurement + " metadata in file: " + key.filePath + " from cache: " + timeseriesMetadata);
+      if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+        BUG_LOGGER.info(
+            "Get timeseries: " + key.device + "." + key.measurement + " metadata in file: "
+                + key.filePath + " from cache: " + timeseriesMetadata);
+      }
       return new TimeseriesMetadata(timeseriesMetadata);
     }
   }

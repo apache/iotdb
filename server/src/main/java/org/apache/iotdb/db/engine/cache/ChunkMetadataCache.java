@@ -148,7 +148,9 @@ public class ChunkMetadataCache {
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       BloomFilter bloomFilter = tsFileReader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
-        BUG_LOGGER.info("Chunk meta data " + key.getString() + " is filter by bloomFilter!");
+        if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+          BUG_LOGGER.info("Chunk meta data " + key.getString() + " is filter by bloomFilter!");
+        }
         return new ArrayList<>();
       }
       chunkMetadataList = FileLoaderUtils.getChunkMetadataList(seriesPath, filePath);
@@ -159,8 +161,10 @@ public class ChunkMetadataCache {
         lock.writeLock().unlock();
       }
     }
-    BUG_LOGGER.info("Chunk meta data list size: " + chunkMetadataList.size() + " key is: " + key.getString());
-    chunkMetadataList.forEach(c -> BUG_LOGGER.info(c.toString()));
+    if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+      BUG_LOGGER.info("Chunk meta data list size: " + chunkMetadataList.size() + " key is: " + key.getString());
+      chunkMetadataList.forEach(c -> BUG_LOGGER.info(c.toString()));
+    }
     return new ArrayList<>(chunkMetadataList);
   }
 
