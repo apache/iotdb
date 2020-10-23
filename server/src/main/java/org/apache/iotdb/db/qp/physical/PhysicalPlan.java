@@ -58,6 +58,9 @@ public abstract class PhysicalPlan {
   //login username, corresponding to cli/session login user info
   private String loginUserName;
 
+  // a bridge from a cluster raft log to a physical plan
+  protected long index;
+
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
@@ -283,5 +286,11 @@ public abstract class PhysicalPlan {
     DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, MULTI_CREATE_TIMESERIES
   }
 
+  public long getIndex() {
+    return index;
+  }
 
+  public void setIndex(long index) {
+    this.index = index;
+  }
 }

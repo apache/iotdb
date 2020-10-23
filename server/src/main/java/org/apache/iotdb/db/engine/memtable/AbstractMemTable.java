@@ -61,6 +61,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long totalPointsNumThreshold = 0;
 
+  private long maxPlanIndex;
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -101,6 +103,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
+    updateMaxPlanIndex(insertRowPlan.getIndex());
     for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
       if (insertRowPlan.getValues()[i] == null) {
@@ -120,6 +123,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
+    updateMaxPlanIndex(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
@@ -140,6 +144,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    updateMaxPlanIndex(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
@@ -192,6 +197,7 @@ public abstract class AbstractMemTable implements IMemTable {
     seriesNumber = 0;
     totalPointsNum = 0;
     totalPointsNumThreshold = 0;
+    maxPlanIndex = 0;
   }
 
   @Override
@@ -273,5 +279,14 @@ public abstract class AbstractMemTable implements IMemTable {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }
+  }
+
+  @Override
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  void updateMaxPlanIndex(long index) {
+    maxPlanIndex = Math.max(index, maxPlanIndex);
   }
 }
