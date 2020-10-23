@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinTimeAggrResult extends AggregateResult {
+public class LastValueDescAggrResult extends LastValueAggrResult {
 
-  public MinTimeAggrResult() {
-    super(TSDataType.INT64, AggregationType.MIN_TIME);
-    reset();
-  }
-
-  @Override
-  public Long getResult() {
-    return hasCandidateResult() ? getLongValue() : null;
+  public LastValueDescAggrResult(TSDataType dataType) {
+    super(dataType);
   }
 
   @Override
@@ -46,13 +35,9 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
-    long time = statistics.getStartTime();
-    setValue(time);
-  }
-
-  @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
+    Object lastVal = statistics.getLastValue();
+    setValue(lastVal);
+    timestamp = statistics.getEndTime();
   }
 
   @Override
@@ -60,10 +45,19 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
+    long time = Long.MIN_VALUE;
+    Object lastVal = null;
     if (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
-      setLongValue(dataInThisPage.currentTime());
+      time = dataInThisPage.currentTime();
+      lastVal = dataInThisPage.currentValue();
+      dataInThisPage.next();
+    }
+
+    if (time != Long.MIN_VALUE) {
+      setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -73,12 +67,19 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
+    long time = Long.MIN_VALUE;
+    Object lastVal = null;
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
-        setLongValue(timestamps[i]);
-        return;
+        time = timestamps[i];
+        lastVal = value;
+        break;
       }
+    }
+    if (time != Long.MIN_VALUE) {
+      setValue(lastVal);
+      timestamp = time;
     }
   }
 
@@ -88,23 +89,7 @@ public class MinTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  public void merge(AggregateResult another) {
-    MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
-    if (!hasCandidateResult() && anotherMinTime.hasCandidateResult()) {
-      setLongValue(anotherMinTime.getResult());
-      return;
-    }
-    if (hasCandidateResult() && anotherMinTime.hasCandidateResult() && getResult() > anotherMinTime.getResult()) {
-      setLongValue(anotherMinTime.getResult());
-    }
+  public boolean isAscending() {
+    return false;
   }
-
-  @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-  }
-
-  @Override
-  protected void serializeSpecificFields(OutputStream outputStream) {
-  }
-
 }
