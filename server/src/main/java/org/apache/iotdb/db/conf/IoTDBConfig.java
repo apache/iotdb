@@ -131,6 +131,13 @@ public class IoTDBConfig {
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
+   * Memory allocated for the read process besides cache
+   */
+  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+
+  private volatile int maxQueryDeduplicatedPathNum = 1000;
+
+  /**
    * Is dynamic parameter adapter enable.
    */
   private boolean enableParameterAdapter = true;
@@ -1195,6 +1202,14 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForReadWithoutCache() {
+    return allocateMemoryForReadWithoutCache;
+  }
+
+  public void setAllocateMemoryForReadWithoutCache(long allocateMemoryForReadWithoutCache) {
+    this.allocateMemoryForReadWithoutCache = allocateMemoryForReadWithoutCache;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -1857,5 +1872,13 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public int getMaxQueryDeduplicatedPathNum() {
+    return maxQueryDeduplicatedPathNum;
+  }
+
+  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
+    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 }
