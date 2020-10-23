@@ -94,7 +94,7 @@ public class MLogWriter {
     final String newLine = System.getProperty("line.separator");
     buf.append(newLine);
 
-    writeSeries(ByteBuffer.wrap(buf.toString().getBytes()));
+    writeTimeseries(ByteBuffer.wrap(buf.toString().getBytes()));
     ++lineNumber;
   }
 
@@ -176,13 +176,12 @@ public class MLogWriter {
     ++lineNumber;
   }
 
-  private synchronized void writeSeries(ByteBuffer buffer) throws IOException {
-    FileOutputStream fos = new FileOutputStream(logFile, true);
-    FileChannel channel = fos.getChannel();
-    channel.write(buffer);
-    channel.force(true);
-    channel.close();
-    fos.close();
+  private synchronized void writeTimeseries(ByteBuffer buffer) throws IOException {
+    try (FileOutputStream fos = new FileOutputStream(logFile, true);
+         FileChannel channel = fos.getChannel()) {
+      channel.write(buffer);
+      channel.force(true);
+    }
   }
 
   int getLineNumber() {
