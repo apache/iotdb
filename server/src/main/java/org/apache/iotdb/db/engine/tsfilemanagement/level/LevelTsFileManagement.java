@@ -456,12 +456,7 @@ public class LevelTsFileManagement extends TsFileManagement {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
       Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
           .get(i);
-      List<TsFileResource> allCurrLevelTsFileResources = new ArrayList<>();
-      for (TsFileResource tsFileResource : levelRawTsFileResources) {
-        if (tsFileResource.isClosed()) {
-          allCurrLevelTsFileResources.add(tsFileResource);
-        }
-      }
+      List<TsFileResource> allCurrLevelTsFileResources = new ArrayList<>(levelRawTsFileResources);
       for (TsFileResource tsFileResource : allCurrLevelTsFileResources) {
         if (tsFileResource.isClosed()) {
           String path = tsFileResource.getTsFile().getAbsolutePath();
