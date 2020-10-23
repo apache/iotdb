@@ -153,7 +153,7 @@ public class DataGroupMember extends RaftMember {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
         new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
+        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory), false),
         new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
         new AsyncClientPool(new SingleManagerFactory(factory)));
     this.thisNode = thisNode;

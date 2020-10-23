@@ -46,6 +46,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.partition.slot.SlotManager;
 import org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -262,6 +263,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         try {
           if (!isFileAlreadyPulled(resource)) {
             loadRemoteFile(resource);
+          } else {
+            // notify the snapshot provider to remove the hardlink
+            removeRemoteHardLink(resource);
           }
         } catch (IllegalPathException e) {
           throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
@@ -289,6 +293,27 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
       return StorageEngine.getInstance()
           .isFileAlreadyExist(resource, new PartialPath(storageGroupName), partitionNumber);
+    }
+
+    private void removeRemoteHardLink(RemoteTsFileResource resource) {
+      Node sourceNode = resource.getSource();
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(sourceNode);
+          client.removeHardLink(resource.getTsFile().getAbsolutePath(),
+              new GenericHandler<>(sourceNode, null));
+        } else {
+          SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
+          try {
+            client.removeHardLink(resource.getTsFile().getAbsolutePath());
+          } finally {
+            ClientUtils.putBackSyncClient(client);
+          }
+        }
+      } catch (TException e) {
+        logger.error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
+            sourceNode);
+      }
     }
 
     /**

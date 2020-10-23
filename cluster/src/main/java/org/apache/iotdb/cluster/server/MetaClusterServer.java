@@ -331,4 +331,15 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public boolean matchTerm(long index, long term, Node header) {
     return syncService.matchTerm(index, term, header);
   }
+
+  @Override
+  public void removeHardLink(String hardLinkPath) throws TException {
+    syncService.removeHardLink(hardLinkPath);
+  }
+
+  @Override
+  public void removeHardLink(String hardLinkPath,
+      AsyncMethodCallback<Void> resultHandler) {
+    asyncService.removeHardLink(hardLinkPath, resultHandler);
+  }
 }

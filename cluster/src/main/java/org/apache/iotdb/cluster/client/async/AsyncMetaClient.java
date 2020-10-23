@@ -74,6 +74,7 @@ public class AsyncMetaClient extends AsyncClient {
   public void onError(Exception e) {
     super.onError(e);
     pool.recreateClient(node);
+    //TODO: if e instance of network failure
     pool.onError(node);
   }
 

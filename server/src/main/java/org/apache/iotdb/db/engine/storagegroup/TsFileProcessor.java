@@ -328,7 +328,7 @@ public class TsFileProcessor {
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
-          if (System.currentTimeMillis() - startTime > 60_000) {
+          if (System.currentTimeMillis() - startTime > 60_000 && !flushingMemTables.isEmpty()) {
             logger.warn(
                 "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
                 this.tsFileResource.getTsFile().getAbsolutePath(),
@@ -565,18 +565,23 @@ public class TsFileProcessor {
         flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
-        logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
-            storageGroupName, tsFileResource.getTsFile().getName(), e);
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-        try {
-          logger.error("{}: {} IOTask meets error, truncate the corrupted data", storageGroupName,
-              tsFileResource.getTsFile().getName(), e);
-          writer.reset();
-        } catch (IOException e1) {
-          logger.error("{}: {} Truncate corrupted data meets error", storageGroupName,
-              tsFileResource.getTsFile().getName(), e1);
+        if (writer == null) {
+          logger.info("{}: {} is closed during flush, abandon flush task",
+              storageGroupName, tsFileResource.getTsFile().getName());
+        } else {
+          logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
+              storageGroupName, tsFileResource.getTsFile().getName(), e);
+          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+          try {
+            logger.error("{}: {} IOTask meets error, truncate the corrupted data", storageGroupName,
+                tsFileResource.getTsFile().getName(), e);
+            writer.reset();
+          } catch (IOException e1) {
+            logger.error("{}: {} Truncate corrupted data meets error", storageGroupName,
+                tsFileResource.getTsFile().getName(), e1);
+          }
+          Thread.currentThread().interrupt();
         }
-        Thread.currentThread().interrupt();
       }
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -598,7 +603,7 @@ public class TsFileProcessor {
       }
     }
 
-    if (shouldClose && flushingMemTables.isEmpty()) {
+    if (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
         try {

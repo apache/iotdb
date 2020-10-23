@@ -410,7 +410,9 @@ public abstract class RaftMember {
           commitLogTask.registerCallback(new CommitLogCallback(this));
           // if the log is not consistent, the commitment will be blocked until the leader makes the
           // node catch up
-          commitLogPool.submit(commitLogTask);
+          if (commitLogPool != null) {
+            commitLogPool.submit(commitLogTask);
+          }
 
           logger
               .debug("{}: Inconsistent log found, leaderCommit: {}-{}, localCommit: {}-{}, "

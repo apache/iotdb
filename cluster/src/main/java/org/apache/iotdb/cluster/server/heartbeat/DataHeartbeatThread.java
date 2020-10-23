@@ -24,8 +24,10 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
 public class DataHeartbeatThread extends HeartbeatThread {
 
+  private static final int MAX_ELECTIONS_TO_SKIP = 60;
+
   private DataGroupMember dataGroupMember;
-  int number = 1;
+  int skippedElectionNumber = 0;
 
   public DataHeartbeatThread(DataGroupMember raftMember) {
     super(raftMember);
@@ -51,13 +53,12 @@ public class DataHeartbeatThread extends HeartbeatThread {
    */
   @Override
   void startElection() {
-    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader())) {
-      if (number % 60 != 0) {
-        number++;
-        return;
-      } else {
-        number = 1;
-      }
+    // skip first few elections to let the header have a larger chance to become the leader, so
+    // possibly each node will only be one leader at the same time
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader()) && skippedElectionNumber
+        < MAX_ELECTIONS_TO_SKIP) {
+      skippedElectionNumber++;
+      return;
     }
     electionRequest.setHeader(dataGroupMember.getHeader());
     electionRequest

@@ -238,7 +238,9 @@ public class LogDispatcher {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
       }
-      client.appendEntries(request, handler);
+      if (client != null) {
+        client.appendEntries(request, handler);
+      }
     }
 
     private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request,

@@ -430,8 +430,7 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // just log it, created by multiple thread
-      logger.info("Concurrent create timeseries failed, use other thread's result");
+      // ignore
     }
   }
 

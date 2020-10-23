@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -106,6 +108,17 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
+    } catch (IOException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void removeHardLink(String hardLinkPath,
+      AsyncMethodCallback<Void> resultHandler) {
+    try {
+      Files.deleteIfExists(new File(hardLinkPath).toPath());
+      resultHandler.onComplete(null);
     } catch (IOException e) {
       resultHandler.onError(e);
     }

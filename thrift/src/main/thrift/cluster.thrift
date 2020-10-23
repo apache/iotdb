@@ -298,6 +298,12 @@ service RaftService {
   * Test if a log of "index" and "term" exists.
   **/
   bool matchTerm(1:long index, 2:long term, 3:Node header)
+
+  /**
+  * When a follower finds that it already has a file in a snapshot locally, it calls this
+  * interface to notify the leader to remove the associated hardlink.
+  **/
+  void removeHardLink(1: string hardLinkPath)
 }
 
 
@@ -405,6 +411,7 @@ service TSDataService extends RaftService {
 
   binary peekNextNotNullValue(1: Node header, 2: long executorId, 3: long startTime, 4: long
   endTime)
+
 }
 
 service TSMetaService extends RaftService {

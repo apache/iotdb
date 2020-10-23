@@ -46,20 +46,31 @@ public class AsyncClientPool {
   private Map<ClusterNode, Integer> nodeErrorClientCountMap = new ConcurrentHashMap<>();
   private AsyncClientFactory asyncClientFactory;
   private ScheduledExecutorService cleanErrorClientExecutorService;
+  // when set to true, if MAX_ERROR_COUNT errors occurs continuously when connecting to node, any
+  // further requests to the node will be rejected for PROBE_NODE_STATUS_PERIOD_SECOND
+  // heartbeats should not be blocked
+  private boolean blockOnError;
+
   private static final int MAX_ERROR_COUNT = 3;
   private static final int PROBE_NODE_STATUS_PERIOD_SECOND = 60;
 
   public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
+    this(asyncClientFactory, true);
+  }
+
+  public AsyncClientPool(AsyncClientFactory asyncClientFactory, boolean blockOnError) {
     this.asyncClientFactory = asyncClientFactory;
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
-    this.cleanErrorClientExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
-            .build());
-    this.cleanErrorClientExecutorService
-        .scheduleAtFixedRate(this::cleanErrorClients, PROBE_NODE_STATUS_PERIOD_SECOND,
-            PROBE_NODE_STATUS_PERIOD_SECOND,
-            TimeUnit.SECONDS);
+    this.blockOnError = blockOnError;
+    if (blockOnError) {
+      this.cleanErrorClientExecutorService = new ScheduledThreadPoolExecutor(1,
+          new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
+              .build());
+      this.cleanErrorClientExecutorService
+          .scheduleAtFixedRate(this::cleanErrorClients, PROBE_NODE_STATUS_PERIOD_SECOND,
+              PROBE_NODE_STATUS_PERIOD_SECOND, TimeUnit.SECONDS);
+    }
   }
 
   /**
@@ -71,10 +82,11 @@ public class AsyncClientPool {
    */
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
-    if (nodeErrorClientCountMap.containsKey(clusterNode)
+    if (blockOnError && nodeErrorClientCountMap.containsKey(clusterNode)
         && nodeErrorClientCountMap.get(clusterNode) > MAX_ERROR_COUNT) {
       throw new IOException(String.format("connect node failed, maybe the node is down, %s", node));
     }
+
     AsyncClient client;
     synchronized (this) {
       //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
@@ -159,6 +171,17 @@ public class AsyncClientPool {
 
   void onError(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
+    // clean all cached clients when network fails
+    synchronized (this) {
+      Deque<AsyncClient> clientStack = clientCaches
+          .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      clientStack.clear();
+      nodeClientNumMap.put(clusterNode, 0);
+      this.notifyAll();
+    }
+    if (!blockOnError) {
+      return;
+    }
     synchronized (this) {
       if (nodeErrorClientCountMap.containsKey(clusterNode)) {
         nodeErrorClientCountMap.put(clusterNode, nodeErrorClientCountMap.get(clusterNode) + 1);
@@ -174,6 +197,7 @@ public class AsyncClientPool {
 
   void onComplete(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
+    // TODO: if the heartbeat client pool completes, also unblock another pool
     nodeErrorClientCountMap.remove(clusterNode);
   }
 

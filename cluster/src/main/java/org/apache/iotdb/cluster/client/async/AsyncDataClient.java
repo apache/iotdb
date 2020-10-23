@@ -77,6 +77,7 @@ public class AsyncDataClient extends AsyncClient {
     super.onError(e);
     if (pool != null) {
       pool.recreateClient(node);
+      //TODO: if e instance of network failure
       pool.onError(node);
     }
   }

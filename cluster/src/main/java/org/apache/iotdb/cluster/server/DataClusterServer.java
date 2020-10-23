@@ -823,4 +823,16 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
     resultHandler.onComplete(getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime));
   }
+
+  @Override
+  public void removeHardLink(String hardLinkPath) throws TException {
+    getDataSyncService(thisNode).removeHardLink(hardLinkPath);
+  }
+
+  @Override
+  public void removeHardLink(String hardLinkPath,
+      AsyncMethodCallback<Void> resultHandler) {
+    getDataAsyncService(thisNode, resultHandler, hardLinkPath).removeHardLink(hardLinkPath,
+        resultHandler);
+  }
 }

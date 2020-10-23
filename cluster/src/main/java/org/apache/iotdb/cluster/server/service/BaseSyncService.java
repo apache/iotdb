@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -117,6 +119,15 @@ public abstract class BaseSyncService implements RaftService.Iface {
   public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
     try {
       return IOUtils.readFile(filePath, offset, length);
+    } catch (IOException e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public void removeHardLink(String hardLinkPath) throws TException {
+    try {
+      Files.deleteIfExists(new File(hardLinkPath).toPath());
     } catch (IOException e) {
       throw new TException(e);
     }
