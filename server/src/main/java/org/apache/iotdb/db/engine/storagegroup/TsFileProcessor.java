@@ -568,6 +568,9 @@ public class TsFileProcessor {
         if (writer == null) {
           logger.info("{}: {} is closed during flush, abandon flush task",
               storageGroupName, tsFileResource.getTsFile().getName());
+          synchronized (flushingMemTables) {
+            flushingMemTables.notifyAll();
+          }
         } else {
           logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
               storageGroupName, tsFileResource.getTsFile().getName(), e);
