@@ -62,6 +62,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     return paths;
   }
 
+  @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
@@ -140,7 +141,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.MULTI_CREATE_TIMESERIES.ordinal();
+    int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     stream.write(type);
     stream.writeInt(paths.size());
 
@@ -199,7 +200,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    int type = PhysicalPlanType.MULTI_CREATE_TIMESERIES.ordinal();
+    int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());
 

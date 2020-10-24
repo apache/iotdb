@@ -1619,7 +1619,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       createMultiTimeSeriesPlan.setAttributes(attributes);
       createMultiTimeSeriesPlan.setIndexes(indexes);
 
-      executeNonQuery(createMultiTimeSeriesPlan);
+      TSStatus status = executeNonQueryPlan(createMultiTimeSeriesPlan);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
 
       boolean isAllSuccessful = true;
 

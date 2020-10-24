@@ -136,6 +136,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -1466,7 +1467,7 @@ public class MetaGroupMember extends RaftMember {
    */
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
-    TSStatus status;
+    TSStatus status = null;
     if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
@@ -1478,6 +1479,11 @@ public class MetaGroupMember extends RaftMember {
         // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
         // failure and success should be placed into proper positions in TSStatus.subStatus
         status = forwardInsertTabletPlan(planGroupMap, (InsertTabletPlan) plan);
+      } else if (plan instanceof CreateMultiTimeSeriesPlan) {
+        // CreateMultiTimeSeriesPlans contain many rows, each will correspond to a TSStatus as its
+        // execution result, as the plan is split and the sub-plans may have interleaving ranges,
+        // we must assure that each TSStatus is placed to the right position
+        status = forwardCreateMultiTimeSeriesPlan(planGroupMap, (CreateMultiTimeSeriesPlan) plan);
       } else {
         status = forwardToMultipleGroup(planGroupMap);
       }
@@ -1503,6 +1509,48 @@ public class MetaGroupMember extends RaftMember {
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
+  }
+
+  /**
+   * Forward each sub-plan to its belonging data group, and combine responses from the groups.
+   *
+   * @param planGroupMap sub-plan -> data group pairs
+   */
+  private TSStatus forwardCreateMultiTimeSeriesPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
+                                           CreateMultiTimeSeriesPlan plan) {
+    List<String> errorCodePartitionGroups = new ArrayList<>();
+    TSStatus tmpStatus;
+    CreateMultiTimeSeriesPlan subPlan;
+    Map<Integer, Exception> results = new HashMap<>();
+    boolean noFailure = true;
+    boolean isBatchFailure = false;
+    // send sub-plans to each belonging data group and collect results
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      tmpStatus = forwardToSingleGroup(entry);
+      subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
+      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+      noFailure =
+        (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+      isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+        || isBatchFailure;
+      if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        results.putAll(subPlan.getResults());
+      }
+      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // execution failed, record the error message
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
+          tmpStatus.getCode(), entry.getValue().getHeader(),
+          tmpStatus.getMessage(), tmpStatus.subStatus));
+      }
+    }
+
+    plan.setResults(results);
+    if (noFailure || isBatchFailure) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
+        MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+    }
   }
 
   /**
