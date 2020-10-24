@@ -69,6 +69,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -130,6 +131,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -1056,8 +1060,9 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
-    Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) throws QueryProcessException {
+    TSStatus[] results = null;
+    boolean hasFailed = false;
     for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
         createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
@@ -1070,11 +1075,19 @@ public class PlanExecutor implements IPlanExecutor {
       try {
         createTimeSeries(plan);
       } catch (QueryProcessException e) {
-        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), e);
+        if (results == null) {
+          results = new TSStatus[createMultiTimeSeriesPlan.getIndexes().size()];
+          Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+        }
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        hasFailed = true;
         logger.debug("meet error while processing create timeseries. ", e);
       }
     }
-    createMultiTimeSeriesPlan.setResults(results);
+
+    if (hasFailed) {
+      throw new BatchInsertionException(results);
+    }
     return true;
   }
 

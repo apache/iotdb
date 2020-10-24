@@ -1471,19 +1471,14 @@ public class MetaGroupMember extends RaftMember {
     if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
-      if (plan instanceof InsertTabletPlan) {
-        // InsertTabletPlans contain many rows, each will correspond to a TSStatus as its
+      if (plan instanceof InsertTabletPlan || plan instanceof CreateMultiTimeSeriesPlan) {
+        // InsertTabletPlan contains many rows, each will correspond to a TSStatus as its
         // execution result, as the plan is split and the sub-plans may have interleaving ranges,
         // we must assure that each TSStatus is placed to the right position
         // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
         // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
         // failure and success should be placed into proper positions in TSStatus.subStatus
-        status = forwardInsertTabletPlan(planGroupMap, (InsertTabletPlan) plan);
-      } else if (plan instanceof CreateMultiTimeSeriesPlan) {
-        // CreateMultiTimeSeriesPlans contain many rows, each will correspond to a TSStatus as its
-        // execution result, as the plan is split and the sub-plans may have interleaving ranges,
-        // we must assure that each TSStatus is placed to the right position
-        status = forwardCreateMultiTimeSeriesPlan(planGroupMap, (CreateMultiTimeSeriesPlan) plan);
+        status = forwardMultiSubPlan(planGroupMap, plan);
       } else {
         status = forwardToMultipleGroup(planGroupMap);
       }
@@ -1516,25 +1511,56 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param planGroupMap sub-plan -> data group pairs
    */
-  private TSStatus forwardCreateMultiTimeSeriesPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-                                           CreateMultiTimeSeriesPlan plan) {
+  private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
+                                           PhysicalPlan plan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
-    CreateMultiTimeSeriesPlan subPlan;
-    Map<Integer, Exception> results = new HashMap<>();
+    TSStatus[] subStatus = null;
     boolean noFailure = true;
     boolean isBatchFailure = false;
+    EndPoint endPoint = null;
+    int totalRowNum = 0;
+    // for we put the result to right position for CreateMultiTimeSeriesPlan
+    Map<Integer, Integer> indexToPos = new HashMap<>();
+    if (plan instanceof InsertTabletPlan) {
+      totalRowNum = ((InsertTabletPlan) plan).getRowCount();
+    } else if (plan instanceof CreateMultiTimeSeriesPlan) {
+      totalRowNum = ((CreateMultiTimeSeriesPlan) plan).getIndexes().size();
+
+      // index -> pos in the indexs array
+      for (int i = 0; i < totalRowNum; i++) {
+        indexToPos.put(((CreateMultiTimeSeriesPlan) plan).getIndexes().get(i), i);
+      }
+    }
     // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
-      subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
         (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
         || isBatchFailure;
+      if (plan instanceof InsertTabletPlan) {
+        if (tmpStatus.isSetRedirectNode() &&
+          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) plan).getMaxTime()) {
+          endPoint = tmpStatus.getRedirectNode();
+        }
+      }
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        results.putAll(subPlan.getResults());
+        if (subStatus == null) {
+          subStatus = new TSStatus[totalRowNum];
+          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+        }
+        // set the status from one group to the proper positions of the overall status
+        if (plan instanceof InsertTabletPlan) {
+          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+            tmpStatus.subStatus.toArray(new TSStatus[]{}));
+        } else if (plan instanceof CreateMultiTimeSeriesPlan) {
+          CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
+          for (int i = 0; i < subPlan.getIndexes().size(); i++) {
+            subStatus[indexToPos.get(subPlan.getIndexes().get(i))] = tmpStatus.subStatus.get(i);
+          }
+        }
       }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
@@ -1544,60 +1570,7 @@ public class MetaGroupMember extends RaftMember {
       }
     }
 
-    plan.setResults(results);
-    if (noFailure || isBatchFailure) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-    } else {
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-        MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
-    }
-  }
-
-  /**
-   * Forward each sub-plan to its belonging data group, and combine responses from the groups.
-   *
-   * @param planGroupMap sub-plan -> data group pairs
-   */
-  private TSStatus forwardInsertTabletPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-      InsertTabletPlan plan) {
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus tmpStatus;
-    TSStatus[] subStatus = null;
-    boolean noFailure = true;
-    boolean isBatchFailure = false;
-    EndPoint endPoint = null;
-    InsertTabletPlan subPlan;
-    // send sub-plans to each belonging data group and collect results
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-      tmpStatus = forwardToSingleGroup(entry);
-      subPlan = (InsertTabletPlan) entry.getKey();
-      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
-      noFailure =
-          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
-      isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-          || isBatchFailure;
-      if (tmpStatus.isSetRedirectNode() && subPlan.getMaxTime() == plan.getMaxTime()) {
-        endPoint = tmpStatus.getRedirectNode();
-      }
-      if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        if (subStatus == null) {
-          subStatus = new TSStatus[plan.getRowCount()];
-          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-        }
-        // set the status from one group to the proper positions of the overall status
-        PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-            tmpStatus.subStatus.toArray(new TSStatus[]{}));
-      }
-      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-            tmpStatus.getCode(), entry.getValue().getHeader(),
-            tmpStatus.getMessage(), tmpStatus.subStatus));
-      }
-    }
-
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
-        errorCodePartitionGroups);
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,

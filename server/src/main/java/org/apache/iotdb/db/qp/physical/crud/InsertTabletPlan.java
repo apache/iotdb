@@ -432,6 +432,7 @@ public class InsertTabletPlan extends InsertPlan {
     columns[index] = column;
   }
 
+  @Override
   public long getMinTime() {
     return minTime;
   }

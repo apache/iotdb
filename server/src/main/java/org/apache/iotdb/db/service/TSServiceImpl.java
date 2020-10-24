@@ -1550,6 +1550,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
             req.getPaths().size(), req.getPaths().get(0));
       }
+      boolean hasFailed = false;
       List<TSStatus> statusList = new ArrayList<>(req.paths.size());
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
@@ -1584,6 +1585,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           // not authorized
+          hasFailed = true;
           statusList.add(status);
           continue;
         }
@@ -1620,28 +1622,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       createMultiTimeSeriesPlan.setIndexes(indexes);
 
       TSStatus status = executeNonQueryPlan(createMultiTimeSeriesPlan);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+      if (status.code == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
         return status;
-      }
-
-      boolean isAllSuccessful = true;
-
-      if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
-        isAllSuccessful = false;
-        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
-          statusList.set(entry.getKey(),
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
+      } else if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        hasFailed = true;
+        for (int i = 0; i < status.subStatus.size(); i++) {
+          statusList.set(createMultiTimeSeriesPlan.getIndexes().get(i), status.subStatus.get(i));
         }
       }
 
-      if (isAllSuccessful) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Create multiple timeseries successfully");
-        }
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else {
+      if (hasFailed) {
         logger.debug("Create multiple timeseries failed!");
         return RpcUtils.getStatus(statusList);
+      } else {
+        return status;
       }
     } catch (Exception e) {
       logger.error("meet error when create multi timeseries", e);
