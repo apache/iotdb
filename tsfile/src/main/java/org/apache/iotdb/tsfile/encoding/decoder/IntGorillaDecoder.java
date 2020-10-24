@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_INTEGER;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_32BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_32BIT;
@@ -34,7 +35,7 @@ import java.nio.ByteBuffer;
  */
 public class IntGorillaDecoder extends GorillaDecoderV2 {
 
-  private int storedValue = 0;
+  protected int storedValue = 0;
 
   @Override
   public void reset() {
@@ -44,17 +45,27 @@ public class IntGorillaDecoder extends GorillaDecoderV2 {
 
   @Override
   public final int readInt(ByteBuffer in) {
-    if (firstValueWasRead) {
-      return readNext(in);
+    int returnValue = storedValue;
+    if (!firstValueWasRead) {
+      flipByte(in);
+      storedValue = (int) readLong(VALUE_BITS_LENGTH_32BIT, in);
+      firstValueWasRead = true;
+      returnValue = storedValue;
     }
-    flipByte(in);
-    storedValue = (int) readLong(VALUE_BITS_LENGTH_32BIT, in);
-    firstValueWasRead = true;
+    cacheNext(in);
+    return returnValue;
+  }
+
+  protected int cacheNext(ByteBuffer in) {
+    readNext(in);
+    if (storedValue == GORILLA_ENCODING_ENDING_INTEGER) {
+      hasNext = false;
+    }
     return storedValue;
   }
 
   @SuppressWarnings("squid:S128")
-  private int readNext(ByteBuffer in) {
+  protected int readNext(ByteBuffer in) {
     int controlBits = readNextClearBit(2, in);
 
     switch (controlBits) {

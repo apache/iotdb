@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_FLOAT;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -30,8 +32,20 @@ import java.nio.ByteBuffer;
  */
 public class SinglePrecisionDecoderV2 extends IntGorillaDecoder {
 
+  private static final int GORILLA_ENCODING_ENDING = Float
+      .floatToRawIntBits(GORILLA_ENCODING_ENDING_FLOAT);
+
   @Override
-  public final float readFloat(ByteBuffer buffer) {
-    return Float.intBitsToFloat(readInt(buffer));
+  public final float readFloat(ByteBuffer in) {
+    return Float.intBitsToFloat(readInt(in));
+  }
+
+  @Override
+  protected int cacheNext(ByteBuffer in) {
+    readNext(in);
+    if (storedValue == GORILLA_ENCODING_ENDING) {
+      hasNext = false;
+    }
+    return storedValue;
   }
 }

@@ -34,6 +34,7 @@ public abstract class GorillaDecoderV2 extends Decoder {
   protected boolean firstValueWasRead = false;
   protected int storedLeadingZeros = Integer.MAX_VALUE;
   protected int storedTrailingZeros = 0;
+  protected boolean hasNext = true;
 
   private byte buffer = 0;
   private int bitsLeft = 0;
@@ -43,8 +44,8 @@ public abstract class GorillaDecoderV2 extends Decoder {
   }
 
   @Override
-  public final boolean hasNext(ByteBuffer buffer) {
-    return 0 < buffer.remaining();
+  public final boolean hasNext(ByteBuffer in) {
+    return hasNext;
   }
 
   @Override
@@ -52,6 +53,7 @@ public abstract class GorillaDecoderV2 extends Decoder {
     firstValueWasRead = false;
     storedLeadingZeros = Integer.MAX_VALUE;
     storedTrailingZeros = 0;
+    hasNext = true;
 
     buffer = 0;
     bitsLeft = 0;

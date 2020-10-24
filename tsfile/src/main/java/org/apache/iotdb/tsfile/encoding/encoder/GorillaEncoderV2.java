@@ -36,7 +36,7 @@ public abstract class GorillaEncoderV2 extends Encoder {
   protected int storedTrailingZeros = 0;
 
   private byte buffer = 0;
-  private int bitsLeft = Byte.SIZE;
+  protected int bitsLeft = Byte.SIZE;
 
   public GorillaEncoderV2() {
     super(TSEncoding.GORILLA_V2);
@@ -47,12 +47,13 @@ public abstract class GorillaEncoderV2 extends Encoder {
     return 0;
   }
 
-  @Override
-  public final void flush(ByteArrayOutputStream out) {
-    if (bitsLeft != Byte.BYTES) {
-      bitsLeft = 0;
-      flipByte(out);
-    }
+  protected void reset() {
+    firstValueWasWritten = false;
+    storedLeadingZeros = Integer.MAX_VALUE;
+    storedTrailingZeros = 0;
+
+    buffer = 0;
+    bitsLeft = Byte.SIZE;
   }
 
   /**
@@ -95,7 +96,7 @@ public abstract class GorillaEncoderV2 extends Encoder {
     }
   }
 
-  private void flipByte(ByteArrayOutputStream out) {
+  protected void flipByte(ByteArrayOutputStream out) {
     if (bitsLeft == 0) {
       out.write(buffer);
       buffer = 0;

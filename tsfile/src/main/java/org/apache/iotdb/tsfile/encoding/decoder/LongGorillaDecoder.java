@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_LONG;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_64BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_64BIT;
@@ -34,7 +35,7 @@ import java.nio.ByteBuffer;
  */
 public class LongGorillaDecoder extends GorillaDecoderV2 {
 
-  private long storedValue = 0;
+  protected long storedValue = 0;
 
   @Override
   public void reset() {
@@ -44,17 +45,27 @@ public class LongGorillaDecoder extends GorillaDecoderV2 {
 
   @Override
   public final long readLong(ByteBuffer in) {
-    if (firstValueWasRead) {
-      return readNext(in);
+    long returnValue = storedValue;
+    if (!firstValueWasRead) {
+      flipByte(in);
+      storedValue = readLong(VALUE_BITS_LENGTH_64BIT, in);
+      firstValueWasRead = true;
+      returnValue = storedValue;
     }
-    flipByte(in);
-    storedValue = readLong(VALUE_BITS_LENGTH_64BIT, in);
-    firstValueWasRead = true;
+    cacheNext(in);
+    return returnValue;
+  }
+
+  protected long cacheNext(ByteBuffer in) {
+    readNext(in);
+    if (storedValue == GORILLA_ENCODING_ENDING_LONG) {
+      hasNext = false;
+    }
     return storedValue;
   }
 
   @SuppressWarnings("squid:S128")
-  private long readNext(ByteBuffer in) {
+  protected long readNext(ByteBuffer in) {
     int controlBits = readNextClearBit(2, in);
 
     switch (controlBits) {

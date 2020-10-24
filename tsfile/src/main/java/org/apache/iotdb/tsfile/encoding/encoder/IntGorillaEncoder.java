@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.encoding.encoder;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_INTEGER;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.MEANINGFUL_XOR_BITS_LENGTH_32BIT;
 import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.VALUE_BITS_LENGTH_32BIT;
@@ -53,6 +54,26 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
   @Override
   public final int getOneItemMaxSize() {
     return ONE_ITEM_MAX_SIZE;
+  }
+
+  @Override
+  public void flush(ByteArrayOutputStream out) {
+    // ending stream
+    encode(GORILLA_ENCODING_ENDING_INTEGER, out);
+
+    // flip the byte no matter it is empty or not
+    // the empty ending byte is necessary when decoding
+    bitsLeft = 0;
+    flipByte(out);
+
+    // the encoder may be reused, so let us reset it
+    reset();
+  }
+
+  @Override
+  protected void reset() {
+    super.reset();
+    storedValue = 0;
   }
 
   private void writeFirst(int value, ByteArrayOutputStream out) {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
+import static org.apache.iotdb.tsfile.common.conf.TSFileConfig.GORILLA_ENCODING_ENDING_DOUBLE;
+
 import java.nio.ByteBuffer;
 
 /**
@@ -30,8 +32,20 @@ import java.nio.ByteBuffer;
  */
 public class DoublePrecisionDecoderV2 extends LongGorillaDecoder {
 
+  private static final long GORILLA_ENCODING_ENDING = Double
+      .doubleToRawLongBits(GORILLA_ENCODING_ENDING_DOUBLE);
+
   @Override
-  public final double readDouble(ByteBuffer buffer) {
-    return Double.longBitsToDouble(readLong(buffer));
+  public final double readDouble(ByteBuffer in) {
+    return Double.longBitsToDouble(readLong(in));
+  }
+
+  @Override
+  protected long cacheNext(ByteBuffer in) {
+    readNext(in);
+    if (storedValue == GORILLA_ENCODING_ENDING) {
+      hasNext = false;
+    }
+    return storedValue;
   }
 }
