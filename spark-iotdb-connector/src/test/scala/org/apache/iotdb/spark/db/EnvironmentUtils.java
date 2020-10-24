@@ -56,6 +56,7 @@ import java.util.Locale;
  * </p>
  */
 public class EnvironmentUtils {
+
   private static String[] creationSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle.d0",
       "SET STORAGE GROUP TO root.vehicle.d1",
@@ -91,7 +92,8 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+      .assignQueryId(true, 1024, 0);
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
@@ -154,16 +156,14 @@ public class EnvironmentUtils {
   }
 
   /**
-   * disable the system monitor</br>
-   * this function should be called before all code in the setup
+   * disable the system monitor</br> this function should be called before all code in the setup
    */
   public static void closeStatMonitor() {
     config.setEnableStatMonitor(false);
   }
 
   /**
-   * disable memory control</br>
-   * this function should be called before all code in the setup
+   * disable memory control</br> this function should be called before all code in the setup
    */
   public static void envSetUp() throws StartupException, IOException {
     IoTDBDescriptor.getInstance().getConfig().setEnableActiveTimeseriesCounter(false);
@@ -185,7 +185,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
@@ -203,7 +203,7 @@ public class EnvironmentUtils {
     // create wal
     createDir(config.getWalDir());
     // create data
-    for (String dataDir: config.getDataDirs()) {
+    for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
   }

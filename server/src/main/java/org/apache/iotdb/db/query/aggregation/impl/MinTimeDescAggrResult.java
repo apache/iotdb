@@ -16,95 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
-public class MinTimeAggrResult extends AggregateResult {
-
-  public MinTimeAggrResult() {
-    super(TSDataType.INT64, AggregationType.MIN_TIME);
-    reset();
-  }
-
-  @Override
-  public Long getResult() {
-    return hasCandidateResult() ? getLongValue() : null;
-  }
+public class MinTimeDescAggrResult extends MinTimeAggrResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasFinalResult()) {
-      return;
-    }
     long time = statistics.getStartTime();
     setValue(time);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() >= minBound) {
+      setValue(dataInThisPage.currentTime());
+      dataInThisPage.next();
+    }
   }
 
-  @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    if (hasFinalResult()) {
-      return;
-    }
-    if (dataInThisPage.hasCurrent()
-        && dataInThisPage.currentTime() < maxBound
-        && dataInThisPage.currentTime() >= minBound) {
-      setLongValue(dataInThisPage.currentTime());
-    }
-  }
 
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasFinalResult()) {
-      return;
-    }
     for (int i = 0; i < length; i++) {
       Object value = dataReader.getValueInTimestamp(timestamps[i]);
       if (value != null) {
         setLongValue(timestamps[i]);
-        return;
       }
     }
   }
 
   @Override
   public boolean hasFinalResult() {
-    return hasCandidateResult;
-  }
-
-  @Override
-  public void merge(AggregateResult another) {
-    MinTimeAggrResult anotherMinTime = (MinTimeAggrResult) another;
-    if (!hasCandidateResult() && anotherMinTime.hasCandidateResult()) {
-      setLongValue(anotherMinTime.getResult());
-      return;
-    }
-    if (hasCandidateResult() && anotherMinTime.hasCandidateResult() && getResult() > anotherMinTime.getResult()) {
-      setLongValue(anotherMinTime.getResult());
-    }
-  }
-
-  @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-  }
-
-  @Override
-  protected void serializeSpecificFields(OutputStream outputStream) {
+    return false;
   }
 
 }

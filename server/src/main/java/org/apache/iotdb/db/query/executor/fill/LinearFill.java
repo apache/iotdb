@@ -101,7 +101,8 @@ public class LinearFill extends IFill {
 
   @Override
   public void configureFill(
-      PartialPath path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
+      PartialPath path, TSDataType dataType, long queryTime, Set<String> sensors,
+      QueryContext context) {
     this.seriesPath = path;
     this.dataType = dataType;
     this.queryTime = queryTime;
@@ -154,7 +155,7 @@ public class LinearFill extends IFill {
     aggregateResultList.add(firstValueResult);
     AggregationExecutor.aggregateOneSeries(
         seriesPath, deviceMeasurements, context, afterFilter, dataType, aggregateResultList, null,
-        true);
+        null);
 
     if (minTimeResult.getResult() != null) {
       long timestamp = (long) (minTimeResult.getResult());

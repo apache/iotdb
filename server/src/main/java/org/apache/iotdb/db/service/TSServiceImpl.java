@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -144,7 +145,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
-  private static final int FETCH_SIZE = 10000;
+  private static final int DEFAULT_FETCH_SIZE = 10000;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
   private static final String SERVER_INTERNAL_ERROR = "{}: server Internal Error: ";
@@ -354,8 +355,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         case "ALL_COLUMNS":
-          resp.setColumnsList(getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath).collect(
-              Collectors.toList()));
+          resp.setColumnsList(
+              getPaths(new PartialPath(req.getColumnPath())).stream().map(PartialPath::getFullPath)
+                  .collect(
+                      Collectors.toList()));
           status = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
           break;
         default:
@@ -425,8 +428,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // on finding queries in a batch, such query will be ignored and an error will be generated
   private boolean executeStatementInBatch(String statement, List<TSStatus> result, long sessionId) {
     try {
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
+      PhysicalPlan physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
       }
@@ -478,8 +481,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
 
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+      PhysicalPlan physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
+              req.fetchSize);
       if (physicalPlan.isQuery()) {
         return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
             req.fetchSize,
@@ -516,8 +520,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String statement = req.getStatement();
       PhysicalPlan physicalPlan;
       try {
-        physicalPlan =
-            processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+        physicalPlan = processor
+            .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
+                req.fetchSize);
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -601,7 +606,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // In case users forget to set this field in query, use the default value
       if (fetchSize == 0) {
-        fetchSize = FETCH_SIZE;
+        fetchSize = DEFAULT_FETCH_SIZE;
       }
 
       if (plan instanceof ShowTimeSeriesPlan) {
@@ -628,8 +633,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
+
+      // get deduplicated path num
+      int deduplicatedPathNum = -1;
+      if (plan instanceof AlignByDevicePlan) {
+        deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
+      } else if (plan instanceof LastQueryPlan) {
+        deduplicatedPathNum = 0;
+      } else if (plan instanceof RawDataQueryPlan) {
+        deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
+      }
+
       // generate the queryId for the operation
-      queryId = generateQueryId(true);
+
+      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
@@ -823,7 +840,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         for (PartialPath path : paths) {
           String column = path.getTsAlias();
           if (column == null) {
-            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.getFullPath();
+            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias()
+                : path.getFullPath();
           }
           respColumns.add(column);
           seriesTypes.add(getSeriesTypeByPath(path));
@@ -1066,7 +1084,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executeNonQueryPlan(plan);
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
-    long queryId = generateQueryId(false);
+    long queryId = generateQueryId(false, DEFAULT_FETCH_SIZE, -1);
     resp.setQueryId(queryId);
     return resp;
   }
@@ -1084,7 +1102,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     PhysicalPlan physicalPlan;
     try {
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
+      physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
     } catch (QueryProcessException | SQLParserException e) {
       logger.warn(ERROR_PARSING_SQL, statement, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -1379,7 +1398,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceId), req.measurements);
+      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceId),
+          req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1413,7 +1433,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       List<TSStatus> statusList = new ArrayList<>();
       for (int i = 0; i < req.deviceIds.size(); i++) {
-        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(new PartialPath(req.deviceIds.get(i)),
+        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
+            new PartialPath(req.deviceIds.get(i)),
             req.measurementsList.get(i));
         insertTabletPlan.setTimes(
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
@@ -1687,11 +1708,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
-  private long generateQueryId(boolean isDataQuery) {
-    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+
+  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
+    return QueryResourceManager.getInstance()
+        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
   }
 
-  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths, List<String> aggregations)
+  protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
+      List<String> aggregations)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }
