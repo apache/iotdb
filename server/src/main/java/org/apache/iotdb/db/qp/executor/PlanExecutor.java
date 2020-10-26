@@ -950,7 +950,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new PathNotExistException(failedPaths);
         } else {
           throw new StorageEngineException(
-              "failed to insert points " + insertRowPlan.getFailedMeasurements());
+              "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
         }
       }
     } catch (StorageEngineException | MetadataException e) {
