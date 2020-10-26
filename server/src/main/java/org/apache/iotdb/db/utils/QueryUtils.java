@@ -27,8 +27,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(QueryUtils.class);
 
   private QueryUtils() {
     // util class
@@ -45,7 +49,6 @@ public class QueryUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
       List<Modification> modifications) {
-    int modIndex = 0;
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {
@@ -57,6 +60,8 @@ public class QueryUtils {
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
       if (metaData.getDeleteIntervalList() != null) {
+        logger.info("remove metaData because of modification, startTime:{} endTime:{} dataType:{}",
+            metaData.getStartTime(), metaData.getEndTime(), metaData.getDataType());
         for (TimeRange range : metaData.getDeleteIntervalList()) {
           if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
             return true;

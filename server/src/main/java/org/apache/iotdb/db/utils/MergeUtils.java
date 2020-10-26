@@ -194,6 +194,10 @@ public class MergeUtils {
         QueryUtils.modifyChunkMetaData(metaDataList, pathModifications);
       }
       MetaListEntry entry = new MetaListEntry(i, metaDataList);
+      for (ChunkMetadata chunkMetadata : metaDataList) {
+        logger.info("buildMetaHeap add chunkMetadata,startTime:{} endTime:{} dataType:{}",
+            chunkMetadata.getStartTime(), chunkMetadata.getEndTime(), chunkMetadata.getDataType());
+      }
       if (entry.hasNext()) {
         entry.next();
         chunkMetaHeap.add(entry);
