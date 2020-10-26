@@ -548,8 +548,6 @@ public abstract class AbstractCli {
     } catch (SQLException e) {
       println(String.format("Failed to import from %s because %s",
           cmd.split(" ")[1], e.getMessage()));
-    } catch (TException e) {
-      println("Cannot connect to server");
     }
   }
 

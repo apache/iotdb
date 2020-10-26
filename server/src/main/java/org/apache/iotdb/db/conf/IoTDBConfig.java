@@ -241,8 +241,6 @@ public class IoTDBConfig {
    */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
-  private ZoneId zoneID = ZoneId.systemDefault();
-
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
@@ -748,14 +746,6 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
-  }
-
-  public ZoneId getZoneID() {
-    return zoneID;
-  }
-
-  void setZoneID(ZoneId zoneID) {
-    this.zoneID = zoneID;
   }
 
   void updatePath() {

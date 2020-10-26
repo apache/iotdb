@@ -224,7 +224,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
-      sessionIdZoneIdMap.put(sessionId, config.getZoneID());
+      sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);

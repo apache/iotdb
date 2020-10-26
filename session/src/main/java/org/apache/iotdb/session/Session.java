@@ -146,6 +146,7 @@ public class Session {
     TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername(username);
     openReq.setPassword(password);
+    openReq.setZoneId(getTimeZone());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -166,12 +167,6 @@ public class Session {
 
       statementId = client.requestStatementId(sessionId);
 
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
-      }
-
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
@@ -179,7 +174,6 @@ public class Session {
     isClosed = false;
 
     client = RpcUtils.newSynchronizedClient(client);
-
   }
 
   public synchronized void close() throws IoTDBConnectionException {
@@ -922,10 +916,7 @@ public class Session {
     return result;
   }
 
-  private synchronized String getTimeZone() {
-    if (zoneId != null) {
-      return zoneId.toString();
-    }
+  private String getTimeZone() {
     return ZoneId.systemDefault().getId();
   }
 
