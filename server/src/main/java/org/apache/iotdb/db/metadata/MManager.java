@@ -122,7 +122,7 @@ public class MManager {
   // data type -> number
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
   // reported total series number
-  private int reportedDataTypeTotalNum;
+  private long reportedDataTypeTotalNum;
 
   // storage group name -> the series number
   private Map<String, Integer> seriesNumberInStorageGroups = new ConcurrentHashMap<>();
@@ -230,7 +230,7 @@ public class MManager {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }
-    reportedDataTypeTotalNum = 0;
+    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -301,7 +301,7 @@ public class MManager {
         tagLogFile = null;
       }
       this.schemaDataTypeNumMap.clear();
-      this.reportedDataTypeTotalNum = 0;
+      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
       if (timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
