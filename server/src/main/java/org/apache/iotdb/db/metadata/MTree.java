@@ -777,11 +777,16 @@ public class MTree implements Serializable {
    * Get all timeseries paths under the given path
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
+   *
+   * @return Pair.left  contains all the satisfied paths
+   *         Pair.right means the current offset or zero if we don't set offset.
    */
-  List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
+  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
-    List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
+    plan.setLimit(limit);
+    plan.setOffset(offset);
+    List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan, false);
     List<PartialPath> paths = new ArrayList<>();
     for (Pair<PartialPath, String[]> p : res) {
       if (prePath.getMeasurement().equals(p.right[0])) {
@@ -789,7 +794,13 @@ public class MTree implements Serializable {
       }
       paths.add(p.left);
     }
-    return paths;
+    if (curOffset.get() == null) {
+      offset = 0;
+    } else {
+      offset = curOffset.get() + 1;
+    }
+    curOffset.remove();
+    return new Pair<>(paths, offset);
   }
 
   /**
@@ -991,6 +1002,12 @@ public class MTree implements Serializable {
    */
   List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
+    return getAllMeasurementSchema(plan, true);
+  }
+
+
+  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan, boolean removeCurrentOffset)
+      throws MetadataException {
     List<Pair<PartialPath, String[]>> res;
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -1010,7 +1027,9 @@ public class MTree implements Serializable {
     // avoid memory leaks
     limit.remove();
     offset.remove();
-    curOffset.remove();
+    if (removeCurrentOffset) {
+      curOffset.remove();
+    }
     count.remove();
     return res;
   }

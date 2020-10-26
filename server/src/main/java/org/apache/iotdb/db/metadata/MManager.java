@@ -743,9 +743,9 @@ public class MManager {
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
    */
-  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath)
-      throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(prefixPath);
+  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath,
+      int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
   }
 
   /**
@@ -1738,6 +1738,7 @@ public class MManager {
         } else {
           measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
         }
+
         // check type is match
         TSDataType insertDataType = null;
         if (plan instanceof InsertRowPlan) {

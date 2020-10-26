@@ -34,7 +34,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
@@ -79,7 +78,8 @@ public class RawDataQueryExecutor {
   public QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes(),
+    return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(),
+        queryPlan.getDeduplicatedDataTypes(),
         readersOfSelectedSeries);
   }
 
@@ -141,10 +141,9 @@ public class RawDataQueryExecutor {
   protected IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors,
       TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    return queryPlan.isAscending() ? new SeriesReaderByTimestamp(path, allSensors, dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null) :
-        new DescSeriesReaderByTimestamp(path, allSensors, dataType, context,
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null);
+    return new SeriesReaderByTimestamp(path, allSensors, dataType, context,
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), null,
+        queryPlan.isAscending());
   }
 
   protected TimeGenerator getTimeGenerator(IExpression expression,

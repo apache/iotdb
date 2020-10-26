@@ -71,7 +71,6 @@ public class BatchData implements Serializable {
   // the insert timestamp number of timeRet
   private int count;
 
-
   private List<long[]> timeRet;
   private List<boolean[]> booleanRet;
   private List<int[]> intRet;
@@ -549,21 +548,6 @@ public class BatchData implements Serializable {
   public Object getValueInTimestamp(long time) {
     while (hasCurrent()) {
       if (currentTime() < time) {
-        next();
-      } else if (currentTime() == time) {
-        Object value = currentValue();
-        next();
-        return value;
-      } else {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  public Object getValueInTimestamp(long time, BiPredicate<Long, Long> compare) {
-    while (hasCurrent()) {
-      if (compare.test(currentTime(), time)) {
         next();
       } else if (currentTime() == time) {
         Object value = currentValue();

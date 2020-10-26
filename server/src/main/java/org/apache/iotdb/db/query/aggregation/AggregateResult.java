@@ -44,7 +44,7 @@ public abstract class AggregateResult {
   private double doubleValue;
   private Binary binaryValue;
 
-  protected boolean hasResult;
+  protected boolean hasCandidateResult;
 
   /**
    * construct.
@@ -54,7 +54,7 @@ public abstract class AggregateResult {
   public AggregateResult(TSDataType resultDataType, AggregationType aggregationType) {
     this.aggregationType = aggregationType;
     this.resultDataType = resultDataType;
-    this.hasResult = false;
+    this.hasCandidateResult = false;
   }
 
   public abstract Object getResult();
@@ -99,7 +99,7 @@ public abstract class AggregateResult {
    *
    * @return If the aggregation result has been calculated return true, else return false.
    */
-  public abstract boolean isCalculatedAggregationResult();
+  public abstract boolean hasFinalResult();
 
   /**
    * Merge another aggregateResult into this
@@ -109,8 +109,9 @@ public abstract class AggregateResult {
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    boolean ascending = ReadWriteIOUtils.readBool(buffer);
     AggregateResult aggregateResult = AggregateResultFactory
-        .getAggrResultByType(aggregationType, dataType);
+        .getAggrResultByType(aggregationType, dataType, ascending);
     boolean hasResult = ReadWriteIOUtils.readBool(buffer);
     if (hasResult) {
       switch (dataType) {
@@ -145,8 +146,9 @@ public abstract class AggregateResult {
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
-    ReadWriteIOUtils.write(hasResult(), outputStream);
-    if (hasResult()) {
+    ReadWriteIOUtils.write(isAscending(), outputStream);
+    ReadWriteIOUtils.write(hasCandidateResult(), outputStream);
+    if (hasCandidateResult()) {
       switch (resultDataType) {
         case BOOLEAN:
           ReadWriteIOUtils.write(booleanValue, outputStream);
@@ -176,7 +178,7 @@ public abstract class AggregateResult {
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
 
   public void reset() {
-    hasResult = false;
+    hasCandidateResult = false;
     booleanValue = false;
     doubleValue = 0;
     floatValue = 0;
@@ -210,7 +212,7 @@ public abstract class AggregateResult {
    * @param v object value
    */
   protected void setValue(Object v) {
-    hasResult = true;
+    hasCandidateResult = true;
     switch (resultDataType) {
       case BOOLEAN:
         booleanValue = (Boolean) v;
@@ -244,7 +246,7 @@ public abstract class AggregateResult {
   }
 
   protected void setBooleanValue(boolean booleanValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.booleanValue = booleanValue;
   }
 
@@ -253,7 +255,7 @@ public abstract class AggregateResult {
   }
 
   protected void setIntValue(int intValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.intValue = intValue;
   }
 
@@ -262,7 +264,7 @@ public abstract class AggregateResult {
   }
 
   protected void setLongValue(long longValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.longValue = longValue;
   }
 
@@ -271,7 +273,7 @@ public abstract class AggregateResult {
   }
 
   protected void setFloatValue(float floatValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.floatValue = floatValue;
   }
 
@@ -280,7 +282,7 @@ public abstract class AggregateResult {
   }
 
   protected void setDoubleValue(double doubleValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.doubleValue = doubleValue;
   }
 
@@ -289,12 +291,12 @@ public abstract class AggregateResult {
   }
 
   protected void setBinaryValue(Binary binaryValue) {
-    this.hasResult = true;
+    this.hasCandidateResult = true;
     this.binaryValue = binaryValue;
   }
 
-  protected boolean hasResult() {
-    return hasResult;
+  protected boolean hasCandidateResult() {
+    return hasCandidateResult;
   }
 
   @Override
@@ -304,5 +306,9 @@ public abstract class AggregateResult {
 
   public AggregationType getAggregationType() {
     return aggregationType;
+  }
+
+  public boolean isAscending() {
+    return true;
   }
 }
