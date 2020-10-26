@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -437,7 +438,8 @@ public class LevelTsFileManagement extends TsFileManagement {
     Pair<Double, Double> unSeqStatisticsPair = forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
-            .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources), maxUnseqLevelNum);
+            .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
+        maxUnseqLevelNum);
     forkedUnSeqListPointNum = unSeqStatisticsPair.left;
     forkedUnSeqListMeasurementSize = unSeqStatisticsPair.right;
   }
@@ -454,43 +456,46 @@ public class LevelTsFileManagement extends TsFileManagement {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
       Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
           .get(i);
-      synchronized (levelRawTsFileResources) {
-        for (TsFileResource tsFileResource : levelRawTsFileResources) {
-          if (tsFileResource.isClosed()) {
-            String path = tsFileResource.getTsFile().getAbsolutePath();
-            if (tsFileResource.getTsFile().exists()) {
-              try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
-                List<Path> pathList = reader.getAllPaths();
-                for (Path sensorPath : pathList) {
+      List<TsFileResource> allCurrLevelTsFileResources = new ArrayList<>(levelRawTsFileResources);
+      for (TsFileResource tsFileResource : allCurrLevelTsFileResources) {
+        if (tsFileResource.isClosed()) {
+          String path = tsFileResource.getTsFile().getAbsolutePath();
+          if (tsFileResource.getTsFile().exists()) {
+            try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
+              List<String> devices = reader.getAllDevices();
+              for (String device : devices) {
+                Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = reader
+                    .readChunkMetadataInDevice(device);
+                for (Entry<String, List<ChunkMetadata>> measurementChunkMetadataList : measurementChunkMetadataListMap
+                    .entrySet()) {
+                  Path sensorPath = new Path(device, measurementChunkMetadataList.getKey());
                   measurementSet.offer(sensorPath.getFullPath());
                   List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(sensorPath);
                   for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                     pointNum += chunkMetadata.getNumOfPoints();
                   }
                 }
-              } catch (IOException e) {
-                logger.error(
-                    "{} tsfile reader creates error", path, e);
               }
-            } else {
-              logger.info("{} tsfile does not exist", path);
+            } catch (IOException e) {
+              logger.error(
+                  "{} tsfile reader creates error", path, e);
             }
+          } else {
+            logger.info("{} tsfile does not exist", path);
           }
-          if (measurementSet.cardinality() > 0
-              && pointNum / measurementSet.cardinality() >= maxChunkPointNum) {
-            forkedLevelTsFileResources.add(tsFileResource);
-            break;
-          }
-          forkedLevelTsFileResources.add(tsFileResource);
+        }
+        forkedLevelTsFileResources.add(tsFileResource);
+        if (measurementSet.cardinality() > 0
+            && pointNum / measurementSet.cardinality() >= maxChunkPointNum) {
+          break;
         }
       }
 
+      forkedTsFileResources.add(forkedLevelTsFileResources);
       if (measurementSet.cardinality() > 0
           && pointNum / measurementSet.cardinality() >= maxChunkPointNum) {
-        forkedTsFileResources.add(forkedLevelTsFileResources);
         break;
       }
-      forkedTsFileResources.add(forkedLevelTsFileResources);
     }
 
     // fill in empty file

@@ -245,9 +245,6 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
-      conf.setTracingDir(FilePathUtils
-          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
-
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
@@ -597,6 +594,9 @@ public class IoTDBDescriptor {
     conf.setIntegerStringInferType(
         TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
             conf.getIntegerStringInferType().toString())));
+    conf.setLongStringInferType(
+        TSDataType.valueOf(properties.getProperty("long_string_infer_type",
+            conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
             conf.getFloatingStringInferType().toString())));

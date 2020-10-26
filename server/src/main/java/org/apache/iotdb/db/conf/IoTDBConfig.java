@@ -471,6 +471,12 @@ public class IoTDBConfig {
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**
+   * register time series as which type when receiving an integer string and using float may lose precision
+   * num > 2 ^ 24
+   */
+  private TSDataType longStringInferType = TSDataType.DOUBLE;
+
+  /**
    * register time series as which type when receiving a floating number string "6.7"
    */
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
@@ -1605,6 +1611,15 @@ public class IoTDBConfig {
   public void setIntegerStringInferType(
       TSDataType integerStringInferType) {
     this.integerStringInferType = integerStringInferType;
+  }
+
+  public void setLongStringInferType(
+      TSDataType longStringInferType) {
+    this.longStringInferType = longStringInferType;
+  }
+
+  public TSDataType getLongStringInferType() {
+    return longStringInferType;
   }
 
   public TSDataType getFloatingStringInferType() {
