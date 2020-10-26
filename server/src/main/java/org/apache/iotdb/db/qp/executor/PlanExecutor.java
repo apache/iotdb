@@ -158,6 +158,8 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
+  private final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
+
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     try {
@@ -950,7 +952,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new PathNotExistException(failedPaths);
         } else {
           throw new StorageEngineException(
-              "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
+              INSERT_MEASUREMENTS_FAILED_MESSAGE + insertRowPlan.getFailedMeasurements());
         }
       }
     } catch (StorageEngineException | MetadataException e) {
@@ -967,7 +969,7 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-            "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+            INSERT_MEASUREMENTS_FAILED_MESSAGE + insertTabletPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
