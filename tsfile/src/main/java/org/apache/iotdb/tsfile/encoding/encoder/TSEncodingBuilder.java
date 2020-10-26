@@ -57,17 +57,17 @@ public abstract class TSEncodingBuilder {
   public static TSEncodingBuilder getEncodingBuilder(TSEncoding type) {
     switch (type) {
       case PLAIN:
-        return new PLAIN();
+        return new Plain();
       case RLE:
-        return new RLE();
+        return new Rle();
       case TS_2DIFF:
-        return new TS_2DIFF();
+        return new Ts2Diff();
       case GORILLA_V1:
-        return new GORILLA_V1();
+        return new GorillaV1();
       case REGULAR:
-        return new REGULAR();
+        return new Regular();
       case GORILLA_V2:
-        return new GORILLA_V2();
+        return new GorillaV2();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -99,7 +99,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for all TSDataType.
    */
-  public static class PLAIN extends TSEncodingBuilder {
+  public static class Plain extends TSEncodingBuilder {
 
     private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
@@ -128,7 +128,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for ENUMS, INT32, BOOLEAN, INT64, FLOAT, DOUBLE.
    */
-  public static class RLE extends TSEncodingBuilder {
+  public static class Rle extends TSEncodingBuilder {
 
     private int maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
@@ -177,7 +177,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for INT32, INT64, FLOAT, DOUBLE.
    */
-  public static class TS_2DIFF extends TSEncodingBuilder {
+  public static class Ts2Diff extends TSEncodingBuilder {
 
     private int maxPointNumber = 0;
 
@@ -225,7 +225,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for FLOAT, DOUBLE.
    */
-  public static class GORILLA_V1 extends TSEncodingBuilder {
+  public static class GorillaV1 extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -248,7 +248,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for INT32, INT64
    */
-  public static class REGULAR extends TSEncodingBuilder {
+  public static class Regular extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -271,7 +271,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for FLOAT, DOUBLE, INT, LONG.
    */
-  public static class GORILLA_V2 extends TSEncodingBuilder {
+  public static class GorillaV2 extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {

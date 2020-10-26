@@ -44,7 +44,7 @@ public abstract class GorillaDecoderV1 extends Decoder {
   protected boolean nextFlag1;
   protected boolean nextFlag2;
 
-  public GorillaDecoderV1() {
+  protected GorillaDecoderV1() {
     super(TSEncoding.GORILLA_V1);
     reset();
   }
@@ -58,10 +58,7 @@ public abstract class GorillaDecoderV1 extends Decoder {
 
   @Override
   public boolean hasNext(ByteBuffer buffer) throws IOException {
-    if (buffer.remaining() > 0 || !isEnd) {
-      return true;
-    }
-    return false;
+    return buffer.remaining() > 0 || !isEnd;
   }
 
   protected boolean isEmpty() {
@@ -124,7 +121,7 @@ public abstract class GorillaDecoderV1 extends Decoder {
   protected long readLongFromStream(ByteBuffer buffer, int len) throws IOException {
     long num = 0;
     for (int i = 0; i < len; i++) {
-      long bit = (long) (readBit(buffer) ? 1 : 0);
+      long bit = readBit(buffer) ? 1 : 0;
       num |= bit << (len - 1 - i);
     }
     return num;

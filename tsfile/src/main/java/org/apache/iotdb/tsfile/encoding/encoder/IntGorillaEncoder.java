@@ -42,6 +42,11 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
   private int storedValue = 0;
 
   @Override
+  public final int getOneItemMaxSize() {
+    return ONE_ITEM_MAX_SIZE;
+  }
+
+  @Override
   public final void encode(int value, ByteArrayOutputStream out) {
     if (firstValueWasWritten) {
       compressValue(value, out);
@@ -49,11 +54,6 @@ public class IntGorillaEncoder extends GorillaEncoderV2 {
       writeFirst(value, out);
       firstValueWasWritten = true;
     }
-  }
-
-  @Override
-  public final int getOneItemMaxSize() {
-    return ONE_ITEM_MAX_SIZE;
   }
 
   @Override

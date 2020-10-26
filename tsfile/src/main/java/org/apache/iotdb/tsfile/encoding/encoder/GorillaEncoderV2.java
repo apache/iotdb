@@ -38,7 +38,7 @@ public abstract class GorillaEncoderV2 extends Encoder {
   private byte buffer = 0;
   protected int bitsLeft = Byte.SIZE;
 
-  public GorillaEncoderV2() {
+  protected GorillaEncoderV2() {
     super(TSEncoding.GORILLA_V2);
   }
 

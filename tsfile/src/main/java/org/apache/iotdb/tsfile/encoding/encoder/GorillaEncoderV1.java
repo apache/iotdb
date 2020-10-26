@@ -37,7 +37,7 @@ public abstract class GorillaEncoderV1 extends Encoder {
   // number of bits remaining in buffer
   protected int numberLeftInBuffer;
 
-  public GorillaEncoderV1() {
+  protected GorillaEncoderV1() {
     super(TSEncoding.GORILLA_V1);
     this.flag = false;
   }
@@ -57,19 +57,11 @@ public abstract class GorillaEncoderV1 extends Encoder {
   }
 
   protected void writeBit(int i, ByteArrayOutputStream out) {
-    if (i == 0) {
-      writeBit(false, out);
-    } else {
-      writeBit(true, out);
-    }
+    writeBit(i != 0, out);
   }
 
   protected void writeBit(long i, ByteArrayOutputStream out) {
-    if (i == 0) {
-      writeBit(false, out);
-    } else {
-      writeBit(true, out);
-    }
+    writeBit(i != 0, out);
   }
 
   protected void clearBuffer(ByteArrayOutputStream out) {
