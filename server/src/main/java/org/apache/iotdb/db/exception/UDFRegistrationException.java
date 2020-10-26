@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.rpc.TSStatusCode;
-
-public class UDFRegistrationException extends IoTDBException {
+public class UDFRegistrationException extends StorageEngineException {
 
   public UDFRegistrationException(String message, Throwable cause) {
-    super(message, cause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    super(message, cause);
   }
 
   public UDFRegistrationException(String message) {
-    super(message, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    super(message);
   }
 }

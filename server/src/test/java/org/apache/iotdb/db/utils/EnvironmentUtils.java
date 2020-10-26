@@ -38,7 +38,6 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -76,11 +75,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // deregister all UDFs
-    try {
-      UDFRegistrationService.getInstance().deregisterAll();
-    } catch (UDFRegistrationException e) {
-      fail(e.toString());
-    }
+    UDFRegistrationService.getInstance().deregisterAll();
 
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {

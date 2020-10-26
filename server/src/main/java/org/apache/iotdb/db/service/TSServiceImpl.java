@@ -49,7 +49,6 @@ import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -1002,7 +1001,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");

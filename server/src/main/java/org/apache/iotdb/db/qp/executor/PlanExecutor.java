@@ -191,7 +191,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -1032,7 +1032,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (!failedNames.isEmpty()) {
         throw new DeleteFailedException(String.join(",", failedNames));
       }
-    } catch (MetadataException | StorageEngineException | UDFRegistrationException e) {
+    } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
     return true;
@@ -1109,7 +1109,7 @@ public class PlanExecutor implements IPlanExecutor {
    * @param pathList deleted paths
    */
   protected void deleteDataOfTimeSeries(List<Path> pathList)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, UDFRegistrationException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
