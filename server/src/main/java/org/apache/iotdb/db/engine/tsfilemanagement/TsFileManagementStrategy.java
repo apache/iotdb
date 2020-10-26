@@ -19,15 +19,19 @@
 
 package org.apache.iotdb.db.engine.tsfilemanagement;
 
+import org.apache.iotdb.db.engine.tsfilemanagement.level.DynamicTsFileManagement;
 import org.apache.iotdb.db.engine.tsfilemanagement.level.LevelTsFileManagement;
 import org.apache.iotdb.db.engine.tsfilemanagement.normal.NormalTsFileManagement;
 
 public enum TsFileManagementStrategy {
   LEVEL_STRATEGY,
-  NORMAL_STRATEGY;
+  NORMAL_STRATEGY,
+  DYNAMIC_STRATEGY;
 
   public TsFileManagement getTsFileManagement(String storageGroupName, String storageGroupDir) {
     switch (this) {
+      case DYNAMIC_STRATEGY:
+        return new DynamicTsFileManagement(storageGroupName, storageGroupDir);
       case LEVEL_STRATEGY:
         return new LevelTsFileManagement(storageGroupName, storageGroupDir);
       case NORMAL_STRATEGY:
