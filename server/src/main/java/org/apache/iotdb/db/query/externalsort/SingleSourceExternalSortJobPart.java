@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.query.externalsort;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 
 public class SingleSourceExternalSortJobPart extends ExternalSortJobPart {

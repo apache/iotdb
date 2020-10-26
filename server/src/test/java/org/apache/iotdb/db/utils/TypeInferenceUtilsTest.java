@@ -44,12 +44,14 @@ public class TypeInferenceUtilsTest {
 
   @Test
   public void testInferType() {
-    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
+    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "9999999999999999",
+        "true"};
     TSDataType[] encodings = {IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
         TSDataType.TEXT, IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
         TSDataType.BOOLEAN, TSDataType.FLOAT,
         IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
         IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+        IoTDBDescriptor.getInstance().getConfig().getLongStringInferType(),
         IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType()
     };
 

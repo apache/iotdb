@@ -20,8 +20,8 @@ package org.apache.iotdb.db.mqtt;
 import io.moquette.broker.security.IAuthenticator;
 import org.apache.commons.lang.StringUtils;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

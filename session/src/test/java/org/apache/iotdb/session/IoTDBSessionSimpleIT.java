@@ -21,11 +21,14 @@ package org.apache.iotdb.session;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -67,7 +70,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testInsertByBlankStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByBlankStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -93,7 +97,8 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testInsertByStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -111,25 +116,26 @@ public class IoTDBSessionSimpleIT {
     values.add("dad");
     session.insertRecord(deviceId, 1L, measurements, values);
 
-    String[] expected = new String[]{
-        IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name(),
-        IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name(),
-        IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name(),
-        TSDataType.TEXT.name()
-    };
+    Set<String> expected = new HashSet<>();
+    expected.add(IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name());
+    expected.add(IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name());
+    expected.add(IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name());
+    expected.add(TSDataType.TEXT.name());
 
+    Set<String> actual = new HashSet<>();
     SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-    int i = 0;
     while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().getFields().get(3).getStringValue());
-      i++;
+      actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
+
+    Assert.assertEquals(expected, actual);
 
     session.close();
   }
 
   @Test
-  public void testInsertByObjAndNotInferType() throws IoTDBConnectionException, StatementExecutionException {
+  public void testInsertByObjAndNotInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -153,19 +159,19 @@ public class IoTDBSessionSimpleIT {
     values.add("dad");
     session.insertRecord(deviceId, 1L, measurements, dataTypes, values);
 
-    String[] expected = new String[]{
-        TSDataType.INT64.name(),
-        TSDataType.DOUBLE.name(),
-        TSDataType.TEXT.name(),
-        TSDataType.TEXT.name()
-    };
+    Set<String> expected = new HashSet<>();
+    expected.add(TSDataType.INT64.name());
+    expected.add(TSDataType.DOUBLE.name());
+    expected.add(TSDataType.TEXT.name());
+    expected.add(TSDataType.TEXT.name());
 
+    Set<String> actual = new HashSet<>();
     SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-    int i = 0;
     while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().getFields().get(3).getStringValue());
-      i++;
+      actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
+
+    Assert.assertEquals(expected, actual);
 
     session.close();
   }
@@ -199,8 +205,8 @@ public class IoTDBSessionSimpleIT {
         .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
             null, null);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     MeasurementMNode mNode = (MeasurementMNode) MManager
         .getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
@@ -255,6 +261,27 @@ public class IoTDBSessionSimpleIT {
       count++;
     }
     Assert.assertEquals(10, count);
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void createTimeSeriesWithDoubleTicks() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    session.createTimeseries("root.sg.\"my.device.with.colon:\".s", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertTrue(dataSet.hasNext());
+
     session.deleteStorageGroup(storageGroup);
     session.close();
   }

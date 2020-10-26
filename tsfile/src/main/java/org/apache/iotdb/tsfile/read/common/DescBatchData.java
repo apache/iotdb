@@ -61,6 +61,17 @@ public class DescBatchData extends BatchData {
 
   @Override
   public Object getValueInTimestamp(long time) {
-    return super.getValueInTimestamp(time, (current, cmpTime) -> current > cmpTime);
+    while (hasCurrent()) {
+      if (currentTime() > time) {
+        next();
+      } else if (currentTime() == time) {
+        Object value = currentValue();
+        next();
+        return value;
+      } else {
+        return null;
+      }
+    }
+    return null;
   }
 }

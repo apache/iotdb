@@ -182,7 +182,7 @@ public class LogicalPlanSmallTest {
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     IoTDB.metaManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
-    concatPathOptimizer.transform(operator);
+    concatPathOptimizer.transform(operator, 1000);
     IoTDB.metaManager.clear();
     // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
@@ -340,7 +340,7 @@ public class LogicalPlanSmallTest {
     } catch (RuntimeException e) {
       errorMsg = e.getMessage();
     }
-    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
+    Assert.assertEquals("Invalid delete range: [1, -2]", errorMsg);
 
     sql = "delete from root.d1.s1 where time > 5 and time <= 0";
     errorMsg = null;
