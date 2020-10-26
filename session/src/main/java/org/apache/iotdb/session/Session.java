@@ -25,8 +25,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -51,7 +49,6 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.session.SessionUtils.TimeOutCanceller;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -332,10 +329,6 @@ public class Session extends AsyncSession {
     }
   }
 
-  private int successHandler(Integer integer) {
-    return 0;
-  }
-
   private TSInsertTabletsReq genTSInsertTabletsReq(Map<String, Tablet> tablets, boolean sorted)
       throws BatchExecutionException {
     TSInsertTabletsReq request = new TSInsertTabletsReq();
@@ -547,15 +540,6 @@ public class Session extends AsyncSession {
     request.setMeasurements(measurements);
     request.setValues(values);
     return request;
-  }
-
-  public static <T> CompletableFuture<T> orTimeout(long timeout, TimeUnit unit) {
-    if (unit == null)
-      throw new NullPointerException();
-    CompletableFuture<T> promise = new CompletableFuture<>();
-    promise.whenComplete(new TimeOutCanceller(
-        SessionUtils.Delayer.delay(new SessionUtils.Timeout(promise), timeout, unit)));
-    return promise;
   }
 
   private void putStrValues(List<String> values, ByteBuffer buffer)
