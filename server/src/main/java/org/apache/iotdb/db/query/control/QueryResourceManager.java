@@ -169,8 +169,9 @@ public class QueryResourceManager {
       if (config.isEnablePerformanceTracing()) {
         boolean isprinted = false;
         if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
-          TracingManager.getInstance().writeTsFileInfo(queryId, seqFileNumMap.remove(queryId),
-                  unseqFileNumMap.remove(queryId));
+          TracingManager.getInstance()
+              .writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
+                  unseqFileNumMap.remove(queryId).size());
           isprinted = true;
         }
         if (chunkNumMap.get(queryId) != null && chunkSizeMap.get(queryId) != null) {
