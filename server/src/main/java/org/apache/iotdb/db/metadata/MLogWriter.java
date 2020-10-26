@@ -92,8 +92,7 @@ public class MLogWriter {
     if (offset >= 0) {
       buf.append(offset);
     }
-    final String newLine = System.getProperty("line.separator");
-    buf.append(newLine);
+    buf.append(System.getProperty("line.separator"));
     channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
     ++lineNumber;
   }
