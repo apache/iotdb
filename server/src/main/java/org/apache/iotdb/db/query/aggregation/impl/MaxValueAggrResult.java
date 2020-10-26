@@ -38,7 +38,7 @@ public class MaxValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
@@ -53,8 +53,7 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
 
     while (dataInThisPage.hasCurrent()
@@ -85,7 +84,7 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -108,7 +107,7 @@ public class MaxValueAggrResult extends AggregateResult {
     if (maxVal == null) {
       return;
     }
-    if (!hasResult() || maxVal.compareTo(getValue()) > 0) {
+    if (!hasCandidateResult() || maxVal.compareTo(getValue()) > 0) {
       setValue(maxVal);
     }
   }

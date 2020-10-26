@@ -182,7 +182,7 @@ public class LogicalPlanSmallTest {
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     IoTDB.metaManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
-    concatPathOptimizer.transform(operator);
+    concatPathOptimizer.transform(operator, 1000);
     IoTDB.metaManager.clear();
     // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }

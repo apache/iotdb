@@ -61,15 +61,15 @@ public class SeriesReaderByTimestampTest {
   @Test
   public void test() throws IOException, IllegalPathException {
     QueryDataSource dataSource = new QueryDataSource(
-      new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
-      seqResources, unseqResources);
+        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+        seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
 
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-      new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
-      TSDataType.INT32, new QueryContext(), dataSource, null);
+        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
+        TSDataType.INT32, new QueryContext(), dataSource, null, true);
 
     for (int time = 0; time < 500; time++) {
       Integer value = (Integer) seriesReader.getValueInTimestamp(time);

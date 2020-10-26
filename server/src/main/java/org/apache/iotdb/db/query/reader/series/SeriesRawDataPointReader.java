@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-
-import java.io.IOException;
 
 /**
  * only for test now
