@@ -42,7 +42,7 @@ public class LogView implements Runnable {
   public void run() {
     SyncLogDequeSerializer logDequeSerializer = new SyncLogDequeSerializer(path);
 
-    List<Log> logs = logDequeSerializer.getAllEntries();
+    List<Log> logs = logDequeSerializer.getAllEntriesBeforeAppliedIndex();
     HardState state = logDequeSerializer.getHardState();
     LogManagerMeta managerMeta = logDequeSerializer.getMeta();
 

@@ -130,7 +130,7 @@ public abstract class RaftLogManager {
     this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
-      this.getCommittedEntryManager().append(stableEntryManager.getAllEntries());
+      this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesBeforeAppliedIndex());
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
@@ -579,7 +579,7 @@ public abstract class RaftLogManager {
       startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
       getCommittedEntryManager().append(entries);
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-        getStableEntryManager().append(entries);
+        getStableEntryManager().append(entries, maxHaveAppliedCommitIndex);
       }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());

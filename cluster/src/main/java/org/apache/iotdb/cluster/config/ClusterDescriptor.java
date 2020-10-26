@@ -47,9 +47,9 @@ public class ClusterDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(ClusterDescriptor.class);
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
 
-  private static final String OPTION_META_PORT = "meta_port";
-  private static final String OPTION_DATA_PORT = "data_port";
-  private static final String OPTION_CLIENT_PORT = "client_port";
+  private static final String OPTION_INTERVAL_META_PORT = "internal_meta_port";
+  private static final String OPTION_INTERVAL_DATA_PORT = "internal_data_port";
+  private static final String OPTION_CLUSTER_RPC_PORT = "cluster_rpc_port";
   private static final String OPTION_SEED_NODES = "seed_nodes";
 
 
@@ -91,42 +91,46 @@ public class ClusterDescriptor {
   public void replaceProps(String[] params) {
     Options options = new Options();
 
-    Option metaPort = new Option(OPTION_META_PORT, OPTION_META_PORT, true,
+    Option metaPort = new Option(OPTION_INTERVAL_META_PORT, OPTION_INTERVAL_META_PORT, true,
         "port for metadata service");
     metaPort.setRequired(false);
     options.addOption(metaPort);
 
-    Option dataPort = new Option(OPTION_DATA_PORT, OPTION_DATA_PORT, true, "port for data service");
-    metaPort.setRequired(false);
+    Option dataPort = new Option(OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true,
+        "port for data service");
+    dataPort.setRequired(false);
     options.addOption(dataPort);
 
-    Option clientPort = new Option(OPTION_CLIENT_PORT, OPTION_CLIENT_PORT, true,
+    Option clusterRpcPort = new Option(OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true,
         "port for client service");
-    metaPort.setRequired(false);
-    options.addOption(clientPort);
+    clusterRpcPort.setRequired(false);
+    options.addOption(clusterRpcPort);
 
     Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
-        "comma-separated {IP/DOMAIN}:meta_port:data_port pairs");
-    metaPort.setRequired(false);
+        "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
+    seedNodes.setRequired(false);
     options.addOption(seedNodes);
 
     boolean ok = parseCommandLine(options, params);
     if (!ok) {
       logger.error("replaces properties failed, use default conf params");
     } else {
-      if (commandLine.hasOption(OPTION_META_PORT)) {
-        config.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(OPTION_META_PORT)));
+      if (commandLine.hasOption(OPTION_INTERVAL_META_PORT)) {
+        config.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(
+            OPTION_INTERVAL_META_PORT)));
         logger.debug("replace local meta port with={}", config.getInternalMetaPort());
       }
 
-      if (commandLine.hasOption(OPTION_DATA_PORT)) {
-        config.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(OPTION_DATA_PORT)));
+      if (commandLine.hasOption(OPTION_INTERVAL_DATA_PORT)) {
+        config.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(
+            OPTION_INTERVAL_DATA_PORT)));
         logger.debug("replace local data port with={}", config.getInternalDataPort());
       }
 
-      if (commandLine.hasOption(OPTION_CLIENT_PORT)) {
-        config.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(OPTION_CLIENT_PORT)));
-        logger.debug("replace local client port with={}", config.getClusterRpcPort());
+      if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
+        config.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(
+            OPTION_CLUSTER_RPC_PORT)));
+        logger.debug("replace local cluster rpc port with={}", config.getClusterRpcPort());
       }
 
       if (commandLine.hasOption(OPTION_SEED_NODES)) {
@@ -272,6 +276,22 @@ public class ClusterDescriptor {
     config.setRaftLogBufferSize(Integer.parseInt(properties
         .getProperty("raft_log_buffer_size", String.valueOf(config.getRaftLogBufferSize())))
     );
+
+    config.setMaxRaftLogIndexSizeInMemory(Integer
+        .parseInt(properties.getProperty("max_raft_log_index_size_in_memory",
+            String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
+
+    config.setMaxRaftLogPersistDataSizePerFile(Integer
+        .parseInt(properties.getProperty("max_raft_log_persist_data_size_per_file",
+            String.valueOf(config.getMaxRaftLogPersistDataSizePerFile()))));
+
+    config.setMaxNumberOfPersistRaftLogFiles(Integer
+        .parseInt(properties.getProperty("max_number_of_persist_raft_log_files",
+            String.valueOf(config.getMaxNumberOfPersistRaftLogFiles()))));
+
+    config.setMaxPersistRaftLogNumberOnDisk(
+        Integer.parseInt(properties.getProperty("max_persist_raft_log_number_on_disk",
+            String.valueOf(config.getMaxPersistRaftLogNumberOnDisk()))));
 
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {

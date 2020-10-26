@@ -112,7 +112,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntries();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
       assertEquals(logNum, logDeque.size());
       for (int i = 0; i < logNum; i++) {
         assertEquals(testLogs1.get(i), logDeque.get(i));
@@ -189,7 +189,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntries();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
       assertEquals(logNum, logDeque.size());
       for (int i = 0; i < logNum; i++) {
         assertEquals(testLogs1.get(i), logDeque.get(i));
@@ -253,13 +253,13 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       testLogs2 = TestUtils.prepareNodeLogs(10);
       syncLogDequeSerializer.append(testLogs2);
       assertEquals(17, syncLogDequeSerializer.getLogSizeDeque().size());
-      assertEquals(2, syncLogDequeSerializer.logFileList.size());
+      assertEquals(2, syncLogDequeSerializer.logDataFileList.size());
 
       // this will remove first file and build a new file
       syncLogDequeSerializer.removeFirst(8);
 
       assertEquals(9, syncLogDequeSerializer.getLogSizeDeque().size());
-      assertEquals(2, syncLogDequeSerializer.logFileList.size());
+      assertEquals(2, syncLogDequeSerializer.logDataFileList.size());
     } finally {
       syncLogDequeSerializer.close();
     }
@@ -296,12 +296,12 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       assertEquals(17, syncLogDequeSerializer.getLogSizeDeque().size());
 
       syncLogDequeSerializer.setMaxRemovedLogSize(10000000);
-      assertEquals(2, syncLogDequeSerializer.logFileList.size());
+      assertEquals(2, syncLogDequeSerializer.logDataFileList.size());
 
       // this will not remove first file and build a new file
       syncLogDequeSerializer.removeFirst(8);
       assertEquals(9, syncLogDequeSerializer.getLogSizeDeque().size());
-      assertEquals(2, syncLogDequeSerializer.logFileList.size());
+      assertEquals(2, syncLogDequeSerializer.logDataFileList.size());
     } finally {
       syncLogDequeSerializer.close();
     }

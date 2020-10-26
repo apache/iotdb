@@ -29,6 +29,7 @@ public class LogManagerMeta {
   private long commitLogIndex = -1;
   private long lastLogIndex = -1;
   private long lastLogTerm = -1;
+  private long maxHaveAppliedCommitIndex = -1;
 
   public static LogManagerMeta deserialize(ByteBuffer buffer) {
     LogManagerMeta res = new LogManagerMeta();
@@ -36,6 +37,7 @@ public class LogManagerMeta {
     res.commitLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogTerm = ReadWriteIOUtils.readLong(buffer);
+    res.maxHaveAppliedCommitIndex = ReadWriteIOUtils.readLong(buffer);
 
     return res;
   }
@@ -49,11 +51,13 @@ public class LogManagerMeta {
   }
 
   public ByteBuffer serialize() {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 4);
+    // 5 is the number of attributes in class LogManagerMeta
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 5);
     byteBuffer.putLong(commitLogTerm);
     byteBuffer.putLong(commitLogIndex);
     byteBuffer.putLong(lastLogIndex);
     byteBuffer.putLong(lastLogTerm);
+    byteBuffer.putLong(maxHaveAppliedCommitIndex);
 
     byteBuffer.flip();
     return byteBuffer;
@@ -61,12 +65,13 @@ public class LogManagerMeta {
 
   @Override
   public String toString() {
-    return "LogManagerMeta{" +
-        "commitLogTerm=" + commitLogTerm +
-        ", commitLogIndex=" + commitLogIndex +
-        ", lastLogIndex=" + lastLogIndex +
-        ", lastLogTerm=" + lastLogTerm +
-        '}';
+    return "LogManagerMeta{"
+        + " commitLogTerm=" + commitLogTerm
+        + ", commitLogIndex=" + commitLogIndex
+        + ", lastLogIndex=" + lastLogIndex
+        + ", lastLogTerm=" + lastLogTerm
+        + ", maxHaveAppliedCommitIndex=" + maxHaveAppliedCommitIndex
+        + "}";
   }
 
   public long getLastLogIndex() {
@@ -85,8 +90,16 @@ public class LogManagerMeta {
     this.lastLogTerm = lastLogTerm;
   }
 
-  void setCommitLogTerm(long commitLogTerm) {
+  public void setCommitLogTerm(long commitLogTerm) {
     this.commitLogTerm = commitLogTerm;
+  }
+
+  public long getMaxHaveAppliedCommitIndex() {
+    return maxHaveAppliedCommitIndex;
+  }
+
+  public void setMaxHaveAppliedCommitIndex(long maxHaveAppliedCommitIndex) {
+    this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 
   @Override
@@ -106,6 +119,7 @@ public class LogManagerMeta {
         .append(lastLogIndex, that.lastLogIndex)
         .append(lastLogTerm, that.lastLogTerm)
         .append(commitLogTerm, that.commitLogTerm)
+        .append(maxHaveAppliedCommitIndex, that.maxHaveAppliedCommitIndex)
         .isEquals();
   }
 
@@ -116,6 +130,7 @@ public class LogManagerMeta {
         .append(lastLogIndex)
         .append(lastLogTerm)
         .append(commitLogTerm)
+        .append(maxHaveAppliedCommitIndex)
         .toHashCode();
   }
 }

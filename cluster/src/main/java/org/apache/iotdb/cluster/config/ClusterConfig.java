@@ -127,6 +127,29 @@ public class ClusterConfig {
 
   private int pullSnapshotRetryIntervalMs = 5 * 1000;
 
+  /**
+   * The maximum value of the raft log index stored in the memory per raft group, These indexes are
+   * used to index the location of the log on the disk
+   */
+  private int maxRaftLogIndexSizeInMemory = 10000;
+
+  /**
+   * The maximum value of the raft log persisted on disk per file(in byte) per raft group
+   */
+  private int maxRaftLogPersistDataSizePerFile = 1073741824;
+
+  /**
+   * The maximum number of persistent raft log files on disk per raft group, So each raft group's,
+   * So each raft group's log takes up disk space approximately equals
+   * max_raft_log_persist_data_size_per_file * max_number_of_persist_raft_log_files
+   */
+  private int maxNumberOfPersistRaftLogFiles = 5;
+
+  /**
+   * The maximum number of logs saved on the disk
+   */
+  private int maxPersistRaftLogNumberOnDisk = 1_000_000;
+
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -366,5 +389,37 @@ public class ClusterConfig {
 
   public void setPullSnapshotRetryIntervalMs(int pullSnapshotRetryIntervalMs) {
     this.pullSnapshotRetryIntervalMs = pullSnapshotRetryIntervalMs;
+  }
+
+  public int getMaxRaftLogIndexSizeInMemory() {
+    return maxRaftLogIndexSizeInMemory;
+  }
+
+  public void setMaxRaftLogIndexSizeInMemory(int maxRaftLogIndexSizeInMemory) {
+    this.maxRaftLogIndexSizeInMemory = maxRaftLogIndexSizeInMemory;
+  }
+
+  public int getMaxRaftLogPersistDataSizePerFile() {
+    return maxRaftLogPersistDataSizePerFile;
+  }
+
+  public void setMaxRaftLogPersistDataSizePerFile(int maxRaftLogPersistDataSizePerFile) {
+    this.maxRaftLogPersistDataSizePerFile = maxRaftLogPersistDataSizePerFile;
+  }
+
+  public int getMaxNumberOfPersistRaftLogFiles() {
+    return maxNumberOfPersistRaftLogFiles;
+  }
+
+  public void setMaxNumberOfPersistRaftLogFiles(int maxNumberOfPersistRaftLogFiles) {
+    this.maxNumberOfPersistRaftLogFiles = maxNumberOfPersistRaftLogFiles;
+  }
+
+  public int getMaxPersistRaftLogNumberOnDisk() {
+    return maxPersistRaftLogNumberOnDisk;
+  }
+
+  public void setMaxPersistRaftLogNumberOnDisk(int maxPersistRaftLogNumberOnDisk) {
+    this.maxPersistRaftLogNumberOnDisk = maxPersistRaftLogNumberOnDisk;
   }
 }

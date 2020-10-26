@@ -24,9 +24,9 @@ import java.util.List;
 
 public interface StableEntryManager {
 
-  List<Log> getAllEntries();
+  List<Log> getAllEntriesBeforeAppliedIndex();
 
-  void append(List<Log> entries) throws IOException;
+  void append(List<Log> entries, long maxHaveAppliedCommitIndex) throws IOException;
 
   void flushLogBuffer();
 
