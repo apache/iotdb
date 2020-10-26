@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiConsumer;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -53,7 +52,6 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionUtils.TimeOutCanceller;
-import org.apache.iotdb.session.pool.SessionThreadPool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,7 +71,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Session {
+public class Session extends AsyncSession {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
   private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
@@ -88,7 +86,6 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
-  private SessionThreadPool asyncThreadPool;
   private boolean enableRPCCompression;
   private int connectionTimeoutInMs;
 
@@ -101,31 +98,31 @@ public class Session {
   }
 
   public Session(String host, int rpcPort, String username, String password) {
+    super();
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
-    asyncThreadPool = new SessionThreadPool();
   }
 
   public Session(String host, int port, String username, String password, int threadPoolSize,
       int blockingQueueSize) {
+    super(threadPoolSize, blockingQueueSize);
     this.host = host;
     this.rpcPort = port;
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
-    asyncThreadPool = new SessionThreadPool(threadPoolSize, blockingQueueSize);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+    super();
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
-    asyncThreadPool = new SessionThreadPool();
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -273,39 +270,6 @@ public class Session {
     }
   }
 
-  /**
-   * insert a Tablet asynchronously
-   * @param tablet data batch
-   * @param sorted whether times in Tablet are in ascending order
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   * @return async CompletableFuture
-   */
-  public CompletableFuture<Integer> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
-      BiConsumer<Tablet, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertTablet(tablet, sorted);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
-        .exceptionally(e -> {
-          if (callback == null) {
-            logger.error("Error occurred when inserting tablet, device ID: {}, " +
-                            "time list of length: {}, starting from {}.",
-                tablet.deviceId, tablet.timestamps.length, tablet.timestamps[0], e);
-          } else {
-            callback.accept(tablet, e);
-          }
-          return -1;
-        });
-  }
-
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
       throws BatchExecutionException {
     if (sorted) {
@@ -366,39 +330,6 @@ public class Session {
         throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
       }
     }
-  }
-
-  /**
-   * insert the data of several devices asynchronously. Given a device, for each timestamp,
-   * the number of measurements is the same.
-   *
-   * @param tablets data batch in multiple device
-   * @param sorted  whether times in each Tablet are in ascending order
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   */
-  public CompletableFuture<Integer> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
-      long timeout, BiConsumer<Map<String, Tablet>, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertTablets(tablets, sorted);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
-        .exceptionally(e -> {
-          if ((callback == null)) {
-            logger.error("Error occurred when inserting tablets, tablet list size: {}",
-                    tablets.size(), e);
-          } else {
-            callback.accept(tablets, e);
-          }
-          return -1;
-        });
   }
 
   private int successHandler(Integer integer) {
@@ -465,46 +396,6 @@ public class Session {
     }
   }
 
-  /**
-   * Insert multiple rows in asynchronous way. This method is just like jdbc executeBatch,
-   * we pack some insert request in batch and send them to server. If you want improve your
-   * performance, please see insertTablet method.
-   * <p>
-   * Each row is independent, which could have different deviceId, time, number of measurements
-   *
-   * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   */
-  public CompletableFuture<Integer> asyncInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, long timeout,
-      SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>,
-      List<List<Object>>, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } catch (IoTDBConnectionException |StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler).
-            exceptionally(exception ->
-            {
-              if (callback == null) {
-                logger.error("Error occurred when inserting records, device ID: {}, " +
-                                "time list of length: {}, starting from {}.",
-                    deviceIds.get(0), times.size(), times.get(0), exception);
-              } else {
-                callback.apply(deviceIds, times, measurementsList, typesList, valuesList, exception);
-              }
-              return -1;
-            });
-  }
-
   private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) throws IoTDBConnectionException {
@@ -559,43 +450,6 @@ public class Session {
         throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
       }
     }
-  }
-
-  /**
-   * Insert multiple rows in asynchronous way. This method is just like jdbc executeBatch,
-   * we pack some insert request in batch and send them to server. If you want improve your
-   * performance, please see insertTablet method.
-   * <p>
-   * Each row is independent, which could have different deviceId, time, number of measurements
-   *
-   * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   */
-  public CompletableFuture<Integer> asyncInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList, long timeout,
-      FiveInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<String>>, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertRecords(deviceIds, times, measurementsList, valuesList);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
-        .exceptionally(e -> {
-          if (callback == null) {
-            logger.error("Error occurred when inserting records, device ID: {}, " +
-                            "time list of length: {}, starting from {}.",
-                deviceIds.get(0), times.size(), times.get(0), e);
-          } else {
-            callback.apply(deviceIds, times, measurementsList, valuesList, e);
-          }
-          return -1;
-        });
   }
 
   private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds, List<Long> times,
@@ -658,40 +512,6 @@ public class Session {
   }
 
   /**
-   * insert data in one row asynchronously. if you want improve your performance,
-   * please use insertRecords method or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   */
-  public CompletableFuture<Integer> asyncInsertRecord(String deviceId, long time,
-      List<String> measurements, List<TSDataType> types, List<Object> values, long timeout,
-      SixInputConsumer<String, Long, List<String>, List<TSDataType>, List<Object>, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertRecord(deviceId, time, measurements, types, values);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
-        .exceptionally(e -> {
-          if (callback == null) {
-            logger.error("Error occurred when inserting record, device ID: {}, time: {}. ",
-                deviceId, time, e);
-          } else {
-            callback.apply(deviceId, time, measurements, types, values, e);
-          }
-          return -1;
-        });
-  }
-
-  /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
@@ -716,40 +536,6 @@ public class Session {
         throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
       }
     }
-  }
-
-  /**
-   * insert data in one row asynchronously. if you want improve your performance,
-   * please use insertRecords method or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in millisecond
-   * @param callback user provided failure callback, set to null if user does not specify.
-   */
-  public CompletableFuture<Integer> asyncInsertRecord(String deviceId, long time,
-      List<String> measurements, List<String> values, long timeout,
-      FiveInputConsumer<String, Long, List<String>, List<String>, Throwable> callback) {
-    CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
-      try {
-        insertRecord(deviceId, time, measurements, values);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        throw new RuntimeException(e);
-      }
-      return 0;
-    }, asyncThreadPool.getThreadPool());
-
-    return asyncRun
-        .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
-        .exceptionally(e -> {
-          if (callback == null) {
-            logger.error("Error occurred when inserting record, device ID: {}, time: {}. ",
-                deviceId, time, e);
-          } else {
-            callback.apply(deviceId, time, measurements, values, e);
-          }
-          return -1;
-        });
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(String deviceId, long time,
@@ -1403,16 +1189,6 @@ public class Session {
       }
     }
     return flag;
-  }
-
-  @FunctionalInterface
-  public interface FiveInputConsumer<First, Second, Third, Fourth, Fifth> {
-    void apply(First one, Second two, Third three, Fourth four, Fifth five);
-  }
-
-  @FunctionalInterface
-  public interface SixInputConsumer<First, Second, Third, Fourth, Fifth, Sixth> {
-    void apply(First one, Second two, Third three, Fourth four, Fifth five, Sixth six);
   }
 
 }
