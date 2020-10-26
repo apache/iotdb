@@ -261,6 +261,8 @@ public class SessionPool {
    *     2,   2,  2,  2
    *     3,   3,  3,  3
    *
+   * times in Tablet may be not in ascending order
+   *
    * @param tablet data batch
    */
   public void insertTablet(Tablet tablet)
