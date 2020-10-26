@@ -40,7 +40,6 @@ public class MLogWriter {
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
   private static final String STRING_TYPE = "%s,%s,%s"; 
   private File logFile;
-  private BufferedWriter writer;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
   private int lineNumber;
@@ -56,14 +55,11 @@ public class MLogWriter {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    FileWriter fileWriter = new FileWriter(logFile, true);
-    writer = new BufferedWriter(fileWriter);
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
   }
 
   public void close() throws IOException {
-    writer.close();
     channel.close();
     fileOutputStream.close();
   }
@@ -98,39 +94,49 @@ public class MLogWriter {
     }
     final String newLine = System.getProperty("line.separator");
     buf.append(newLine);
-
     channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
-    channel.force(true);
     ++lineNumber;
   }
 
   public void deleteTimeseries(String path) throws IOException {
-    writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
+    String outputStr = MetadataOperationType.DELETE_TIMESERIES + "," + path;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void setStorageGroup(String storageGroup) throws IOException {
-    writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
+    String outputStr = MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void deleteStorageGroup(String storageGroup) throws IOException {
-    writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup);
+    String outputStr = MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void setTTL(String storageGroup, long ttl) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.SET_TTL, storageGroup, ttl));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.SET_TTL, storageGroup, ttl);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void changeOffset(String path, long offset) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_OFFSET, path, offset));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.CHANGE_OFFSET, path, offset);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void changeAlias(String path, String alias) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_ALIAS, path, alias));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.CHANGE_ALIAS, path, alias);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
@@ -169,20 +175,18 @@ public class MLogWriter {
   }
 
   public void clear() throws IOException {
-    writer.close();
     channel.close();
     fileOutputStream.close();
     Files.delete(logFile.toPath());
     FileWriter fileWriter = new FileWriter(logFile, true);
-    writer = new BufferedWriter(fileWriter);
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
     lineNumber = 0;
   }
 
   private void newLine() throws IOException {
-    writer.newLine();
-    writer.flush();
+    channel.write(ByteBuffer.wrap(System.lineSeparator().getBytes()));
+    channel.force(true);
     ++lineNumber;
   }
 
