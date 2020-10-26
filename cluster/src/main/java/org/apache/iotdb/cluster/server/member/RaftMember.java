@@ -1334,7 +1334,7 @@ public abstract class RaftMember {
           .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
     }
     TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-        cause.getClass().getName() + ":" + cause.getMessage());
+        cause.getMessage());
     if (cause instanceof IoTDBException) {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
