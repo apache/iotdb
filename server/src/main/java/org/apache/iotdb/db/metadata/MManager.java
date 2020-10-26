@@ -569,22 +569,22 @@ public class MManager {
     removeFromTagInvertedIndex(pair.right);
     PartialPath storageGroupPath = pair.left;
 
-      // update statistics in schemaDataTypeNumMap
-      updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
+    // update statistics in schemaDataTypeNumMap
+    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
 
-      // TODO: delete the path node and all its ancestors
-      mNodeCache.clear();
+    // TODO: delete the path node and all its ancestors
+    mNodeCache.clear();
 
-      if (config.isEnableActiveTimeseriesCounter()) {
-        PartialPath storageGroup = getStorageGroupPath(path);
-        int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
-        totalSeriesNumber--;
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-        }
+    if (config.isEnableActiveTimeseriesCounter()) {
+      PartialPath storageGroup = getStorageGroupPath(path);
+      int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
+      seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
+      totalSeriesNumber--;
+      if (size == maxSeriesNumberAmongStorageGroup) {
+        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
       }
+    }
     return storageGroupPath;
   }
 

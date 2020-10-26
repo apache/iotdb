@@ -45,7 +45,7 @@ public class MemUtils {
 
   /**
    * function for getting the value size.
-   * If mem control enabled, do not get text data size here, the size will add to memtable
+   * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
    */
   public static long getRecordSize(TSDataType dataType, Object value,
@@ -74,7 +74,7 @@ public class MemUtils {
   }
 
   /**
-   * If mem control enabled, do not get text data size here, the size will add to memtable
+   * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
    */
   public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end,
