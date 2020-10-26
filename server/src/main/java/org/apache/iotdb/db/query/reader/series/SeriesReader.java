@@ -302,7 +302,6 @@ public class SeriesReader {
     List<ChunkMetadata> chunkMetadataList = FileLoaderUtils
         .loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
-
     // try to calculate the total number of chunk and time-value points in chunk
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
       QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
