@@ -279,23 +279,23 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxSeqFileNumInEachLevel = 10;
+  private int seqFileNumInEachLevel = 10;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
    */
-  private int maxSeqLevelNum = 4;
+  private int seqLevelNum = 4;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxUnseqFileNumInEachLevel = 10;
+  private int unseqFileNumInEachLevel = 10;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
    */
-  private int maxUnseqLevelNum = 2;
+  private int unseqLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1363,36 +1363,36 @@ public class IoTDBConfig {
     this.tsFileManagementStrategy = tsFileManagementStrategy;
   }
 
-  public int getMaxSeqFileNumInEachLevel() {
-    return maxSeqFileNumInEachLevel;
+  public int getSeqFileNumInEachLevel() {
+    return seqFileNumInEachLevel;
   }
 
-  public void setMaxSeqFileNumInEachLevel(int maxSeqFileNumInEachLevel) {
-    this.maxSeqFileNumInEachLevel = maxSeqFileNumInEachLevel;
+  public void setSeqFileNumInEachLevel(int seqFileNumInEachLevel) {
+    this.seqFileNumInEachLevel = seqFileNumInEachLevel;
   }
 
-  public int getMaxSeqLevelNum() {
-    return maxSeqLevelNum;
+  public int getSeqLevelNum() {
+    return seqLevelNum;
   }
 
-  public void setMaxSeqLevelNum(int maxSeqLevelNum) {
-    this.maxSeqLevelNum = maxSeqLevelNum;
+  public void setSeqLevelNum(int seqLevelNum) {
+    this.seqLevelNum = seqLevelNum;
   }
 
-  public int getMaxUnseqFileNumInEachLevel() {
-    return maxUnseqFileNumInEachLevel;
+  public int getUnseqFileNumInEachLevel() {
+    return unseqFileNumInEachLevel;
   }
 
-  public void setMaxUnseqFileNumInEachLevel(int maxUnseqFileNumInEachLevel) {
-    this.maxUnseqFileNumInEachLevel = maxUnseqFileNumInEachLevel;
+  public void setUnseqFileNumInEachLevel(int unseqFileNumInEachLevel) {
+    this.unseqFileNumInEachLevel = unseqFileNumInEachLevel;
   }
 
-  public int getMaxUnseqLevelNum() {
-    return maxUnseqLevelNum;
+  public int getUnseqLevelNum() {
+    return unseqLevelNum;
   }
 
-  public void setMaxUnseqLevelNum(int maxUnseqLevelNum) {
-    this.maxUnseqLevelNum = maxUnseqLevelNum;
+  public void setUnseqLevelNum(int unseqLevelNum) {
+    this.unseqLevelNum = unseqLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
