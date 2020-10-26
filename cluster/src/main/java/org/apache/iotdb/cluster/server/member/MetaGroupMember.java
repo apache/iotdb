@@ -1655,17 +1655,13 @@ public class MetaGroupMember extends RaftMember {
             partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
       }
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (plan instanceof DeleteTimeSeriesPlan
-            && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-          status = StatusUtils.OK;
-        } else {
-          // execution failed, record the error message
-          errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-              status.getCode(), partitionGroup.getHeader(),
-              status.getMessage()));
-        }
-
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() && (
+          !(plan instanceof DeleteTimeSeriesPlan) ||
+              status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
+        // execution failed, record the error message
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+            status.getCode(), partitionGroup.getHeader(),
+            status.getMessage()));
       }
     }
     if (errorCodePartitionGroups.isEmpty()) {
