@@ -120,6 +120,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -1655,10 +1656,16 @@ public class MetaGroupMember extends RaftMember {
         status = forwardPlan(plan, partitionGroup);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            status.getCode(), partitionGroup.getHeader(),
-            status.getMessage()));
+        if (plan instanceof DeleteTimeSeriesPlan
+            && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+          status = StatusUtils.OK;
+        } else {
+          // execution failed, record the error message
+          errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+              status.getCode(), partitionGroup.getHeader(),
+              status.getMessage()));
+        }
+
       }
     }
     if (errorCodePartitionGroups.isEmpty()) {
