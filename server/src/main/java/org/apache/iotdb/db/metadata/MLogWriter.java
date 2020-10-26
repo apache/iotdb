@@ -177,7 +177,6 @@ public class MLogWriter {
     channel.close();
     fileOutputStream.close();
     Files.delete(logFile.toPath());
-    FileWriter fileWriter = new FileWriter(logFile, true);
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
     lineNumber = 0;
