@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
@@ -38,6 +40,8 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.FileUtils;
+import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -74,6 +78,18 @@ public abstract class DataSnapshotTest {
                 resultHandler.onError(e);
               }
             }).start();
+          }
+
+          @Override
+          public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler)
+              throws TException {
+           new Thread(() -> {
+              try {
+                Files.deleteIfExists(new File(hardLinkPath).toPath());
+              } catch (IOException e) {
+                // ignore
+              }
+           }).start();
           }
         };
       }

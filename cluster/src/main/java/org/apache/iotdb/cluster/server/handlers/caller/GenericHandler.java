@@ -21,6 +21,8 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,5 +69,18 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
 
   public Exception getException() {
     return e;
+  }
+
+  @SuppressWarnings("java:S2274") // enable timeout
+  public T getResult(long timeout) throws InterruptedException, TException {
+    synchronized (result) {
+      if (result.get() == null && getException() == null) {
+        result.wait(timeout);
+      }
+    }
+    if (getException() != null) {
+      throw new TException(getException());
+    }
+    return result.get();
   }
 }

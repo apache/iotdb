@@ -70,7 +70,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     QueryDataSet dataSet = clusterQueryRouter.rawDataQuery(queryPlan, context);
     checkSequentialDataset(dataSet, 0, 20);
@@ -97,7 +98,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     plan.setAggregations(aggregations);
     plan.setDeduplicatedAggregations(aggregations);
 
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     QueryDataSet queryDataSet = clusterQueryRouter.aggregate(plan, context);
     checkDoubleDataset(queryDataSet, new Object[]{0.0, 19.0, 9.5, 20.0, 190.0});
     assertFalse(queryDataSet.hasNext());
@@ -116,7 +118,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
         new PreviousFill(TSDataType.DOUBLE, 0, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     QueryDataSet queryDataSet;
     long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
@@ -149,7 +152,8 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
         new LinearFill(TSDataType.DOUBLE, 0, defaultFillInterval, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
 
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     QueryDataSet queryDataSet;
     long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
@@ -172,7 +176,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testVFilterGroupBy()
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -217,7 +221,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testNoVFilterGroupBy()
       throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();

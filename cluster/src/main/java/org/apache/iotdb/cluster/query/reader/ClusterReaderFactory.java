@@ -451,7 +451,7 @@ public class ClusterReaderFactory {
               metaGroupMember, node, partitionGroup.getHeader());
           for (Integer aggregationType : aggregationTypes) {
             remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                AggregationType.values()[aggregationType], dataType));
+                AggregationType.values()[aggregationType], dataType, ascending));
           }
           return remoteGroupByExecutor;
         } else {
@@ -545,7 +545,7 @@ public class ClusterReaderFactory {
     } catch (IOException e) {
       throw new QueryProcessException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
-    return new SeriesReaderByTimestamp(seriesReader);
+    return new SeriesReaderByTimestamp(seriesReader, ascending);
 
   }
 }

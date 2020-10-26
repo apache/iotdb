@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
@@ -95,9 +96,10 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void getAllPaths(Node header, List<String> paths,
-      AsyncMethodCallback<List<String>> resultHandler) {
-    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getAllPaths(header, paths, resultHandler)).start();
+  public void getAllPaths(Node header, List<String> paths, boolean withAlias,
+      AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getAllPaths(header,
+        paths, withAlias, resultHandler)).start();
   }
 
   @Override

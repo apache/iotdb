@@ -56,7 +56,8 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
         new PreviousFill(TSDataType.DOUBLE, 0, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     ClusterFillExecutor fillExecutor;
     QueryDataSet queryDataSet;
@@ -90,7 +91,8 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     Map<TSDataType, IFill> tsDataTypeIFillMap = Collections.singletonMap(TSDataType.DOUBLE,
         new LinearFill(TSDataType.DOUBLE, 0, defaultFillInterval, defaultFillInterval));
     plan.setFillType(tsDataTypeIFillMap);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     ClusterFillExecutor fillExecutor;
     QueryDataSet queryDataSet;

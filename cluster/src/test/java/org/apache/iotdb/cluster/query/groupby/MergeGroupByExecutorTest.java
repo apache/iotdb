@@ -45,7 +45,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     Filter timeFilter = null;
 
     MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
@@ -54,7 +54,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {
       groupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(type,
-          TSDataType.DOUBLE));
+          TSDataType.DOUBLE, true));
     }
 
     Object[] answers;
@@ -73,7 +73,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     Filter timeFilter = TimeFilter.gtEq(3);
 
     MergeGroupByExecutor groupByExecutor = new MergeGroupByExecutor(path,
@@ -82,7 +82,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
     AggregationType[] types = AggregationType.values();
     for (AggregationType type : types) {
       groupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(type,
-          TSDataType.DOUBLE));
+          TSDataType.DOUBLE, true));
     }
 
     Object[] answers;

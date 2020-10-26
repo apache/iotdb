@@ -43,6 +43,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -331,11 +332,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllPaths(Node header, List<String> paths,
-      AsyncMethodCallback<List<String>> resultHandler) {
+  public void getAllPaths(Node header, List<String> paths, boolean withAlias,
+      AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Find path:" + paths);
     if (service != null) {
-      service.getAllPaths(header, paths, resultHandler);
+      service.getAllPaths(header, paths, withAlias, resultHandler);
     }
   }
 
@@ -686,8 +687,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public List<String> getAllPaths(Node header, List<String> path) throws TException {
-    return getDataSyncService(header).getAllPaths(header, path);
+  public GetAllPathsResult getAllPaths(Node header, List<String> path, boolean withAlias) throws TException {
+    return getDataSyncService(header).getAllPaths(header, path, withAlias);
   }
 
   @Override

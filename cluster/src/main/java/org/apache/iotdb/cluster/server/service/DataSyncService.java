@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -189,10 +190,10 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<String> getAllPaths(Node header, List<String> paths) throws TException {
+  public GetAllPathsResult getAllPaths(Node header, List<String> paths, boolean withAlias) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck();
-      return ((CMManager) IoTDB.metaManager).getAllPaths(paths);
+      return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
     }

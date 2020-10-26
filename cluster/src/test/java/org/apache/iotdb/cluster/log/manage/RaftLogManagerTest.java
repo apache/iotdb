@@ -109,6 +109,7 @@ public class RaftLogManagerTest {
 
   @After
   public void tearDown() {
+    blocked = false;
     File dir = new File(SyncLogDequeSerializer.getLogDir(testIdentifier));
     for (File file : dir.listFiles()) {
       file.delete();

@@ -65,6 +65,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotNodeAdditionResult;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -404,7 +405,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, IOException, WriteProcessException, SnapshotInstallationException, QueryProcessException, IllegalPathException {
+      throws IOException, WriteProcessException, SnapshotInstallationException, QueryProcessException, IllegalPathException {
     System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -813,11 +814,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testGetPaths() {
     System.out.println("Start testGetPaths()");
     String path = TestUtils.getTestSg(0);
-    AtomicReference<List<String>> pathResult = new AtomicReference<>();
-    GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
+    AtomicReference<GetAllPathsResult> pathResult = new AtomicReference<>();
+    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
-        .getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
-    List<String> result = pathResult.get();
+        .getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), false, handler);
+    List<String> result = pathResult.get().paths;
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
       assertTrue(result.contains(TestUtils.getTestSeries(0, i)));
@@ -957,7 +958,7 @@ public class DataGroupMemberTest extends MemberTest {
     Filter timeFilter = TimeFilter.gtEq(5);
     request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     request.setQueryId(queryContext.getQueryId());
     request.setRequestor(TestUtils.getNode(0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());

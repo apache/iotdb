@@ -1613,9 +1613,11 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    */
   public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
-
-    return mtree.determineStorageGroup(path);
-
+    Map<String, String> sgPathMap = mtree.determineStorageGroup(path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    }
+    return sgPathMap;
   }
 
   /**

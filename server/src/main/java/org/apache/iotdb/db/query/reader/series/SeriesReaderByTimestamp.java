@@ -46,8 +46,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
     this.ascending = ascending;
   }
 
-  public SeriesReaderByTimestamp(SeriesReader seriesReader) {
+  public SeriesReaderByTimestamp(SeriesReader seriesReader, boolean ascending) {
     this.seriesReader = seriesReader;
+    this.ascending = ascending;
   }
 
   @Override

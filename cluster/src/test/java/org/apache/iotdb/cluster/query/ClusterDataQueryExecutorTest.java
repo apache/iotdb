@@ -44,7 +44,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1)));
     checkSequentialDataset(dataSet, 0, 20);
   }
 
@@ -59,7 +59,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1)));
     checkSequentialDataset(dataSet, 5, 15);
   }
 

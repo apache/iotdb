@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.query.aggregate;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
@@ -59,8 +59,9 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
   }
 
   @Override
-  protected List<AggregateResult> aggregateOneSeries(Entry<PartialPath, List<Integer>> pathToAggrIndexes,
-      Set<String> deviceMeasurements, Filter timeFilter, QueryContext context, boolean ascending) throws StorageEngineException {
+  protected void aggregateOneSeries(Map.Entry<PartialPath, List<Integer>> pathToAggrIndexes,
+      AggregateResult[] aggregateResultList, Set<String> measurements,
+      Filter timeFilter, QueryContext context) throws StorageEngineException {
     PartialPath seriesPath = pathToAggrIndexes.getKey();
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
     List<String> aggregationNames = new ArrayList<>();
@@ -68,9 +69,13 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
     for (int i : pathToAggrIndexes.getValue()) {
       aggregationNames.add(aggregations.get(i));
     }
-    return aggregator.getAggregateResult(seriesPath, deviceMeasurements, aggregationNames,
-        tsDataType, timeFilter,
-        context, ascending);
+    List<AggregateResult> aggregateResult = aggregator
+        .getAggregateResult(seriesPath, measurements, aggregationNames,
+            tsDataType, timeFilter, context, ascending);
+    int rstIndex = 0;
+    for (int i : pathToAggrIndexes.getValue()) {
+      aggregateResultList[i] = aggregateResult.get(rstIndex++);
+    }
   }
 
   @Override

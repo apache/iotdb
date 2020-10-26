@@ -177,6 +177,8 @@ struct SingleSeriesQueryRequest {
   7: required int dataTypeOrdinal
   8: required set<string> deviceMeasurements
   9: required bool ascending
+  10: required int fetchSize
+  11: required int deduplicatedPathNum
 }
 
 struct PreviousFillRequest {
@@ -226,6 +228,11 @@ struct LastQueryRequest {
   4: required set<string> deviceMeasurements
   5: required Node header
   6: required Node requestor
+}
+
+struct GetAllPathsResult {
+  1: required list<string> paths
+  2: optional list<string> aliasList
 }
 
 
@@ -346,7 +353,7 @@ service TSDataService extends RaftService {
   /**
   * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  list<string> getAllPaths(1:Node header, 2:list<string> path)
+  GetAllPathsResult getAllPaths(1:Node header, 2:list<string> path, 3:bool withAlias)
 
   /**
    * Given path patterns (paths with wildcard), return all devices they match.

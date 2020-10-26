@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -207,11 +208,11 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   }
 
   @Override
-  public void getAllPaths(Node header, List<String> paths,
-      AsyncMethodCallback<List<String>> resultHandler) {
+  public void getAllPaths(Node header, List<String> paths, boolean withAlias,
+      AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck();
-      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllPaths(paths));
+      resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
     }

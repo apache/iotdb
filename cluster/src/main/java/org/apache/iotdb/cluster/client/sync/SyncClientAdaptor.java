@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -306,33 +307,17 @@ public class SyncClientAdaptor {
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getUnregisteredTimeseries(header, seriesPaths, handler);
-    synchronized (remoteResult) {
-      if (remoteResult.get() == null && handler.getException() == null) {
-        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return remoteResult.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
-  public static List<String> getAllPaths(AsyncDataClient client, Node header,
-      List<String> pathsToQuery)
+  public static GetAllPathsResult getAllPaths(AsyncDataClient client, Node header,
+      List<String> pathsToQuery, boolean withAlias)
       throws InterruptedException, TException {
-    AtomicReference<List<String>> remoteResult = new AtomicReference<>();
-    GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    AtomicReference<GetAllPathsResult> remoteResult = new AtomicReference<>();
+    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getAllPaths(header, pathsToQuery, handler);
-    synchronized (remoteResult) {
-      if (remoteResult.get() == null && handler.getException() == null) {
-        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return remoteResult.get();
+    client.getAllPaths(header, pathsToQuery, withAlias, handler);
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static Integer getPathCount(AsyncDataClient client, Node header, List<String> pathsToQuery,
@@ -342,15 +327,7 @@ public class SyncClientAdaptor {
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getPathCount(header, pathsToQuery, level, handler);
-    synchronized (remoteResult) {
-      if (remoteResult.get() == null && handler.getException() == null) {
-        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return remoteResult.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static Set<String> getAllDevices(AsyncDataClient client, Node header,
@@ -360,15 +337,7 @@ public class SyncClientAdaptor {
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
     client.getAllDevices(header, pathsToQuery, handler);
-    synchronized (remoteResult) {
-      if (remoteResult.get() == null && handler.getException() == null) {
-        remoteResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return remoteResult.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static Long getGroupByExecutor(AsyncDataClient client, GroupByRequest request)
@@ -377,15 +346,7 @@ public class SyncClientAdaptor {
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
 
     client.getGroupByExecutor(request, handler);
-    synchronized (result) {
-      if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return result.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer previousFill(AsyncDataClient client, PreviousFillRequest request)
@@ -394,12 +355,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
 
     client.previousFill(request, nodeHandler);
-    synchronized (resultRef) {
-      if (resultRef.get() == null) {
-        resultRef.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    return resultRef.get();
+    return nodeHandler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static TSStatus executeNonQuery(AsyncClient client, PhysicalPlan plan, Node header,
@@ -427,15 +383,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
 
     client.readFile(remotePath, offset, fetchSize, handler);
-    synchronized (result) {
-      if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getWriteOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return result.get();
+    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 
   public static List<ByteBuffer> getGroupByResult(AsyncDataClient client, Node header,
@@ -445,15 +393,7 @@ public class SyncClientAdaptor {
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
     client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
-    synchronized (fetchResult) {
-      if (fetchResult.get() == null && handler.getException() == null) {
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    if (handler.getException() != null) {
-      throw new TException(handler.getException());
-    }
-    return fetchResult.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer peekNextNotNullValue(AsyncDataClient client, Node header,
@@ -463,12 +403,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
     client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
-    synchronized (fetchResult) {
-      if (fetchResult.get() == null && handler.getException() == null) {
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    return fetchResult.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static <T extends Snapshot> Map<Integer, T> pullSnapshot(AsyncDataClient client,
@@ -495,12 +430,7 @@ public class SyncClientAdaptor {
         context.getQueryId(), deviceMeasurements, header, client.getNode());
 
     client.last(request, handler);
-    synchronized (result) {
-      if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getReadOperationTimeoutMS());
-      }
-    }
-    return result.get();
+    return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static boolean onSnapshotApplied(AsyncDataClient client, Node header, List<Integer> slots)
@@ -509,11 +439,6 @@ public class SyncClientAdaptor {
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
 
     client.onSnapshotApplied(header, slots, handler);
-    synchronized (result) {
-      if (result.get() == null && handler.getException() == null) {
-        result.wait(RaftServer.getWriteOperationTimeoutMS());
-      }
-    }
-    return result.get();
+    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 }

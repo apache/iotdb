@@ -55,6 +55,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -83,6 +84,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -790,10 +792,8 @@ public class CMManager extends MManager {
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = determineStorageGroup(originPath);
-    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
-
     return ret;
   }
 
@@ -804,7 +804,7 @@ public class CMManager extends MManager {
    *                  storage group added
    * @return a collection of all queried paths
    */
-  private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap)
+  private List<PartialPath> getMatchedPaths(Map<String, String> sgPathMap, boolean withAlias)
       throws MetadataException {
     List<PartialPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
@@ -819,10 +819,9 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        List<PartialPath> allTimeseriesName = getAllTimeseriesPath(pathUnderSG);
+        List<PartialPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
         logger.debug("{}: get matched paths of {} locally, result {}", metaGroupMember.getName(),
-            partitionGroup,
-            allTimeseriesName);
+            partitionGroup, allTimeseriesName);
         result.addAll(allTimeseriesName);
       } else {
         // batch the queries of the same group to reduce communication
@@ -835,25 +834,34 @@ public class CMManager extends MManager {
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery));
+      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery, withAlias));
     }
 
     return result;
   }
 
+  private List<PartialPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
+      throws MetadataException {
+    if (!withAlias) {
+      return getAllTimeseriesPath(partialPath);
+    } else {
+      return super.getAllTimeseriesPathWithAlias(partialPath, -1, -1).left;
+    }
+  }
+
   private List<PartialPath> getMatchedPaths(PartitionGroup partitionGroup,
-      List<String> pathsToQuery)
+      List<String> pathsToQuery, boolean withAlias)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery);
+        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery,
+            withAlias);
         if (logger.isDebugEnabled()) {
           logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
               metaGroupMember.getName(), pathsToQuery.get(0), pathsToQuery.size() - 1, node,
-              partitionGroup.getHeader(),
-              paths);
+              partitionGroup.getHeader(), paths);
         }
         if (paths != null) {
           // a non-null result contains correct result even if it is empty, so query next group
@@ -871,28 +879,33 @@ public class CMManager extends MManager {
   }
 
   @SuppressWarnings("java:S1168") // null and empty list are different
-  private List<PartialPath> getMatchedPaths(Node node, Node header, List<String> pathsToQuery)
+  private List<PartialPath> getMatchedPaths(Node node, Node header, List<String> pathsToQuery,
+      boolean withAlias)
       throws IOException, TException, InterruptedException {
-    List<String> paths;
+    GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client = metaGroupMember.getClientProvider().getAsyncDataClient(node,
           RaftServer.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllPaths(client, header,
-          pathsToQuery);
+      result = SyncClientAdaptor.getAllPaths(client, header,
+          pathsToQuery, withAlias);
     } else {
       SyncDataClient syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
           RaftServer.getReadOperationTimeoutMS());
-      paths = syncDataClient.getAllPaths(header, pathsToQuery);
+      result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       ClientUtils.putBackSyncClient(syncDataClient);
     }
 
-    if (paths != null) {
+    if (result != null) {
       // paths may be empty, implying that the group does not contain matched paths, so we do not
       // need to query other nodes in the group
       List<PartialPath> partialPaths = new ArrayList<>();
-      for (String path : paths) {
+      for (int i = 0; i < result.paths.size(); i++) {
         try {
-          partialPaths.add(new PartialPath(path));
+          PartialPath partialPath = new PartialPath(result.paths.get(i));
+          if (withAlias) {
+            partialPath.setMeasurementAlias(result.aliasList.get(i));
+          }
+          partialPaths.add(partialPath);
         } catch (IllegalPathException e) {
           // ignore
         }
@@ -997,6 +1010,43 @@ public class CMManager extends MManager {
   }
 
   /**
+   * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
+   */
+  @Override
+  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath,
+      int limit, int offset) throws MetadataException {
+    // make sure this node knows all storage groups
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
+    // get all storage groups this path may belong to
+    // the key is the storage group name and the value is the path to be queried with storage group
+    // added, e.g:
+    // "root.*" will be translated into:
+    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
+    Map<String, String> sgPathMap = determineStorageGroup(prefixPath);
+    List<PartialPath> result = getMatchedPaths(sgPathMap, true);
+
+    int skippedOffset;
+    // apply offset and limit
+    if (offset > 0 && result.size() > offset) {
+      skippedOffset = offset;
+      result = result.subList(offset, result.size());
+    } else {
+      skippedOffset = result.size();
+      result = Collections.emptyList();
+    }
+    if (limit > 0 && result.size() > limit) {
+      result = result.subList(0, limit);
+    }
+    logger.debug("The paths of path {} are {}", prefixPath, result);
+
+    return new Pair<>(result, skippedOffset);
+  }
+
+  /**
    * Get all paths after removing wildcards in the path
    *
    * @param originPath a path potentially with wildcard
@@ -1015,8 +1065,7 @@ public class CMManager extends MManager {
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = determineStorageGroup(originPath);
-    logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
-    List<PartialPath> ret = getMatchedPaths(sgPathMap);
+    List<PartialPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
   }
@@ -1274,5 +1323,32 @@ public class CMManager extends MManager {
       ClientUtils.putBackSyncClient(syncDataClient);
     }
     return resultBinary;
+  }
+
+  public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias) throws MetadataException {
+    List<String> retPaths = new ArrayList<>();
+    List<String> alias = null;
+    if (withAlias) {
+      alias = new ArrayList<>();
+    }
+
+    if (withAlias) {
+      for (String path : paths) {
+        List<PartialPath> allTimeseriesPathWithAlias = IoTDB.metaManager
+            .getAllTimeseriesPathWithAlias(new PartialPath(path), -1,
+                -1).left;
+        for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
+          retPaths.add(timeseriesPathWithAlias.getFullPath());
+          alias.add(timeseriesPathWithAlias.getMeasurementAlias());
+        }
+      }
+    } else {
+      retPaths = getAllPaths(paths);
+    }
+
+    GetAllPathsResult getAllPathsResult = new GetAllPathsResult();
+    getAllPathsResult.setPaths(retPaths);
+    getAllPathsResult.setAliasList(alias);
+    return getAllPathsResult;
   }
 }

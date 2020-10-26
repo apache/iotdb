@@ -46,6 +46,7 @@ import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
@@ -145,9 +146,10 @@ public class DataLogApplierTest extends IoTDBTest {
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, node, null) {
           @Override
-          public void getAllPaths(Node header, List<String> path,
-              AsyncMethodCallback<List<String>> resultHandler) {
-            new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path, resultHandler)).start();
+          public void getAllPaths(Node header, List<String> path, boolean withAlias,
+              AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+            new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path,
+                withAlias, resultHandler)).start();
           }
 
           @Override

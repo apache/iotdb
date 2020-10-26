@@ -49,7 +49,7 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
   public void test()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();

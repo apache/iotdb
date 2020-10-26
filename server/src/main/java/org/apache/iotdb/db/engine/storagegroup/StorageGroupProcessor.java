@@ -1937,6 +1937,7 @@ public class StorageGroupProcessor {
     while (iterator.hasNext()) {
       TsFileResource existingTsFile = iterator.next();
       if (newTsFile.getHistoricalVersions().containsAll(existingTsFile.getHistoricalVersions())
+          && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
           && existingTsFile.tryWriteLock()) {
         // if we fail to lock the file, it means it is being queried or merged and we will not
         // wait until it is free, we will just leave it to the next merge

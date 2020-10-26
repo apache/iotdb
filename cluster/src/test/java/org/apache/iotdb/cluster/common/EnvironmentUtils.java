@@ -198,7 +198,7 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
     MergeManager.getINSTANCE().start();
-    testQueryId = QueryResourceManager.getInstance().assignQueryId(true);
+    testQueryId = QueryResourceManager.getInstance().assignQueryId(true, 1024, -1);
   }
 
   private static void createAllDir() {

@@ -52,7 +52,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     Filter timeFilter = null;
     List<Integer> aggregationTypes = new ArrayList<>();
     for (int i = 0; i < AggregationType.values().length; i++) {
@@ -105,7 +105,7 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
     Filter timeFilter = TimeFilter.gtEq(3);
     List<Integer> aggregationTypes = new ArrayList<>();
     for (int i = 0; i < AggregationType.values().length; i++) {

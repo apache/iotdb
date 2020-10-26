@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.query;
 
+import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -178,7 +180,7 @@ public class LocalQueryExecutor {
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequester(),
-        request.getQueryId());
+        request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IBatchReader batchReader = readerFactory.getSeriesBatchReader(path, deviceMeasurements,
@@ -309,7 +311,7 @@ public class LocalQueryExecutor {
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequester(),
-        request.getQueryId());
+        request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IReaderByTimestamp readerByTimestamp = readerFactory.getReaderByTimestamp(path,
@@ -365,7 +367,7 @@ public class LocalQueryExecutor {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
     }
     RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), request.queryId);
+        .getQueryContext(request.getRequestor(), request.queryId, DEFAULT_FETCH_SIZE, -1);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     boolean ascending = request.ascending;
 
@@ -423,8 +425,13 @@ public class LocalQueryExecutor {
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable()).getNodeSlots(
             dataGroupMember.getHeader());
     try {
-      AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-          dataType, results, new SlotTsFileFilter(nodeSlots), ascending);
+      if (ascending) {
+        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
+            dataType, results, null, new SlotTsFileFilter(nodeSlots));
+      } else {
+        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
+            dataType, null, results, new SlotTsFileFilter(nodeSlots));
+      }
     } catch (IllegalPathException e) {
       //ignore
     }
@@ -486,7 +493,7 @@ public class LocalQueryExecutor {
         deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
     for (Integer aggregationType : aggregationTypes) {
       executor.addAggregateResult(AggregateResultFactory
-          .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
+          .getAggrResultByType(AggregationType.values()[aggregationType], dataType, ascending));
     }
     return executor;
   }
@@ -519,7 +526,7 @@ public class LocalQueryExecutor {
     boolean ascending = request.ascending;
 
     RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), queryId);
+        .getQueryContext(request.getRequestor(), queryId, DEFAULT_FETCH_SIZE, -1);
     LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
         timeFilter, aggregationTypeOrdinals, queryContext, ascending);
     if (!executor.isEmpty()) {
@@ -590,7 +597,8 @@ public class LocalQueryExecutor {
     long beforeRange = request.getBeforeRange();
     Node requester = request.getRequester();
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
-    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId);
+    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId,
+        DEFAULT_FETCH_SIZE, -1);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -648,7 +656,7 @@ public class LocalQueryExecutor {
     dataGroupMember.syncLeaderWithConsistencyCheck();
 
     RemoteQueryContext queryContext = queryManager
-        .getQueryContext(request.getRequestor(), request.getQueryId());
+        .getQueryContext(request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
     PartialPath path = new PartialPath(request.getPath());
     ClusterQueryUtils.checkPathExistence(path);
     TimeValuePair timeValuePair = LastQueryExecutor

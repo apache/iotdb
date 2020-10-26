@@ -43,6 +43,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -216,9 +217,9 @@ public class SyncClientAdaptorTest {
       }
 
       @Override
-      public void getAllPaths(Node header, List<String> path,
-          AsyncMethodCallback<List<String>> resultHandler) {
-        resultHandler.onComplete(path);
+      public void getAllPaths(Node header, List<String> path, boolean withAlias,
+          AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+        resultHandler.onComplete(new GetAllPathsResult(path));
       }
 
       @Override
@@ -291,7 +292,7 @@ public class SyncClientAdaptorTest {
 
   @Test
   public void testMetaClient()
-      throws TException, InterruptedException, IOException, IllegalPathException {
+      throws TException, InterruptedException, IOException {
     assertEquals(Response.RESPONSE_AGREE, (long) SyncClientAdaptor.removeNode(metaClient,
         TestUtils.getNode(0)));
     assertTrue(SyncClientAdaptor.matchTerm(metaClient, TestUtils.getNode(0), 1, 1,
@@ -328,7 +329,8 @@ public class SyncClientAdaptorTest {
         , new GetAggrResultRequest()));
     assertEquals(paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(dataClient, TestUtils.getNode(0), paths));
-    assertEquals(paths, SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths));
+    assertEquals(paths, SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths,
+        false).paths);
     assertEquals(paths.size(), (int) SyncClientAdaptor.getPathCount(dataClient,
         TestUtils.getNode(0),
         paths, 0));

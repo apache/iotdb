@@ -138,6 +138,11 @@ public class EmptyReader extends BaseManagedSeriesReader implements ManagedSerie
   }
 
   @Override
+  public boolean isAscending() {
+    return false;
+  }
+
+  @Override
   public void addAggregateResult(AggregateResult aggrResult) {
     aggregationResults.add(aggrResult);
   }
@@ -151,6 +156,11 @@ public class EmptyReader extends BaseManagedSeriesReader implements ManagedSerie
   @Override
   public Object getValueInTimestamp(long timestamp) {
     return null;
+  }
+
+  @Override
+  public boolean readerIsEmpty() {
+    return false;
   }
 
   @Override

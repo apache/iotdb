@@ -26,16 +26,22 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 
 public class ClusterPlanner extends Planner {
 
+  /**
+   * @param fetchSize this parameter only take effect when it is a query plan
+   */
   @Override
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
-    operator = logicalOptimize(operator);
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(fetchSize);
+    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
 
   @Override

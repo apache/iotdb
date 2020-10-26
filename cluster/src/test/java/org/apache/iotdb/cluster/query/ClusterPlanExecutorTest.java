@@ -56,7 +56,8 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setPaths(pathList);
     queryPlan.setDataTypes(dataTypes);
-    QueryContext context = new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
     QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
     checkSequentialDataset(dataSet, 0, 20);
