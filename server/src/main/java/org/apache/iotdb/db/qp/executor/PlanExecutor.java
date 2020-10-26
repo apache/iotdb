@@ -150,6 +150,7 @@ import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class PlanExecutor implements IPlanExecutor {
+
   // logger
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
@@ -375,7 +376,8 @@ public class PlanExecutor implements IPlanExecutor {
       } else {
         try {
           queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
-        }catch (IndexOutOfBoundsException e){
+        } catch (IndexOutOfBoundsException e) {
+          logger.info("The result set is empty.");
           return new EmptyDataSet();
         }
       }
@@ -1065,13 +1067,19 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
     Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
     for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
-        createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
-        createMultiTimeSeriesPlan.getCompressors().get(i),
-        createMultiTimeSeriesPlan.getProps() == null ? null : createMultiTimeSeriesPlan.getProps().get(i),
-        createMultiTimeSeriesPlan.getTags() == null ? null : createMultiTimeSeriesPlan.getTags().get(i),
-        createMultiTimeSeriesPlan.getAttributes() == null ? null : createMultiTimeSeriesPlan.getAttributes().get(i),
-        createMultiTimeSeriesPlan.getAlias() == null ? null : createMultiTimeSeriesPlan.getAlias().get(i));
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
+          createMultiTimeSeriesPlan.getPaths().get(i),
+          createMultiTimeSeriesPlan.getDataTypes().get(i),
+          createMultiTimeSeriesPlan.getEncodings().get(i),
+          createMultiTimeSeriesPlan.getCompressors().get(i),
+          createMultiTimeSeriesPlan.getProps() == null ? null
+              : createMultiTimeSeriesPlan.getProps().get(i),
+          createMultiTimeSeriesPlan.getTags() == null ? null
+              : createMultiTimeSeriesPlan.getTags().get(i),
+          createMultiTimeSeriesPlan.getAttributes() == null ? null
+              : createMultiTimeSeriesPlan.getAttributes().get(i),
+          createMultiTimeSeriesPlan.getAlias() == null ? null
+              : createMultiTimeSeriesPlan.getAlias().get(i));
 
       try {
         createTimeSeries(plan);
