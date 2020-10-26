@@ -147,7 +147,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void write(InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException {
+  public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;

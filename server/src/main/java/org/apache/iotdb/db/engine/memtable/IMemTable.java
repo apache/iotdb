@@ -45,7 +45,7 @@ public interface IMemTable {
   void write(String deviceId, String measurement, MeasurementSchema schema,
       long insertTime, Object objectValue);
 
-  void write(InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException;
+  void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /**
    * @return the number of points

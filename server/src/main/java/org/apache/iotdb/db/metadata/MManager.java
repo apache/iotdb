@@ -97,7 +97,9 @@ public class MManager {
   private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";  
   private static final String DEBUG_MSG_1 = "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
   private static final String PREVIOUS_CONDITION = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
-  
+
+  private static final float UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 1.1f;
+
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
  
   /**
@@ -660,7 +662,8 @@ public class MManager {
     schemaDataTypeNumMap.put(TSDataType.INT64,
         schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
     int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
-    if (num > 0 && currentDataTypeTotalNum >= reportedDataTypeTotalNum * 1.1) {
+    if (num > 0 && currentDataTypeTotalNum >= 
+        reportedDataTypeTotalNum * UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
       PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }

@@ -52,9 +52,9 @@ public class TsFileProcessorInfo {
 
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
-    this.unsealedResourceMemCost = 0;
-    this.memTableCost = 0;
-    this.chunkMetadataMemCost = 0;
+    this.unsealedResourceMemCost = 0L;
+    this.memTableCost = 0L;
+    this.chunkMetadataMemCost = 0L;
     this.walMemCost = IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
   }
 
