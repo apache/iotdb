@@ -21,18 +21,20 @@ package org.apache.iotdb.cli;
 import java.io.File;
 import java.io.IOException;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.junit.*;
 
 public class StartClientScriptIT extends AbstractScript {
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -47,25 +49,39 @@ public class StartClientScriptIT extends AbstractScript {
 
   @Override
   protected void testOnWindows() throws IOException {
+    String dir = getCliPath();
     final String[] output = {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "sbin" + File.separator + "start-cli.bat",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
+
+    final String[] output2 = {
+        "Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
+        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+        "-e", "\"flush\"");
+    testOutput(builder2, output2);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
+    String dir = getCliPath();
     final String[] output = {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "sbin" + File.separator + "start-cli.sh",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     testOutput(builder, output);
+
+    final String[] output2 = {
+        "Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 = new ProcessBuilder("sh",
+        dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+        "-e", "\"flush\"");
+    testOutput(builder2, output2);
   }
 }

@@ -77,7 +77,7 @@ public class SeriesAggregateReaderTest {
           TSDataType.INT32,
           new QueryContext(), queryDataSource, null, null, null, true);
       AggregateResult aggregateResult = AggregateResultFactory
-          .getAggrResultByName("count", TSDataType.INT32);
+          .getAggrResultByName("count", TSDataType.INT32, true);
       int loopTime = 0;
       while (seriesReader.hasNextFile()) {
         if (seriesReader.canUseCurrentFileStatistics()) {

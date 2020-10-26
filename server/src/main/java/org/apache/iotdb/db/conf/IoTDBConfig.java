@@ -131,6 +131,13 @@ public class IoTDBConfig {
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
+   * Memory allocated for the read process besides cache
+   */
+  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+
+  private volatile int maxQueryDeduplicatedPathNum = 1000;
+
+  /**
    * Is dynamic parameter adapter enable.
    */
   private boolean enableParameterAdapter = true;
@@ -437,6 +444,12 @@ public class IoTDBConfig {
    * register time series as which type when receiving an integer string "67"
    */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving an integer string and using float may lose precision
+   * num > 2 ^ 24
+   */
+  private TSDataType longStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving a floating number string "6.7"
@@ -1205,6 +1218,14 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForReadWithoutCache() {
+    return allocateMemoryForReadWithoutCache;
+  }
+
+  public void setAllocateMemoryForReadWithoutCache(long allocateMemoryForReadWithoutCache) {
+    this.allocateMemoryForReadWithoutCache = allocateMemoryForReadWithoutCache;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -1535,6 +1556,15 @@ public class IoTDBConfig {
   public void setIntegerStringInferType(
       TSDataType integerStringInferType) {
     this.integerStringInferType = integerStringInferType;
+  }
+
+  public void setLongStringInferType(
+      TSDataType longStringInferType) {
+    this.longStringInferType = longStringInferType;
+  }
+
+  public TSDataType getLongStringInferType() {
+    return longStringInferType;
   }
 
   public TSDataType getFloatingStringInferType() {
@@ -1883,5 +1913,13 @@ public class IoTDBConfig {
 
   public void setThriftInitBufferSize(int thriftInitBufferSize) {
     this.thriftInitBufferSize = thriftInitBufferSize;
+  }
+
+  public int getMaxQueryDeduplicatedPathNum() {
+    return maxQueryDeduplicatedPathNum;
+  }
+
+  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
+    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 }
