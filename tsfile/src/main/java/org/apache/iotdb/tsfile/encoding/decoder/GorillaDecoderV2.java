@@ -98,8 +98,8 @@ public abstract class GorillaDecoderV2 extends Decoder {
     return value;
   }
 
-  protected int readNextClearBit(int maxBits, ByteBuffer in) {
-    int value = 0x00;
+  protected byte readNextClearBit(int maxBits, ByteBuffer in) {
+    byte value = 0x00;
     for (int i = 0; i < maxBits; i++) {
       value <<= 1;
       if (readBit(in)) {

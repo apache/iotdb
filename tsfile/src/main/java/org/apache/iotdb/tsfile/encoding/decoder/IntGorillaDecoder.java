@@ -66,7 +66,7 @@ public class IntGorillaDecoder extends GorillaDecoderV2 {
 
   @SuppressWarnings("squid:S128")
   protected int readNext(ByteBuffer in) {
-    int controlBits = readNextClearBit(2, in);
+    byte controlBits = readNextClearBit(2, in);
 
     switch (controlBits) {
       case 3: // case '11': use new leading and trailing zeros
