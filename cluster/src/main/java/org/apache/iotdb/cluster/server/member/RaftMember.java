@@ -1339,6 +1339,9 @@ public abstract class RaftMember {
     }
     TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
         cause.getMessage());
+    if (cause instanceof RuntimeException) {
+      logger.error("RuntimeException during executing {}", log, cause);
+    }
     if (cause instanceof IoTDBException) {
       tsStatus.setCode(((IoTDBException) cause).getErrorCode());
     }
