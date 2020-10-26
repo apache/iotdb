@@ -94,14 +94,14 @@ public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
   private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
-  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";  
+  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
   private static final String DEBUG_MSG_1 = "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
   private static final String PREVIOUS_CONDITION = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
   private static final float UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 1.1f;
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
- 
+
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
    */
@@ -186,11 +186,13 @@ public class MManager {
       }
     };
 
-    timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-        "timedCreateMTreeSnapshotThread"));
-    timedCreateMTreeSnapshotThread
-        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-            MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    if (config.isEnableMTreeSnapshot()) {
+      timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+          "timedCreateMTreeSnapshotThread"));
+      timedCreateMTreeSnapshotThread
+          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    }
   }
 
   /**
@@ -305,7 +307,7 @@ public class MManager {
       this.schemaDataTypeNumMap.clear();
       this.reportedDataTypeTotalNum = 0L;
       initialized = false;
-      if (timedCreateMTreeSnapshotThread != null) {
+      if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
         timedCreateMTreeSnapshotThread = null;
       }

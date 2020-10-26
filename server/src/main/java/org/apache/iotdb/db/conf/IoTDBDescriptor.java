@@ -245,6 +245,9 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
+      conf.setTracingDir(FilePathUtils
+          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
@@ -397,6 +400,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setEnableMTreeSnapshot(Boolean.parseBoolean(properties.getProperty(
+          "enable_mtree_snapshot", Boolean.toString(conf.isEnableMTreeSnapshot()))));
       conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
           "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
       conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
