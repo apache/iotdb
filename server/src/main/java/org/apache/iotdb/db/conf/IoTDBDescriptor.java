@@ -284,13 +284,13 @@ public class IoTDBDescriptor {
           .getProperty("tsfile_manage_strategy",
               conf.getTsFileManagementStrategy().toString())));
 
-      conf.setMaxLevelNum(Integer.parseInt(properties
-          .getProperty("max_level_num",
-              Integer.toString(conf.getMaxLevelNum()))));
+      conf.setMaxSeqLevelNum(Integer.parseInt(properties
+          .getProperty("max_seq_level_num",
+              Integer.toString(conf.getMaxSeqLevelNum()))));
 
-      conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
-          .getProperty("max_file_num_in_each_level",
-              Integer.toString(conf.getMaxFileNumInEachLevel()))));
+      conf.setMaxSeqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_seq_file_num_in_each_level",
+              Integer.toString(conf.getMaxSeqFileNumInEachLevel()))));
 
       conf.setMaxUnseqLevelNum(Integer.parseInt(properties
           .getProperty("max_unseq_level_num",

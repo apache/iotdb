@@ -65,13 +65,13 @@ import org.slf4j.LoggerFactory;
 public class LevelTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(LevelTsFileManagement.class);
-  private final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
-  private final int maxFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
-      .getMaxFileNumInEachLevel();
+  private final int maxSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxSeqLevelNum();
+  private final int maxSeqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
+      .getMaxSeqFileNumInEachLevel();
   private final int maxUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig()
       .getMaxUnseqLevelNum();
   private final int maxUnseqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
-      .getMaxFileNumInEachLevel();
+      .getMaxSeqFileNumInEachLevel();
   private final int maxChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
       .getMergeChunkPointNumberThreshold();
   private final boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig()
@@ -97,7 +97,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     for (TsFileResource vmMergeTsFile : mergeTsFiles) {
       deleteLevelFile(vmMergeTsFile);
     }
-    for (int i = 0; i < maxLevelNum; i++) {
+    for (int i = 0; i < maxSeqLevelNum; i++) {
       sequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
     }
     for (int i = 0; i < maxUnseqLevelNum; i++) {
@@ -124,7 +124,7 @@ public class LevelTsFileManagement extends TsFileManagement {
       HotCompactionLogger hotCompactionLogger, boolean sequence) throws IOException {
     TsFileResource sourceFile = currMergeFiles.get(0).get(0);
     File newTargetFile = createNewTsFileName(sourceFile.getTsFile(),
-        sequence ? (maxLevelNum - 1) : (maxUnseqLevelNum - 1));
+        sequence ? (maxSeqLevelNum - 1) : (maxUnseqLevelNum - 1));
     TsFileResource targetResource = new TsFileResource(newTargetFile);
     List<TsFileResource> mergeFiles = new ArrayList<>();
     for (int i = currMergeFiles.size() - 1; i >= 0; i--) {
@@ -137,7 +137,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     hotCompactionLogger.logFile(TARGET_NAME, newTargetFile);
     writeLock();
     if (sequence) {
-      for (int i = 0; i < maxLevelNum - 1; i++) {
+      for (int i = 0; i < maxSeqLevelNum - 1; i++) {
         deleteLevelFiles(timePartitionId, currMergeFiles.get(i));
       }
     } else {
@@ -154,7 +154,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     List<TsFileResource> result = new ArrayList<>();
     if (sequence) {
       for (List<TreeSet<TsFileResource>> sequenceTsFileList : sequenceTsFileResources.values()) {
-        result.addAll(sequenceTsFileList.get(maxLevelNum - 1));
+        result.addAll(sequenceTsFileList.get(maxSeqLevelNum - 1));
       }
     } else {
       for (List<List<TsFileResource>> unSequenceTsFileList : unSequenceTsFileResources.values()) {
@@ -227,7 +227,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     long timePartitionId = tsFileResource.getTimePartition();
     int level = getMergeLevel(tsFileResource.getTsFile());
     if (sequence) {
-      if (level <= maxLevelNum - 1) {
+      if (level <= maxSeqLevelNum - 1) {
         // current file has too high level
         sequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
@@ -235,7 +235,7 @@ public class LevelTsFileManagement extends TsFileManagement {
       } else {
         // current file has normal level
         sequenceTsFileResources
-            .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(maxLevelNum - 1)
+            .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(maxSeqLevelNum - 1)
             .add(tsFileResource);
       }
     } else {
@@ -317,7 +317,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     if (sequence) {
       for (List<TreeSet<TsFileResource>> partitionSequenceTsFileResource : sequenceTsFileResources
           .values()) {
-        for (int i = maxLevelNum - 1; i >= 0; i--) {
+        for (int i = maxSeqLevelNum - 1; i >= 0; i--) {
           result += partitionSequenceTsFileResource.get(i).size();
         }
       }
@@ -432,7 +432,7 @@ public class LevelTsFileManagement extends TsFileManagement {
     Pair<Double, Double> seqStatisticsPair = forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-        maxLevelNum);
+        maxSeqLevelNum);
     forkedSeqListPointNum = seqStatisticsPair.left;
     forkedSeqListMeasurementSize = seqStatisticsPair.right;
     Pair<Double, Double> unSeqStatisticsPair = forkTsFileList(
@@ -509,7 +509,8 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
-    merge(forkedSequenceTsFileResources, true, timePartition, maxLevelNum, maxFileNumInEachLevel);
+    merge(forkedSequenceTsFileResources, true, timePartition, maxSeqLevelNum,
+        maxSeqFileNumInEachLevel);
     if (maxUnseqLevelNum <= 1) {
       merge(isForceFullMerge, getTsFileList(true), forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
@@ -614,7 +615,7 @@ public class LevelTsFileManagement extends TsFileManagement {
 
   private List<TreeSet<TsFileResource>> newSequenceTsFileResources(Long k) {
     List<TreeSet<TsFileResource>> newSequenceTsFileResources = new CopyOnWriteArrayList<>();
-    for (int i = 0; i < maxLevelNum; i++) {
+    for (int i = 0; i < maxSeqLevelNum; i++) {
       newSequenceTsFileResources.add(new TreeSet<>(
           (o1, o2) -> {
             int rangeCompare = Long

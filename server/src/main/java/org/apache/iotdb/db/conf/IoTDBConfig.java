@@ -279,12 +279,12 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxFileNumInEachLevel = 10;
+  private int maxSeqFileNumInEachLevel = 10;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
    */
-  private int maxLevelNum = 4;
+  private int maxSeqLevelNum = 4;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
@@ -1363,20 +1363,20 @@ public class IoTDBConfig {
     this.tsFileManagementStrategy = tsFileManagementStrategy;
   }
 
-  public int getMaxFileNumInEachLevel() {
-    return maxFileNumInEachLevel;
+  public int getMaxSeqFileNumInEachLevel() {
+    return maxSeqFileNumInEachLevel;
   }
 
-  public void setMaxFileNumInEachLevel(int maxFileNumInEachLevel) {
-    this.maxFileNumInEachLevel = maxFileNumInEachLevel;
+  public void setMaxSeqFileNumInEachLevel(int maxSeqFileNumInEachLevel) {
+    this.maxSeqFileNumInEachLevel = maxSeqFileNumInEachLevel;
   }
 
-  public int getMaxLevelNum() {
-    return maxLevelNum;
+  public int getMaxSeqLevelNum() {
+    return maxSeqLevelNum;
   }
 
-  public void setMaxLevelNum(int maxLevelNum) {
-    this.maxLevelNum = maxLevelNum;
+  public void setMaxSeqLevelNum(int maxSeqLevelNum) {
+    this.maxSeqLevelNum = maxSeqLevelNum;
   }
 
   public int getMaxUnseqFileNumInEachLevel() {
