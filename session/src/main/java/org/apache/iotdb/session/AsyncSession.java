@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AsyncSession {
   private static final Logger logger = LoggerFactory.getLogger(AsyncSession.class);
-  private SessionThreadPool threadPool;
+  private final SessionThreadPool threadPool;
 
   public AsyncSession() {
     threadPool = new SessionThreadPool();
@@ -277,7 +277,7 @@ public abstract class AsyncSession {
   public abstract void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException;
 
-  public static <T> CompletableFuture<T> orTimeout(long timeout, TimeUnit unit) {
+  private static <T> CompletableFuture<T> orTimeout(long timeout, TimeUnit unit) {
     if (unit == null)
       throw new NullPointerException();
     CompletableFuture<T> promise = new CompletableFuture<>();
@@ -291,12 +291,12 @@ public abstract class AsyncSession {
   }
 
   @FunctionalInterface
-  public interface FiveInputConsumer<First, Second, Third, Fourth, Fifth> {
+  private interface FiveInputConsumer<First, Second, Third, Fourth, Fifth> {
     void apply(First one, Second two, Third three, Fourth four, Fifth five);
   }
 
   @FunctionalInterface
-  public interface SixInputConsumer<First, Second, Third, Fourth, Fifth, Sixth> {
+  private interface SixInputConsumer<First, Second, Third, Fourth, Fifth, Sixth> {
     void apply(First one, Second two, Third three, Fourth four, Fifth five, Sixth six);
   }
 }

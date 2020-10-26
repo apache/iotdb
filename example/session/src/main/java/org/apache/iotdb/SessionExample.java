@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -47,7 +49,7 @@ public class SessionExample {
 
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, ExecutionException, InterruptedException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
@@ -169,7 +171,8 @@ public class SessionExample {
     }
   }
 
-  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException,
+      ExecutionException, InterruptedException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -189,7 +192,9 @@ public class SessionExample {
       values.add("1");
       values.add("2");
       values.add("3");
-      session.asyncInsertRecord(deviceId, time, measurements, values, 1000, null);
+      Future<Integer> future =
+          session.asyncInsertRecord(deviceId, time, measurements, values, 1000, null);
+      future.get();
     }
   }
 
@@ -355,7 +360,8 @@ public class SessionExample {
     }
   }
 
-  private static void insertTablets() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertTablets() throws IoTDBConnectionException, StatementExecutionException,
+      ExecutionException, InterruptedException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
@@ -451,7 +457,9 @@ public class SessionExample {
         sensor3[row3] = i;
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
-        session.asyncInsertTablets(tabletMap, true, 1000, null);
+        Future<Integer> future =
+            session.asyncInsertTablets(tabletMap, true, 1000, null);
+        future.get();
 
         tablet1.reset();
         tablet2.reset();

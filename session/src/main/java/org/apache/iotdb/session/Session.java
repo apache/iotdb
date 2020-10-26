@@ -249,6 +249,7 @@ public class Session extends AsyncSession {
    * @param tablet data batch
    * @param sorted whether times in Tablet are in ascending order
    */
+  @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
@@ -310,6 +311,7 @@ public class Session extends AsyncSession {
    * @param tablets data batch in multiple device
    * @param sorted  whether times in each Tablet are in ascending order
    */
+  @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
 
@@ -368,6 +370,7 @@ public class Session extends AsyncSession {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
@@ -424,6 +427,7 @@ public class Session extends AsyncSession {
    *
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -470,6 +474,7 @@ public class Session extends AsyncSession {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types,
       List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
@@ -511,6 +516,7 @@ public class Session extends AsyncSession {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
+  @Override
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
 
