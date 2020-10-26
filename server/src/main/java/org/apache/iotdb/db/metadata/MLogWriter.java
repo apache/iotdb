@@ -21,9 +21,12 @@ package org.apache.iotdb.db.metadata;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.Map;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -37,7 +40,8 @@ public class MLogWriter {
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
   private static final String STRING_TYPE = "%s,%s,%s"; 
   private File logFile;
-  private BufferedWriter writer;
+  private FileOutputStream fileOutputStream;
+  private FileChannel channel;
   private int lineNumber;
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
@@ -51,71 +55,87 @@ public class MLogWriter {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    FileWriter fileWriter = new FileWriter(logFile, true);
-    writer = new BufferedWriter(fileWriter);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   public void close() throws IOException {
-    writer.close();
+    channel.close();
+    fileOutputStream.close();
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
-    writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
-        plan.getPath().getFullPath(), plan.getDataType().serialize(),
-        plan.getEncoding().serialize(), plan.getCompressor().serialize()));
+    StringBuilder buf = new StringBuilder();
+    buf.append(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
+            plan.getPath().getFullPath(), plan.getDataType().serialize(),
+            plan.getEncoding().serialize(), plan.getCompressor().serialize()));
 
-    writer.write(",");
+    buf.append(",");
     if (plan.getProps() != null) {
       boolean first = true;
       for (Map.Entry<String, String> entry : plan.getProps().entrySet()) {
         if (first) {
-          writer.write(String.format("%s=%s", entry.getKey(), entry.getValue()));
+          buf.append(String.format("%s=%s", entry.getKey(), entry.getValue()));
           first = false;
         } else {
-          writer.write(String.format("&%s=%s", entry.getKey(), entry.getValue()));
+          buf.append(String.format("&%s=%s", entry.getKey(), entry.getValue()));
         }
       }
     }
 
-    writer.write(",");
+    buf.append(",");
     if (plan.getAlias() != null) {
-      writer.write(plan.getAlias());
+      buf.append(plan.getAlias());
     }
 
-    writer.write(",");
+    buf.append(",");
     if (offset >= 0) {
-      writer.write(String.valueOf(offset));
+      buf.append(offset);
     }
-    newLine();
+    buf.append(System.getProperty("line.separator"));
+    channel.write(ByteBuffer.wrap(buf.toString().getBytes()));
+    ++lineNumber;
   }
 
   public void deleteTimeseries(String path) throws IOException {
-    writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
+    String outputStr = MetadataOperationType.DELETE_TIMESERIES + "," + path;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void setStorageGroup(String storageGroup) throws IOException {
-    writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
+    String outputStr = MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void deleteStorageGroup(String storageGroup) throws IOException {
-    writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup);
+    String outputStr = MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void setTTL(String storageGroup, long ttl) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.SET_TTL, storageGroup, ttl));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.SET_TTL, storageGroup, ttl);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void changeOffset(String path, long offset) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_OFFSET, path, offset));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.CHANGE_OFFSET, path, offset);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
   public void changeAlias(String path, String alias) throws IOException {
-    writer.write(String.format(STRING_TYPE, MetadataOperationType.CHANGE_ALIAS, path, alias));
+    String outputStr = String.format(STRING_TYPE, MetadataOperationType.CHANGE_ALIAS, path, alias);
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
     newLine();
   }
 
@@ -154,16 +174,17 @@ public class MLogWriter {
   }
 
   public void clear() throws IOException {
-    writer.close();
+    channel.close();
+    fileOutputStream.close();
     Files.delete(logFile.toPath());
-    FileWriter fileWriter = new FileWriter(logFile, true);
-    writer = new BufferedWriter(fileWriter);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
     lineNumber = 0;
   }
 
   private void newLine() throws IOException {
-    writer.newLine();
-    writer.flush();
+    channel.write(ByteBuffer.wrap(System.lineSeparator().getBytes()));
+    channel.force(true);
     ++lineNumber;
   }
 

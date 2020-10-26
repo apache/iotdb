@@ -947,7 +947,7 @@ public class SeriesReader {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getStartTime(seriesPath.getDevice());
+      return time <= right.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1071,4 +1071,7 @@ public class SeriesReader {
     }
   }
 
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
+  }
 }

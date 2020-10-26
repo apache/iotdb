@@ -34,7 +34,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.db.query.reader.series.DescSeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
@@ -102,12 +101,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected IReaderByTimestamp getReaderByTime(PartialPath path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return ascending ? new SeriesReaderByTimestamp(path,
+    return new SeriesReaderByTimestamp(path,
         queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter)
-        : new DescSeriesReaderByTimestamp(path,
-            queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter,
+        ascending);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -122,7 +119,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     for (int i = 0; i < paths.size(); i++) {
       aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
           groupByTimePlan.getDeduplicatedAggregations().get(i),
-          groupByTimePlan.getDeduplicatedDataTypes().get(i)));
+          groupByTimePlan.getDeduplicatedDataTypes().get(i), ascending));
     }
 
     long[] timestampArray = new long[timeStampFetchSize];
@@ -183,7 +180,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     long[] timestampArray = new long[1];
     AggregateResult aggrResultByName = AggregateResultFactory.getAggrResultByName(
         groupByTimePlan.getDeduplicatedAggregations().get(i),
-        groupByTimePlan.getDeduplicatedDataTypes().get(i));
+        groupByTimePlan.getDeduplicatedDataTypes().get(i), ascending);
 
     long tmpStartTime = curStartTime - slidingStep;
     int index = 0;
