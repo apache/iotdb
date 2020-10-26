@@ -296,8 +296,9 @@ public class Session {
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
         .exceptionally(e -> {
           if (callback == null) {
-            logger.error("Error occurred when inserting tablet, device ID: {}, time: {} .",
-                tablet.deviceId, tablet.timestamps[0], e);
+            logger.error("Error occurred when inserting tablet, device ID: {}, " +
+                            "time list of length: {}, starting from {}.",
+                tablet.deviceId, tablet.timestamps.length, tablet.timestamps[0], e);
           } else {
             callback.accept(tablet, e);
           }
@@ -391,7 +392,8 @@ public class Session {
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
         .exceptionally(e -> {
           if ((callback == null)) {
-            logger.error("Error occurred when inserting tablets. ", e);
+            logger.error("Error occurred when inserting tablets, tablet list size: {}",
+                    tablets.size(), e);
           } else {
             callback.accept(tablets, e);
           }
@@ -477,7 +479,8 @@ public class Session {
   public CompletableFuture<Integer> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, long timeout,
-      SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>, List<List<Object>>, Throwable> callback) {
+      SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>,
+      List<List<Object>>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -492,8 +495,9 @@ public class Session {
             exceptionally(exception ->
             {
               if (callback == null) {
-                logger.error("Error occurred when inserting records, device ID: {}, time: {} .",
-                    deviceIds.get(0), times.get(0), exception);
+                logger.error("Error occurred when inserting records, device ID: {}, " +
+                                "time list of length: {}, starting from {}.",
+                    deviceIds.get(0), times.size(), times.get(0), exception);
               } else {
                 callback.apply(deviceIds, times, measurementsList, typesList, valuesList, exception);
               }
@@ -584,8 +588,9 @@ public class Session {
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
         .exceptionally(e -> {
           if (callback == null) {
-            logger.error("Error occurred when inserting records, device ID: {}, time: {}.",
-                deviceIds.get(0), times.get(0), e);
+            logger.error("Error occurred when inserting records, device ID: {}, " +
+                            "time list of length: {}, starting from {}.",
+                deviceIds.get(0), times.size(), times.get(0), e);
           } else {
             callback.apply(deviceIds, times, measurementsList, valuesList, e);
           }
