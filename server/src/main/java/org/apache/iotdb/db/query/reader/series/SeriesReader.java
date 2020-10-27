@@ -583,7 +583,8 @@ public class SeriesReader {
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
 
           if (orderUtils.isExcessEndpoint(timeValuePair.getTimestamp(), currentPageEndPointTime)) {
-            if (cachedBatchData.hasCurrent() || firstPageReader != null || !seqPageReaders.isEmpty()) {
+            if (cachedBatchData.hasCurrent() || firstPageReader != null || !seqPageReaders
+                .isEmpty()) {
               break;
             }
             currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
@@ -606,6 +607,7 @@ public class SeriesReader {
                   .addReader(firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())
                           .getBatchDataIterator(), firstPageReader.version,
                       orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
+              currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, firstPageReader);
               firstPageReader = null;
             }
           }
@@ -622,6 +624,7 @@ public class SeriesReader {
               mergeReader.addReader(pageReader.getAllSatisfiedPageData(orderUtils.getAscending())
                       .getBatchDataIterator(), pageReader.version,
                   orderUtils.getOverlapCheckTime(pageReader.getStatistics()));
+              currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, pageReader);
             }
           }
 
@@ -649,6 +652,14 @@ public class SeriesReader {
       } else {
         return false;
       }
+    }
+  }
+
+  private long updateEndPointTime(long currentPageEndPointTime, VersionPageReader pageReader) {
+    if (orderUtils.getAscending()) {
+      return Math.max(currentPageEndPointTime, pageReader.getStatistics().getEndTime());
+    } else {
+      return Math.min(currentPageEndPointTime, pageReader.getStatistics().getStartTime());
     }
   }
 
@@ -911,7 +922,7 @@ public class SeriesReader {
     boolean isExcessEndpoint(long time, long endpointTime);
 
     /**
-     *  Return true if taking first page reader from seq readers
+     * Return true if taking first page reader from seq readers
      */
     boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
         Statistics<? extends Object> unseqStatistics);
