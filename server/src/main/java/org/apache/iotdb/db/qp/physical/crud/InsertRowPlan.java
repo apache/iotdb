@@ -274,6 +274,8 @@ public class InsertRowPlan extends InsertPlan {
 
     // the types are not inferred before the plan is serialized
     stream.write((byte) (isNeedInferType ? 1 : 0));
+
+    stream.writeLong(index);
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
@@ -411,11 +413,12 @@ public class InsertRowPlan extends InsertPlan {
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
-      e.printStackTrace();
+      logger.error("Failed to serialize values for {}", this, e);
     }
 
     // the types are not inferred before the plan is serialized
     buffer.put((byte) (isNeedInferType ? 1 : 0));
+    buffer.putLong(index);
   }
 
   @Override
@@ -439,6 +442,7 @@ public class InsertRowPlan extends InsertPlan {
     }
 
     isNeedInferType = buffer.get() == 1;
+    this.index = buffer.getLong();
   }
 
   @Override

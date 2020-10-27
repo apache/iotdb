@@ -119,4 +119,8 @@ public interface IMemTable {
   void setVersion(long version);
 
   void release();
+
+  long getMaxPlanIndex();
+
+  long getMinPlanIndex();
 }

@@ -59,6 +59,8 @@ public class DataAuthPlan extends PhysicalPlan {
     for (String user : users) {
       putString(stream, user);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -70,6 +72,8 @@ public class DataAuthPlan extends PhysicalPlan {
     for (String user : users) {
       putString(buffer, user);
     }
+
+    buffer.putLong(index);
   }
 
   @Override

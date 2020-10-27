@@ -61,6 +61,8 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     byte[] fullPathBytes = path.getFullPath().getBytes();
     stream.writeInt(fullPathBytes.length);
     stream.write(fullPathBytes);
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -69,6 +71,8 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     byte[] fullPathBytes = new byte[length];
     buffer.get(fullPathBytes);
     path = new PartialPath(new String(fullPathBytes));
+
+    this.index = buffer.getLong();
   }
 
   @Override

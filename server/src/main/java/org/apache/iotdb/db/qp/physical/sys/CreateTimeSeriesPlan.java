@@ -181,6 +181,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -212,6 +214,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     if (buffer.get() == 1) {
       attributes = ReadWriteIOUtils.readMap(buffer);
     }
+
+    this.index = buffer.getLong();
   }
 
   @Override
