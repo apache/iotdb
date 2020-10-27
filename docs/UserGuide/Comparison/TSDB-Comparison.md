@@ -24,7 +24,7 @@
 ## Known Time Series Database
 
 As the time series data becomes more and more important, 
-several open sourced time series databases are intorduced to the world.
+several open sourced time series databases are introduced to the world.
 However, few of them are developed for IoT or IIoT (Industrial IoT) scenario in particular. 
 
 
