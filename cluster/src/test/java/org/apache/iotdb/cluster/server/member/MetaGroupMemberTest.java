@@ -155,9 +155,9 @@ public class MetaGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Collections.emptyList());
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
-    RaftServer.setConnectionTimeoutInMS(100);
-    RaftServer.setWriteOperationTimeoutMS(100);
-    RaftServer.setReadOperationTimeoutMS(100);
+    RaftServer.setConnectionTimeoutInMS(1000);
+    RaftServer.setWriteOperationTimeoutMS(1000);
+    RaftServer.setReadOperationTimeoutMS(1000);
 
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
