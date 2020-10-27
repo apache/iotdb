@@ -60,9 +60,9 @@ public class LogView implements Runnable {
       if (detail) {
         Printer.msgPrintln(log.toString());
       } else {
-        Printer.msgPrintln(
-            log.getClass().getSimpleName() + " Size: " +
-                logDequeSerializer.getLogSizeDeque().removeFirst());
+//        Printer.msgPrintln(
+//            log.getClass().getSimpleName() + " Size: " +
+//                logDequeSerializer.getLogSizeDeque().removeFirst());
       }
     }
   }
