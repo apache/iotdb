@@ -44,7 +44,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -70,7 +69,6 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -125,10 +123,6 @@ public class MManager {
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
   // reported total series number
   private long reportedDataTypeTotalNum;
-
-  // storage group name -> the series number
-  private Map<String, Integer> seriesNumberInStorageGroups = new ConcurrentHashMap<>();
-  private long maxSeriesNumberAmongStorageGroup;
   private long totalSeriesNumber = 0L;
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -215,16 +209,10 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-
-      if (config.isEnableActiveTimeseriesCounter()) {
-        List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-        for (PartialPath sg : storageGroups) {
-          MNode node = mtree.getNodeByPath(sg);
-          seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
-          totalSeriesNumber += node.getLeafCount();
-        }
-        maxSeriesNumberAmongStorageGroup =
-            seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
+      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
+      for (PartialPath sg : storageGroups) {
+        MNode node = mtree.getNodeByPath(sg);
+        totalSeriesNumber += node.getLeafCount();
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
@@ -293,8 +281,6 @@ public class MManager {
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
-      this.seriesNumberInStorageGroups.clear();
-      this.maxSeriesNumberAmongStorageGroup = 0;
       this.totalSeriesNumber = 0;
       if (logWriter != null) {
         logWriter.close();
@@ -423,21 +409,12 @@ public class MManager {
         }
       }
 
-      // update statistics
-      if (config.isEnableActiveTimeseriesCounter()) {
-        int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
-        if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-          maxSeriesNumberAmongStorageGroup = size + 1L;
-        }
-        totalSeriesNumber++;
-        if (totalSeriesNumber * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-          logger.warn("Current series number {} is too large...", totalSeriesNumber);
-          allowToCreateNewSeries = false;
-        }
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber++;
+      if (totalSeriesNumber * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
       }
-
-      // update statistics in schemaDataTypeNumMap
       updateSchemaDataTypeNumMap(type, 1);
 
       // write log
@@ -483,18 +460,7 @@ public class MManager {
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
-
-      if (config.isEnableActiveTimeseriesCounter()) {
-        int size = seriesNumberInStorageGroups.get(prefixPath.getFullPath());
-        seriesNumberInStorageGroups.put(prefixPath.getFullPath(), 0);
-        totalSeriesNumber -= size;
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream()
-              .max(Integer::compareTo)
-              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-        }
-      }
-
+      totalSeriesNumber -= mtree.getAllTimeseriesCount(prefixPath);
       mNodeCache.clear();
     }
     try {
@@ -578,17 +544,7 @@ public class MManager {
 
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
-
-    if (config.isEnableActiveTimeseriesCounter()) {
-      PartialPath storageGroup = getStorageGroupPath(path);
-      int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
-      seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
-      totalSeriesNumber--;
-      if (size == maxSeriesNumberAmongStorageGroup) {
-        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-      }
-    }
+    totalSeriesNumber--;
     return storageGroupPath;
   }
 
@@ -600,11 +556,6 @@ public class MManager {
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.setStorageGroup(storageGroup);
-
-      if (config.isEnableActiveTimeseriesCounter()) {
-        ActiveTimeSeriesCounter.getInstance().init(storageGroup.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroup.getFullPath(), 0);
-      }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup.getFullPath());
       }
@@ -621,7 +572,6 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-
         // clear cached MNode
         mNodeCache.clear();
 
@@ -633,16 +583,7 @@ public class MManager {
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
-        if (config.isEnableActiveTimeseriesCounter()) {
-          int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
-          ActiveTimeSeriesCounter.getInstance().delete(storageGroup.getFullPath());
-          totalSeriesNumber -= size;
-          seriesNumberInStorageGroups.remove(storageGroup.getFullPath());
-          if (size == maxSeriesNumberAmongStorageGroup) {
-            maxSeriesNumberAmongStorageGroup =
-                seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
-          }
-        }
+        totalSeriesNumber -= mtree.getAllTimeseriesCount(storageGroup);
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup.getFullPath());
@@ -657,14 +598,14 @@ public class MManager {
    * update statistics in schemaDataTypeNumMap
    *
    * @param type data type
-   * @param num 1 for creating timeseries and -1 for deleting timeseries
+   * @param num  1 for creating timeseries and -1 for deleting timeseries
    */
   private void updateSchemaDataTypeNumMap(TSDataType type, int num) {
     schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
     schemaDataTypeNumMap.put(TSDataType.INT64,
         schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
     int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
-    if (num > 0 && currentDataTypeTotalNum >= 
+    if (num > 0 && currentDataTypeTotalNum >=
         reportedDataTypeTotalNum * UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
       PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
@@ -758,7 +699,7 @@ public class MManager {
 
   public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
       throws MetadataException {
-      return mtree.searchAllRelatedStorageGroups(path);
+    return mtree.searchAllRelatedStorageGroups(path);
   }
 
   /**
@@ -1108,15 +1049,6 @@ public class MManager {
    */
   public String getMetadataInString() {
     return TIME_SERIES_TREE_HEADER + mtree.toString();
-  }
-
-  @TestOnly
-  public void setMaxSeriesNumberAmongStorageGroup(long maxSeriesNumberAmongStorageGroup) {
-    this.maxSeriesNumberAmongStorageGroup = maxSeriesNumberAmongStorageGroup;
-  }
-
-  public long getMaximalSeriesNumberAmongStorageGroups() {
-    return maxSeriesNumberAmongStorageGroup;
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {

@@ -136,11 +136,6 @@ public class IoTDBConfig {
   private long allocateMemoryForMTree = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /**
-   * Is active timeseries counter enable.
-   */
-  private boolean enableActiveTimeseriesCounter = false;
-
-  /**
    * Memory allocated for the read process besides cache
    */
   private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
@@ -1212,14 +1207,6 @@ public class IoTDBConfig {
 
   void setMergeIntervalSec(long mergeIntervalSec) {
     this.mergeIntervalSec = mergeIntervalSec;
-  }
-
-  public boolean isEnableActiveTimeseriesCounter() {
-    return enableActiveTimeseriesCounter;
-  }
-
-  public void setEnableActiveTimeseriesCounter(boolean enableActiveTimeseriesCounter) {
-    this.enableActiveTimeseriesCounter = enableActiveTimeseriesCounter;
   }
 
   public double getBufferedArraysMemoryProportion() {

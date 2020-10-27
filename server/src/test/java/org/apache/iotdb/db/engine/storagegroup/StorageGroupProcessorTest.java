@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -70,7 +69,6 @@ public class StorageGroupProcessorTest {
         .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
   }

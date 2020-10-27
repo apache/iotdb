@@ -23,8 +23,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -94,15 +92,8 @@ public class MemTableFlushTask {
         TVList tvList = series.getSortedTVList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
-        // register active time series to the ActiveTimeSeriesCounter
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableActiveTimeseriesCounter()) {
-          ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
-        }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
-    }
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableActiveTimeseriesCounter()) {
-      ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
     }
     noMoreEncodingTask = true;
     logger.debug(
