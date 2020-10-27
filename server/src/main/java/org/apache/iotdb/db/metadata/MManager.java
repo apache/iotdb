@@ -572,6 +572,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
+        totalSeriesNumber -= mtree.getAllTimeseriesCount(storageGroup);
         // clear cached MNode
         mNodeCache.clear();
 
@@ -583,7 +584,6 @@ public class MManager {
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
-        totalSeriesNumber -= mtree.getAllTimeseriesCount(storageGroup);
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup.getFullPath());
