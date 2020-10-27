@@ -68,6 +68,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long totalPointsNumThreshold = 0;
 
+  private long maxPlanIndex = Long.MIN_VALUE;
+
+  private long minPlanIndex = Long.MAX_VALUE;
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -108,6 +112,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
+    updatePlanIndexes(insertRowPlan.getIndex());
     for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
       if (insertRowPlan.getValues()[i] == null) {
@@ -128,6 +133,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
+    updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, !enableMemControl);
@@ -148,6 +154,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
@@ -223,6 +230,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNum = 0;
     totalPointsNumThreshold = 0;
     tvListRamCost = 0;
+    maxPlanIndex = 0;
   }
 
   @Override
@@ -319,5 +327,20 @@ public abstract class AbstractMemTable implements IMemTable {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }
+  }
+
+  @Override
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  @Override
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  void updatePlanIndexes(long index) {
+    maxPlanIndex = Math.max(index, maxPlanIndex);
+    minPlanIndex = Math.min(index, minPlanIndex);
   }
 }

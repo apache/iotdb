@@ -151,4 +151,7 @@ public interface IMemTable {
    */
   void addTextDataSize(long textDataIncrement);
 
+  long getMaxPlanIndex();
+
+  long getMinPlanIndex();
 }

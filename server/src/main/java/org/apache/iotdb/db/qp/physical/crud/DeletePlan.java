@@ -128,6 +128,8 @@ public class DeletePlan extends PhysicalPlan {
     for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -140,6 +142,8 @@ public class DeletePlan extends PhysicalPlan {
     for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -151,5 +155,7 @@ public class DeletePlan extends PhysicalPlan {
     for (int i = 0; i < pathSize; i++) {
       paths.add(new PartialPath(readString(buffer)));
     }
+
+    this.index = buffer.getLong();
   }
 }

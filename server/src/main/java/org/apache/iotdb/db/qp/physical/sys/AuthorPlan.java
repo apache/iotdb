@@ -303,6 +303,8 @@ public class AuthorPlan extends PhysicalPlan {
     } else {
       putString(stream, nodeName.getFullPath());
     }
+
+    stream.writeLong(index);
   }
 
 
@@ -329,6 +331,8 @@ public class AuthorPlan extends PhysicalPlan {
     } else {
       putString(buffer, nodeName.getFullPath());
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -354,6 +358,8 @@ public class AuthorPlan extends PhysicalPlan {
     } else {
       this.nodeName = new PartialPath(nodeNameStr);
     }
+
+    this.index = buffer.getLong();
   }
 
   private int getPlanType(OperatorType operatorType) {

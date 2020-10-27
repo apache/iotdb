@@ -137,7 +137,9 @@ public class EnvironmentUtils {
     IoTDB.metaManager.clear();
 
     // close tracing
-    TracingManager.getInstance().close();
+    if (config.isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
 
     // close array manager
     PrimitiveArrayManager.close();
@@ -166,6 +168,8 @@ public class EnvironmentUtils {
     cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
+    // delete tracing
+    cleanDir(config.getTracingDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);

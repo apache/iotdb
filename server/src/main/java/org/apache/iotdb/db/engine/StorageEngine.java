@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +42,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.CloseFileListener;
+import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -125,6 +128,10 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
+  // add customized listeners here for flush and close events
+  private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
+  private List<FlushListener> customFlushListeners = new ArrayList<>();
+
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -180,6 +187,8 @@ public class StorageEngine implements IService {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
           processor.setDataTTL(storageGroup.getDataTTL());
+          processor.setCustomCloseFileListeners(customCloseFileListeners);
+          processor.setCustomFlushListeners(customFlushListeners);
           processorMap.put(storageGroup.getPartialPath(), processor);
           logger.info("Storage Group Processor {} is recovered successfully",
               storageGroup.getFullPath());
@@ -311,6 +320,8 @@ public class StorageEngine implements IService {
               processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
                   fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
+              processor.setCustomFlushListeners(customFlushListeners);
+              processor.setCustomCloseFileListeners(customCloseFileListeners);
               processorMap.put(storageGroupPath, processor);
             }
           }
@@ -447,14 +458,14 @@ public class StorageEngine implements IService {
     // TODO
   }
 
-  public void delete(PartialPath path, long startTime, long endTime)
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
           throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        storageGroupProcessor.delete(newPath, startTime, endTime);
+        storageGroupProcessor.delete(newPath, startTime, endTime, planIndex);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -464,13 +475,13 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
    */
-  public void deleteTimeseries(PartialPath path)
+  public void deleteTimeseries(PartialPath path, long planIndex)
       throws StorageEngineException {
     try {
       for (PartialPath storageGroupPath : IoTDB.metaManager.searchAllRelatedStorageGroups(path)) {
         StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE);
+        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -690,5 +701,23 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
     StorageEngine.enablePartition = enablePartition;
+  }
+
+  /**
+   * Add a listener to listen flush start/end events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerFlushListener(FlushListener listener) {
+    customFlushListeners.add(listener);
+  }
+
+  /**
+   * Add a listener to listen file close events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerCloseFileListener(CloseFileListener listener) {
+    customCloseFileListeners.add(listener);
   }
 }
