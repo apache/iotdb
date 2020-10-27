@@ -309,6 +309,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
   }
 
+  @Override
   public Boolean call() throws TException, InterruptedException, LeaderUnknownException {
     if (logs.isEmpty()) {
       return true;

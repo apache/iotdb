@@ -771,6 +771,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * @param endIndex   the log end index
    * @return the raft log which index between [startIndex, endIndex] or empty if not found
    */
+  @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
     List<Log> result = new ArrayList<>();
     Map<File, Pair<Long, Long>> logDataFileAndOffsetMap = getLogDataFileAndOffset(startIndex,

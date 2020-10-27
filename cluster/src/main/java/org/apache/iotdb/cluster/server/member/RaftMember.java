@@ -892,9 +892,11 @@ public abstract class RaftMember {
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
-    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
+    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
+        .getOperationStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2
+          .calOperationCostTimeFromStart(startTime);
 
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
@@ -1299,9 +1301,11 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
-    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.getOperationStartTime();
+    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2
+        .getOperationStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2.calOperationCostTimeFromStart(startTime);
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2
+          .calOperationCostTimeFromStart(startTime);
 
       startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.getOperationStartTime();
       logManager.commitTo(log.getCurrLogIndex());

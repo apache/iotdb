@@ -38,5 +38,12 @@ public interface StableEntryManager {
 
   HardState getHardState();
 
+  /**
+   * @param startIndex the log start index
+   * @param endIndex   the log end index
+   * @return the raft log which index between [startIndex, endIndex] or empty if not found
+   */
+  List<Log> getLogs(long startIndex, long endIndex);
+
   void close();
 }
