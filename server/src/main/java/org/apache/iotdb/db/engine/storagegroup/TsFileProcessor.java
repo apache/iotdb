@@ -181,7 +181,7 @@ public class TsFileProcessor {
       tsFileResource
           .updateEndTime(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
-    tsFileResource.updateMaxPlanIndex(insertRowPlan.getIndex());
+    tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
 
   /**
@@ -230,7 +230,7 @@ public class TsFileProcessor {
           .updateEndTime(
               insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
-    tsFileResource.updateMaxPlanIndex(insertTabletPlan.getIndex());
+    tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
   /**

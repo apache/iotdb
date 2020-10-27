@@ -158,7 +158,12 @@ public class TsFileResource {
   /**
    * Maximum index of plans executed within this TsFile.
    */
-  private long maxPlanIndex;
+  private long maxPlanIndex = Long.MIN_VALUE;
+
+  /**
+   * Minimum index of plans executed within this TsFile.
+   */
+  private long minPlanIndex = Long.MAX_VALUE;
 
   public TsFileResource() {
   }
@@ -281,6 +286,7 @@ public class TsFileResource {
       }
 
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
+      ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
@@ -332,6 +338,7 @@ public class TsFileResource {
       }
 
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
@@ -838,8 +845,13 @@ public class TsFileResource {
     return maxPlanIndex;
   }
 
-  public void updateMaxPlanIndex(long planIndex) {
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public void updatePlanIndexes(long planIndex) {
     maxPlanIndex = Math.max(maxPlanIndex, planIndex);
+    minPlanIndex = Math.min(minPlanIndex, planIndex);
     if (closed) {
       try {
         serialize();
@@ -848,5 +860,10 @@ public class TsFileResource {
             maxPlanIndex, planIndex);
       }
     }
+  }
+
+  public boolean isPlanIndexOverlap(TsFileResource another) {
+    return another.maxPlanIndex >= this.minPlanIndex &&
+           another.minPlanIndex <= this.maxPlanIndex;
   }
 }

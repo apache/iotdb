@@ -129,8 +129,8 @@ public class StorageEngine implements IService {
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   // add customized listeners here for flush and close events
-  private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
-  private List<FlushListener> customFlushListeners = Collections.emptyList();
+  private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
+  private List<FlushListener> customFlushListeners = new ArrayList<>();
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -701,5 +701,23 @@ public class StorageEngine implements IService {
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
     StorageEngine.enablePartition = enablePartition;
+  }
+
+  /**
+   * Add a listener to listen flush start/end events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerFlushListener(FlushListener listener) {
+    customFlushListeners.add(listener);
+  }
+
+  /**
+   * Add a listener to listen file close events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerCloseFileListener(CloseFileListener listener) {
+    customCloseFileListeners.add(listener);
   }
 }

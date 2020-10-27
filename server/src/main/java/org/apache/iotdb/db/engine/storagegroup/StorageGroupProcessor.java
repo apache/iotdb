@@ -1462,7 +1462,7 @@ public class StorageGroupProcessor {
       // remember to close mod file
       tsFileResource.getModFile().close();
 
-      tsFileResource.updateMaxPlanIndex(planIndex);
+      tsFileResource.updatePlanIndexes(planIndex);
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
