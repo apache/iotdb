@@ -41,7 +41,7 @@
 
 <!-- /TOC -->
 
-本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](../Overview/What%20is%20IoTDB.html).
+本文将介绍关于IoTDB使用的基本流程，如果需要更多信息，请浏览我们官网的[指引](../Overview/What%20is%20IoTDB.md).
 
 ## 安装环境
 
@@ -57,7 +57,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 * 二进制可运行程序：请从Download页面下载最新的安装包，解压后即完成安装。
 
-* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
+* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
 ### IoTDB下载
 
@@ -71,7 +71,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
   * 系统配置模块 (`iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
-想要了解更多，请浏览[Chapter3: Server](../Server/Download.html)
+想要了解更多，请浏览[Chapter3: Server](../Server/Download.md)
 ​	
 
 ## IoTDB试用
@@ -270,7 +270,7 @@ IoTDB> quit
 IoTDB> exit
 ```
 
-想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](../Operation%20Manual/SQL%20Reference.html).
+想要浏览更多IoTDB数据库支持的命令，请浏览[SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 ### 停止IoTDB
 
@@ -290,7 +290,7 @@ Windows系统停止命令如下：
 
 ## 只建立客户端
 
-在incubator-iotdb的根路径下：
+在iotdb的根路径下：
 
 ```
 > mvn clean package -pl cli -am -DskipTests

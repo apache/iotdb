@@ -345,6 +345,7 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void writeValue(ResultSet rs, int count, BufferedWriter bw)
       throws SQLException, IOException {
     for (int j = 2; j <= count; j++) {

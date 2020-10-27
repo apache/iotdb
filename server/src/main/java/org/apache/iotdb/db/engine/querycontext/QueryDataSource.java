@@ -19,16 +19,15 @@
 
 package org.apache.iotdb.db.engine.querycontext;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.List;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 public class QueryDataSource {
-  private Path seriesPath;
+  private PartialPath seriesPath;
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
 
@@ -37,13 +36,13 @@ public class QueryDataSource {
    */
   private long dataTTL = Long.MAX_VALUE;
 
-  public QueryDataSource(Path seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
+  public QueryDataSource(PartialPath seriesPath, List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seriesPath = seriesPath;
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
   }
 
-  public Path getSeriesPath() {
+  public PartialPath getSeriesPath() {
     return seriesPath;
   }
 

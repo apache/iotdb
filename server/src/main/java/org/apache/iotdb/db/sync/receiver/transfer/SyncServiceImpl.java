@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.sync.receiver.transfer;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -43,16 +52,6 @@ import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 public class SyncServiceImpl implements SyncService.Iface {
 
@@ -178,6 +177,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus initSyncData(String filename) throws TException {
     try {
@@ -210,8 +210,9 @@ public class SyncServiceImpl implements SyncService.Iface {
   @Override
   public SyncStatus syncData(ByteBuffer buff) {
     try {
+      int pos = buff.position();
       currentFileWriter.get().write(buff);
-      buff.flip();
+      buff.position(pos);
       messageDigest.get().update(buff);
     } catch (IOException e) {
       logger.error("Can not sync data for file {}", currentFile.get().getAbsoluteFile(), e);
@@ -222,6 +223,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus checkDataMD5(String md5OfSender) throws TException {
     String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
@@ -233,8 +235,8 @@ public class SyncServiceImpl implements SyncService.Iface {
         currentFile.get().delete();
         currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
         return getErrorResult(String
-            .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
-                currentFile.get().getAbsolutePath()));
+                .format("MD5 of the sender is differ from MD5 of the receiver of the file %s.",
+                        currentFile.get().getAbsolutePath()));
       } else {
         if (currentFile.get().getName().endsWith(MetadataConstant.METADATA_LOG)) {
           loadMetadata();
@@ -300,6 +302,14 @@ public class SyncServiceImpl implements SyncService.Iface {
     } catch (IOException e) {
       logger.error("Can not end sync", e);
       return getErrorResult(String.format("Can not end sync because %s", e.getMessage()));
+    } finally {
+      syncFolderPath.remove();
+      currentSG.remove();
+      syncLog.remove();
+      senderName.remove();
+      currentFile.remove();
+      currentFileWriter.remove();
+      messageDigest.remove();
     }
     return getSuccessResult();
   }

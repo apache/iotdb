@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TypeInferenceUtils {
@@ -28,6 +29,8 @@ public class TypeInferenceUtils {
   private static TSDataType booleanStringInferType = IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
 
   private static TSDataType integerStringInferType = IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
+
+  private static TSDataType longStringInferType = IoTDBDescriptor.getInstance().getConfig().getLongStringInferType();
 
   private static TSDataType floatingStringInferType = IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
@@ -51,6 +54,10 @@ public class TypeInferenceUtils {
         .equalsIgnoreCase(SQLConstant.BOOLEAN_FALSE);
   }
 
+  private static boolean isConvertFloatPrecisionLack(String s){
+    return Long.parseLong(s) > (2 << 24);
+  }
+
   /**
    * Get predicted DataType of the given value
    */
@@ -61,7 +68,10 @@ public class TypeInferenceUtils {
       if (isBoolean(strValue)) {
         return booleanStringInferType;
       } else if (isNumber(strValue)){
-        if (!strValue.contains(".")) {
+        if (!strValue.contains(TsFileConstant.PATH_SEPARATOR)) {
+          if (isConvertFloatPrecisionLack(strValue)) {
+            return longStringInferType;
+          }
           return integerStringInferType;
         } else {
           return floatingStringInferType;

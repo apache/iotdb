@@ -23,7 +23,7 @@
 
 IoTDB provides users with account privilege management operations, so as to ensure data security.
 
-We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.html). At the same time, in the JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.html) to execute privilege management statements in a single or batch mode. 
+We will show you basic user privilege management operations through the following specific examples. Detailed SQL syntax and usage details can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.md). At the same time, in the JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.md) to execute privilege management statements in a single or batch mode. 
 
 ## Basic Concepts
 
@@ -105,7 +105,6 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |:---|:---|
 |SET\_STORAGE\_GROUP|create timeseries; set storage groups; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
-|UPDATE\_TIMESERIES|update data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|

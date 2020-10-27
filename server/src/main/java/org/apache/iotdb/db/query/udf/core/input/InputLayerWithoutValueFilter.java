@@ -22,17 +22,17 @@ package org.apache.iotdb.db.query.udf.core.input;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class InputLayerWithoutValueFilter extends InputLayer {
 
-  public InputLayerWithoutValueFilter(long queryId, float memoryBudgetInMB, List<Path> paths,
+  public InputLayerWithoutValueFilter(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
       List<TSDataType> dataTypes, List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
     super(queryId, memoryBudgetInMB,
-        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers));
+        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers, true));
   }
 }

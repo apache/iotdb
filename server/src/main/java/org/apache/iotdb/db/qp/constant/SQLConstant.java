@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 
 /**
  * this class contains several constants used in SQL.
@@ -34,6 +33,9 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
+  private static final String[] SINGLE_ROOT_ARRAY = new String[1];
+  private static final String[] SINGLE_TIME_ARRAY = new String[1];
+  public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
@@ -78,7 +80,6 @@ public class SQLConstant {
   public static final int LESSTHAN = SqlBaseLexer.OPERATOR_LT;
   public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
   public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
-  public static final int EQUAL_NS = SqlBaseLexer.OPERATOR_NEQ;
   public static final int IN = SqlBaseLexer.OPERATOR_IN;
 
   public static final int TOK_SELECT = 21;
@@ -160,17 +161,29 @@ public class SQLConstant {
   public static final int TOK_FUNCTION_DROP = 93;
   public static final int TOK_SHOW_FUNCTIONS = 94;
 
+  public static final int TOK_COUNT_DEVICES = 95;
+  public static final int TOK_COUNT_STORAGE_GROUP = 96;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
+  public static String[] getSingleRootArray() {
+    return SINGLE_ROOT_ARRAY;
+  }
+
+  public static String[] getSingleTimeArray() {
+    return SINGLE_TIME_ARRAY;
+  }
+
   static {
+    SINGLE_ROOT_ARRAY[0] = ROOT;
+    SINGLE_TIME_ARRAY[0] = RESERVED_TIME;
     tokenSymbol.put(KW_AND, "&");
     tokenSymbol.put(KW_OR, "|");
     tokenSymbol.put(KW_NOT, "!");
     tokenSymbol.put(EQUAL, "=");
     tokenSymbol.put(NOTEQUAL, "<>");
-    tokenSymbol.put(EQUAL_NS, "<=>");
     tokenSymbol.put(LESSTHANOREQUALTO, "<=");
     tokenSymbol.put(LESSTHAN, "<");
     tokenSymbol.put(GREATERTHANOREQUALTO, ">=");
@@ -183,7 +196,6 @@ public class SQLConstant {
     tokenNames.put(KW_NOT, "not");
     tokenNames.put(EQUAL, "equal");
     tokenNames.put(NOTEQUAL, "not_equal");
-    tokenNames.put(EQUAL_NS, "equal_ns");
     tokenNames.put(LESSTHANOREQUALTO, "lessthan_or_equalto");
     tokenNames.put(LESSTHAN, "lessthan");
     tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
@@ -249,7 +261,7 @@ public class SQLConstant {
     reverseWords.put(GREATERTHAN, LESSTHANOREQUALTO);
   }
 
-  public static boolean isReservedPath(Path pathStr) {
-    return pathStr.equals(SQLConstant.RESERVED_TIME);
+  public static boolean isReservedPath(PartialPath pathStr) {
+    return pathStr.equals(TIME_PATH);
   }
 }

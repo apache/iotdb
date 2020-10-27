@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -62,18 +64,18 @@ public class WriteLogNodeTest {
   }
 
   @Test
-  public void testWriteLogAndSync() throws IOException {
+  public void testWriteLogAndSync() throws IOException, IllegalPathException {
     // this test uses a dummy insert log node to insert a few logs and flushes them
     // then reads the logs from file
     String identifier = "root.logTestDevice";
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(identifier, 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath(identifier + ".s1"));
 
     long[] times = new long[]{110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -94,7 +96,7 @@ public class WriteLogNodeTest {
       ((boolean[]) columns[3])[r] = false;
     }
 
-    InsertTabletPlan tabletPlan = new InsertTabletPlan(identifier,
+    InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath(identifier),
       new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
@@ -125,18 +127,18 @@ public class WriteLogNodeTest {
   }
 
   @Test
-  public void testNotifyFlush() throws IOException {
+  public void testNotifyFlush() throws IOException, IllegalPathException {
     // this test writes a few logs and sync them
     // then calls notifyStartFlush() and notifyEndFlush() to delete old file
     String identifier = "root.logTestDevice";
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(identifier, 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
     logNode.notifyStartFlush();
@@ -162,18 +164,18 @@ public class WriteLogNodeTest {
   }
 
   @Test
-  public void testSyncThreshold() throws IOException {
+  public void testSyncThreshold() throws IOException, IllegalPathException {
     // this test checks that if more logs than threshold are written, a sync will be triggered.
     int flushWalThreshold = config.getFlushWalThreshold();
     config.setFlushWalThreshold(2);
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan("root.logTestDevice", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice"), 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
@@ -189,17 +191,17 @@ public class WriteLogNodeTest {
   }
 
   @Test
-  public void testDelete() throws IOException {
+  public void testDelete() throws IOException, IllegalPathException {
     // this test uses a dummy insert log node to insert a few logs and flushes them
     // then deletes the node
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan("logTestDevice", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("logTestDevice"), 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -216,11 +218,11 @@ public class WriteLogNodeTest {
   }
 
   @Test
-  public void testOverSizedWAL() throws IOException {
+  public void testOverSizedWAL() throws IOException, IllegalPathException {
     // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan("root.logTestDevice.oversize", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice.oversize"), 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});

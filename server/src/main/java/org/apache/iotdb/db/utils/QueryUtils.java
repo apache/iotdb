@@ -19,34 +19,14 @@
 
 package org.apache.iotdb.db.utils;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class QueryUtils {
 
@@ -62,6 +42,7 @@ public class QueryUtils {
    * @param chunkMetaData the original chunkMetaData.
    * @param modifications all possible modifications.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
       List<Modification> modifications) {
     int modIndex = 0;
@@ -108,91 +89,5 @@ public class QueryUtils {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
     seqResources.removeIf(fileFilter::fileNotSatisfy);
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
-  }
-
-  public static void constructPathAndDataTypes(List<Path> paths, List<TSDataType> dataTypes,
-      List<ShowTimeSeriesResult> timeseriesList) {
-    paths.add(new Path(COLUMN_TIMESERIES));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_DATATYPE));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ENCODING));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
-    dataTypes.add(TSDataType.TEXT);
-
-    Set<String> tagAndAttributeName = new TreeSet<>();
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
-    }
-    for (String key : tagAndAttributeName) {
-      paths.add(new Path(key));
-      dataTypes.add(TSDataType.TEXT);
-    }
-  }
-
-  public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
-      ShowTimeSeriesPlan showTimeSeriesPlan) {
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
-    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
-        showTimeSeriesPlan);
-
-    showTimeseriesDataSet.hasLimit = showTimeSeriesPlan.hasLimit();
-
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      RowRecord record = new RowRecord(0);
-      updateRecord(record, result.getName());
-      updateRecord(record, result.getAlias());
-      updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType());
-      updateRecord(record, result.getEncoding());
-      updateRecord(record, result.getCompressor());
-      updateRecord(record, result.getTagAndAttribute(), paths);
-      showTimeseriesDataSet.putRecord(record);
-    }
-    return showTimeseriesDataSet;
-  }
-
-  public static List<RowRecord> transferShowTimeSeriesResultToRecordList(
-      List<ShowTimeSeriesResult> timeseriesList) {
-    List<RowRecord> records = new ArrayList<>();
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      RowRecord record = new RowRecord(0);
-      updateRecord(record, result.getName());
-      updateRecord(record, result.getAlias());
-      updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType());
-      updateRecord(record, result.getEncoding());
-      updateRecord(record, result.getCompressor());
-      updateRecord(record, result.getTagAndAttribute(), paths);
-      records.add(record);
-    }
-    return records;
-  }
-
-  private static void updateRecord(
-      RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {
-    for (int i = 6; i < paths.size(); i++) {
-      updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
-    }
-  }
-
-  private static void updateRecord(RowRecord record, String s) {
-    if (s == null) {
-      record.addField(null);
-      return;
-    }
-    Field field = new Field(TSDataType.TEXT);
-    field.setBinaryV(new Binary(s));
-    record.addField(field);
   }
 }

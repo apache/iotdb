@@ -62,7 +62,7 @@ public class IoTDBAddSubDeviceIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
         statement.execute(sql);
@@ -82,7 +82,7 @@ public class IoTDBAddSubDeviceIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "SHOW DEVICES");
       Assert.assertTrue(hasResultSet);
@@ -116,15 +116,15 @@ public class IoTDBAddSubDeviceIT {
   @Test
   public void showTimeseries() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "root.sg1.d1.s1,null,root.sg1,INT32,RLE,SNAPPY,",
-        "root.sg1.d1.s1.s1,null,root.sg1,INT32,RLE,SNAPPY,",
-        "root.sg1.d1.s1.s2,null,root.sg1,INT32,RLE,SNAPPY,",
+        "root.sg1.d1.s1,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
+        "root.sg1.d1.s1.s1,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
+        "root.sg1.d1.s1.s2,null,root.sg1,INT32,RLE,SNAPPY,null,null,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "SHOW TIMESERIES");
       Assert.assertTrue(hasResultSet);
@@ -135,7 +135,8 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,", header.toString());
+        Assert.assertEquals("timeseries,alias,storage group,dataType,encoding,compression,tags,attributes,",
+            header.toString());
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
 
         int cnt = 0;
@@ -164,7 +165,7 @@ public class IoTDBAddSubDeviceIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       statement.execute("INSERT INTO root.sg1.d1 (timestamp, s1) VALUES(0, 1)");
       statement.execute("INSERT INTO root.sg1.d1.s1 (timestamp, s1) VALUES(0, 2)");
@@ -182,7 +183,8 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.sg1.d1.s1,root.sg1.d1.s1.s1,root.sg1.d1.s1.s2,", header.toString());
+        Assert.assertEquals("Time,root.sg1.d1.s1,root.sg1.d1.s1.s1,root.sg1.d1.s1.s2,",
+            header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {

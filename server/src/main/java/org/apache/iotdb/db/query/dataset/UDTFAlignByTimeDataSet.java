@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -35,7 +36,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -50,7 +50,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
    * execute with value filter
    */
   public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
-      List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached) throws IOException, QueryProcessException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
@@ -62,7 +62,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
    * execute without value filter
    */
   public UDTFAlignByTimeDataSet(QueryContext context, UDTFPlan udtfPlan,
-      List<Path> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);

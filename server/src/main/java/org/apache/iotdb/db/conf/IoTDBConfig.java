@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
@@ -27,10 +26,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
@@ -50,14 +51,16 @@ public class IoTDBConfig {
   // e.g., a31+/$%#&[]{}3e4
   private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
-  // e.g.,  .s1
-  private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
 
-  // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
-  private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"|\']";
-  public static final Pattern PATH_PATTERN = Pattern
-      .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
+  // e.g.,  .s1
+  private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
+
+  // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
+  private static final String NODE_MATCHER =
+      "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
+
+  public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
   /**
    * Port which the metrics service listens to.
@@ -127,11 +130,16 @@ public class IoTDBConfig {
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
   /**
+   * Memory allocated for the read process besides cache
+   */
+  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+
+  private volatile int maxQueryDeduplicatedPathNum = 1000;
+
+  /**
    * Is dynamic parameter adapter enable.
    */
-  //the default value of this parameter should be kept true in iotdb-engine.properties,
-  //we set it as false here for convenient testing.
-  private boolean enableParameterAdapter = false;
+  private boolean enableParameterAdapter = true;
 
   /**
    * Is the write ahead log enable.
@@ -139,6 +147,8 @@ public class IoTDBConfig {
   private boolean enableWal = true;
 
   private volatile boolean readOnly = false;
+
+  private boolean enableDiscardOutOfOrderData = false;
 
   /**
    * When a certain amount of write ahead logs is reached, they will be flushed to the disk. It is
@@ -155,7 +165,7 @@ public class IoTDBConfig {
    * The cycle when write ahead log is periodically forced to be written to disk(in milliseconds) If
    * set this parameter to 0 it means call outputStream.force(true) after every each insert
    */
-  private long forceWalPeriodInMs = 10;
+  private long forceWalPeriodInMs = 100;
 
   /**
    * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
@@ -240,32 +250,51 @@ public class IoTDBConfig {
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
    */
-  private long memtableSizeThreshold = 128 * 1024 * 1024L;
+  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 500000;
+  private int avgSeriesPointNumberThreshold = 100000;
 
   /**
-   * When merge point number reaches this, merge the vmfile to the tsfile.
+   * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
+   * the files to the last level.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Is vm merge enable
+   * Work when tsfile_manage_strategy is level_strategy. When page point number of file reaches
+   * this, use append merge instead of deserialize merge.
    */
-  private boolean enableVm = true;
+  private int mergePagePointNumberThreshold = 1000;
 
   /**
-   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
+   * TsFile manage strategy, define use which hot compaction strategy
    */
-  private int maxVmNum = 5;
+  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
 
   /**
-   * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
+   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
+   * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxMergeChunkNumInTsFile = 25;
+  private int maxFileNumInEachLevel = 10;
+
+  /**
+   * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
+   */
+  private int maxLevelNum = 4;
+
+  /**
+   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
+   * file num exceeds this, the files in one level will merge to one.
+   */
+  private int maxUnseqFileNumInEachLevel = 10;
+
+  /**
+   * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
+   */
+  private int maxUnseqLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -275,17 +304,22 @@ public class IoTDBConfig {
   /**
    * Memory allocated for timeSeriesMetaData cache in read process
    */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 10;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead / 10;
 
   /**
    * Memory allocated for chunk cache in read process
    */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
+
+  /**
+   * Whether to enable Last cache
+   */
+  private boolean lastCacheEnable = true;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -309,7 +343,7 @@ public class IoTDBConfig {
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
-  private int mManagerCacheSize = 400000;
+  private int mManagerCacheSize = 300000;
 
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
@@ -325,12 +359,12 @@ public class IoTDBConfig {
    * The threshold of items in external sort. If the number of chunks participating in sorting
    * exceeds this threshold, external sorting is enabled, otherwise memory sorting is used.
    */
-  private int externalSortThreshold = 60;
+  private int externalSortThreshold = 1000;
 
   /**
    * Is this IoTDB instance a receiver of sync or not.
    */
-  private boolean isSyncEnable = true;
+  private boolean isSyncEnable = false;
   /**
    * If this IoTDB instance is a receiver of sync, set the server port.
    */
@@ -383,17 +417,17 @@ public class IoTDBConfig {
   /**
    * Secret key for watermark
    */
-  private String watermarkSecretKey = "QWERTYUIOP*&=";
+  private String watermarkSecretKey = "IoTDB*2019@Beijing";
 
   /**
    * Bit string of watermark
    */
-  private String watermarkBitString = "11001010010101";
+  private String watermarkBitString = "100101110100";
 
   /**
    * Watermark method and parameters
    */
-  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=5,embed_lsb_num=5)";
+  private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /**
    * Switch of creating schema automatically
@@ -409,6 +443,12 @@ public class IoTDBConfig {
    * register time series as which type when receiving an integer string "67"
    */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving an integer string and using float may lose precision
+   * num > 2 ^ 24
+   */
+  private TSDataType longStringInferType = TSDataType.DOUBLE;
 
   /**
    * register time series as which type when receiving a floating number string "6.7"
@@ -480,20 +520,20 @@ public class IoTDBConfig {
    * If one merge file selection runs for more than this time, it will be ended and its current
    * selection will be used as final selection. Unit: millis. When < 0, it means time is unbounded.
    */
-  private long mergeFileSelectionTimeBudget = 30 * 1000;
+  private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
    * When set to true, if some crashed merges are detected during system rebooting, such merges will
    * be continued, otherwise, the unfinished parts of such merges will not be continued while the
    * finished parts still remain as they are.
    */
-  private boolean continueMergeAfterReboot = true;
+  private boolean continueMergeAfterReboot = false;
 
   /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
    * (if proper merge candidates can be found). Unit: second.
    */
-  private long mergeIntervalSec = 2 * 3600L;
+  private long mergeIntervalSec = 0L;
 
   /**
    * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
@@ -508,6 +548,22 @@ public class IoTDBConfig {
    * this threshold and the new chunk will be flushed.
    */
   private int chunkMergePointThreshold = 20480;
+
+  /**
+   * The limit of hot compaction merge can reach per second
+   */
+  private int mergeWriteThroughputMbPerSec = 16;
+
+  /**
+   * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
+   * than or equal to 0.
+   */
+  private int hotCompactionThreadNum = 30;
+
+  /**
+   * The limit of read throughput merge can reach per second
+   */
+  private int mergeReadThroughputMbPerSec = 16;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -597,7 +653,7 @@ public class IoTDBConfig {
   /**
    * The default value of primitive array size in array pool
    */
-  private int primitiveArraySize = 64;
+  private int primitiveArraySize = 128;
 
   /**
    * whether enable data partition. If disabled, all data belongs to partition 0
@@ -825,7 +881,7 @@ public class IoTDBConfig {
     if (getMultiDirStrategyClassName() == null) {
       multiDirStrategyClassName = DEFAULT_MULTI_DIR_STRATEGY;
     }
-    if (!getMultiDirStrategyClassName().contains(".")) {
+    if (!getMultiDirStrategyClassName().contains(TsFileConstant.PATH_SEPARATOR)) {
       multiDirStrategyClassName = MULTI_DIR_STRATEGY_PREFIX + multiDirStrategyClassName;
     }
 
@@ -909,6 +965,14 @@ public class IoTDBConfig {
 
   public void setEnableWal(boolean enableWal) {
     this.enableWal = enableWal;
+  }
+
+  public boolean isEnableDiscardOutOfOrderData() {
+    return enableDiscardOutOfOrderData;
+  }
+
+  public void setEnableDiscardOutOfOrderData(boolean enableDiscardOutOfOrderData) {
+    this.enableDiscardOutOfOrderData = enableDiscardOutOfOrderData;
   }
 
   public int getFlushWalThreshold() {
@@ -1207,6 +1271,14 @@ public class IoTDBConfig {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
+  public long getAllocateMemoryForReadWithoutCache() {
+    return allocateMemoryForReadWithoutCache;
+  }
+
+  public void setAllocateMemoryForReadWithoutCache(long allocateMemoryForReadWithoutCache) {
+    this.allocateMemoryForReadWithoutCache = allocateMemoryForReadWithoutCache;
+  }
+
   public boolean isEnableExternalSort() {
     return enableExternalSort;
   }
@@ -1279,6 +1351,30 @@ public class IoTDBConfig {
     this.chunkMergePointThreshold = chunkMergePointThreshold;
   }
 
+  public int getHotCompactionThreadNum() {
+    return hotCompactionThreadNum;
+  }
+
+  public void setHotCompactionThreadNum(int hotCompactionThreadNum) {
+    this.hotCompactionThreadNum = hotCompactionThreadNum;
+  }
+
+  public int getMergeWriteThroughputMbPerSec() {
+    return mergeWriteThroughputMbPerSec;
+  }
+
+  public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
+    this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  }
+
+  public int getMergeReadThroughputMbPerSec() {
+    return mergeReadThroughputMbPerSec;
+  }
+
+  public void setMergeReadThroughputMbPerSec(int mergeReadThroughputMbPerSec) {
+    this.mergeReadThroughputMbPerSec = mergeReadThroughputMbPerSec;
+  }
+
   public long getMemtableSizeThreshold() {
     return memtableSizeThreshold;
   }
@@ -1303,12 +1399,12 @@ public class IoTDBConfig {
     this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
   }
 
-  public int getMaxMergeChunkNumInTsFile() {
-    return maxMergeChunkNumInTsFile;
+  public int getMergePagePointNumberThreshold() {
+    return mergePagePointNumberThreshold;
   }
 
-  public void setMaxMergeChunkNumInTsFile(int maxMergeChunkNumInTsFile) {
-    this.maxMergeChunkNumInTsFile = maxMergeChunkNumInTsFile;
+  public void setMergePagePointNumberThreshold(int mergePagePointNumberThreshold) {
+    this.mergePagePointNumberThreshold = mergePagePointNumberThreshold;
   }
 
   public MergeFileStrategy getMergeFileStrategy() {
@@ -1320,20 +1416,46 @@ public class IoTDBConfig {
     this.mergeFileStrategy = mergeFileStrategy;
   }
 
-  public boolean isEnableVm() {
-    return enableVm;
+
+  public TsFileManagementStrategy getTsFileManagementStrategy() {
+    return tsFileManagementStrategy;
   }
 
-  public void setEnableVm(boolean enableVm) {
-    this.enableVm = enableVm;
+  public void setTsFileManagementStrategy(
+      TsFileManagementStrategy tsFileManagementStrategy) {
+    this.tsFileManagementStrategy = tsFileManagementStrategy;
   }
 
-  public int getMaxVmNum() {
-    return maxVmNum;
+  public int getMaxFileNumInEachLevel() {
+    return maxFileNumInEachLevel;
   }
 
-  public void setMaxVmNum(int maxVmNum) {
-    this.maxVmNum = maxVmNum;
+  public void setMaxFileNumInEachLevel(int maxFileNumInEachLevel) {
+    this.maxFileNumInEachLevel = maxFileNumInEachLevel;
+  }
+
+  public int getMaxLevelNum() {
+    return maxLevelNum;
+  }
+
+  public void setMaxLevelNum(int maxLevelNum) {
+    this.maxLevelNum = maxLevelNum;
+  }
+
+  public int getMaxUnseqFileNumInEachLevel() {
+    return maxUnseqFileNumInEachLevel;
+  }
+
+  public void setMaxUnseqFileNumInEachLevel(int maxUnseqFileNumInEachLevel) {
+    this.maxUnseqFileNumInEachLevel = maxUnseqFileNumInEachLevel;
+  }
+
+  public int getMaxUnseqLevelNum() {
+    return maxUnseqLevelNum;
+  }
+
+  public void setMaxUnseqLevelNum(int maxUnseqLevelNum) {
+    this.maxUnseqLevelNum = maxUnseqLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1391,6 +1513,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
     this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
+  }
+
+  public boolean isLastCacheEnabled() {
+    return lastCacheEnable;
+  }
+
+  public void setEnableLastCache(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {
@@ -1479,6 +1609,15 @@ public class IoTDBConfig {
   public void setIntegerStringInferType(
       TSDataType integerStringInferType) {
     this.integerStringInferType = integerStringInferType;
+  }
+
+  public void setLongStringInferType(
+      TSDataType longStringInferType) {
+    this.longStringInferType = longStringInferType;
+  }
+
+  public TSDataType getLongStringInferType() {
+    return longStringInferType;
   }
 
   public TSDataType getFloatingStringInferType() {
@@ -1811,5 +1950,13 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public int getMaxQueryDeduplicatedPathNum() {
+    return maxQueryDeduplicatedPathNum;
+  }
+
+  public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
+    this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 }

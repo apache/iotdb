@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.Map;
 
 /**
  * this class extends {@code RootOperator} and process getIndex statement
@@ -52,6 +51,10 @@ public class QueryOperator extends SFWOperator {
 
   private boolean isAlignByDevice = false;
   private boolean isAlignByTime = true;
+
+  private String column;
+
+  private boolean ascending = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -192,5 +195,21 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByTime(boolean groupByTime) {
     isGroupByTime = groupByTime;
+  }
+
+  public String getColumn() {
+    return column;
+  }
+
+  public void setColumn(String column) {
+    this.column = column;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }

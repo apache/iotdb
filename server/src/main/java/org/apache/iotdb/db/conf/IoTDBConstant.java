@@ -70,6 +70,8 @@ public class IoTDBConstant {
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
+  public static final String COLUMN_TAGS = "tags";
+  public static final String COLUMN_ATTRIBUTES = "attributes";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -89,6 +91,7 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_TEMPORARY = "temporary";
 
   public static final String PATH_WILDCARD = "*";
+  public static final String TIME = "time";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";

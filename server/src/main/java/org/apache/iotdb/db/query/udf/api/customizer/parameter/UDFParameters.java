@@ -21,9 +21,9 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
@@ -38,15 +38,15 @@ import org.apache.iotdb.tsfile.read.common.Path;
  */
 public class UDFParameters {
 
-  private final List<Path> paths;
+  private final List<PartialPath> paths;
   private final Map<String, String> attributes;
 
-  public UDFParameters(List<Path> paths, Map<String, String> attributes) {
+  public UDFParameters(List<PartialPath> paths, Map<String, String> attributes) {
     this.paths = paths;
     this.attributes = attributes;
   }
 
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return paths;
   }
 
@@ -54,7 +54,7 @@ public class UDFParameters {
     return attributes;
   }
 
-  public Path getPath(int index) {
+  public PartialPath getPath(int index) {
     return paths.get(index);
   }
 

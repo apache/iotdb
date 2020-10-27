@@ -20,7 +20,6 @@ package org.apache.iotdb.db.query.control;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -28,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,10 +35,10 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
@@ -56,46 +54,74 @@ import org.slf4j.LoggerFactory;
  */
 public class QueryResourceManager {
 
-  private AtomicLong queryIdAtom = new AtomicLong();
-  private QueryFileManager filePathsManager;
+  private final AtomicLong queryIdAtom = new AtomicLong();
+  private final QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
   // record the total number and size of chunks for each query id
-  private Map<Long, Long> chunkNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Integer> chunkNumMap = new ConcurrentHashMap<>();
   // chunk size represents the number of time-value points in the chunk
   private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
   // record the distinct tsfiles for each query id
-  // Just store weak references here in case GC failed for those objects
-  private Map<Long, Set<WeakReference<TsFileResource>>> seqFileNumMap = new ConcurrentHashMap<>();
-  private Map<Long, Set<WeakReference<TsFileResource>>> unseqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<TsFileResource>> unseqFileNumMap = new ConcurrentHashMap<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /**
    * Record temporary files used for external sorting.
    * <p>
    * Key: query job id. Value: temporary file list used for external sorting.
    */
-  private Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
+  private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
+
+  private final Map<Long, Long> queryIdEstimatedMemoryMap;
+
+  // current total free memory for reading process(not including the cache memory)
+  private final AtomicLong totalFreeMemoryForRead;
+
+  // estimated size for one point memory size, the unit is byte
+  private static final long POINT_ESTIMATED_SIZE = 16L;
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
+    queryIdEstimatedMemoryMap = new ConcurrentHashMap<>();
+    totalFreeMemoryForRead = new AtomicLong(
+        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForReadWithoutCache());
   }
 
   public static QueryResourceManager getInstance() {
     return QueryTokenManagerHelper.INSTANCE;
   }
 
+  public int getMaxDeduplicatedPathNum(int fetchSize) {
+    return Math.min((int) ((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE),
+        CONFIG.getMaxQueryDeduplicatedPathNum());
+  }
+
   /**
    * Register a new query. When a query request is created firstly, this method must be invoked.
    */
-  public long assignQueryId(boolean isDataQuery) {
+  public long assignQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
     long queryId = queryIdAtom.incrementAndGet();
     if (isDataQuery) {
       filePathsManager.addQueryId(queryId);
+      if (deduplicatedPathNum > 0) {
+        long estimatedMemoryUsage =
+            (long) deduplicatedPathNum * POINT_ESTIMATED_SIZE * (long) fetchSize;
+        // apply the memory successfully
+        if (totalFreeMemoryForRead.addAndGet(-estimatedMemoryUsage) >= 0) {
+          queryIdEstimatedMemoryMap.put(queryId, estimatedMemoryUsage);
+        } else {
+          totalFreeMemoryForRead.addAndGet(estimatedMemoryUsage);
+        }
+      }
     }
     return queryId;
   }
 
-  public Map<Long, Long> getChunkNumMap() {
+  public Map<Long, Integer> getChunkNumMap() {
     return chunkNumMap;
   }
 
@@ -114,21 +140,20 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  public QueryDataSource getQueryDataSource(Path selectedPath,
+  public QueryDataSource getQueryDataSource(PartialPath selectedPath,
       QueryContext context, Filter filter) throws StorageEngineException, QueryProcessException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource;
+    queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getSeqResources().stream().map(r -> new WeakReference<>(r))
-                  .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getSeqResources()));
       unseqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getUnseqResources().stream().map(r -> new WeakReference<>(r))
-              .collect(Collectors.toSet())));
+          .addAll((queryDataSource.getUnseqResources()));
     }
     return queryDataSource;
   }
@@ -137,12 +162,14 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (config.isEnablePerformanceTracing()) {
         boolean isprinted = false;
         if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
-          TracingManager.getInstance().writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
+          TracingManager.getInstance()
+              .writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
                   unseqFileNumMap.remove(queryId).size());
           isprinted = true;
         }
@@ -171,6 +198,13 @@ public class QueryResourceManager {
       }
       externalSortFileMap.remove(queryId);
     }
+
+    // put back the memory usage
+    Long estimatedMemoryUsage = queryIdEstimatedMemoryMap.remove(queryId);
+    if (estimatedMemoryUsage != null) {
+      totalFreeMemoryForRead.addAndGet(estimatedMemoryUsage);
+    }
+
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForQuery(queryId);
 

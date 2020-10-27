@@ -47,7 +47,7 @@
                             <descriptors>
                                 <descriptor>src/assembly/distribution.xml</descriptor>
                             </descriptors>
-                            <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                            <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
                     </execution>
                 </executions>
@@ -74,7 +74,7 @@
                                 <fileSet>
                                     <directory>${project.build.directory}</directory>
                                     <includes>
-                                        <include>apache-iotdb-${project.version}-incubating-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>

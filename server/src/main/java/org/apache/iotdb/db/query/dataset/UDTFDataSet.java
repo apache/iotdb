@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.query.dataset;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -38,7 +40,6 @@ import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -60,11 +61,11 @@ public abstract class UDTFDataSet extends QueryDataSet {
   /**
    * execute with value filters
    */
-  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
-      throws QueryProcessException, IOException {
-    super(deduplicatedPaths, deduplicatedDataTypes);
+  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<Boolean> cached) throws QueryProcessException, IOException {
+    super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
     inputLayer = new InputLayerWithValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
@@ -77,10 +78,11 @@ public abstract class UDTFDataSet extends QueryDataSet {
   /**
    * execute without value filters
    */
-  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
+  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
-    super(deduplicatedPaths, deduplicatedDataTypes);
+    super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
     inputLayer = new InputLayerWithoutValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
@@ -138,7 +140,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private int[] calculateReaderIndexes(UDTFExecutor executor) {
-    List<Path> paths = executor.getContext().getPaths();
+    List<PartialPath> paths = executor.getContext().getPaths();
     int[] readerIndexes = new int[paths.size()];
     for (int i = 0; i < readerIndexes.length; ++i) {
       readerIndexes[i] = udtfPlan.getReaderIndex(paths.get(i).getFullPath());

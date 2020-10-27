@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -36,7 +38,7 @@ public enum BasicOperatorType {
   EQ {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.eq((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.eq(value));
@@ -56,7 +58,7 @@ public enum BasicOperatorType {
   LTEQ {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.ltEq((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.ltEq(value));
@@ -76,7 +78,7 @@ public enum BasicOperatorType {
   LT {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.lt((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.lt(value));
@@ -96,7 +98,7 @@ public enum BasicOperatorType {
   GTEQ {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.gtEq((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.gtEq(value));
@@ -116,7 +118,7 @@ public enum BasicOperatorType {
   GT {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.gt((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.gt(value));
@@ -136,7 +138,7 @@ public enum BasicOperatorType {
   NOTEQUAL {
     @Override
     public <T extends Comparable<T>> IUnaryExpression getUnaryExpression(Path path, T value) {
-      if (path.equals("time")) {
+      if (path.equals(TIME)) {
         return new GlobalTimeExpression(TimeFilter.notEq((Long) value));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.notEq(value));

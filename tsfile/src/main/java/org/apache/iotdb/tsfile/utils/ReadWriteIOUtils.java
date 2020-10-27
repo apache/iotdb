@@ -60,6 +60,8 @@ public class ReadWriteIOUtils {
 
   private static final byte[] magicStringBytes;
 
+  private static final String RETURN_ERROR = "Intend to read %d bytes but %d are actually returned";
+
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
   }
@@ -146,6 +148,26 @@ public class ReadWriteIOUtils {
       stream.writeInt(bytes.length);
       length += 4;
       stream.write(bytes);
+      length += bytes.length;
+    }
+    return length;
+  }
+
+  public static int write(Map<String, String> map, ByteBuffer buffer) {
+    int length = 0;
+    byte[] bytes;
+    buffer.putInt(map.size());
+    length += 4;
+    for (Entry<String, String> entry : map.entrySet()) {
+      bytes = entry.getKey().getBytes();
+      buffer.putInt(bytes.length);
+      length += 4;
+      buffer.put(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      buffer.putInt(bytes.length);
+      length += 4;
+      buffer.put(bytes);
       length += bytes.length;
     }
     return length;
@@ -439,7 +461,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[SHORT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != SHORT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           SHORT_LEN, readLen));
     }
     return BytesUtils.bytesToShort(bytes);
@@ -459,7 +481,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[FLOAT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != FLOAT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           FLOAT_LEN, readLen));
     }
     return BytesUtils.bytesToFloat(bytes);
@@ -481,7 +503,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[DOUBLE_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != DOUBLE_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           DOUBLE_LEN, readLen));
     }
     return BytesUtils.bytesToDouble(bytes);
@@ -503,7 +525,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[INT_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != INT_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           INT_LEN, readLen));
     }
     return BytesUtils.bytesToInt(bytes);
@@ -535,7 +557,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[LONG_LEN];
     int readLen = inputStream.read(bytes);
     if (readLen != LONG_LEN) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           LONG_LEN, readLen));
     }
     return BytesUtils.bytesToLong(bytes);
@@ -556,7 +578,7 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[strLength];
     int readLen = inputStream.read(bytes, 0, strLength);
     if (readLen != strLength) {
-      throw new IOException(String.format("Intend to read %d bytes but %d are actually returned",
+      throw new IOException(String.format(RETURN_ERROR,
           strLength, readLen));
     }
     return new String(bytes, 0, strLength);
@@ -916,5 +938,13 @@ public class ReadWriteIOUtils {
     }
   }
 
+  public static ByteBuffer clone(ByteBuffer original) {
+    ByteBuffer clone = ByteBuffer.allocate(original.remaining());
+    while(original.hasRemaining()) {
+      clone.put(original.get());
+    }
 
+    clone.flip();
+    return clone;
+  }
 }

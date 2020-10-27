@@ -117,13 +117,14 @@ public class EnvironmentUtils {
       //do nothing
     }
     //try MetricService
+    Socket socket = new Socket();
     try {
-      Socket socket = new Socket();
       socket.connect(new InetSocketAddress("127.0.0.1", 8181));
       logger.error("stop MetricService failed. 8181 can be connected now.");
-      socket.close();
     } catch (Exception e) {
       //do nothing
+    } finally {
+      socket.close();
     }
 
     // clean storage group manager
@@ -209,7 +210,7 @@ public class EnvironmentUtils {
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

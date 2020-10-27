@@ -189,24 +189,24 @@ public class IoTDBJDBCResultSetTest {
 
     try (ResultSet resultSet = statement.getResultSet()) {
       // check columnInfoMap
-      Assert.assertEquals(resultSet.findColumn("Time"), 1);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s2"), 2);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s1"), 3);
-      Assert.assertEquals(resultSet.findColumn("root.vehicle.d0.s0"), 4);
+      Assert.assertEquals(1, resultSet.findColumn("Time"));
+      Assert.assertEquals(2, resultSet.findColumn("root.vehicle.d0.s2"));
+      Assert.assertEquals(3, resultSet.findColumn("root.vehicle.d0.s1"));
+      Assert.assertEquals(4, resultSet.findColumn("root.vehicle.d0.s0"));
 
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       // check columnInfoList
-      Assert.assertEquals(resultSetMetaData.getColumnName(1), "Time");
-      Assert.assertEquals(resultSetMetaData.getColumnName(2), "root.vehicle.d0.s2");
-      Assert.assertEquals(resultSetMetaData.getColumnName(3), "root.vehicle.d0.s1");
-      Assert.assertEquals(resultSetMetaData.getColumnName(4), "root.vehicle.d0.s0");
-      Assert.assertEquals(resultSetMetaData.getColumnName(5), "root.vehicle.d0.s2");
+      Assert.assertEquals("Time", resultSetMetaData.getColumnName(1));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(2));
+      Assert.assertEquals("root.vehicle.d0.s1", resultSetMetaData.getColumnName(3));
+      Assert.assertEquals("root.vehicle.d0.s0", resultSetMetaData.getColumnName(4));
+      Assert.assertEquals("root.vehicle.d0.s2", resultSetMetaData.getColumnName(5));
       // check columnTypeList
-      Assert.assertEquals(resultSetMetaData.getColumnType(1), Types.TIMESTAMP);
-      Assert.assertEquals(resultSetMetaData.getColumnType(2), Types.FLOAT);
-      Assert.assertEquals(resultSetMetaData.getColumnType(3), Types.BIGINT);
-      Assert.assertEquals(resultSetMetaData.getColumnType(4), Types.INTEGER);
-      Assert.assertEquals(resultSetMetaData.getColumnType(5), Types.FLOAT);
+      Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(2));
+      Assert.assertEquals(Types.BIGINT, resultSetMetaData.getColumnType(3));
+      Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(4));
+      Assert.assertEquals(Types.FLOAT, resultSetMetaData.getColumnType(5));
       // check fetched result
       int colCount = resultSetMetaData.getColumnCount();
       StringBuilder resultStr = new StringBuilder();

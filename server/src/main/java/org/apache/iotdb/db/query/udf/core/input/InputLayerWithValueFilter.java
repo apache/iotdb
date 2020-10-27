@@ -21,18 +21,18 @@ package org.apache.iotdb.db.query.udf.core.input;
 
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 public class InputLayerWithValueFilter extends InputLayer {
 
-  public InputLayerWithValueFilter(long queryId, float memoryBudgetInMB, List<Path> paths,
+  public InputLayerWithValueFilter(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
       List<TSDataType> dataTypes, TimeGenerator timeGenerator, List<IReaderByTimestamp> readers,
       List<Boolean> cached) throws QueryProcessException {
     super(queryId, memoryBudgetInMB,
-        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached));
+        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
   }
 }

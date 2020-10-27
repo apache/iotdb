@@ -22,17 +22,23 @@ package org.apache.iotdb.tsfile.read;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -106,6 +112,37 @@ public class TsFileSequenceReaderTest {
      * Assert.assertEquals(chunkGroupMetaData.getEndOffsetOfChunkGroup(), (long)
      * pair.right); } }
      */
+    reader.close();
+  }
+
+  @Test
+  public void readChunksInDevice() throws IOException {
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
+
+    for (String device : reader.getAllDevices()) {
+      Map<String, Set<Chunk>> expectedChunksInDevice = new HashMap<>();
+      for (Entry<String, List<ChunkMetadata>> entry : reader.readChunkMetadataInDevice(device)
+          .entrySet()) {
+        expectedChunksInDevice.putIfAbsent(entry.getKey(), new HashSet<>());
+        for (ChunkMetadata chunkMetadata : entry.getValue()) {
+          expectedChunksInDevice.get(entry.getKey()).add(reader.readMemChunk(chunkMetadata));
+        }
+      }
+
+      Map<String, List<Chunk>> actualChunksInDevice = reader.readChunksInDevice(device);
+
+      for (Entry<String, Set<Chunk>> entry : expectedChunksInDevice.entrySet()) {
+        Set<String> expectedChunkStrings = entry.getValue().stream()
+            .map(chunk -> chunk.getHeader().toString()).collect(Collectors.toSet());
+
+        Assert.assertTrue(actualChunksInDevice.containsKey(entry.getKey()));
+        Set<String> actualChunkStrings = actualChunksInDevice.get(entry.getKey()).stream()
+            .map(chunk -> chunk.getHeader().toString()).collect(Collectors.toSet());
+
+        Assert.assertEquals(expectedChunkStrings, actualChunkStrings);
+      }
+    }
+
     reader.close();
   }
 }

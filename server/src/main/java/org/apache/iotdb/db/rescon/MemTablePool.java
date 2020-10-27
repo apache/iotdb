@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
 
 public class MemTablePool {
 
@@ -96,7 +95,7 @@ public class MemTablePool {
       }
       memTable.clear();
       availableMemTables.push(memTable);
-      availableMemTables.notify();
+      availableMemTables.notifyAll();
       logger.debug("{} return a memtable, stack size {}", storageGroup, availableMemTables.size());
     }
   }

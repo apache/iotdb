@@ -189,6 +189,7 @@ public abstract class AbstractCli {
     return options;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
@@ -327,6 +328,7 @@ public abstract class AbstractCli {
     return args;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   static String[] processExecuteArgs(String[] args) {
     int index = -1;
     for (int i = 0; i < args.length; i++) {
@@ -342,11 +344,12 @@ public abstract class AbstractCli {
       return args;
     } else {
       StringBuilder executeCommand = new StringBuilder();
-      for (int j = index + 1; j < args.length; j++) {
+      /*for (int j = index + 1; j < args.length; j++) {
         executeCommand.append(args[j]).append(" ");
-      }
+      }*/
+      executeCommand.append(args[index + 1]);
       // remove last space
-      executeCommand.deleteCharAt(executeCommand.length() - 1);
+      //executeCommand.deleteCharAt(executeCommand.length() - 1);
       // some bashes may not remove quotes of parameters automatically, remove them in that case
       if (executeCommand.charAt(0) == '\'' || executeCommand.charAt(0) == '\"') {
         executeCommand.deleteCharAt(0);
@@ -358,8 +361,11 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
-      args = Arrays.copyOfRange(args, 0, index);
-      return args;
+      //args = Arrays.copyOfRange(args, 0, index);
+      // remove "-e" and it's parameter
+      String[] newArgs = ArrayUtils.remove(args, index);
+      newArgs = ArrayUtils.remove(newArgs, index);
+      return newArgs;
     }
   }
 
@@ -465,6 +471,13 @@ public abstract class AbstractCli {
     println("Time display type has set to " + cmd.split("=")[1].trim());
   }
 
+  /**
+   * if cli has not specified a zondId, it will be set to cli's system timezone by default
+   * otherwise for insert and query accuracy cli should set timezone the same for all sessions
+   * @param specialCmd
+   * @param cmd
+   * @param connection
+   */
   private static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
@@ -597,6 +610,7 @@ public abstract class AbstractCli {
    * @return List<List<String>> result
    * @throws SQLException throw exception
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);

@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 /**
  * MergeContext records the shared information between merge sub-tasks.
@@ -34,7 +34,7 @@ public class MergeContext {
 
   private Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
   private Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();
-  private Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
+  private Map<TsFileResource, Map<PartialPath, List<Long>>> unmergedChunkStartTimes = new HashMap<>();
 
   private AtomicInteger totalChunkWritten = new AtomicInteger();
   private AtomicLong totalPointWritten = new AtomicLong();
@@ -63,12 +63,12 @@ public class MergeContext {
     this.unmergedChunkCnt = unmergedChunkCnt;
   }
 
-  public Map<TsFileResource, Map<Path, List<Long>>> getUnmergedChunkStartTimes() {
+  public Map<TsFileResource, Map<PartialPath, List<Long>>> getUnmergedChunkStartTimes() {
     return unmergedChunkStartTimes;
   }
 
   public void setUnmergedChunkStartTimes(
-      Map<TsFileResource, Map<Path, List<Long>>> unmergedChunkStartTimes) {
+      Map<TsFileResource, Map<PartialPath, List<Long>>> unmergedChunkStartTimes) {
     this.unmergedChunkStartTimes = unmergedChunkStartTimes;
   }
 

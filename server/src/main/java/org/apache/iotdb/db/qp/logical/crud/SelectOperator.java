@@ -24,6 +24,10 @@ import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.tsfile.read.common.Path;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 /**
  * this class maintains information from select clause.
@@ -31,8 +35,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public final class SelectOperator extends Operator {
 
   private final ZoneId zoneId;
-
-  private List<Path> suffixList;
+  private List<PartialPath> suffixList;
   private List<String> aggregations;
   private List<UDFContext> udfList;
 
@@ -59,11 +62,11 @@ public final class SelectOperator extends Operator {
     return zoneId;
   }
 
-  public void addSelectPath(Path suffixPath) {
+  public void addSelectPath(PartialPath suffixPath) {
     suffixList.add(suffixPath);
   }
 
-  public void addClusterPath(Path suffixPath, String aggregation) {
+  public void addClusterPath(PartialPath suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
     if (aggregation != null) {
@@ -91,11 +94,11 @@ public final class SelectOperator extends Operator {
     return hasBuiltinAggregation; // todo: hasBuiltinAggregation || hasUDAF
   }
 
-  public void setSuffixPathList(List<Path> suffixPaths) {
+  public void setSuffixPathList(List<PartialPath> suffixPaths) {
     suffixList = suffixPaths;
   }
 
-  public List<Path> getSuffixPaths() {
+  public List<PartialPath> getSuffixPaths() {
     return suffixList;
   }
 

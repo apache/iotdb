@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.querycontext;
 
+import java.io.IOException;
+import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -30,9 +32,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
-import java.io.IOException;
-import java.util.Map;
-
 public class ReadOnlyMemChunk {
 
   private String measurementUid;
@@ -40,7 +39,6 @@ public class ReadOnlyMemChunk {
   private TSEncoding encoding;
 
   private long version;
-  Map<String, String> props;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
@@ -57,8 +55,7 @@ public class ReadOnlyMemChunk {
     this.dataType = dataType;
     this.encoding = encoding;
     this.version = version;
-    this.props = props;
-    if (props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+    if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
     }
     tvList.sort();

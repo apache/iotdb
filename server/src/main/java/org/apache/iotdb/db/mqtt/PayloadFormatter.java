@@ -18,7 +18,6 @@
 package org.apache.iotdb.db.mqtt;
 
 import io.netty.buffer.ByteBuf;
-
 import java.util.List;
 
 /**

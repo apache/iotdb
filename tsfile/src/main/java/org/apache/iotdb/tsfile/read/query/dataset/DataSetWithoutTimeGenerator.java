@@ -95,6 +95,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     return timeHeap.size() > 0;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
     long minTime = timeHeapGet();

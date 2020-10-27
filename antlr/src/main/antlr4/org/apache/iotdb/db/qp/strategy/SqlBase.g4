@@ -23,15 +23,21 @@ singleStatement
     : statement EOF
     ;
 
+/*
+ * According to The Definitive ANTLR 4 Reference, 11. Altering the Parse with Semantic Predicates, Altering the Parse with Semantic Predicates.
+ * "It s a good idea to avoid embedding predicates in the parser when possible for efficiency and clarity reasons."
+ * So if unnecessary, don't use embedding predicates.
+ */
+
 statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO fullPath #setStorageGroup
-    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
+    | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
@@ -40,8 +46,8 @@ statement
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
-    | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
+    | CREATE USER userName=ID password= stringLiteral#createUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=stringLiteral #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -51,16 +57,16 @@ statement
     | REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath #revokeRole
     | GRANT roleName=ID TO userName=ID #grantRoleToUser
     | REVOKE roleName = ID FROM userName = ID #revokeRoleFromUser
-    | LOAD TIMESERIES (fileName=STRING_LITERAL) prefixPath #loadStatement
+    | LOAD TIMESERIES (fileName=stringLiteral) prefixPath#loadStatement
     | GRANT WATERMARK_EMBEDDING TO rootOrId (COMMA rootOrId)* #grantWatermarkEmbedding
     | REVOKE WATERMARK_EMBEDDING FROM rootOrId (COMMA rootOrId)* #revokeWatermarkEmbedding
     | LIST USER #listUser
     | LIST ROLE #listRole
-    | LIST PRIVILEGES USER username=ID ON prefixPath #listPrivilegesUser
+    | LIST PRIVILEGES USER username=rootOrId ON prefixPath #listPrivilegesUser
     | LIST PRIVILEGES ROLE roleName=ID ON prefixPath #listPrivilegesRole
-    | LIST USER PRIVILEGES username = ID #listUserPrivileges
+    | LIST USER PRIVILEGES username =rootOrId #listUserPrivileges
     | LIST ROLE PRIVILEGES roleName = ID #listRolePrivileges
-    | LIST ALL ROLE OF USER username = ID #listAllRoleOfUser
+    | LIST ALL ROLE OF USER username = rootOrId #listAllRoleOfUser
     | LIST ALL USER OF ROLE roleName = ID #listAllUserOfRole
     | SET TTL TO path=prefixPath time=INT #setTTLStatement
     | UNSET TTL TO path=prefixPath #unsetTTLStatement
@@ -70,21 +76,23 @@ statement
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
-    | SHOW STORAGE GROUP #showStorageGroup
+    | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT DEVICES prefixPath? #countDevices
+    | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
-    | REMOVE STRING_LITERAL #removeFile
-    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | REMOVE stringLiteral #removeFile
+    | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
-    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=STRING_LITERAL #createFunction
+    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
     | DROP FUNCTION udfName=ID #dropFunction
     | SHOW TEMPORARY? FUNCTIONS #showFunctions // not support yet
     | SELECT INDEX func=ID //not support yet
@@ -103,9 +111,10 @@ statement
 
 selectElements
     : aggregationCall (COMMA aggregationCall)* #aggregationElement
-    | suffixPathOrUdtfCall (COMMA suffixPathOrUdtfCall)* #tableElement
-    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
+    | tableCall (COMMA tableCall)* #tableElement
     | lastClause #lastElement
+    | asClause (COMMA asClause)* #asElement
+    | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
 aggregationCall
@@ -113,9 +122,10 @@ aggregationCall
     | udfCall
     ;
 
-suffixPathOrUdtfCall
+tableCall
     : suffixPath
     | udfCall
+    | SINGLE_QUOTE_STRING_LITERAL
     ;
 
 udfCall
@@ -127,7 +137,7 @@ udfSuffixPaths
     ;
 
 udfAttribute
-    : COMMA udfAttributeKey=STRING_LITERAL OPERATOR_EQ udfAttributeValue=STRING_LITERAL
+    : COMMA udfAttributeKey=stringLiteral OPERATOR_EQ udfAttributeValue=stringLiteral
     ;
 
 builtInFunctionCall
@@ -146,8 +156,17 @@ functionName
     | LAST_VALUE
     ;
 
+functionAsClause
+    : builtInFunctionCall (AS ID)?
+    ;
+
 lastClause
     : LAST suffixPath (COMMA suffixPath)*
+    | LAST asClause (COMMA asClause)*
+    ;
+
+asClause
+    : suffixPath (AS ID)?
     ;
 
 alias
@@ -168,7 +187,7 @@ aliasClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause
@@ -232,17 +251,22 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByTimeClause specialLimit?
-    | groupByFillClause specialLimit?
+    | orderByTimeClause specialLimit?
+    | groupByTimeClause orderByTimeClause? specialLimit?
+    | groupByFillClause orderByTimeClause? specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause specialLimit?
+    | groupByLevelClause orderByTimeClause? specialLimit?
     ;
 
 specialLimit
     : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
+    ;
+
+orderByTimeClause
+    : ORDER BY TIME (DESC | ASC)?
     ;
 
 limitClause
@@ -344,12 +368,12 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
 insertValuesSpec
-    : LR_BRACKET dateFormat (COMMA constant)* RR_BRACKET
-    | LR_BRACKET INT (COMMA constant)* RR_BRACKET
+    : LR_BRACKET dateFormat (COMMA constant)+ RR_BRACKET
+    | LR_BRACKET INT (COMMA constant)+ RR_BRACKET
     ;
 
 setCol
@@ -357,7 +381,7 @@ setCol
     ;
 
 privileges
-    : STRING_LITERAL (COMMA STRING_LITERAL)*
+    : stringLiteral (COMMA stringLiteral)*
     ;
 
 rootOrId
@@ -379,7 +403,7 @@ timeValue
 propertyValue
     : INT
     | ID
-    | STRING_LITERAL
+    | stringLiteral
     | constant
     ;
 
@@ -398,7 +422,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | STRING_LITERAL
+    | DOUBLE_QUOTE_STRING_LITERAL
     | ID STAR
     | DURATION
     | encoding
@@ -407,13 +431,109 @@ nodeName
     | MINUS? EXPONENT
     | MINUS? INT
     | booleanClause
+    | CREATE
+    | INSERT
+    | UPDATE
+    | DELETE
+    | SELECT
+    | SHOW
+    | GRANT
+    | INTO
+    | SET
+    | WHERE
+    | FROM
+    | TO
+    | BY
+    | DEVICE
+    | CONFIGURATION
+    | DESCRIBE
+    | SLIMIT
+    | LIMIT
+    | UNLINK
+    | OFFSET
+    | SOFFSET
+    | FILL
+    | LINEAR
+    | PREVIOUS
+    | PREVIOUSUNTILLAST
+    | METADATA
+    | TIMESERIES
+    | TIMESTAMP
+    | PROPERTY
+    | WITH
+    | DATATYPE
+    | COMPRESSOR
+    | STORAGE
+    | GROUP
+    | LABEL
+    | ADD
+    | UPSERT
+    | VALUES
+    | NOW
+    | LINK
+    | INDEX
+    | USING
+    | ON
+    | DROP
+    | MERGE
+    | LIST
+    | USER
+    | PRIVILEGES
+    | ROLE
+    | ALL
+    | OF
+    | ALTER
+    | PASSWORD
+    | REVOKE
+    | LOAD
+    | WATERMARK_EMBEDDING
+    | UNSET
+    | TTL
+    | FLUSH
+    | TASK
+    | INFO
+    | DYNAMIC
+    | PARAMETER
+    | VERSION
+    | REMOVE
+    | MOVE
+    | CHILD
+    | PATHS
+    | DEVICES
+    | COUNT
+    | NODES
+    | LEVEL
+    | MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
+    | LAST
+    | DISABLE
+    | ALIGN
+    | COMPRESSION
+    | TIME
+    | ATTRIBUTES
+    | TAGS
+    | RENAME
+    | FULL
+    | CLEAR
+    | CACHE
+    | SNAPSHOT
+    | FOR
+    | SCHEMA
+    | TRACING
+    | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
     ;
 
 nodeNameWithoutStar
     : ID
-    | STRING_LITERAL
+    | DOUBLE_QUOTE_STRING_LITERAL
     | DURATION
     | encoding
     | dataType
@@ -421,6 +541,102 @@ nodeNameWithoutStar
     | MINUS? EXPONENT
     | MINUS? INT
     | booleanClause
+    | CREATE
+    | INSERT
+    | UPDATE
+    | DELETE
+    | SELECT
+    | SHOW
+    | GRANT
+    | INTO
+    | SET
+    | WHERE
+    | FROM
+    | TO
+    | BY
+    | DEVICE
+    | CONFIGURATION
+    | DESCRIBE
+    | SLIMIT
+    | LIMIT
+    | UNLINK
+    | OFFSET
+    | SOFFSET
+    | FILL
+    | LINEAR
+    | PREVIOUS
+    | PREVIOUSUNTILLAST
+    | METADATA
+    | TIMESERIES
+    | TIMESTAMP
+    | PROPERTY
+    | WITH
+    | DATATYPE
+    | COMPRESSOR
+    | STORAGE
+    | GROUP
+    | LABEL
+    | ADD
+    | UPSERT
+    | VALUES
+    | NOW
+    | LINK
+    | INDEX
+    | USING
+    | ON
+    | DROP
+    | MERGE
+    | LIST
+    | USER
+    | PRIVILEGES
+    | ROLE
+    | ALL
+    | OF
+    | ALTER
+    | PASSWORD
+    | REVOKE
+    | LOAD
+    | WATERMARK_EMBEDDING
+    | UNSET
+    | TTL
+    | FLUSH
+    | TASK
+    | INFO
+    | DYNAMIC
+    | PARAMETER
+    | VERSION
+    | REMOVE
+    | MOVE
+    | CHILD
+    | PATHS
+    | DEVICES
+    | COUNT
+    | NODES
+    | LEVEL
+    | MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
+    | LAST
+    | DISABLE
+    | ALIGN
+    | COMPRESSION
+    | TIME
+    | ATTRIBUTES
+    | TAGS
+    | RENAME
+    | FULL
+    | CLEAR
+    | CACHE
+    | SNAPSHOT
+    | FOR
+    | SCHEMA
+    | TRACING
+    | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
     ;
@@ -439,7 +655,7 @@ constant
     | NaN
     | MINUS? realLiteral
     | MINUS? INT
-    | STRING_LITERAL
+    | stringLiteral
     | booleanClause
     ;
 
@@ -520,6 +736,10 @@ FROM
 
 TO
     : T O
+    ;
+
+ORDER
+    : O R D E R
     ;
 
 BY
@@ -992,6 +1212,12 @@ AS
     : A S
     ;
 
+DESC
+    : D E S C
+    ;
+ASC
+    : A S C
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -1055,9 +1281,9 @@ UNDERLINE : '_';
 
 NaN : 'NaN';
 
-STRING_LITERAL
-   : DOUBLE_QUOTE_STRING_LITERAL
-   | SINGLE_QUOTE_STRING_LITERAL
+stringLiteral
+   : SINGLE_QUOTE_STRING_LITERAL
+   | DOUBLE_QUOTE_STRING_LITERAL
    ;
 
 INT : [0-9]+;
@@ -1117,11 +1343,11 @@ fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
 
-fragment DOUBLE_QUOTE_STRING_LITERAL
+DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'
     ;
 
-fragment SINGLE_QUOTE_STRING_LITERAL
+SINGLE_QUOTE_STRING_LITERAL
     : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 

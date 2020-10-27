@@ -22,7 +22,6 @@ package org.apache.iotdb.db.monitor;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 
 public interface IStatistic {

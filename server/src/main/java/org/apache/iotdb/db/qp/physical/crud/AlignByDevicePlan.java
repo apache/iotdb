@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,8 +29,9 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 public class AlignByDevicePlan extends QueryPlan {
 
   private List<String> measurements; // to record result measurement columns, e.g. temperature, status, speed
+  private Map<String, String> measurementAliasMap; // select s1, s2 as speed from root, then s2 -> speed
   // to check data type consistency for the same name sensor of different devices
-  private List<String> devices;
+  private List<PartialPath> devices;
   // to record the datatype of the column in the result set
   private Map<String, TSDataType> columnDataTypeMap;
   private Map<String, IExpression> deviceToFilterMap;
@@ -56,11 +58,20 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
-  public void setDevices(List<String> devices) {
+  public void setMeasurementAliasMap(
+      Map<String, String> measurementAliasMap) {
+    this.measurementAliasMap = measurementAliasMap;
+  }
+
+  public Map<String, String> getMeasurementAliasMap() {
+    return measurementAliasMap;
+  }
+
+  public void setDevices(List<PartialPath> devices) {
     this.devices = devices;
   }
 
-  public List<String> getDevices() {
+  public List<PartialPath> getDevices() {
     return devices;
   }
 

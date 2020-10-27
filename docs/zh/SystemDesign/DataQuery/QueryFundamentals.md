@@ -30,7 +30,7 @@ IoTDB会将顺序和乱序文件分开存储在data/sequence和data/unsequence�
 
 ## 读取TsFile的一般流程
 
-TsFile 各级结构在前面的[TsFile](../TsFile/TsFile.html)文档中已有介绍，读取一个时间序列的过程需要按照层级各级展开TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData。
+TsFile 各级结构在前面的[TsFile](../TsFile/TsFile.md)文档中已有介绍，读取一个时间序列的过程需要按照层级各级展开TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData。
 
 文件读取的功能方法在
 `org.apache.iotdb.db.utils.FileLoaderUtils`

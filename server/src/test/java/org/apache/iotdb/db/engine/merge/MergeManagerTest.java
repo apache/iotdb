@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.merge;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.util.concurrent.RateLimiter;
 import java.util.PriorityQueue;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask;
@@ -29,6 +30,17 @@ import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.junit.Test;
 
 public class MergeManagerTest extends MergeTest {
+
+  @Test
+  public void testRateLimiter() {
+    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
+    long startTime = System.currentTimeMillis();
+    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
+    assertTrue((System.currentTimeMillis() - startTime) <= 1000);
+    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
+    assertTrue((System.currentTimeMillis() - startTime) >= 9000);
+  }
+
 
   @Test
   public void testGenMergeReport() {

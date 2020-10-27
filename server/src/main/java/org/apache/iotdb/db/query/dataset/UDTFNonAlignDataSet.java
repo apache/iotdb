@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -52,10 +52,10 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   /**
    * execute with value filter
    */
-  public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes, TimeGenerator timestampGenerator,
-      List<IReaderByTimestamp> readersOfSelectedSeries, List<Boolean> cached)
-      throws IOException, QueryProcessException {
+  public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<Boolean> cached) throws IOException, QueryProcessException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, timestampGenerator,
         readersOfSelectedSeries, cached);
     isInitialized = false;
@@ -64,8 +64,9 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   /**
    * execute without value filter
    */
-  public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan, List<Path> deduplicatedPaths,
-      List<TSDataType> deduplicatedDataTypes, List<ManagedSeriesReader> readersOfSelectedSeries)
+  public UDTFNonAlignDataSet(QueryContext context, UDTFPlan udtfPlan,
+      List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
+      List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
     super(context, udtfPlan, deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
     isInitialized = false;

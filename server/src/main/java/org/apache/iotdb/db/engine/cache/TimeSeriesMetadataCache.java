@@ -97,6 +97,7 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
+  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
       throws IOException {
     if (!CACHE_ENABLE) {
@@ -160,7 +161,11 @@ public class TimeSeriesMetadataCache {
         }
       }
     }
-    return new TimeseriesMetadata(timeseriesMetadata);
+    if (timeseriesMetadata == null) {
+      return null;
+    } else {
+      return new TimeseriesMetadata(timeseriesMetadata);
+    }
   }
 
 

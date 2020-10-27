@@ -37,7 +37,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 | ------------- | ------------- | ------------ | -------- |
 | `2.4.3`       | `2.11.8`      | `1.8`        | `0.10.0` |
 
-> 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/incubator-iotdb/tree/master/tsfile
+> 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
 
 ## 3. 快速开始
 
@@ -51,7 +51,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
+- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
 ### 分布式模式
 
@@ -65,7 +65,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
-- 有关如何获取TsFile的信息，请参见https://github.com/apache/incubator-iotdb/tree/master/tsfile。
+- 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
 
 ## 4. 数据类型对应
 
@@ -137,7 +137,7 @@ TsFile中的现有数据如下：
 ### 示例1：从本地文件系统读取
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val wide_df = spark.read.tsfile("test.tsfile")  
 wide_df.show
 
@@ -148,7 +148,7 @@ narrow_df.show
 ### 示例2：从hadoop文件系统读取
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val wide_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 wide_df.show
 
@@ -159,7 +159,7 @@ narrow_df.show
 ### 示例3：从特定目录读取
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/usr/hadoop") 
 df.show
 ```
@@ -171,7 +171,7 @@ df.show
 ### 示例4：广泛形式的查询
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select * from tsfile_table where `device_1.sensor_1`>0 and `device_1.sensor_2` < 22")
@@ -179,7 +179,7 @@ newDf.show
 ```
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select count(*) from tsfile_table")
@@ -189,7 +189,7 @@ newDf.show
 ### 示例5：缩小形式的查询
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select * from tsfile_table where device_name = 'root.ln.wf02.wt02' and temperature > 5")
@@ -197,7 +197,7 @@ newDf.show
 ```
 
 ```scala
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.createOrReplaceTempView("tsfile_table")
 val newDf = spark.sql("select count(*) from tsfile_table")
@@ -208,7 +208,7 @@ newDf.show
 
 ```scala
 // we only support wide_form table to write
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile") 
 df.show
@@ -222,7 +222,7 @@ newDf.show
 
 ```scala
 // we only support wide_form table to write
-import org.apache.iotdb.tsfile._
+import org.apache.iotdb.spark.tsfile._
 
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
 df.show

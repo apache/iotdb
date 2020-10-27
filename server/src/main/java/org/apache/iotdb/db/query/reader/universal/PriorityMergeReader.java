@@ -18,31 +18,39 @@
  */
 package org.apache.iotdb.db.query.reader.universal;
 
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import java.io.IOException;
 import java.util.List;
 import java.util.PriorityQueue;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 /**
  * This class implements {@link IPointReader} for data sources with different priorities.
  */
 public class PriorityMergeReader implements IPointReader {
 
-  // largest end time of all added readers
-  private long currentLargestEndTime;
+  // max time of all added readers in PriorityMergeReader
+  // or min time of all added readers in DescPriorityMergeReader
+  protected long currentReadStopTime;
 
-  PriorityQueue<Element> heap = new PriorityQueue<>((o1, o2) -> {
-    int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
-        o2.timeValuePair.getTimestamp());
-    return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
-  });
+  protected PriorityQueue<Element> heap;
 
   public PriorityMergeReader() {
+    heap = new PriorityQueue<>((o1, o2) -> {
+      int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+          o2.timeValuePair.getTimestamp());
+      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+    });
   }
 
+  // only used in external sort, need to refactor later
   public PriorityMergeReader(List<IPointReader> prioritySeriesReaders, int startPriority)
       throws IOException {
+    heap = new PriorityQueue<>((o1, o2) -> {
+      int timeCompare = Long.compare(o1.timeValuePair.getTimestamp(),
+          o2.timeValuePair.getTimestamp());
+      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+    });
     for (IPointReader reader : prioritySeriesReaders) {
       addReader(reader, startPriority++);
     }
@@ -59,14 +67,14 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
-      currentLargestEndTime = Math.max(currentLargestEndTime, endTime);
+      currentReadStopTime = Math.max(currentReadStopTime, endTime);
     } else {
       reader.close();
     }
   }
 
-  public long getCurrentLargestEndTime() {
-    return currentLargestEndTime;
+  public long getCurrentReadStopTime() {
+    return currentReadStopTime;
   }
 
   @Override

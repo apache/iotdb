@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
-import java.io.IOException;
-import java.util.List;
 
 public class RawQueryDataSetWithValueFilter extends QueryDataSet {
 
@@ -43,10 +43,13 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
    * @param dataTypes     time series data type
    * @param timeGenerator EngineTimeGenerator object
    * @param readers       readers in List(IReaderByTimeStamp) structure
+   * @param ascending     specifies how the data should be sorted,'True' means read in ascending
+   *                      time order, and 'false' means read in descending time order
    */
-  public RawQueryDataSetWithValueFilter(List<Path> paths, List<TSDataType> dataTypes,
-      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached) {
-    super(paths, dataTypes);
+  public RawQueryDataSetWithValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
+      TimeGenerator timeGenerator, List<IReaderByTimestamp> readers, List<Boolean> cached,
+      boolean ascending) {
+    super(new ArrayList<>(paths), dataTypes, ascending);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
     this.cached = cached;

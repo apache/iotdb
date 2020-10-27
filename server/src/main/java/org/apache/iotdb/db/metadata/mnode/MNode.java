@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -40,12 +40,13 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance()
+      .getCachedPool();
 
   /**
    * Name of the MNode
    */
   protected String name;
-
   protected MNode parent;
 
   /**
@@ -53,10 +54,18 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
-  transient Map<String, MNode> children;
-  transient Map<String, MNode> aliasChildren;
+  /**
+   * use in Measurement Node so it's protected
+   * suppress warnings reason: volatile for double synchronized check
+   */
+  @SuppressWarnings("squid:S3077")
+  protected transient volatile ConcurrentMap<String, MNode> children = null;
 
-  protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
+  /**
+   * suppress warnings reason: volatile for double synchronized check
+   */
+  @SuppressWarnings("squid:S3077")
+  private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
 
   /**
    * Constructor of MNode.
@@ -75,43 +84,42 @@ public class MNode implements Serializable {
   }
 
   /**
-   * node key, name or alias
+   * add a child to current mnode
+   * @param name child's name
+   * @param child child's node
    */
   public void addChild(String name, MNode child) {
+    /* use cpu time to exchange memory
+     * measurementNode's children should be null to save memory
+     * add child method will only be called when writing MTree, which is not a frequent operation
+     */
     if (children == null) {
-      children = new LinkedHashMap<>();
+      // double check, children is volatile
+      synchronized (this) {
+        if (children == null) {
+          children = new ConcurrentHashMap<>();
+        }
+      }
     }
-    children.put(name, child);
+
+    children.putIfAbsent(name, child);
   }
 
   /**
    * delete a child
    */
-  public void deleteChild(String name) throws DeleteFailedException {
-    if (children != null && children.containsKey(name)) {
-      // acquire the write lock of its child node.
-      Lock writeLock = (children.get(name)).lock.writeLock();
-      if (writeLock.tryLock()) {
-        children.remove(name);
-        writeLock.unlock();
-      } else {
-        throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
-      }
+  public void deleteChild(String name) {
+    if (children != null) {
+      children.remove(name);
     }
   }
 
   /**
    * delete the alias of a child
    */
-  public void deleteAliasChild(String alias) throws DeleteFailedException {
-    if (aliasChildren == null) {
-      return;
-    }
-    if (lock.writeLock().tryLock()) {
+  public void deleteAliasChild(String alias) {
+    if (aliasChildren != null) {
       aliasChildren.remove(alias);
-      lock.writeLock().unlock();
-    } else {
-      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + alias);
     }
   }
 
@@ -146,22 +154,44 @@ public class MNode implements Serializable {
   /**
    * add an alias
    */
-  public void addAlias(String alias, MNode child) {
+  public boolean addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
-      aliasChildren = new LinkedHashMap<>();
+      // double check, alias children volatile
+      synchronized (this) {
+        if (aliasChildren == null) {
+          aliasChildren = new ConcurrentHashMap<>();
+        }
+      }
     }
-    aliasChildren.put(alias, child);
+
+    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
   /**
    * get full path
    */
   public String getFullPath() {
-    if (fullPath != null) {
-      return fullPath;
+    if (fullPath == null) {
+      fullPath = concatFullPath();
+      String cachedFullPath = cachedPathPool.get(fullPath);
+      if (cachedFullPath == null) {
+        cachedPathPool.put(fullPath, fullPath);
+      } else {
+        fullPath = cachedFullPath;
+      }
     }
-    fullPath = concatFullPath();
     return fullPath;
+  }
+
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    MNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
+    }
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
   String concatFullPath() {
@@ -189,9 +219,13 @@ public class MNode implements Serializable {
 
   public Map<String, MNode> getChildren() {
     if (children == null) {
-      return new LinkedHashMap<>();
+      return Collections.emptyMap();
     }
     return children;
+  }
+
+  public void setChildren(ConcurrentMap<String, MNode> children) {
+    this.children = children;
   }
 
   public String getName() {
@@ -202,17 +236,12 @@ public class MNode implements Serializable {
     this.name = name;
   }
 
-  public void setChildren(Map<String, MNode> children) {
-    this.children = children;
-  }
-
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
+    String s = String.valueOf(MetadataConstant.MNODE_TYPE) + "," + name + ","
+        + (children == null ? "0" : children.size());
+    bw.write(s);
     bw.newLine();
   }
 
@@ -222,22 +251,6 @@ public class MNode implements Serializable {
     }
     for (Entry<String, MNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(bw);
-    }
-  }
-
-  public void readLock() {
-    MNode node = this;
-    while (node != null) {
-      node.lock.readLock().lock();
-      node = node.parent;
-    }
-  }
-
-  public void readUnlock() {
-    MNode node = this;
-    while (node != null) {
-      node.lock.readLock().unlock();
-      node = node.parent;
     }
   }
 }

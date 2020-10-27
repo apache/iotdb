@@ -34,7 +34,7 @@ import java.util.Objects;
 
 public class TsFileDeserializer {
   private static final Logger LOG = LoggerFactory.getLogger(TsFileDeserializer.class);
-
+  private static final String ERROR_MSG = "Unexpected data type: %s for Date TypeInfo: %s";
   private List<Object> row;
 
   /**
@@ -52,6 +52,7 @@ public class TsFileDeserializer {
    * @return A list of objects suitable for Hive to work with further
    * @throws TsFileSerDeException For any exception during deserialization
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public Object deserialize(List<String> columnNames, List<TypeInfo> columnTypes,
                             Writable writable, String deviceId) throws TsFileSerDeException {
     if(!(writable instanceof MapWritable)) {
@@ -89,15 +90,16 @@ public class TsFileDeserializer {
             row.add(((BooleanWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
+          
           break;
         case INT:
           if (data instanceof IntWritable) {
             row.add(((IntWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case LONG:
@@ -105,7 +107,7 @@ public class TsFileDeserializer {
             row.add(((LongWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case FLOAT:
@@ -113,7 +115,7 @@ public class TsFileDeserializer {
             row.add(((FloatWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case DOUBLE:
@@ -121,7 +123,7 @@ public class TsFileDeserializer {
             row.add(((DoubleWritable)data).get());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case STRING:
@@ -129,7 +131,7 @@ public class TsFileDeserializer {
             row.add(data.toString());
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         case TIMESTAMP:
@@ -137,7 +139,7 @@ public class TsFileDeserializer {
             row.add(new Timestamp(((LongWritable)data).get()));
           }
           else {
-            throw new TsFileSerDeException("Unexpected data type: " + data.getClass().getName() + " for Date TypeInfo: " + type);
+            throw new TsFileSerDeException(String.format(ERROR_MSG, data.getClass().getName(), type));
           }
           break;
         default:

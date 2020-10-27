@@ -39,7 +39,7 @@
 
 <!-- /TOC -->
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../Overview/What%20is%20IoTDB.html).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../Overview/What%20is%20IoTDB.md).
 
 ## Prerequisites
 
@@ -54,7 +54,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
 Here in the Quick Start, we give a brief introduction to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
@@ -72,7 +72,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Chapter3: Server](../Server/Download.html) in detail.
+For more, see [Chapter3: Server](../Server/Download.md) in detail.
 
 ## Start
 
@@ -237,7 +237,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Operation%20Manual/SQL%20Reference.html).
+For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 ### Stop IoTDB
 
@@ -254,7 +254,7 @@ The server can be stopped with ctrl-C or the following script:
 
 ## Only build cli
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl cli -am -DskipTests

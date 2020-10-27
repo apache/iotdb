@@ -24,9 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class UDFContext {
 
@@ -34,7 +34,7 @@ public class UDFContext {
   private final Map<String, String> attributes;
   private final List<String> attributeKeysInOriginalOrder;
 
-  private List<Path> paths;
+  private List<PartialPath> paths;
   private List<TSDataType> dataTypes;
 
   private String columnParameterPart;
@@ -48,7 +48,7 @@ public class UDFContext {
   }
 
   public UDFContext(String name, Map<String, String> attributes,
-      List<String> attributeKeysInOriginalOrder, List<Path> paths) {
+      List<String> attributeKeysInOriginalOrder, List<PartialPath> paths) {
     this.name = name;
     this.attributes = attributes;
     this.attributeKeysInOriginalOrder = attributeKeysInOriginalOrder;
@@ -60,11 +60,11 @@ public class UDFContext {
     attributeKeysInOriginalOrder.add(key);
   }
 
-  public void addPath(Path path) {
+  public void addPath(PartialPath path) {
     paths.add(path);
   }
 
-  public void setPaths(List<Path> paths) {
+  public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
 
@@ -80,15 +80,15 @@ public class UDFContext {
     return attributeKeysInOriginalOrder;
   }
 
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return paths;
   }
 
   public List<TSDataType> getDataTypes() throws MetadataException {
     if (dataTypes == null) {
       dataTypes = new ArrayList<>();
-      for (Path path : paths) {
-        dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
+      for (PartialPath path : paths) {
+        dataTypes.add(IoTDB.metaManager.getSeriesType(path));
       }
     }
     return dataTypes;
@@ -103,14 +103,25 @@ public class UDFContext {
 
   private String getColumnNameParameterPart() {
     if (columnParameterPart == null) {
-      StringBuilder builder = new StringBuilder(paths.get(0).getFullPath());
-      for (int i = 1; i < paths.size(); ++i) {
-        builder.append(", ").append(paths.get(i).getFullPath());
+      StringBuilder builder = new StringBuilder();
+      if (!paths.isEmpty()) {
+        builder.append(paths.get(0).getFullPath());
+        for (int i = 1; i < paths.size(); ++i) {
+          builder.append(", ").append(paths.get(i).getFullPath());
+        }
       }
-      for (int i = 0; i < attributeKeysInOriginalOrder.size(); ++i) {
+      if (!attributeKeysInOriginalOrder.isEmpty()) {
+        if (!paths.isEmpty()) {
+          builder.append(", ");
+        }
         String key = attributeKeysInOriginalOrder.get(0);
         builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))
             .append("\"");
+        for (int i = 1; i < attributeKeysInOriginalOrder.size(); ++i) {
+          key = attributeKeysInOriginalOrder.get(i);
+          builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))
+              .append("\"");
+        }
       }
       columnParameterPart = builder.toString();
     }

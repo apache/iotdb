@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -65,19 +66,23 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup("root.vehicle");
-    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s2", TSDataType.INT64, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d2.s2", TSDataType.DOUBLE, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d3.s2", TSDataType.DOUBLE, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT64, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d2.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d2.s2"), TSDataType.DOUBLE,
+        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d3.s1"), TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d3.s2"), TSDataType.DOUBLE,
+        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
   }
 
   private static void generateData() {
@@ -199,7 +204,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
           if (s1AndS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
+            assertTrue(
+                actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
           } else if (s1OrS2.contains(i - 2)) {
             assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count);
           }
@@ -234,7 +240,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
             assertTrue(actualString == null
                 || (int) (Double.parseDouble(actualString)) == count * 2 + ADDEND);
           } else if (s1AndS2.contains(i - 2)) {
-            assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
+            assertTrue(
+                actualString == null || (int) (Double.parseDouble(actualString)) == count * 2);
           } else if (s1OrS2.contains(i - 2)) {
             assertTrue(actualString == null || (int) (Double.parseDouble(actualString)) == count);
           }
@@ -472,7 +479,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       while (resultSet.next()) {
         for (int i = 2; i <= columnCount; ++i) {
           String actualString = resultSet.getString(i);
-          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Double.parseDouble(actualString), 0);
+          assertEquals(i - 2 + SOFFSET < 6 ? index : 2 * index, Double.parseDouble(actualString),
+              0);
         }
         ++index;
       }

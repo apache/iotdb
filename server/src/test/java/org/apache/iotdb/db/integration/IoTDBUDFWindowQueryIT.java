@@ -29,6 +29,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -65,11 +66,13 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   private static void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup("root.vehicle");
-    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    IoTDB.metaManager.createTimeseries("root.vehicle.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries(new PartialPath("root.vehicle.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
   }
 
   private static void generateData() {
