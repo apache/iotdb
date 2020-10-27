@@ -89,16 +89,20 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       String column = columnName.substring(TIMESTAMP_STR_LENGTH);
       int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
       if (times[index] != null) {
+        ioTDBRpcDataSet.lastReadWasNull = false;
         return BytesUtils.bytesToLong(times[index]);
       } else {
-        throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+        ioTDBRpcDataSet.lastReadWasNull = true;
+        return 0;
       }
     }
     int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
     if (ioTDBRpcDataSet.values[index] != null) {
+      ioTDBRpcDataSet.lastReadWasNull = false;
       return BytesUtils.bytesToLong(ioTDBRpcDataSet.values[index]);
     } else {
-      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+      ioTDBRpcDataSet.lastReadWasNull = true;
+      return 0;
     }
   }
 

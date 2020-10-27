@@ -52,13 +52,13 @@ public class IoTDBTracingTest {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      Assert.assertEquals(config.isEnablePerformanceTracing(), false);
+      Assert.assertEquals(false, config.isEnablePerformanceTracing());
 
       statement.execute("tracing on");
-      Assert.assertEquals(config.isEnablePerformanceTracing(), true);
+      Assert.assertEquals(true, config.isEnablePerformanceTracing());
 
       statement.execute("tracing off");
-      Assert.assertEquals(config.isEnablePerformanceTracing(), false);
+      Assert.assertEquals(false, config.isEnablePerformanceTracing());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

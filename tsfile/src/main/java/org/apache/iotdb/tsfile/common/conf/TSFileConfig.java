@@ -134,8 +134,7 @@ public class TSFileConfig implements Serializable {
    */
   private double dftSatisfyRate = 0.1;
   /**
-   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default
-   * value is UNCOMPRESSED which means no compression
+   * Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4.
    */
   private CompressionType compressor = CompressionType.SNAPPY;
   /**

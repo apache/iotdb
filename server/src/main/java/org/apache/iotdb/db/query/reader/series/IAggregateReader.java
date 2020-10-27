@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import java.io.IOException;
 
 public interface IAggregateReader {
 
@@ -57,4 +56,5 @@ public interface IAggregateReader {
 
   BatchData nextPage() throws IOException;
 
+  boolean isAscending();
 }

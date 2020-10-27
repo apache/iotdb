@@ -18,17 +18,28 @@
  */
 package org.apache.iotdb.db.qp;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+
 import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -36,18 +47,9 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.tsfile.read.common.Path;
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
-import java.util.HashSet;
-import java.util.List;
 
 /**
  * provide a integration method for other user.
@@ -64,15 +66,20 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
+    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID(), 1024);
   }
 
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
+  /**
+   * @param fetchSize this parameter only take effect when it is a query plan
+   */
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
-    operator = logicalOptimize(operator);
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(fetchSize);
+    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
 
   /**
@@ -115,9 +122,11 @@ public class Planner {
 
     queryOp.setFilterOperator(filterOp);
 
-    SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(op);
+    return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
   }
 
   /**
@@ -127,8 +136,8 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  protected Operator logicalOptimize(Operator operator)
-      throws LogicalOperatorException {
+  protected Operator logicalOptimize(Operator operator, int maxDeduplicatedPathNum)
+      throws LogicalOperatorException, PathNumOverLimitException {
     switch (operator.getType()) {
       case AUTHOR:
       case METADATA:
@@ -162,7 +171,7 @@ public class Planner {
       case UPDATE:
       case DELETE:
         SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root);
+        return optimizeSFWOperator(root, maxDeduplicatedPathNum);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -175,10 +184,10 @@ public class Planner {
    * @return optimized select-from-where operator
    * @throws LogicalOptimizeException exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root)
-      throws LogicalOperatorException {
+  private SFWOperator optimizeSFWOperator(SFWOperator root, int maxDeduplicatedPathNum)
+      throws LogicalOperatorException, PathNumOverLimitException {
     ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
-    root = (SFWOperator) concatPathOptimizer.transform(root);
+    root = (SFWOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;

@@ -93,7 +93,13 @@ import org.slf4j.LoggerFactory;
 public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
+  private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
+  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
+  private static final String DEBUG_MSG_1 = "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
+  private static final String PREVIOUS_CONDITION = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
+
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
    */
@@ -153,11 +159,13 @@ public class MManager {
       }
     };
 
-    timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-        "timedCreateMTreeSnapshotThread"));
-    timedCreateMTreeSnapshotThread
-        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-            MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    if (config.isEnableMTreeSnapshot()) {
+      timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+          "timedCreateMTreeSnapshotThread"));
+      timedCreateMTreeSnapshotThread
+          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    }
   }
 
   /**
@@ -267,7 +275,7 @@ public class MManager {
         tagLogFile = null;
       }
       initialized = false;
-      if (timedCreateMTreeSnapshotThread != null) {
+      if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
         timedCreateMTreeSnapshotThread = null;
       }
@@ -488,8 +496,8 @@ public class MManager {
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
-                "Delete: TimeSeries %s is removed from tag inverted index, "
-                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                DEBUG_MSG, "Delete"
+                    + TAG_FORMAT,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
@@ -502,8 +510,8 @@ public class MManager {
         } else {
           if (logger.isDebugEnabled()) {
             logger.debug(String.format(
-                "Delete: TimeSeries %s's tag info has been removed from tag inverted index before "
-                    + "deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                DEBUG_MSG_1, "Delete"
+                    + PREVIOUS_CONDITION,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
@@ -694,6 +702,11 @@ public class MManager {
     return mtree.getAllStorageGroupPaths();
   }
 
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
+      throws MetadataException {
+      return mtree.searchAllRelatedStorageGroups(path);
+  }
+
   /**
    * Get all storage group under given prefixPath.
    *
@@ -726,9 +739,9 @@ public class MManager {
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
    */
-  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath)
-      throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(prefixPath);
+  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath,
+      int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
   }
 
   /**
@@ -1165,8 +1178,8 @@ public class MManager {
           if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                  "Upsert: TimeSeries %s is removed from tag inverted index, "
-                      + "tag key is %s, tag value is %s, tlog offset is %d",
+                  DEBUG_MSG, "Upsert"
+                      + TAG_FORMAT,
                   leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset()));
             }
 
@@ -1177,8 +1190,8 @@ public class MManager {
           } else {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                  "Upsert: TimeSeries %s's tag info has been removed from tag inverted index "
-                      + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                  DEBUG_MSG_1, "Upsert"
+                      + PREVIOUS_CONDITION,
                   leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
                   tagIndex.containsKey(key)));
             }
@@ -1327,8 +1340,8 @@ public class MManager {
       if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(value)) {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Drop: TimeSeries %s is removed from tag inverted index, "
-                  + "tag key is %s, tag value is %s, tlog offset is %d",
+              DEBUG_MSG, "Drop"
+                  + TAG_FORMAT,
               leafMNode.getFullPath(), entry.getKey(), entry.getValue(), leafMNode.getOffset()));
         }
 
@@ -1342,8 +1355,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Drop: TimeSeries %s's tag info has been removed from tag inverted index "
-                  + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+              DEBUG_MSG_1, "Drop"
+                  + PREVIOUS_CONDITION,
               leafMNode.getFullPath(), key, value, leafMNode.getOffset(),
               tagIndex.containsKey(key)));
         }
@@ -1406,8 +1419,8 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Set: TimeSeries %s is removed from tag inverted index, "
-                  + "tag key is %s, tag value is %s, tlog offset is %d",
+              DEBUG_MSG, "Set"
+                  + TAG_FORMAT,
               leafMNode.getFullPath(), entry.getKey(), beforeValue, leafMNode.getOffset()));
         }
 
@@ -1415,8 +1428,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Set: TimeSeries %s's tag info has been removed from tag inverted index "
-                  + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+              DEBUG_MSG_1, "Set"
+                  + PREVIOUS_CONDITION,
               leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
               tagIndex.containsKey(key)));
         }
@@ -1467,8 +1480,8 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Rename: TimeSeries %s is removed from tag inverted index, "
-                  + "tag key is %s, tag value is %s, tlog offset is %d",
+              DEBUG_MSG, "Rename"
+                  + TAG_FORMAT,
               leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset()));
         }
 
@@ -1477,8 +1490,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              "Rename: TimeSeries %s's tag info has been removed from tag inverted index "
-                  + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+              DEBUG_MSG_1, "Rename"
+                  + PREVIOUS_CONDITION,
               leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(),
               tagIndex.containsKey(oldKey)));
         }
@@ -1704,7 +1717,8 @@ public class MManager {
           internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
         }
 
-        MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+        MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode
+            .getChild(measurementList[i]);
 
         // check type is match
         TSDataType insertDataType = null;
@@ -1767,8 +1781,9 @@ public class MManager {
           Collections.emptyMap());
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
-        logger.debug("Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-            + " a non-exist time series {}", path);
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}", path);
       }
     }
   }

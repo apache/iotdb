@@ -23,7 +23,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.time.ZoneId;
 import java.util.Properties;
@@ -39,6 +38,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,7 +98,8 @@ public class IoTDBDescriptor {
     if (urlString == null) {
       urlString = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
       if (urlString != null) {
-        urlString = urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
+        urlString =
+            urlString + File.separatorChar + "conf" + File.separatorChar + IoTDBConfig.CONFIG_NAME;
       } else {
         // If this too wasn't provided, try to find a default config in the root of the classpath.
         URL uri = IoTDBConfig.class.getResource("/" + IoTDBConfig.CONFIG_NAME);
@@ -116,13 +117,13 @@ public class IoTDBDescriptor {
     }
     // If a config location was provided, but it doesn't end with a properties file,
     // append the default location.
-    else if(!urlString.endsWith(".properties")) {
+    else if (!urlString.endsWith(".properties")) {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
 
     // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
     // So we need to add it to make it a real URL.
-    if(!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
+    if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
     }
     try {
@@ -138,7 +139,7 @@ public class IoTDBDescriptor {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
     URL url = getPropsUrl();
-    if(url == null) {
+    if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
@@ -207,7 +208,7 @@ public class IoTDBDescriptor {
               Boolean.toString(conf.isMetaDataCacheEnable()))));
 
       conf.setEnableLastCache(Boolean.parseBoolean(properties.getProperty("enable_last_cache",
-              Boolean.toString(conf.isLastCacheEnabled()))));
+          Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -275,6 +276,10 @@ public class IoTDBDescriptor {
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
 
+      conf.setMergePagePointNumberThreshold(Integer.parseInt(properties
+          .getProperty("merge_page_point_number",
+              Integer.toString(conf.getMergePagePointNumberThreshold()))));
+
       conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
           .getProperty("tsfile_manage_strategy",
               conf.getTsFileManagementStrategy().toString())));
@@ -286,6 +291,14 @@ public class IoTDBDescriptor {
       conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
           .getProperty("max_file_num_in_each_level",
               Integer.toString(conf.getMaxFileNumInEachLevel()))));
+
+      conf.setMaxUnseqLevelNum(Integer.parseInt(properties
+          .getProperty("max_unseq_level_num",
+              Integer.toString(conf.getMaxUnseqLevelNum()))));
+
+      conf.setMaxUnseqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("max_unseq_file_num_in_each_level",
+              Integer.toString(conf.getMaxUnseqFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -357,11 +370,19 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setHotCompactionThreadNum(Integer.parseInt(properties.getProperty(
+          "hot_compaction_thread_num", Integer.toString(conf.getHotCompactionThreadNum()))));
+      conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_write_throughput_mb_per_sec", Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+      conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
+          "merge_read_throughput_mb_per_sec", Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setEnableMTreeSnapshot(Boolean.parseBoolean(properties.getProperty(
+          "enable_mtree_snapshot", Boolean.toString(conf.isEnableMTreeSnapshot()))));
       conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
           "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
       conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
@@ -545,7 +566,7 @@ public class IoTDBDescriptor {
 
     conf.setEnableDiscardOutOfOrderData(Boolean.parseBoolean(
         properties.getProperty("enable_discard_out_of_order_data",
-        Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
+            Boolean.toString(conf.isEnableDiscardOutOfOrderData()))));
 
   }
 
@@ -559,6 +580,9 @@ public class IoTDBDescriptor {
     conf.setIntegerStringInferType(
         TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
             conf.getIntegerStringInferType().toString())));
+    conf.setLongStringInferType(
+        TSDataType.valueOf(properties.getProperty("long_string_infer_type",
+            conf.getLongStringInferType().toString())));
     conf.setFloatingStringInferType(
         TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
             conf.getFloatingStringInferType().toString())));
@@ -678,6 +702,10 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+      // update max_deduplicated_path_num
+      conf.setMaxQueryDeduplicatedPathNum(
+          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
+
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
@@ -686,7 +714,7 @@ public class IoTDBDescriptor {
 
   public void loadHotModifiedProps() throws QueryProcessException {
     URL url = getPropsUrl();
-    if(url == null) {
+    if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
       return;
     }
@@ -714,9 +742,9 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = Runtime.getRuntime().maxMemory();
       if (proportionSum != 0) {
         conf.setAllocateMemoryForWrite(
-                maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
-                maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
       }
     }
 
@@ -739,21 +767,47 @@ public class IoTDBDescriptor {
       if (proportionSum != 0) {
         try {
           conf.setAllocateMemoryForChunkMetaDataCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
           conf.setAllocateMemoryForChunkCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-                  maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+              maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+          conf.setAllocateMemoryForReadWithoutCache(
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
-                  "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
-                          + " should be an integer, which is "
-                          + queryMemoryAllocateProportion);
+              "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                  + " should be an integer, which is "
+                  + queryMemoryAllocateProportion);
         }
       }
 
+      conf.setMaxQueryDeduplicatedPathNum(
+          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
 
+  }
+
+  /**
+   * Get default encode algorithm by data type
+   * @param dataType
+   * @return
+   */
+  public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      default:
+        return conf.getDefaultTextEncoding();
+    }
   }
 
   private static class IoTDBDescriptorHolder {

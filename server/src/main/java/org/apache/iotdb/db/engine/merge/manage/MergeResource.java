@@ -170,9 +170,7 @@ public class MergeResource {
   }
 
   /**
-   * Get the modifications of a timeseries in the ModificationFile of a TsFile. Once the
-   * modifications of the timeseries are found out, they will be removed from the list to boost
-   * the next query, so two calls of the same file and timeseries are forbidden.
+   * Get the modifications of a timeseries in the ModificationFile of a TsFile.
    * @param path name of the time series
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
@@ -181,12 +179,10 @@ public class MergeResource {
         resource -> new LinkedList<>(resource.getModFile().getModifications()));
     List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
-    // each path is visited only once in a merge, so the modifications can be removed after visiting
     while (modificationIterator.hasNext()) {
       Modification modification = modificationIterator.next();
-      if (modification.getPath().equals(path)) {
+      if (modification.getPath().matchFullPath(path)) {
         pathModifications.add(modification);
-        modificationIterator.remove();
       }
     }
     return pathModifications;
