@@ -158,12 +158,12 @@ public class TsFileResource {
   /**
    * Maximum index of plans executed within this TsFile.
    */
-  private long maxPlanIndex = Long.MIN_VALUE;
+  protected long maxPlanIndex = Long.MIN_VALUE;
 
   /**
    * Minimum index of plans executed within this TsFile.
    */
-  private long minPlanIndex = Long.MAX_VALUE;
+  protected long minPlanIndex = Long.MAX_VALUE;
 
   public TsFileResource() {
   }
@@ -184,6 +184,8 @@ public class TsFileResource {
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
+    this.maxPlanIndex = other.maxPlanIndex;
+    this.minPlanIndex = other.minPlanIndex;
   }
 
   /**
@@ -865,5 +867,9 @@ public class TsFileResource {
   public boolean isPlanIndexOverlap(TsFileResource another) {
     return another.maxPlanIndex >= this.minPlanIndex &&
            another.minPlanIndex <= this.maxPlanIndex;
+  }
+
+  public boolean isPlanRangeCovers(TsFileResource another) {
+    return this.minPlanIndex <= another.minPlanIndex && another.maxPlanIndex <= this.maxPlanIndex;
   }
 }

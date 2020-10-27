@@ -88,7 +88,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   public void addFile(TsFileResource resource, Node header) throws IOException {
-    dataFiles.add(new RemoteTsFileResource(resource, header));
+    addFile(resource, header, false);
+  }
+
+  public void addFile(TsFileResource resource, Node header, boolean isRangeUnique) throws IOException {
+    RemoteTsFileResource remoteTsFileResource = new RemoteTsFileResource(resource, header);
+    remoteTsFileResource.setPlanRangeUnique(isRangeUnique);
+    dataFiles.add(remoteTsFileResource);
   }
 
   @Override
@@ -367,8 +373,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
         StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource, true);
-        StorageEngine.getInstance().getProcessor(storageGroupName)
-            .removeFullyOverlapFiles(resource);
+        if (resource.isPlanRangeUnique()) {
+          // only when a file has a unique range can we remove other files that over lap with it,
+          // otherwise we may remove data that is not contained in the file
+          StorageEngine.getInstance().getProcessor(storageGroupName)
+              .removeFullyOverlapFiles(resource);
+        }
       } catch (StorageEngineException | LoadFileException e) {
         logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
         return;

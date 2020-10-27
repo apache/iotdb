@@ -38,6 +38,14 @@ public class RemoteTsFileResource extends TsFileResource {
   private boolean isRemote = false;
   private boolean withModification = false;
 
+  /**
+   * Whether the plan range ([minPlanIndex, maxPlanIndex]) overlaps with another TsFile in the same
+   * time partition. If not (unique = true), we shall have confidence that the file has all data
+   * whose plan indexes are within [minPlanIndex, maxPlanIndex], so we can remove other local
+   * files that overlaps with it.
+   */
+  private boolean isPlanRangeUnique = false;
+
   public RemoteTsFileResource() {
     setClosed(true);
     this.deviceToIndex = new ConcurrentHashMap<>();
@@ -102,6 +110,11 @@ public class RemoteTsFileResource extends TsFileResource {
 
       dataOutputStream.writeBoolean(withModification);
 
+      dataOutputStream.writeLong(maxPlanIndex);
+      dataOutputStream.writeLong(minPlanIndex);
+
+      dataOutputStream.writeByte(isPlanRangeUnique ? 1 : 0);
+
       dataOutputStream.writeInt(getHistoricalVersions().size());
       for (long hisVersion : getHistoricalVersions()) {
         dataOutputStream.writeLong(hisVersion);
@@ -134,6 +147,11 @@ public class RemoteTsFileResource extends TsFileResource {
 
     withModification = buffer.get() == 1;
 
+    maxPlanIndex = buffer.getLong();
+    minPlanIndex = buffer.getLong();
+
+    isPlanRangeUnique = buffer.get() == 1;
+
     Set<Long> historicalVersions = new HashSet<>();
     int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
@@ -160,4 +178,11 @@ public class RemoteTsFileResource extends TsFileResource {
     return withModification;
   }
 
+  public boolean isPlanRangeUnique() {
+    return isPlanRangeUnique;
+  }
+
+  public void setPlanRangeUnique(boolean planRangeUnique) {
+    isPlanRangeUnique = planRangeUnique;
+  }
 }

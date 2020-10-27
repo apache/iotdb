@@ -1947,7 +1947,7 @@ public class StorageGroupProcessor {
       , boolean isSeq) {
     while (iterator.hasNext()) {
       TsFileResource existingTsFile = iterator.next();
-      if (newTsFile.getHistoricalVersions().containsAll(existingTsFile.getHistoricalVersions())
+      if (newTsFile.isPlanRangeCovers(existingTsFile)
           && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
           && existingTsFile.tryWriteLock()) {
         // if we fail to lock the file, it means it is being queried or merged and we will not
@@ -2312,39 +2312,40 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Check if the data of "tsFileResource" all exist locally by comparing the historical versions in
+   * Check if the data of "tsFileResource" all exist locally by comparing planIndexes in
    * the partition of "partitionNumber". This is available only when the IoTDB instances which
-   * generated "tsFileResource" have the same close file policy as the local one. If one of the
-   * version in "tsFileResource" equals to a version of a working file, false is returned because
-   * "tsFileResource" may have unwritten data of that file.
+   * generated "tsFileResource" have the same plan indexes as the local one.
    *
-   * @return true if the historicalVersions of "tsFileResource" is a subset of
-   * partitionDirectFileVersions, or false if it is not a subset and it contains any version of a
-   * working file USED by cluster module
+   * @return true if any file contains plans with indexes no less than the max plan index of
+   * "tsFileResource", otherwise false.
    */
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
-    // consider the case: The local node crashes when it is writing TsFile no.5.
-    // when it restarts, the leader has proceeded to no.6. When the leader sends no.5 to this
-    // node, the file should be accepted as local no.5 is not closed which means there may be
-    // unreceived data in no.5
-    // So if the incoming file contains the version of an unclosed file, it should be accepted
+    // examine working processor first as they have the largest plan index
     for (TsFileProcessor workSequenceTsFileProcessor : getWorkSequenceTsFileProcessors()) {
-      long workingFileVersion = workSequenceTsFileProcessor.getTsFileResource().getMaxVersion();
-      if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
-        return false;
+      if (workSequenceTsFileProcessor.getTimeRangeId() == partitionNum) {
+        return workSequenceTsFileProcessor.getTsFileResource().getMaxPlanIndex() >= tsFileResource
+            .getMaxPlanIndex();
       }
     }
     for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessor()) {
-      long workingFileVersion = workUnsequenceTsFileProcessor.getTsFileResource().getMaxVersion();
-      if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
-        return false;
+      if (workUnsequenceTsFileProcessor.getTimeRangeId() == partitionNum) {
+        return workUnsequenceTsFileProcessor.getTsFileResource().getMaxPlanIndex() >= tsFileResource
+            .getMaxPlanIndex();
       }
     }
-    Set<Long> partitionFileVersions = partitionDirectFileVersions
-        .getOrDefault(partitionNum, Collections.emptySet());
-    logger.debug("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
-        partitionFileVersions);
-    return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
+    for (TsFileResource resource : getSequenceFileTreeSet()) {
+      if (resource.getTimePartition() == partitionNum
+          && resource.getMaxPlanIndex() >= tsFileResource.getMaxPlanIndex()) {
+        return true;
+      }
+    }
+    for (TsFileResource resource : getUnSequenceFileList()) {
+      if (resource.getTimePartition() == partitionNum
+          && resource.getMaxPlanIndex() >= tsFileResource.getMaxPlanIndex()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
