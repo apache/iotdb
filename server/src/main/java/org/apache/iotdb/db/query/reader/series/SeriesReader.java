@@ -302,6 +302,7 @@ public class SeriesReader {
     List<ChunkMetadata> chunkMetadataList = FileLoaderUtils
         .loadChunkMetadataList(timeSeriesMetadata);
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
+
     // try to calculate the total number of chunk and time-value points in chunk
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
       QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
@@ -947,7 +948,7 @@ public class SeriesReader {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getStartTime(seriesPath.getDevice());
+      return time <= right.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1071,4 +1072,7 @@ public class SeriesReader {
     }
   }
 
+  public TimeOrderUtils getOrderUtils() {
+    return orderUtils;
+  }
 }

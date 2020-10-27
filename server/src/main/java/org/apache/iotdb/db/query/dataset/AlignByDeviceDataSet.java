@@ -169,6 +169,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             groupByTimePlan.setDeduplicatedPaths(executePaths);
             groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
+            groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
             break;
           case AGGREGATE:

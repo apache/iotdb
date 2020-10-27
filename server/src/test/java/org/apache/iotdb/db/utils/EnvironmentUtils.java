@@ -103,11 +103,11 @@ public class EnvironmentUtils {
     }
     //try jmx connection
     try {
-    JMXServiceURL url =
-        new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
       logger.error("stop JMX failed. 31999 can be connected now.");
-    jmxConnector.close();
+      jmxConnector.close();
     } catch (IOException e) {
       //do nothing
     }
@@ -130,7 +130,6 @@ public class EnvironmentUtils {
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkMetadataCache.getInstance().clear();
@@ -139,7 +138,9 @@ public class EnvironmentUtils {
     IoTDB.metaManager.clear();
 
     // close tracing
-    TracingManager.getInstance().close();
+    if (config.isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
 
     // delete all directory
     cleanAllDir();
@@ -165,6 +166,8 @@ public class EnvironmentUtils {
     cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
+    // delete tracing
+    cleanDir(config.getTracingDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -206,12 +209,12 @@ public class EnvironmentUtils {
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
   public static void stopDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.stop();
     }
   }
@@ -223,7 +226,7 @@ public class EnvironmentUtils {
   }
 
   public static void activeDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.active();
     }
   }
