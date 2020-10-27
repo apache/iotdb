@@ -34,8 +34,6 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -142,7 +140,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -163,7 +161,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
   }
 
