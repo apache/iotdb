@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,18 +92,40 @@ public class CatchUpTask implements Runnable {
       logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
     }
 
-    int index = logs.size() - 1;
-    // if index < 0 then send Snapshot and all the logs in logManager
-    // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
-    while (index >= 0) {
-      if (checkMatchIndex(index)) {
-        logger.info("{}: Find a match index {} of {}", raftMember.getName(), index, node);
-        return true;
-      }
-      index--;
+    int index = findLastMatchIndex(logs);
+    if (index == -1) {
+      logger.info("Cannot find matched of {} within [{}, {}]", node, lo, hi);
+      return false;
     }
-    logger.info("Cannot find matched of {} within [{}, {}]", node, lo, hi);
-    return false;
+
+    // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
+    logs.subList(0, index).clear();
+    if (logger.isDebugEnabled()) {
+      if (logs.isEmpty()) {
+        logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
+      } else {
+        logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
+            node, logs.get(0), logs.size());
+      }
+    }
+    return true;
+  }
+
+  public int findLastMatchIndex(List<Log> logs)
+      throws LeaderUnknownException, TException, InterruptedException {
+    int start = 0;
+    int end = logs.size() - 1;
+    int matchedIndex = -1;
+    while (start <= end) {
+      int mid = start + (end - start) / 2;
+      if (checkMatchIndex(mid)) {
+        start = mid + 1;
+        matchedIndex = mid;
+      } else {
+        end = mid - 1;
+      }
+    }
+    return matchedIndex;
   }
 
   /**
@@ -115,7 +138,6 @@ public class CatchUpTask implements Runnable {
    */
   private boolean checkMatchIndex(int index)
       throws LeaderUnknownException, TException, InterruptedException {
-    boolean isLogDebug = logger.isDebugEnabled();
     Log log = logs.get(index);
     synchronized (raftMember.getTerm()) {
       // make sure this node is still a leader
@@ -136,20 +158,7 @@ public class CatchUpTask implements Runnable {
     raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
     logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
         matched ? "succeed" : "failed", log);
-    if (!matched) {
-      return false;
-    }
-    // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
-    logs.subList(0, index).clear();
-    if (isLogDebug) {
-      if (logs.isEmpty()) {
-        logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
-      } else {
-        logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
-            node, logs.get(0), logs.size());
-      }
-    }
-    return true;
+    return matched;
   }
 
   /**
@@ -211,6 +220,7 @@ public class CatchUpTask implements Runnable {
     }
   }
 
+  @Override
   public void run() {
     try {
       boolean findMatchedIndex = checkMatchIndex();
@@ -249,5 +259,10 @@ public class CatchUpTask implements Runnable {
     }
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
+  }
+
+  @TestOnly
+  public void setLogs(List<Log> logs) {
+    this.logs = logs;
   }
 }
