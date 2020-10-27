@@ -440,7 +440,7 @@ public class DataGroupMemberTest extends MemberTest {
     tsFileResource.updateEndTime(TestUtils.getTestSg(0), 599);
     tsFileResource.setMinPlanIndex(3);
     tsFileResource.setMaxPlanIndex(5);
-    snapshot.addFile(tsFileResource, TestUtils.getNode(0));
+    snapshot.addFile(tsFileResource, TestUtils.getNode(0), true);
 
     // create a local resource1
     StorageGroupProcessor processor;

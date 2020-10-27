@@ -575,14 +575,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(), deletePlan.getIndex());
     }
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException {
     try {
-      StorageEngine.getInstance().delete(path, startTime, endTime);
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
