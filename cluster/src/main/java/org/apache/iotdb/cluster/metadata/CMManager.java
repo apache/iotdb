@@ -1029,12 +1029,12 @@ public class CMManager extends MManager {
     Map<String, String> sgPathMap = determineStorageGroup(prefixPath);
     List<PartialPath> result = getMatchedPaths(sgPathMap, true);
 
-    int skippedOffset;
+    int skippedOffset = 0;
     // apply offset and limit
     if (offset > 0 && result.size() > offset) {
       skippedOffset = offset;
       result = result.subList(offset, result.size());
-    } else {
+    } else if (offset > 0){
       skippedOffset = result.size();
       result = Collections.emptyList();
     }
@@ -1334,9 +1334,8 @@ public class CMManager extends MManager {
 
     if (withAlias) {
       for (String path : paths) {
-        List<PartialPath> allTimeseriesPathWithAlias = IoTDB.metaManager
-            .getAllTimeseriesPathWithAlias(new PartialPath(path), -1,
-                -1).left;
+        List<PartialPath> allTimeseriesPathWithAlias = super
+            .getAllTimeseriesPathWithAlias(new PartialPath(path), -1, -1).left;
         for (PartialPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
           retPaths.add(timeseriesPathWithAlias.getFullPath());
           alias.add(timeseriesPathWithAlias.getMeasurementAlias());

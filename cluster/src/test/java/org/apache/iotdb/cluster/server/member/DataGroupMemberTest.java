@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -109,6 +110,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
@@ -216,6 +218,17 @@ public class DataGroupMemberTest extends MemberTest {
                   resultHandler.onComplete(-1L);
                 } else {
                   resultHandler.onError(new TestException());
+                }
+              }).start();
+            }
+
+            @Override
+            public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
+              new Thread(() -> {
+                try {
+                  Files.deleteIfExists(new File(hardLinkPath).toPath());
+                } catch (IOException e) {
+                  // ignore
                 }
               }).start();
             }
