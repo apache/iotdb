@@ -49,6 +49,7 @@ import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1238,65 +1239,60 @@ public class RaftLogManagerTest {
     }
   }
 
-//  @Test
-//  public void testCheckDeleteLog() {
-//    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-//    syncLogDequeSerializer.setMaxRemovedLogSize(10);
-//
-//    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
-//        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
-//    RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
-//        syncLogDequeSerializer, logApplier);
-//    // prevent the commit checker thread from modifying max applied index
-//    blocked = true;
-//
-//    int minNumberOfLogs = 100;
-//    List<Log> testLogs1;
-//
-//    raftLogManager.setMinNumOfLogsInMem(minNumberOfLogs);
-//    testLogs1 = TestUtils.prepareNodeLogs(130);
-//    raftLogManager.append(testLogs1);
-//    Log lastLog = testLogs1.get(testLogs1.size() - 1);
-//    try {
-//      raftLogManager.commitTo(lastLog.getCurrLogIndex());
-//    } catch (LogExecutionException e) {
-//      assertEquals("why failed?", e.toString());
-//    }
-//
-//    assertEquals(130, committedEntryManager.getTotalSize());
-//    assertEquals(130, syncLogDequeSerializer.getLogSizeDeque().size());
-//
-//    // the maxHaveAppliedCommitIndex is smaller than 130-minNumberOfLogs
-//    long remainNumber = 130 - 20;
-//    raftLogManager.setMaxHaveAppliedCommitIndex(20);
-//    raftLogManager.checkDeleteLog();
-//    assertEquals(remainNumber, committedEntryManager.getTotalSize());
-//    assertEquals(remainNumber, syncLogDequeSerializer.getLogSizeDeque().size());
-//
-//    raftLogManager.setMaxHaveAppliedCommitIndex(100);
-//    raftLogManager.checkDeleteLog();
-//    assertEquals(minNumberOfLogs, committedEntryManager.getTotalSize());
-//    assertEquals(minNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
-//
-//    raftLogManager.close();
-//
-//    // recovery
-//    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-//    try {
-//      List<Log> logs = syncLogDequeSerializer.recoverLog();
-//      assertEquals(minNumberOfLogs, logs.size());
-//      for (int i = 0; i < minNumberOfLogs; i++) {
-//        assertEquals(testLogs1.get(i + 30), logs.get(i));
-//      }
-//    } finally {
-//      syncLogDequeSerializer.close();
-//    }
-//  }
+  @Test
+  public void testCheckDeleteLog() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager(
+        ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
+        syncLogDequeSerializer, logApplier);
+    // prevent the commit checker thread from modifying max applied index
+    blocked = true;
+
+    int minNumberOfLogs = 100;
+    List<Log> testLogs1;
+
+    raftLogManager.setMinNumOfLogsInMem(minNumberOfLogs);
+    testLogs1 = TestUtils.prepareNodeLogs(130);
+    raftLogManager.append(testLogs1);
+    Log lastLog = testLogs1.get(testLogs1.size() - 1);
+    raftLogManager.setMaxHaveAppliedCommitIndex(100);
+    try {
+      raftLogManager.commitTo(lastLog.getCurrLogIndex());
+    } catch (LogExecutionException e) {
+      Assert.fail(e.toString());
+    }
+
+    assertEquals(130, committedEntryManager.getTotalSize());
+
+    // the maxHaveAppliedCommitIndex is smaller than 130-minNumberOfLogs
+    long remainNumber = 130 - 20;
+    raftLogManager.setMaxHaveAppliedCommitIndex(20);
+    raftLogManager.checkDeleteLog();
+    assertEquals(remainNumber, committedEntryManager.getTotalSize());
+
+    raftLogManager.setMaxHaveAppliedCommitIndex(100);
+    raftLogManager.checkDeleteLog();
+    assertEquals(minNumberOfLogs, committedEntryManager.getTotalSize());
+
+    raftLogManager.close();
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> logs = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      assertEquals(30, logs.size());
+      for (int i = 0; i < logs.size(); i++) {
+        assertEquals(testLogs1.get(i + 100), logs.get(i));
+      }
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
 
   @Test
   public void testApplyAllCommittedLogWhenStartUp() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     CommittedEntryManager committedEntryManager = new CommittedEntryManager(
         ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
@@ -1348,8 +1344,6 @@ public class RaftLogManagerTest {
   @Test
   public void testCheckAppliedLogIndex() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    syncLogDequeSerializer.setMaxRemovedLogSize(10);
-
     CommittedEntryManager committedEntryManager = new CommittedEntryManager(
         ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     RaftLogManager raftLogManager = new TestRaftLogManager(committedEntryManager,
@@ -1364,15 +1358,14 @@ public class RaftLogManagerTest {
     try {
       raftLogManager.commitTo(testLogs1.get(testLogs1.size() - 1 - 30).getCurrLogIndex());
     } catch (LogExecutionException e) {
-      assertEquals("why failed?", e.toString());
+      Assert.fail(e.getMessage());
     }
     // wait log is applied
     long startTime = System.currentTimeMillis();
     for (int i = 0; i < testLogs1.size() - 30; i++) {
       while (!testLogs1.get(i).isApplied()) {
         if ((System.currentTimeMillis() - startTime) > 60_000) {
-          System.out.println("apply log time out");
-          assertTrue(false);
+          Assert.fail("apply log time out");
           break;
         }
       }
@@ -1390,7 +1383,6 @@ public class RaftLogManagerTest {
 
     raftLogManager.checkDeleteLog();
     assertEquals(minNumberOfLogs, committedEntryManager.getTotalSize());
-//    assertEquals(minNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
 
     for (int i = testLogs1.size() - 30; i < testLogs1.size(); i++) {
       try {
@@ -1400,8 +1392,7 @@ public class RaftLogManagerTest {
       }
       while (!testLogs1.get(i).isApplied()) {
         if ((System.currentTimeMillis() - startTime) > 60_000) {
-          System.out.println("apply log time out");
-          assertTrue(false);
+          Assert.fail("apply log time out");
           break;
         }
       }
