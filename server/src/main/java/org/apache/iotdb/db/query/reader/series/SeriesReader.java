@@ -490,10 +490,10 @@ public class SeriesReader {
      * has a non-overlapped page in firstPageReader
      */
     if (mergeReader.hasNextTimeValuePair() &&
-        (orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() <=
+        ((orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() <=
             firstPageReader.getStatistics().getEndTime()) ||
         (!orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() >=
-            firstPageReader.getStatistics().getStartTime())) {
+            firstPageReader.getStatistics().getStartTime()))) {
       throw new IOException("overlapped data should be consumed first");
     }
 
