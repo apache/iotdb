@@ -232,7 +232,7 @@ public abstract class RaftMember {
    */
   private LogDispatcher logDispatcher;
 
-  public RaftMember() {
+  protected RaftMember() {
   }
 
   protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
