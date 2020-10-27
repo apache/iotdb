@@ -69,7 +69,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -132,7 +132,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -1079,14 +1078,14 @@ public class PlanExecutor implements IPlanExecutor {
           results = new TSStatus[createMultiTimeSeriesPlan.getIndexes().size()];
           Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
         }
-        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        results[i] = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
         hasFailed = true;
         logger.debug("meet error while processing create timeseries. ", e);
       }
     }
 
     if (hasFailed) {
-      throw new BatchInsertionException(results);
+      throw new BatchProcessException(results);
     }
     return true;
   }

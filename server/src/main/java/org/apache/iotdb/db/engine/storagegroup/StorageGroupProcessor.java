@@ -58,7 +58,7 @@ import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolMan
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
@@ -641,10 +641,10 @@ public class StorageGroupProcessor {
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
    *
-   * @throws BatchInsertionException if some of the rows failed to be inserted
+   * @throws BatchProcessException if some of the rows failed to be inserted
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
+  public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchProcessException {
     writeLock();
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
@@ -669,7 +669,7 @@ public class StorageGroupProcessor {
       }
       // loc pointing at first legal position
       if (loc == insertTabletPlan.getRowCount()) {
-        throw new BatchInsertionException(results);
+        throw new BatchProcessException(results);
       }
       // before is first start point
       int before = loc;
@@ -730,7 +730,7 @@ public class StorageGroupProcessor {
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
-        throw new BatchInsertionException(results);
+        throw new BatchProcessException(results);
       }
     } finally {
       writeUnlock();

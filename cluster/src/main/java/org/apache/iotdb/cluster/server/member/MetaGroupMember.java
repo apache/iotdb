@@ -1472,7 +1472,7 @@ public class MetaGroupMember extends RaftMember {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
       if (plan instanceof InsertTabletPlan || plan instanceof CreateMultiTimeSeriesPlan) {
-        // InsertTabletPlan contains many rows, each will correspond to a TSStatus as its
+        // InsertTabletPlan and CreateMultiTimeSeriesPlan contains many rows, each will correspond to a TSStatus as its
         // execution result, as the plan is split and the sub-plans may have interleaving ranges,
         // we must assure that each TSStatus is placed to the right position
         // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
@@ -1512,7 +1512,7 @@ public class MetaGroupMember extends RaftMember {
    * @param planGroupMap sub-plan -> data group pairs
    */
   private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-                                           PhysicalPlan plan) {
+                                           PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     TSStatus[] subStatus = null;
@@ -1522,14 +1522,14 @@ public class MetaGroupMember extends RaftMember {
     int totalRowNum = 0;
     // for we put the result to right position for CreateMultiTimeSeriesPlan
     Map<Integer, Integer> indexToPos = new HashMap<>();
-    if (plan instanceof InsertTabletPlan) {
-      totalRowNum = ((InsertTabletPlan) plan).getRowCount();
-    } else if (plan instanceof CreateMultiTimeSeriesPlan) {
-      totalRowNum = ((CreateMultiTimeSeriesPlan) plan).getIndexes().size();
+    if (parentPlan instanceof InsertTabletPlan) {
+      totalRowNum = ((InsertTabletPlan) parentPlan).getRowCount();
+    } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
+      totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
 
       // index -> pos in the indexs array
       for (int i = 0; i < totalRowNum; i++) {
-        indexToPos.put(((CreateMultiTimeSeriesPlan) plan).getIndexes().get(i), i);
+        indexToPos.put(((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().get(i), i);
       }
     }
     // send sub-plans to each belonging data group and collect results
@@ -1540,9 +1540,9 @@ public class MetaGroupMember extends RaftMember {
         (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
         || isBatchFailure;
-      if (plan instanceof InsertTabletPlan) {
+      if (parentPlan instanceof InsertTabletPlan) {
         if (tmpStatus.isSetRedirectNode() &&
-          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) plan).getMaxTime()) {
+          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan).getMaxTime()) {
           endPoint = tmpStatus.getRedirectNode();
         }
       }
@@ -1552,10 +1552,10 @@ public class MetaGroupMember extends RaftMember {
           Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
         }
         // set the status from one group to the proper positions of the overall status
-        if (plan instanceof InsertTabletPlan) {
+        if (parentPlan instanceof InsertTabletPlan) {
           PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
             tmpStatus.subStatus.toArray(new TSStatus[]{}));
-        } else if (plan instanceof CreateMultiTimeSeriesPlan) {
+        } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
           CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
           for (int i = 0; i < subPlan.getIndexes().size(); i++) {
             subStatus[indexToPos.get(subPlan.getIndexes().get(i))] = tmpStatus.subStatus.get(i);
