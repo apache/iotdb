@@ -105,9 +105,9 @@ public enum TSDataType {
         return 1;
       case INT32:
       case FLOAT:
+        return 4;
         // For text: return the size of reference here
       case TEXT:
-        return 4;
       case INT64:
       case DOUBLE:
         return 8;

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -34,22 +35,22 @@ public class StorageGroupInfo {
   /**
    * The total memory cost of the unsealed TsFileResources in this SG
    */
-  private long unsealedResourceMemCost;
+  private AtomicLong unsealedResourceMemCost;
 
   /**
    * The total memtable memory cost in this SG
    */
-  private long memTableCost;
+  private AtomicLong memTableCost;
 
   /**
    * The total memory cost of ChunkMetadata in this SG
    */
-  private long chunkMetadataMemCost;
+  private AtomicLong chunkMetadataMemCost;
 
   /**
    * The total memory cost of WALs in this SG
    */
-  private long walMemCost;
+  private AtomicLong walMemCost;
 
   /**
    * The threshold of reporting it's size to SystemInfo
@@ -57,7 +58,7 @@ public class StorageGroupInfo {
   private long storageGroupSizeReportThreshold = 
       IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
 
-  private long lastReportedSize = 0;
+  private long lastReportedSize = 0L;
 
   /**
    * A set of all unclosed TsFileProcessors in this SG
@@ -66,10 +67,10 @@ public class StorageGroupInfo {
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
-    unsealedResourceMemCost = 0;
-    memTableCost = 0;
-    chunkMetadataMemCost = 0;
-    walMemCost = 0;
+    unsealedResourceMemCost = new AtomicLong();
+    memTableCost = new AtomicLong();
+    chunkMetadataMemCost = new AtomicLong();
+    walMemCost = new AtomicLong();
   }
 
   public StorageGroupProcessor getStorageGroupProcessor() {
@@ -81,41 +82,41 @@ public class StorageGroupInfo {
    */
   public void reportTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     if (reportedTsps.add(tsFileProcessor)) {
-      walMemCost += IoTDBDescriptor.getInstance().getConfig().getWalBufferSize();
+      walMemCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
     }
   }
 
   public void addUnsealedResourceMemCost(long cost) {
-    unsealedResourceMemCost += cost;
+    unsealedResourceMemCost.getAndAdd(cost);
   }
 
   public void addChunkMetadataMemCost(long cost) {
-    chunkMetadataMemCost += cost;
+    chunkMetadataMemCost.getAndAdd(cost);
   }
 
   public void addMemTableCost(long cost) {
-    memTableCost += cost;
+    memTableCost.getAndAdd(cost);
   }
 
   /**
    * called by TSPInfo when closing a TSP
    */
   public void resetUnsealedResourceMemCost(long cost) {
-    unsealedResourceMemCost -= cost;
+    unsealedResourceMemCost.getAndAdd(-cost);
   }
 
   /**
    * called by TSPInfo when closing a TSP
    */
   public void resetChunkMetadataMemCost(long cost) {
-    chunkMetadataMemCost -= cost;
+    chunkMetadataMemCost.getAndAdd(-cost);
   }
 
   /**
    * called by TSPInfo when a memTable flushed
    */
   public void resetMemTableCost(long cost) {
-    memTableCost -= cost;
+    memTableCost.getAndAdd(-cost);
     lastReportedSize -= cost;
   }
 
@@ -123,11 +124,12 @@ public class StorageGroupInfo {
    * called by TSPInfo when closing a TSP
    */
   public void resetWalMemCost(long cost) {
-    walMemCost -= cost;
+    walMemCost.getAndAdd(-cost);
   }
 
   public long getSgMemCost() {
-    return unsealedResourceMemCost + memTableCost + chunkMetadataMemCost + walMemCost;
+    return unsealedResourceMemCost.get() + memTableCost.get() +
+        chunkMetadataMemCost.get() + walMemCost.get();
   }
 
   public Set<TsFileProcessor> getAllReportedTsp() {
