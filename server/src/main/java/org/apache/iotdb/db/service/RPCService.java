@@ -70,8 +70,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           config.getThriftServerAwaitTimeForStopService(),
           new RPCServiceThriftHandler(impl),
           IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
-    }
-    catch (RPCServiceException e) {
+    } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
