@@ -1734,7 +1734,7 @@ public class MetaGroupMember extends RaftMember {
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
       StorageEngineException, EmptyIntervalException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
-    if(intervals.isEmpty()){
+    if (intervals.isEmpty()) {
       throw new EmptyIntervalException(filter);
     }
     return routeIntervals(intervals, path);
