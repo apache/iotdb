@@ -653,7 +653,7 @@ public class StorageEngine implements IService {
     String device = deviceMap.keySet().iterator().next();
     PartialPath devicePath = new PartialPath(device);
     PartialPath storageGroupPath = IoTDB.metaManager.getStorageGroupPath(devicePath);
-    getProcessor(storageGroupPath).loadNewTsFile(newTsFileResource, false);
+    getProcessor(storageGroupPath).loadNewTsFile(newTsFileResource);
   }
 
   public boolean deleteTsfileForSync(File deletedTsfile)

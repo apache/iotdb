@@ -184,7 +184,14 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       try {
         logger.info("Starting to install a snapshot {} into slot[{}]", snapshot, slot);
         installFileSnapshotSchema(snapshot);
-        installFileSnapshotVersions(snapshot, slot);
+
+        SlotStatus status = slotManager.getStatus(slot);
+        if (status == SlotStatus.PULLING) {
+          // as the schemas are set, writes can proceed
+          slotManager.setToPullingWritable(slot);
+          logger.debug("{}: slot {} is now pulling writable", name, slot);
+        }
+
         installFileSnapshotFiles(snapshot, slot);
       } catch (PullFileException e) {
         throw new SnapshotInstallationException(e);
@@ -213,8 +220,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
-        FileSnapshot snapshot = integerSnapshotEntry.getValue();
-        installFileSnapshotVersions(snapshot, slot);
+        SlotStatus status = slotManager.getStatus(slot);
+        if (status == SlotStatus.PULLING) {
+          // as schemas are set, writes can proceed
+          slotManager.setToPullingWritable(slot);
+          logger.debug("{}: slot {} is now pulling writable", name, slot);
+        }
       }
 
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
@@ -233,31 +244,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       for (TimeseriesSchema schema : snapshot.getTimeseriesSchemas()) {
         // notice: the measurement in the schema is the full path here
         SchemaUtils.registerTimeseries(schema);
-      }
-    }
-
-    private void installFileSnapshotVersions(FileSnapshot snapshot, int slot)
-        throws SnapshotInstallationException {
-      // load data in the snapshot
-      List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
-      // set partition versions
-      for (RemoteTsFileResource remoteTsFileResource : remoteTsFileResources) {
-        String[] pathSegments = FilePathUtils.splitTsFilePath(remoteTsFileResource);
-        int segSize = pathSegments.length;
-        String storageGroupName = pathSegments[segSize - 3];
-        try {
-          StorageEngine.getInstance().setPartitionVersionToMax(new PartialPath(storageGroupName),
-              remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
-        } catch (StorageEngineException | IllegalPathException e) {
-          throw new SnapshotInstallationException(e);
-        }
-      }
-      SlotStatus status = slotManager.getStatus(slot);
-      if (status == SlotStatus.PULLING) {
-        // as the partition versions are set, writes can proceed without generating incorrect
-        // versions
-        slotManager.setToPullingWritable(slot);
-        logger.debug("{}: slot {} is now pulling writable", name, slot);
       }
     }
 
@@ -372,7 +358,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       File remoteModFile =
           new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
-        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource, true);
+        StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
         if (resource.isPlanRangeUnique()) {
           // only when a file has a unique range can we remove other files that over lap with it,
           // otherwise we may remove data that is not contained in the file

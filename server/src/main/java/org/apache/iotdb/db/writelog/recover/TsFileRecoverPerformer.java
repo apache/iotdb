@@ -146,10 +146,6 @@ public class TsFileRecoverPerformer {
         FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
-      long fileVersion =
-          Long.parseLong(
-              tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
-      tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
       tsFileResource.serialize();
     }
   }
@@ -198,9 +194,8 @@ public class TsFileRecoverPerformer {
         tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
-    long fileVersion = Long.parseLong(
-        tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
-    tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
+    tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMaxPlanIndex());
   }
 
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
@@ -217,6 +212,8 @@ public class TsFileRecoverPerformer {
             restorableTsFileIOWriter,
             tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
+        tsFileResource.updatePlanIndexes(recoverMemTable.getMinPlanIndex());
+        tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());
       }
 
       if (!isLastFile || tsFileResource.isCloseFlagSet()) {

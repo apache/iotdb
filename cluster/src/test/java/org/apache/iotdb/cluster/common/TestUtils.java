@@ -364,7 +364,8 @@ public class TestUtils {
       TsFileResource resource = new TsFileResource(file);
       resource.updateStartTime(TestUtils.getTestSg(sgNum), i * ptNum);
       resource.updateEndTime(TestUtils.getTestSg(sgNum), (i + 1) * ptNum - 1);
-      resource.setHistoricalVersions(Collections.singleton((long) i));
+      resource.setMaxPlanIndex(i);
+      resource.setMinPlanIndex(i);
 
       resource.serialize();
       ret.add(resource);

@@ -438,11 +438,8 @@ public class DataGroupMemberTest extends MemberTest {
     TsFileResource tsFileResource = prepareResource(5, true, true);
     tsFileResource.updateStartTime(TestUtils.getTestSg(0), 300);
     tsFileResource.updateEndTime(TestUtils.getTestSg(0), 599);
-    Set<Long> versionSet = new HashSet<>();
-    versionSet.add(3L);
-    versionSet.add(4L);
-    versionSet.add(5L);
-    tsFileResource.setHistoricalVersions(versionSet);
+    tsFileResource.setMinPlanIndex(3);
+    tsFileResource.setMaxPlanIndex(5);
     snapshot.addFile(tsFileResource, TestUtils.getNode(0));
 
     // create a local resource1
@@ -888,7 +885,8 @@ public class DataGroupMemberTest extends MemberTest {
     file.createNewFile();
 
     resource.setFile(file);
-    resource.setHistoricalVersions(Collections.singleton(serialNum));
+    resource.setMaxPlanIndex(serialNum);
+    resource.setMaxPlanIndex(serialNum);
     resource.updateStartTime(TestUtils.getTestSg(0), serialNum * 100);
     resource.updateEndTime(TestUtils.getTestSg(0), (serialNum + 1) * 100 - 1);
     if (withModification) {

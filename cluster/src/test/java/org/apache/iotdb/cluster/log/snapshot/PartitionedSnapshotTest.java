@@ -104,7 +104,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
-      assertEquals(i, loadedFiles.get(i).getMaxVersion());
+      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
 

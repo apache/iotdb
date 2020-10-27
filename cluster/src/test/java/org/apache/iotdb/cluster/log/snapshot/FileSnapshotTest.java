@@ -118,7 +118,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
-      assertEquals(i, loadedFiles.get(i).getMaxVersion());
+      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
 
@@ -160,7 +160,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
       assertEquals(tsFileResources.size(), loadedFiles.size());
       for (int i = 0; i < 9; i++) {
-        assertEquals(i, loadedFiles.get(i).getMaxVersion());
+        assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
 
@@ -208,7 +208,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
-      assertEquals(i, loadedFiles.get(i).getMaxVersion());
+      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       ModificationFile modFile = loadedFiles.get(i).getModFile();
       assertTrue(modFile.exists());
 
@@ -248,7 +248,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
       assertEquals(10, loadedFiles.size());
       for (int i = 0; i < 9; i++) {
-        assertEquals(i, loadedFiles.get(i).getMaxVersion());
+        assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
       }
       assertEquals(0, processor.getUnSequenceFileList().size());
     }
@@ -268,7 +268,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (int i = 0; i < 5; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance()
           .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-      processor.loadNewTsFile(tsFileResources.get(i), true);
+      processor.loadNewTsFile(tsFileResources.get(i));
     }
     snapshot.setTimeseriesSchemas(timeseriesSchemas);
 
@@ -285,7 +285,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
-      assertEquals(i, loadedFiles.get(i).getMaxVersion());
+      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
   }

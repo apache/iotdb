@@ -67,8 +67,6 @@ public class TsFileResourcePrinter {
     System.out.println();
     resource.deserialize();
 
-    System.out.println("HistoricalVersions: " + resource.getHistoricalVersions());
-
     for (String device : resource.getDeviceToIndexMap().keySet()) {
       System.out.println(String.format(
           "device %s, "

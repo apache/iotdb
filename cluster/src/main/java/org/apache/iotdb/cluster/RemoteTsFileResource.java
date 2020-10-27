@@ -23,10 +23,8 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -114,11 +112,6 @@ public class RemoteTsFileResource extends TsFileResource {
       dataOutputStream.writeLong(minPlanIndex);
 
       dataOutputStream.writeByte(isPlanRangeUnique ? 1 : 0);
-
-      dataOutputStream.writeInt(getHistoricalVersions().size());
-      for (long hisVersion : getHistoricalVersions()) {
-        dataOutputStream.writeLong(hisVersion);
-      }
     } catch (IOException ignored) {
       // unreachable
     }
@@ -151,13 +144,6 @@ public class RemoteTsFileResource extends TsFileResource {
     minPlanIndex = buffer.getLong();
 
     isPlanRangeUnique = buffer.get() == 1;
-
-    Set<Long> historicalVersions = new HashSet<>();
-    int size = buffer.getInt();
-    for (int i = 0; i < size; i++) {
-      historicalVersions.add(buffer.getLong());
-    }
-    setHistoricalVersions(historicalVersions);
 
     isRemote = true;
   }

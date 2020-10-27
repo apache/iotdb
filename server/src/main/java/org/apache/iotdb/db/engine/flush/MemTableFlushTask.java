@@ -240,6 +240,8 @@ public class MemTableFlushTask {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
             chunkWriter.writeToFileWriter(this.writer);
           } else {
+            this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
+            this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
             this.writer.endChunkGroup();
           }
         } catch (IOException e) {

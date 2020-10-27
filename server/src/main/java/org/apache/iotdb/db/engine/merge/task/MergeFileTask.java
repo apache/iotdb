@@ -24,11 +24,9 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -181,7 +179,7 @@ class MergeFileTask {
       }
       oldFileWriter.endFile();
 
-      updateHistoricalVersions(seqFile);
+      updatePlanIndexes(seqFile);
       seqFile.serialize();
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
@@ -230,18 +228,16 @@ class MergeFileTask {
     return oldFileWriter;
   }
 
-  private void updateHistoricalVersions(TsFileResource seqFile) {
-    // as the new file contains data of other files, track their versions in the new file
-    // so that we will be able to compare data across different IoTDBs that share the same file
+  private void updatePlanIndexes(TsFileResource seqFile) {
+    // as the new file contains data of other files, track their plan indexes in the new file
+    // so that we will be able to compare data across different IoTDBs that share the same index
     // generation policy
     // however, since the data of unseq files are mixed together, we won't be able to know
     // which files are exactly contained in the new file, so we have to record all unseq files
     // in the new file
-    Set<Long> newHistoricalVersions = new HashSet<>(seqFile.getHistoricalVersions());
-    for (TsFileResource unseqFiles : resource.getUnseqFiles()) {
-      newHistoricalVersions.addAll(unseqFiles.getHistoricalVersions());
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      seqFile.updatePlanIndexes(unseqFile);
     }
-    seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
   private void writeMergedChunkGroup(List<ChunkMetadata> chunkMetadataList, String device,
@@ -300,7 +296,7 @@ class MergeFileTask {
 
     fileWriter.endFile();
 
-    updateHistoricalVersions(seqFile);
+    updatePlanIndexes(seqFile);
     seqFile.serialize();
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
