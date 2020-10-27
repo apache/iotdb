@@ -68,6 +68,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
@@ -1731,8 +1732,11 @@ public class MetaGroupMember extends RaftMember {
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
    */
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
-      StorageEngineException {
+      StorageEngineException, EmptyIntervalException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    if(intervals.isEmpty()){
+      throw new EmptyIntervalException(filter);
+    }
     return routeIntervals(intervals, path);
   }
 

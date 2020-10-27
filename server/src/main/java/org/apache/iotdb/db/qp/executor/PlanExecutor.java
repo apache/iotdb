@@ -374,12 +374,7 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof LastQueryPlan) {
         queryDataSet = queryRouter.lastQuery((LastQueryPlan) queryPlan, context);
       } else {
-        try {
-          queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
-        } catch (IndexOutOfBoundsException e) {
-          logger.info("The result set is empty.");
-          return new EmptyDataSet();
-        }
+        queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
       }
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
