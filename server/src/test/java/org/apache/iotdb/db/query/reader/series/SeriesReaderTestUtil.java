@@ -145,6 +145,7 @@ public class SeriesReaderTestUtil {
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
+        fileWriter.writeVersion(tsFileResource.getMaxPlanIndex());
       }
     }
     fileWriter.close();
