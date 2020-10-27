@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,15 +114,6 @@ public class ChunkMetadataCache {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
-      BloomFilter bloomFilter = tsFileReader.readBloomFilter();
-      if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(String
-              .format("path not found by bloom filter, file is: %s, path is: %s", filePath,
-                  seriesPath));
-        }
-        return new ArrayList<>();
-      }
       // If timeseries isn't included in the tsfile, empty list is returned.
       return tsFileReader.readChunkMetaDataList(timeSeriesMetadata);
     }
