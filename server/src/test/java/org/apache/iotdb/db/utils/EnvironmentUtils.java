@@ -143,7 +143,9 @@ public class EnvironmentUtils {
     IoTDB.metaManager.clear();
 
     // close tracing
-    TracingManager.getInstance().close();
+    if (config.isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
 
     // delete all directory
     cleanAllDir();
