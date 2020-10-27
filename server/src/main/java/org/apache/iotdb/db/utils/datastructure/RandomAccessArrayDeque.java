@@ -33,7 +33,6 @@ import java.util.Queue;
 import java.util.RandomAccess;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import sun.misc.SharedSecrets;
 
 /**
  * RandomAccessArrayDeque is a modified version of ArrayDeque from java.util, providing the ability
@@ -844,26 +843,6 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   }
 
   /**
-   * Reconstitutes this deque from a stream (that is, deserializes it).
-   */
-  private void readObject(java.io.ObjectInputStream s)
-      throws java.io.IOException, ClassNotFoundException {
-    s.defaultReadObject();
-
-    // Read in size and allocate array
-    int size = s.readInt();
-    int capacity = calculateSize(size);
-    SharedSecrets.getJavaOISAccess().checkArray(s, Object[].class, capacity);
-    allocateElements(size);
-    head = 0;
-    tail = size;
-
-    // Read in all elements in the proper order.
-    for (int i = 0; i < size; i++)
-      elements[i] = s.readObject();
-  }
-
-  /**
    * Creates a <em><a href="Spliterator.html#binding">late-binding</a></em>
    * and <em>fail-fast</em> {@link Spliterator} over the elements in this
    * deque.
@@ -877,7 +856,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @since 1.8
    */
   public Spliterator<E> spliterator() {
-    return new DeqSpliterator<E>(this, -1, -1);
+    return new DeqSpliterator<>(this, -1, -1);
   }
 
   static final class DeqSpliterator<E> implements Spliterator<E> {
