@@ -61,6 +61,8 @@ public class SetTTLPlan extends PhysicalPlan {
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
     putString(stream, storageGroup.getFullPath());
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -69,12 +71,16 @@ public class SetTTLPlan extends PhysicalPlan {
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
     putString(buffer, storageGroup.getFullPath());
+
+    buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.dataTTL = buffer.getLong();
     this.storageGroup = new PartialPath(readString(buffer));
+
+    this.index = buffer.getLong();
   }
 
   public PartialPath getStorageGroup() {

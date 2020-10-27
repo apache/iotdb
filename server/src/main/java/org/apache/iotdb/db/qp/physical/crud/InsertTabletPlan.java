@@ -151,6 +151,8 @@ public class InsertTabletPlan extends InsertPlan {
       stream.write(valueBuffer.array());
       valueBuffer = null;
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -191,6 +193,8 @@ public class InsertTabletPlan extends InsertPlan {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
     }
+
+    buffer.putLong(index);
   }
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
@@ -331,6 +335,7 @@ public class InsertTabletPlan extends InsertPlan {
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
+    this.index = buffer.getLong();
   }
 
   public void setDataTypes(List<Integer> dataTypes) {
