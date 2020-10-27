@@ -20,18 +20,20 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -134,8 +136,10 @@ public class ChunkMetadataCacheTest {
     Assert.assertTrue(unseqResources.get(2).isClosed());
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
+    ;
+
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -157,7 +161,8 @@ public class ChunkMetadataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5), TimeSeriesMetadataCache.getInstance().get(new TimeSeriesMetadataCacheKey(seqResources.get(0).getPath(), storageGroup, measurementId5),
+            Collections.singleton(measurementId5)));
     Assert.assertEquals(0, metaDataList.size());
   }
 
