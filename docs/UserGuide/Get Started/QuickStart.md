@@ -229,7 +229,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-The commands to exit the Cli is:  
+The commands to exit the Cli are:  
 
 ```
 IoTDB> quit
