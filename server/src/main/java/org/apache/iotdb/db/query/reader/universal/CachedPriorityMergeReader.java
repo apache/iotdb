@@ -66,6 +66,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
               fromTimeValuePair.getTimestamp(), fromTimeValuePair.getValue().getDataType());
           logger.error("set data error,from: to = {}, dataType = {}",
               toTimeValuePair.getTimestamp(), toTimeValuePair.getValue().getDataType());
+          throw new IOException(e);
         }
         lastTimestamp = top.currTime();
       }
