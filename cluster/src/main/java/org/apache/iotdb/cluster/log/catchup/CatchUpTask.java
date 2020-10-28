@@ -96,9 +96,11 @@ public class CatchUpTask implements Runnable {
     if (index == -1) {
       logger.info("Cannot find matched of {} within [{}, {}] in memory", node, lo, hi);
       if (judgeUseLogsInDiskToCatchUp()) {
-        List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
-            .getLogs(peer.getMatchIndex() + 1, raftMember.getLogManager().getCommitLogIndex());
+        List<Log> logsInDisk = getLogsInStableEntryManager(peer.getMatchIndex() + 1,
+            raftMember.getLogManager().getCommitLogIndex());
         if (!logsInDisk.isEmpty()) {
+          logger.info("{}, found {} logs in disk to catch up", raftMember.getName(),
+              logsInDisk.size());
           logs = logsInDisk;
           return true;
         }
@@ -128,8 +130,8 @@ public class CatchUpTask implements Runnable {
   private List<Log> getLogsInStableEntryManager(long startIndex, long endIndex) {
     List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
         .getLogs(startIndex, endIndex);
-    logger.debug("found {} logs in disk to catchup, startIndex={}, endIndex={}", logs.size(),
-        startIndex, endIndex);
+    logger.debug("{}, found {} logs in disk to catchup, startIndex={}, endIndex={}",
+        raftMember.getLogManager(), logs.size(), startIndex, endIndex);
     return logsInDisk;
   }
 

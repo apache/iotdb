@@ -913,6 +913,4 @@ public abstract class RaftLogManager {
   public String getName() {
     return name;
   }
-
-
 }

@@ -150,9 +150,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-
   private void initCommonProperties() {
-
     this.logDataFileList = new ArrayList<>();
     this.logIndexFileList = new ArrayList<>();
     this.logIndexOffsetList = new ArrayList<>(maxRaftLogIndexSizeInMemory);
@@ -169,7 +167,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         .scheduleAtFixedRate(this::checkDeletePersistRaftLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
             TimeUnit.SECONDS);
-
   }
 
   /**
