@@ -27,8 +27,12 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(QueryUtils.class);
 
   private QueryUtils() {
     // util class
@@ -66,6 +70,8 @@ public class QueryUtils {
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
       if (metaData.getDeletedAt() >= metaData.getEndTime()) {
+        logger.info("remove metaData because of modification, startTime:{} endTime:{} dataType:{}",
+            metaData.getStartTime(), metaData.getEndTime(), metaData.getDataType());
         return true;
       } else {
         if (metaData.getDeletedAt() >= metaData.getStartTime()) {

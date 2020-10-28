@@ -23,12 +23,15 @@ import java.io.IOException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * CachedPriorityMergeReader use a cache to reduce unnecessary heap updates and increase locality.
  */
 public class CachedPriorityMergeReader extends PriorityMergeReader {
 
+  private static final Logger logger = LoggerFactory.getLogger(CachedPriorityMergeReader.class);
   private static final int CACHE_SIZE = 100;
 
   private TimeValuePair[] timeValuePairCache = new TimeValuePair[CACHE_SIZE];
@@ -54,7 +57,16 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.peek();
       if (lastTimestamp == null || top.currTime() != lastTimestamp) {
-        TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
+        TimeValuePair fromTimeValuePair = top.timeValuePair;
+        TimeValuePair toTimeValuePair = timeValuePairCache[cacheLimit++];
+        try {
+          TimeValuePairUtils.setTimeValuePair(fromTimeValuePair, toTimeValuePair);
+        } catch (UnsupportedOperationException e) {
+          logger.error("set data error,from: time = {}, dataType = {}",
+              fromTimeValuePair.getTimestamp(), fromTimeValuePair.getValue().getDataType());
+          logger.error("set data error,from: to = {}, dataType = {}",
+              toTimeValuePair.getTimestamp(), toTimeValuePair.getValue().getDataType());
+        }
         lastTimestamp = top.currTime();
       }
       // remove duplicates
