@@ -146,6 +146,12 @@ class MergeMultiChunkTask {
           for (TsFileResource tsFileResource : resource.getUnseqFiles()) {
             logger
                 .error("datatype error, may be in file : {}", tsFileResource.getFile().getPath());
+            for (ChunkMetadata chunkMetadata : tsFileResource.getChunkMetadataList()) {
+              logger.error(
+                  "above unseq file have chunk path = {}, datatype = {}, startTime = {} ,endTime ={}",
+                  chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType(),
+                  chunkMetadata.getStartTime(), chunkMetadata.getEndTime());
+            }
           }
           throw new IOException(e);
         }
