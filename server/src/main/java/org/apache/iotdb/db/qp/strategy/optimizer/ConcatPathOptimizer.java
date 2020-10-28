@@ -273,7 +273,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       SelectOperator selectOperator, int limit, int offset, int maxDeduplicatedPathNum)
       throws LogicalOptimizeException, PathNumOverLimitException {
     limit = limit == 0 || maxDeduplicatedPathNum < limit ? maxDeduplicatedPathNum + 1 : limit;
-
+    int consumed = 0;
     List<PartialPath> retPaths = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
 
@@ -296,6 +296,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           extendListSafely(afterConcatAggregations, i, newAggregations);
         }
 
+        consumed += pair.right;
         if (offset != 0) {
           int delta = offset - pair.right;
           offset = Math.max(delta, 0);
@@ -316,6 +317,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
+    if (consumed != 0 && retPaths.isEmpty()) {
+      throw new LogicalOptimizeException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+    }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
   }
