@@ -127,6 +127,14 @@ public class CatchUpTask implements Runnable {
 
   //TODO use log in disk to snapshot first, if the log not found on disk, then use snapshot.
   private boolean judgeUseLogsInDiskToCatchUp() {
+    if (!ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+      return false;
+    }
+    if (!ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
+      return false;
+    }
+
+    // TODO judge the cost of snapshot and logs in disk
     return true;
   }
 

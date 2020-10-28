@@ -151,6 +151,9 @@ public class ClusterConfig {
   private int maxPersistRaftLogNumberOnDisk = 1_000_000;
 
 
+  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
   }
@@ -421,5 +424,13 @@ public class ClusterConfig {
 
   public void setMaxPersistRaftLogNumberOnDisk(int maxPersistRaftLogNumberOnDisk) {
     this.maxPersistRaftLogNumberOnDisk = maxPersistRaftLogNumberOnDisk;
+  }
+
+  public boolean isEnableUsePersistLogOnDiskToCatchUp() {
+    return enableUsePersistLogOnDiskToCatchUp;
+  }
+
+  public void setEnableUsePersistLogOnDiskToCatchUp(boolean enableUsePersistLogOnDiskToCatchUp) {
+    this.enableUsePersistLogOnDiskToCatchUp = enableUsePersistLogOnDiskToCatchUp;
   }
 }

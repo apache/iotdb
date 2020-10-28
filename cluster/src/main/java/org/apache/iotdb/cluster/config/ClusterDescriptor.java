@@ -293,6 +293,10 @@ public class ClusterDescriptor {
         Integer.parseInt(properties.getProperty("max_persist_raft_log_number_on_disk",
             String.valueOf(config.getMaxPersistRaftLogNumberOnDisk()))));
 
+    config.setEnableUsePersistLogOnDiskToCatchUp(
+        Boolean.parseBoolean(properties.getProperty("enable_use_persist_log_on_disk_to_catch_up",
+            String.valueOf(config.isEnableUsePersistLogOnDiskToCatchUp()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
