@@ -916,7 +916,7 @@ public class Session {
     return result;
   }
 
-  private String getTimeZone() {
+  public String getTimeZone() {
     if (zoneId != null) {
       return zoneId.toString();
     }
