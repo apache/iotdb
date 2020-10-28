@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -343,14 +345,17 @@ public class MManager {
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(new PartialPath(args[1]));
+        try {
+          setStorageGroup(new PartialPath(args[1]));
+        }
+        // two time series may set one storage group concurrently,
+        // that's normal in our concurrency control protocol
+        catch (MetadataException e){
+          logger.info("concurrently operate set storage group cmd {} twice", cmd);
+        }
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
-        List<PartialPath> storageGroups = new ArrayList<>();
-        for (int i = 1; i <= args.length; i++) {
-          storageGroups.add(new PartialPath(args[i]));
-        }
-        deleteStorageGroups(storageGroups);
+        deleteStorageGroups(Collections.singletonList(new PartialPath(args[1])));
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(new PartialPath(args[1]), Long.parseLong(args[2]));
@@ -906,6 +911,10 @@ public class MManager {
     }
     return res;
 
+  }
+
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
+    return (MeasurementMNode) deviceMNode.getChild(measurement);
   }
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1532,15 +1541,20 @@ public class MManager {
     }
   }
 
+  public void collectTimeseriesSchema(String prefixPath,
+      Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
-      Collection<MeasurementSchema> timeseriesSchemas) {
+      Collection<MeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+        measurementSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
             nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
@@ -1595,7 +1609,7 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(String path, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath path, MeasurementMeta meta) {
     // do nothing
   }
 
@@ -1691,20 +1705,26 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
+        MeasurementMNode measurementMNode;
         if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new MetadataException(String.format(
-                "Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurementList[i]));
-          }
-          TSDataType dataType = getTypeInLoc(plan, i);
-          // create it, may concurrent created by multiple thread
-          internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-        }
+            // but measurement not in MTree and cannot auto-create, try the cache
+            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+            if (measurementMNode == null) {
+              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+            }
+          } else {
+            // create it
 
-        MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode
-            .getChild(measurementList[i]);
+            TSDataType dataType = getTypeInLoc(plan, i);
+            // create it, may concurrent created by multiple thread
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+          }
+        } else {
+          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+        }
 
         // check type is match
         TSDataType insertDataType = null;
@@ -1722,13 +1742,13 @@ public class MManager {
         if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
+                  insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
-            throw new MetadataException(String.format(
-                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementMNode.getSchema().getType()));
+            throw mismatchException;
           } else {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i);
+            plan.markFailedMeasurementInsertion(i, mismatchException);
             continue;
           }
         }
@@ -1743,7 +1763,7 @@ public class MManager {
             e.getMessage());
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
-          plan.markFailedMeasurementInsertion(i);
+          plan.markFailedMeasurementInsertion(i, e);
         } else {
           throw e;
         }

@@ -100,6 +100,7 @@ goto okClasspath
 
 :append
 set CLASSPATH=%CLASSPATH%;%1
+
 goto :eof
 
 @REM -----------------------------------------------------------------------------

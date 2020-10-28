@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
@@ -78,6 +77,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,6 +110,7 @@ public class StorageEngine implements IService {
   }
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
+
   private ExecutorService recoverAllSgThreadPool;
 
   static class InstanceHolder {
@@ -366,6 +367,8 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
+   *
+   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -392,39 +395,61 @@ public class StorageEngine implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start force closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq) {
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
-    if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
+    if (processor == null) {
+      return;
+    }
+
+    if (logger.isInfoEnabled()) {
+      logger.info("{} closing sg processor is called for closing {}, seq = {}",
+          isSync ? "sync" : "async", storageGroupPath,
           isSeq);
-      processor.writeLock();
-      try {
-        if (isSeq) {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkSequenceTsFileProcessors())) {
+    }
+
+    processor.writeLock();
+    try {
+      if (isSeq) {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkSequenceTsFileProcessors())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(true, tsfileProcessor);
+          } else {
             processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
-        } else {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkUnsequenceTsFileProcessors())) {
+        }
+      } else {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkUnsequenceTsFileProcessors())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
+          } else {
             processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
           }
         }
-      } finally {
-        processor.writeUnlock();
       }
+    } finally {
+      processor.writeUnlock();
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq)
+  /**
+   * @param storageGroupPath the storage group name
+   * @param partitionId      the partition id
+   * @param isSeq            is sequence tsfile or unsequence tsfile
+   * @param isSync           close tsfile synchronously or asynchronously
+   * @throws StorageGroupNotSetException
+   */
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
+      boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
@@ -438,7 +463,11 @@ public class StorageEngine implements IService {
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            if (isSync) {
+              processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            } else {
+              processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            }
             break;
           }
         }
@@ -698,9 +727,43 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupPath).removePartitions(filter);
   }
 
+  public Map<PartialPath, StorageGroupProcessor> getProcessorMap() {
+    return processorMap;
+  }
+
+  /**
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated partitionId and whether
+   * it is sequence or not.
+   * @return storage group -> a list of partitionId-isSequence pairs
+   */
+  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
+    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
+    for (Entry<PartialPath, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
+      StorageGroupProcessor processor = entry.getValue();
+      for (TsFileProcessor tsFileProcessor : processor.getWorkSequenceTsFileProcessors()) {
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
+        partitionIdList.add(tmpPair);
+      }
+
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
+        partitionIdList.add(tmpPair);
+      }
+
+      res.put(entry.getKey().getFullPath(), partitionIdList);
+    }
+    return res;
+  }
+
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
     StorageEngine.enablePartition = enablePartition;
+  }
+
+  @TestOnly
+  public static boolean isEnablePartition() {
+    return enablePartition;
   }
 
   /**

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -51,7 +52,7 @@ public class OperateFilePlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   public File getFile() {

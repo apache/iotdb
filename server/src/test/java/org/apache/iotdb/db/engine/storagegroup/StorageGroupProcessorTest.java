@@ -95,13 +95,13 @@ public class StorageGroupProcessorTest {
       throws WriteProcessException, IOException, MetadataException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
-    insertToStorageGroupProcessor(record);
+    processor.insert(new InsertRowPlan(record));
     processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
     }
 
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
@@ -111,7 +111,7 @@ public class StorageGroupProcessorTest {
     for (int j = 11; j <= 20; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
     }
 
     processor.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1);
@@ -142,7 +142,7 @@ public class StorageGroupProcessorTest {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -163,7 +163,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
-      throws WriteProcessException, QueryProcessException, IllegalPathException {
+      throws QueryProcessException, IllegalPathException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -237,7 +237,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -245,7 +245,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
@@ -562,7 +562,7 @@ public class StorageGroupProcessorTest {
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -570,7 +570,7 @@ public class StorageGroupProcessorTest {
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
-      insertToStorageGroupProcessor(record);
+      processor.insert(new InsertRowPlan(record));
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
