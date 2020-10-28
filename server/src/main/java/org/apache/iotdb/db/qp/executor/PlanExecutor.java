@@ -724,7 +724,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(), deletePlan.getIndex());
     }
   }
 
@@ -894,13 +894,13 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException {
     try {
       if (!IoTDB.metaManager.isPathExist(path)) {
         throw new QueryProcessException(
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
-      StorageEngine.getInstance().delete(path, startTime, endTime);
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -1080,7 +1080,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       List<String> failedNames = new LinkedList<>();
       for (PartialPath path : deletePathList) {
-        StorageEngine.getInstance().deleteTimeseries(path);
+        StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
         String failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
