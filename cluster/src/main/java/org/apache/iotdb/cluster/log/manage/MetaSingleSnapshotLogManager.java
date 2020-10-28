@@ -58,8 +58,8 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
     // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
+    super.takeSnapshot();
     synchronized (this) {
-      super.takeSnapshot();
       storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
       try {
         IAuthorizer authorizer = BasicAuthorizer.getInstance();

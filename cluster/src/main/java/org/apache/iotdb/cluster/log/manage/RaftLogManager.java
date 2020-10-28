@@ -852,7 +852,7 @@ public abstract class RaftLogManager {
     try {
       long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
       if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
-          .getLastIndex()) {
+          .getLastIndex() || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
         Thread.sleep(5);
         return;
@@ -912,5 +912,9 @@ public abstract class RaftLogManager {
 
   public String getName() {
     return name;
+  }
+
+  public long getBlockAppliedCommitIndex() {
+    return blockAppliedCommitIndex;
   }
 }

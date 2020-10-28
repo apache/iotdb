@@ -25,6 +25,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -76,14 +78,16 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       syncFlushAllProcessor();
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
+      super.takeSnapshot();
       synchronized (this) {
-        super.takeSnapshot();
         collectTimeseriesSchemas();
-        snapshotLastLogIndex = getCommitLogIndex();
-        snapshotLastLogTerm = getCommitLogTerm();
+        snapshotLastLogIndex = getBlockAppliedCommitIndex();
+        snapshotLastLogTerm = getTerm(snapshotLastLogIndex);
         collectTsFilesAndFillTimeseriesSchemas();
         logger.info("{}: Snapshot is taken", getName());
       }
+    } catch (EntryCompactedException e) {
+      logger.error("failed to do snapshot.", e);
     } finally {
       super.resetBlockAppliedCommitIndex();
     }
