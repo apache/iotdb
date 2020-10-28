@@ -325,7 +325,14 @@ public class MManager {
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(new PartialPath(args[1]));
+        try {
+          setStorageGroup(new PartialPath(args[1]));
+        }
+        // two time series may set one storage group concurrently,
+        // that's normal in our concurrency control protocol
+        catch (MetadataException e){
+          logger.info("concurrently operate set storage group cmd {} twice", cmd);
+        }
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
         deleteStorageGroups(Collections.singletonList(new PartialPath(args[1])));
