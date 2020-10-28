@@ -52,7 +52,8 @@ Note: FullPath can not include `*`
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: FullPath can not include `*`
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * 创建时间序列语句

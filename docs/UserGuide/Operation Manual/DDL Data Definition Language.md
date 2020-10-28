@@ -53,11 +53,13 @@ The result is as follows:
 
 ## Delete Storage Group
 
-User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
+// delete all data, all timeseries and all storage groups
+IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 ## Create Timeseries
