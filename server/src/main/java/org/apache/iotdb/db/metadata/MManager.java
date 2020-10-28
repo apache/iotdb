@@ -328,11 +328,7 @@ public class MManager {
         setStorageGroup(new PartialPath(args[1]));
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
-        List<PartialPath> storageGroups = new ArrayList<>();
-        for (int i = 1; i <= args.length; i++) {
-          storageGroups.add(new PartialPath(args[i]));
-        }
-        deleteStorageGroups(storageGroups);
+        deleteStorageGroups(Collections.singletonList(new PartialPath(args[1])));
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(new PartialPath(args[1]), Long.parseLong(args[2]));
