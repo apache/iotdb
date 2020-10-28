@@ -298,10 +298,27 @@ public abstract class RaftLogManager {
     if (index > lastIndex) {
       return -1;
     }
+
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
       return getUnCommittedEntryManager().maybeTerm(index);
     }
-    return getCommittedEntryManager().maybeTerm(index);
+    // search in memory
+    long searchInMemoryIndex = getCommittedEntryManager().maybeTerm(index);
+    if (searchInMemoryIndex != -1) {
+      return searchInMemoryIndex;
+    }
+
+    // search in disk
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        && ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
+      List<Log> logsInDisk = getStableEntryManager().getLogs(index, index);
+      if (logsInDisk.isEmpty()) {
+        return -1;
+      } else {
+        return logsInDisk.get(0).getCurrLogTerm();
+      }
+    }
+    return -1;
   }
 
   /**
