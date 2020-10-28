@@ -138,7 +138,17 @@ class MergeMultiChunkTask {
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       if (unseqReaders[i].hasNextTimeValuePair()) {
-        currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
+        try {
+          currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
+        } catch (IOException e) {
+          logger
+              .error("datatype error, path = {}", currMergingPaths.get(i).getFullPath());
+          for (TsFileResource tsFileResource : resource.getUnseqFiles()) {
+            logger
+                .error("datatype error, may be in file : {}", tsFileResource.getFile().getPath());
+          }
+          throw new IOException(e);
+        }
       }
     }
 
