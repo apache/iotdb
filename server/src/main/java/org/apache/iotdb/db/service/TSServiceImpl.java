@@ -34,6 +34,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -134,6 +138,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW-SQL");
+  private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY-FREQUENCY");
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -166,9 +171,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // When the client abnormally exits, we can still know who to disconnect
   private ThreadLocal<Long> currSessionId = new ThreadLocal<>();
 
+  private static final int INTERVAL = 30;
+
+  private static final AtomicInteger queryCount = new AtomicInteger(0);
+
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+
+    ScheduledExecutorService timedQuerySqlCountThread = Executors
+        .newSingleThreadScheduledExecutor(r -> new Thread(r, "timedQuerySqlCountThread"));
+    timedQuerySqlCountThread.scheduleAtFixedRate(() -> QUERY_FREQUENCY_LOGGER
+            .info("Query count in current 30 seconds: " + queryCount.getAndSet(0)), INTERVAL, INTERVAL,
+        TimeUnit.SECONDS);
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
