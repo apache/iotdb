@@ -191,12 +191,11 @@ public class LogCatchUpTask implements Callable<Boolean> {
         logger.error("getTerm failed for newly append entries", e);
       }
     }
+    logger.debug("{}, node={} catchup request={}", raftMember.getName(), node, request.toString());
     return request;
   }
 
-
   private void doLogCatchUpInBatch() throws TException, InterruptedException {
-
     List<ByteBuffer> logList = new ArrayList<>();
     long totalLogSize = 0;
     int firstLogPos = 0;

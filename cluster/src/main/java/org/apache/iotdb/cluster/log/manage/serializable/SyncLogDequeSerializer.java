@@ -34,10 +34,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -789,20 +786,32 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
-    List<Log> result = new ArrayList<>();
-    Map<File, Pair<Long, Long>> logDataFileAndOffsetMap = getLogDataFileAndOffset(startIndex,
-        endIndex);
-    if (logDataFileAndOffsetMap == null) {
-      return result;
+    logger.debug("start to get logs between[{}, {}]", startIndex, endIndex);
+    if (startIndex > endIndex) {
+      logger
+          .error("startIndex={} should be less than or equal to endIndex={}", startIndex, endIndex);
+      return Collections.emptyList();
+    }
+    if (startIndex < 0 || endIndex < 0) {
+      logger
+          .error("startIndex={} and endIndex={} should be larger than zero", startIndex, endIndex);
+      return Collections.emptyList();
     }
 
-    for (Entry<File, Pair<Long, Long>> entry : logDataFileAndOffsetMap.entrySet()) {
-      result.addAll(getLogsFromOneLogDataFile(entry.getKey(), entry.getValue()));
+    List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
+        startIndex, endIndex);
+
+    if (logDataFileAndOffsetList.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<Log> result = new ArrayList<>();
+    for (Pair<File, Pair<Long, Long>> pair : logDataFileAndOffsetList) {
+      result.addAll(getLogsFromOneLogDataFile(pair.left, pair.right));
     }
 
     return result;
   }
-
 
   /**
    * @param logIndex the log's index
@@ -851,59 +860,69 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       if (bytesNeedToSkip != bytesActuallySkip) {
         logger.error("read file={} failed, should skip={}, actually skip={}",
             file.getAbsoluteFile(), bytesNeedToSkip, bytesActuallySkip);
+        return -1;
       }
       offset = ReadWriteIOUtils.readLong(inputStream);
       return offset;
     } catch (IOException e) {
       logger.error("can not read the log index file={}", file.getAbsoluteFile(), e);
+      return -1;
     }
-    return offset;
   }
 
   /**
    * @param startIndex the log start index
    * @param endIndex   the log end index
-   * @return key-> the log data file, value-> the left value is the start offset of the file, the
-   * right is the end offset of the file
+   * @return first value-> the log data file, second value-> the left value is the start offset of
+   * the file, the right is the end offset of the file
    */
-  private Map<File, Pair<Long, Long>> getLogDataFileAndOffset(long startIndex,
+  private List<Pair<File, Pair<Long, Long>>> getLogDataFileAndOffset(long startIndex,
       long endIndex) {
-    Map<File, Pair<Long, Long>> fileNameWithStartAndEndOffset = new HashMap<>();
+    long startIndexInOneFile = startIndex;
+    long endIndexInOneFile = 0;
+    List<Pair<File, Pair<Long, Long>>> fileNameWithStartAndEndOffset = new ArrayList();
     // 1. get the start offset with the startIndex
-    long startOffset = getOffsetAccordingToLogIndex(startIndex);
+    long startOffset = getOffsetAccordingToLogIndex(startIndexInOneFile);
     if (startOffset == -1) {
-      return null;
+      return Collections.emptyList();
     }
-    Pair<File, Pair<Long, Long>> logDataFileWithStartAndEndLogIndex = getLogDataFile(startIndex);
+    Pair<File, Pair<Long, Long>> logDataFileWithStartAndEndLogIndex = getLogDataFile(
+        startIndexInOneFile);
     if (logDataFileWithStartAndEndLogIndex == null) {
-      return null;
+      return Collections.emptyList();
     }
-    long fileEndLogIndex = logDataFileWithStartAndEndLogIndex.right.right;
+    endIndexInOneFile = logDataFileWithStartAndEndLogIndex.right.right;
     // 2. judge whether the fileEndLogIndex>=endIndex
-    while (endIndex > fileEndLogIndex) {
+    while (endIndex > endIndexInOneFile) {
       //  this means the endIndex's offset can not be found in the file
       //  logDataFileWithStartAndEndLogIndex.left; and should be find in the next log data file.
       //3. get the file's end offset
-      long endOffset = getOffsetAccordingToLogIndex(fileEndLogIndex);
-      fileNameWithStartAndEndOffset
-          .put(logDataFileWithStartAndEndLogIndex.left, new Pair<>(startOffset, endOffset));
+      long endOffset = getOffsetAccordingToLogIndex(endIndexInOneFile);
+      fileNameWithStartAndEndOffset.add(
+          new Pair<>(logDataFileWithStartAndEndLogIndex.left, new Pair<>(startOffset, endOffset)));
 
+      logger
+          .debug("get log data offset=[{},{}] according to log index=[{},{}], file={}", startOffset,
+              endOffset, startIndexInOneFile, endIndexInOneFile,
+              logDataFileWithStartAndEndLogIndex.left);
       //4. search the next file to get the log index of fileEndLogIndex + 1
-      startOffset = getOffsetAccordingToLogIndex(fileEndLogIndex + 1);
+      startIndexInOneFile = endIndexInOneFile + 1;
+      startOffset = getOffsetAccordingToLogIndex(startIndexInOneFile);
       if (startOffset == -1) {
-        return null;
+        return Collections.emptyList();
       }
-      logDataFileWithStartAndEndLogIndex = getLogDataFile(fileEndLogIndex + 1);
+      logDataFileWithStartAndEndLogIndex = getLogDataFile(startIndexInOneFile);
       if (logDataFileWithStartAndEndLogIndex == null) {
-        return null;
+        return Collections.emptyList();
       }
-      fileEndLogIndex = logDataFileWithStartAndEndLogIndex.right.right;
+      endIndexInOneFile = logDataFileWithStartAndEndLogIndex.right.right;
     }
     // this means the endIndex's offset can not be found in the file logDataFileWithStartAndEndLogIndex.left
     long endOffset = getOffsetAccordingToLogIndex(endIndex);
-    fileNameWithStartAndEndOffset
-        .put(logDataFileWithStartAndEndLogIndex.left, new Pair<>(startOffset, endOffset));
-
+    fileNameWithStartAndEndOffset.add(
+        new Pair<>(logDataFileWithStartAndEndLogIndex.left, new Pair<>(startOffset, endOffset)));
+    logger.debug("get log data offset=[{},{}] according to log index=[{},{}], file={}", startOffset,
+        endOffset, startIndexInOneFile, endIndex, logDataFileWithStartAndEndLogIndex.left);
     return fileNameWithStartAndEndOffset;
   }
 

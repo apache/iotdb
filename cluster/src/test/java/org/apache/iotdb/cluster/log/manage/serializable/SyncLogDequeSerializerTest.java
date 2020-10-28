@@ -148,44 +148,51 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
   }
 
-
   @Test
   public void testGetLogs() {
-    List<Log> testLogs1 = TestUtils.prepareNodeLogs(100);
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    prepareFiles(syncLogDequeSerializer);
     try {
-      syncLogDequeSerializer.append(testLogs1, 0);
       List<Log> logList = syncLogDequeSerializer.getLogs(0, 10);
       for (int i = 0; i < logList.size(); i++) {
         Assert.assertEquals(testLogs1.get(i), logList.get(i));
       }
 
-      logList = syncLogDequeSerializer.getLogs(10, 10);
+      logList = syncLogDequeSerializer.getLogs(10, 20);
       for (int i = 0; i < logList.size(); i++) {
         Assert.assertEquals(testLogs1.get(i + 10), logList.get(i));
       }
 
-      logList = syncLogDequeSerializer.getLogs(0, 99);
+      logList = syncLogDequeSerializer.getLogs(0, 40);
       for (int i = 0; i < logList.size(); i++) {
         Assert.assertEquals(testLogs1.get(i), logList.get(i));
       }
 
-      logList = syncLogDequeSerializer.getLogs(99, 99);
+      // the max size of testLogs1 is 40
+      logList = syncLogDequeSerializer.getLogs(40, 100);
+      Assert.assertTrue(logList.isEmpty());
+
+      logList = syncLogDequeSerializer.getLogs(20, 30);
       for (int i = 0; i < logList.size(); i++) {
-        Assert.assertEquals(testLogs1.get(i + 99), logList.get(i));
+        Assert.assertEquals(testLogs1.get(i + 20), logList.get(i));
       }
 
-      logList = syncLogDequeSerializer.getLogs(100, 101);
+      logList = syncLogDequeSerializer.getLogs(30, 20);
       Assert.assertTrue(logList.isEmpty());
 
-      logList = syncLogDequeSerializer.getLogs(100, 100);
+      logList = syncLogDequeSerializer.getLogs(40, 40);
+      for (int i = 0; i < logList.size(); i++) {
+        Assert.assertEquals(testLogs1.get(i + 40), logList.get(i));
+      }
+
+      logList = syncLogDequeSerializer.getLogs(0, 0);
+      for (int i = 0; i < logList.size(); i++) {
+        Assert.assertEquals(testLogs1.get(i), logList.get(i));
+      }
+
+      logList = syncLogDequeSerializer.getLogs(-1, 0);
       Assert.assertTrue(logList.isEmpty());
 
-      logList = syncLogDequeSerializer.getLogs(1000, 500);
-      Assert.assertTrue(logList.isEmpty());
-
-    } catch (IOException e) {
-      Assert.fail(e.getMessage());
     } finally {
       syncLogDequeSerializer.close();
     }
@@ -378,7 +385,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testGetAllEntriesBeforeAppliedIndex() {
+  public void testGetAllEntriesBeforeAppliedIndexEmpty() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum = 10;
     int maxHaveAppliedCommitIndex = 0;
@@ -403,6 +410,37 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     try {
       List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
       Assert.assertTrue(logDeque.isEmpty());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
+
+  @Test
+  public void testGetAllEntriesBeforeAppliedIndexNotEmpty() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    int logNum = 10;
+    int maxHaveAppliedCommitIndex = 4;
+    List<Log> testLogs1 = null;
+    HardState hardState = new HardState();
+    hardState.setCurrentTerm(10);
+    hardState.setVoteFor(TestUtils.getNode(5));
+    try {
+      testLogs1 = TestUtils.prepareNodeLogs(logNum);
+      syncLogDequeSerializer.append(testLogs1, maxHaveAppliedCommitIndex);
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      for (int i = 0; i < logDeque.size(); i++) {
+        Assert.assertEquals(testLogs1.get(i + maxHaveAppliedCommitIndex), logDeque.get(i));
+      }
     } finally {
       syncLogDequeSerializer.close();
     }

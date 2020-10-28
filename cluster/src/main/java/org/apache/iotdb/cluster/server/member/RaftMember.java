@@ -1706,6 +1706,7 @@ public abstract class RaftMember {
 
   private long checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
+    logger.debug("{}, prevLogIndex={}, lastLogIndex={}", name, prevLogIndex, lastLogIndex);
     long startTime = Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs
@@ -1728,6 +1729,8 @@ public abstract class RaftMember {
    */
   private long appendEntries(long prevLogIndex, long prevLogTerm, long leaderCommit,
       List<Log> logs) {
+    logger.debug("{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}", name, prevLogIndex,
+        prevLogTerm, leaderCommit);
     if (logs.isEmpty()) {
       return Response.RESPONSE_AGREE;
     }
