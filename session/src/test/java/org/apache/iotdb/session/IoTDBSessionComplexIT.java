@@ -670,12 +670,12 @@ public class IoTDBSessionComplexIT {
     }
   }
 
-  public void deleteStorageGroupTest() throws ClassNotFoundException, SQLException,
+  private void deleteStorageGroupTest() throws ClassNotFoundException, SQLException,
       IoTDBConnectionException, StatementExecutionException {
     try {
       session.deleteStorageGroup("root.sg1.d1.s1");
     } catch (StatementExecutionException e) {
-      assertTrue(e.getMessage().contains("Path [root.sg1.d1.s1] does not exist"));
+      assertTrue(e.getMessage().contains("d1 does not have the child node s1"));
     }
     session.deleteStorageGroup("root.sg1");
     File folder = new File("data/system/storage_groups/root.sg1/");
