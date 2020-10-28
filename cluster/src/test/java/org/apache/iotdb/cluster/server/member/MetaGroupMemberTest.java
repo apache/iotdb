@@ -56,6 +56,7 @@ import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
@@ -193,7 +194,7 @@ public class MetaGroupMemberTest extends MemberTest {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
         } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,e.getMessage());
+          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
         }
       }
 
@@ -323,7 +324,8 @@ public class MetaGroupMemberTest extends MemberTest {
         // initialize allNodes
         for (String seedUrl : seedUrls) {
           Node node = ClusterUtils.parseNode(seedUrl);
-          if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+          if (node != null && (!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode
+              .getMetaPort())
               && !allNodes.contains(node)) {
             // do not add the local node since it is added in `setThisNode()`
             allNodes.add(node);
@@ -789,7 +791,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException {
+      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

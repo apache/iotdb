@@ -68,6 +68,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
@@ -120,6 +121,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -1654,7 +1656,9 @@ public class MetaGroupMember extends RaftMember {
             partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
       }
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() && (
+          !(plan instanceof DeleteTimeSeriesPlan) ||
+              status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
             status.getCode(), partitionGroup.getHeader(),
@@ -1728,8 +1732,11 @@ public class MetaGroupMember extends RaftMember {
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
    */
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
-      StorageEngineException {
+      StorageEngineException, EmptyIntervalException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    if (intervals.isEmpty()) {
+      throw new EmptyIntervalException(filter);
+    }
     return routeIntervals(intervals, path);
   }
 

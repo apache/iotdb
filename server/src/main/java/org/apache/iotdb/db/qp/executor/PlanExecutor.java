@@ -150,6 +150,7 @@ import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class PlanExecutor implements IPlanExecutor {
+
   // logger
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
@@ -157,6 +158,8 @@ public class PlanExecutor implements IPlanExecutor {
   protected IQueryRouter queryRouter;
   // for administration
   private IAuthorizer authorizer;
+
+  private final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
@@ -946,7 +949,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new PathNotExistException(failedPaths);
         } else {
           throw new StorageEngineException(
-              "failed to insert points " + insertRowPlan.getFailedMeasurements());
+              INSERT_MEASUREMENTS_FAILED_MESSAGE + insertRowPlan.getFailedMeasurements());
         }
       }
     } catch (StorageEngineException | MetadataException e) {
@@ -963,7 +966,7 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-            "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+            INSERT_MEASUREMENTS_FAILED_MESSAGE + insertTabletPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -1055,13 +1058,19 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
     Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
     for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
-        createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
-        createMultiTimeSeriesPlan.getCompressors().get(i),
-        createMultiTimeSeriesPlan.getProps() == null ? null : createMultiTimeSeriesPlan.getProps().get(i),
-        createMultiTimeSeriesPlan.getTags() == null ? null : createMultiTimeSeriesPlan.getTags().get(i),
-        createMultiTimeSeriesPlan.getAttributes() == null ? null : createMultiTimeSeriesPlan.getAttributes().get(i),
-        createMultiTimeSeriesPlan.getAlias() == null ? null : createMultiTimeSeriesPlan.getAlias().get(i));
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
+          createMultiTimeSeriesPlan.getPaths().get(i),
+          createMultiTimeSeriesPlan.getDataTypes().get(i),
+          createMultiTimeSeriesPlan.getEncodings().get(i),
+          createMultiTimeSeriesPlan.getCompressors().get(i),
+          createMultiTimeSeriesPlan.getProps() == null ? null
+              : createMultiTimeSeriesPlan.getProps().get(i),
+          createMultiTimeSeriesPlan.getTags() == null ? null
+              : createMultiTimeSeriesPlan.getTags().get(i),
+          createMultiTimeSeriesPlan.getAttributes() == null ? null
+              : createMultiTimeSeriesPlan.getAttributes().get(i),
+          createMultiTimeSeriesPlan.getAlias() == null ? null
+              : createMultiTimeSeriesPlan.getAlias().get(i));
 
       try {
         createTimeSeries(plan);
