@@ -95,7 +95,7 @@ public class PrimitiveArrayManager {
    * @return an array
    */
   public static Object getDataListByType(TSDataType dataType) {
-    // check buffered array num
+    // check buffered array num (to avoid entering synchronized block every time)
     if (bufferedArraysSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       // return an out of buffer array
@@ -112,6 +112,9 @@ public class PrimitiveArrayManager {
         return dataArray;
       }
     }
+
+    // if no buffered array is returned, return an out of buffer array
+    outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
     return getDataList(dataType);
   }
 

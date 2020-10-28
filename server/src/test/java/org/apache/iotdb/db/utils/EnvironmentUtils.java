@@ -205,7 +205,6 @@ public class EnvironmentUtils {
       fail(e.getMessage());
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableActiveTimeseriesCounter(false);
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);

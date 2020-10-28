@@ -199,10 +199,6 @@ public class IoTDBDescriptor {
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 
-      conf.setEnableActiveTimeseriesCounter(
-          Boolean.parseBoolean(properties.getProperty("enable_active_timeseries_counter",
-              Boolean.toString(conf.isEnableActiveTimeseriesCounter()))));
-
       conf.setBufferedArraysMemoryProportion(
           Double.parseDouble(properties.getProperty("buffered_arrays_memory_proportion",
               Double.toString(conf.getBufferedArraysMemoryProportion()))));
@@ -701,14 +697,14 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold >= 0 && !conf.isEnableActiveTimeseriesCounter()) {
+      if (tsfileSizeThreshold >= 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
       long memTableSizeThreshold = Long.parseLong(properties
           .getProperty("memtable_size_threshold",
               Long.toString(conf.getMemtableSizeThreshold())).trim());
-      if (memTableSizeThreshold > 0 && !conf.isEnableActiveTimeseriesCounter()) {
+      if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
