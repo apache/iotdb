@@ -438,6 +438,8 @@ public class MTreeTest {
           CompressionType.GZIP, null, null);
 
       assertEquals(4, root.getAllTimeseriesCount("root.laptop"));
+      assertEquals(2, root.getAllTimeseriesCount("root.laptop.*.s1"));
+      assertEquals(0, root.getAllTimeseriesCount("root.laptop.d1.s3"));
 
       assertEquals(2, root.getNodesCountInGivenLevel("root.laptop", 2));
       assertEquals(4, root.getNodesCountInGivenLevel("root.laptop", 3));
