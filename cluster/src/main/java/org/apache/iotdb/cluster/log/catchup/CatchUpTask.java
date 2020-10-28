@@ -124,7 +124,6 @@ public class CatchUpTask implements Runnable {
     return true;
   }
 
-
   //TODO use log in disk to snapshot first, if the log not found on disk, then use snapshot.
   private boolean judgeUseLogsInDiskToCatchUp() {
     if (!ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
@@ -142,7 +141,7 @@ public class CatchUpTask implements Runnable {
     List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
         .getLogs(startIndex, endIndex);
     logger.debug("{}, found {} logs in disk to catchup, startIndex={}, endIndex={}",
-        raftMember.getLogManager(), logsInDisk.size(), startIndex, endIndex);
+        raftMember.getName(), logsInDisk.size(), startIndex, endIndex);
     return logsInDisk;
   }
 
