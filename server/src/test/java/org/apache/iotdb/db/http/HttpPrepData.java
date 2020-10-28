@@ -209,9 +209,9 @@ public abstract class HttpPrepData {
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".status"));
     pathList.add(new PartialPath("root.ln.wf01.wt0" + i + ".hardware"));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.FLOAT);
     dataTypes.add(TSDataType.BOOLEAN);
-    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.FLOAT);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);

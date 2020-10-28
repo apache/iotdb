@@ -61,7 +61,6 @@ public class HttpConstant {
   public static final String COMPRESSION = "compression";
   public static final String KEY = "key";
   public static final String VALUE = "value";
-  public static final String FIRST_LETTER_UPPERCASE_VALUE = "Value";
   public static final String PROPERTIES = "properties";
   public static final String TAGS = "tags";
   public static final String ATTRIBUTES = "attributes";
@@ -77,7 +76,7 @@ public class HttpConstant {
   public static final String ERROR = "error";
   public static final String ERROR_CLASS = "errorClass";
   public static final String IS_NEED_INFER_TYPE = "isNeedInferType";
-  public static final String NAME = "name";
-  public static final String SERIES = "series";
   public static final String TIME = "Time";
+  public static final String TARGET = "target";
+  public static final String POINTS = "points";
 }

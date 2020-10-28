@@ -165,56 +165,50 @@ public class QueryHandler extends Handler {
     List<PartialPath> paths = plan.getPaths();
 
     for (PartialPath path : paths) {
-      JsonObject dataFrame = new JsonObject();
-      JsonArray series = new JsonArray();
-      dataFrame.addProperty(HttpConstant.NAME, path.toString());
-      dataFrame.add(HttpConstant.SERIES, series);
-      result.add(dataFrame);
+      JsonObject series = new JsonObject();
+      JsonArray dataPoints = new JsonArray();
+      series.addProperty(HttpConstant.TARGET, path.toString());
+      series.add(HttpConstant.POINTS, dataPoints);
+      result.add(series);
     }
 
     while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
       List<Field> fields = rowRecord.getFields();
       for (int i = 0; i < fields.size(); i++) {
-        JsonObject dataFrame = result.get(i).getAsJsonObject();
-        JsonArray series = dataFrame.getAsJsonArray(HttpConstant.SERIES);
-        JsonObject timeAndValues = new JsonObject();
+        JsonObject series = result.get(i).getAsJsonObject();
+        JsonArray dataPoints = series.getAsJsonArray(HttpConstant.POINTS);
+        JsonArray valuesAndTime = new JsonArray();
         switch (fields.get(i).getDataType()) {
           case TEXT:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues.addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE,
-                fields.get(i).getBinaryV().getStringValue());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getBinaryV().getStringValue());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           case FLOAT:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues
-                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getFloatV());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getFloatV());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           case INT32:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues
-                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getIntV());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getIntV());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           case INT64:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues
-                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getLongV());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getLongV());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           case BOOLEAN:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues
-                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getBoolV());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getBoolV());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           case DOUBLE:
-            timeAndValues.addProperty(HttpConstant.TIME, rowRecord.getTimestamp());
-            timeAndValues
-                .addProperty(HttpConstant.FIRST_LETTER_UPPERCASE_VALUE, fields.get(i).getDoubleV());
-            series.add(timeAndValues);
+            valuesAndTime.add(fields.get(i).getDoubleV());
+            valuesAndTime.add(rowRecord.getTimestamp());
+            dataPoints.add(valuesAndTime);
             break;
           default:
             throw new QueryProcessException("didn't support this datatype");

@@ -63,12 +63,12 @@ public class InsertHandler extends Handler {
     plan.setTime(time);
     plan.setMeasurements(measurements.toArray(new String[0]));
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-    List<String> valueList = new ArrayList<>();
+    List<Object> valueList = new ArrayList<>();
     for (JsonElement value : values) {
       valueList.add(value.getAsString());
     }
     plan.setNeedInferType(true);
-    plan.setValues(valueList.toArray(new String[0]));
+    plan.setValues(valueList.toArray(new Object[0]));
     return executor.processNonQuery(plan);
   }
 
