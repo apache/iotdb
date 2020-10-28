@@ -39,13 +39,16 @@ import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -437,7 +440,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR,
+          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -617,6 +621,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= 5000) {
         SLOW_SQL_LOGGER.info("Cost " + costTime + " ms, sql is " + statement);
+      }
+      if (IoTDBDescriptor.getInstance().getConfig().isZY_ON()) {
+        SLOW_SQL_LOGGER.info("ChunkCache used memory proportion: " + ChunkCache.getInstance()
+            .getUsedMemoryProportion() + "\nChunkMetadataCache used memory proportion: "
+            + ChunkMetadataCache.getInstance().getUsedMemoryProportion()
+            + "\nTimeSeriesMetadataCache used memory proportion: " + TimeSeriesMetadataCache
+            .getInstance().getUsedMemoryProportion());
       }
     }
   }
