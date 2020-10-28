@@ -131,7 +131,7 @@ matrix:
     - os: linux
       name: linux-website checker
       dist: xenial
-      jdk: openjdk8
+      jdk: openjdk11
       script:
         - mvn -P site clean package -pl site
     - os: windows
