@@ -90,6 +90,8 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -108,6 +110,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+    this.index = buffer.getLong();
   }
 
   @Override

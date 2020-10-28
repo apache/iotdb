@@ -120,6 +120,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
     outputStream.writeBoolean(orderByHeat);
+
+    outputStream.writeLong(index);
   }
 
   @Override
@@ -132,5 +134,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     limit = buffer.getInt();
     limit = buffer.getInt();
     orderByHeat = buffer.get() == 1;
+
+    this.index = buffer.getLong();
   }
 }

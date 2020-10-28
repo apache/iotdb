@@ -661,6 +661,11 @@ public class IoTDBConfig {
   private boolean enablePartition = false;
 
   /**
+   * whether enable MTree snapshot
+   */
+  private boolean enableMTreeSnapshot = false;
+
+  /**
    * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
    */
   private int mtreeSnapshotInterval = 100000;
@@ -724,6 +729,14 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
+  }
+
+  public boolean isEnableMTreeSnapshot() {
+    return enableMTreeSnapshot;
+  }
+
+  public void setEnableMTreeSnapshot(boolean enableMTreeSnapshot) {
+    this.enableMTreeSnapshot = enableMTreeSnapshot;
   }
 
   public int getMtreeSnapshotInterval() {
