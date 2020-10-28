@@ -166,19 +166,19 @@ calculate_heap_sizes
 #HEAP_NEWSIZE="`expr $system_memory_in_mb \* $min_percentage / 100`M"
 
 # Maximum heap size
-#MAX_HEAP_SIZE="2G"
+MAX_HEAP_SIZE="10G"
 # Minimum heap size
-#HEAP_NEWSIZE="2G"
+HEAP_NEWSIZE="2G"
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
-JMX_LOCAL="true"
+JMX_LOCAL="false"
 
 JMX_PORT="31999"
 #only take effect when the jmx_local=false
 #You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
 # 0.0.0.0 is not allowed
-JMX_IP="127.0.0.1"
+JMX_IP="10.159.170.81"
 
 if [ ${JMX_LOCAL} = "false" ]; then
   echo "setting remote JMX..."
