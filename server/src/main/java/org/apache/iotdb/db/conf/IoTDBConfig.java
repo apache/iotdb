@@ -175,36 +175,36 @@ public class IoTDBConfig {
   private int walBufferSize = 16 * 1024 * 1024;
 
   /**
-   * system base dir, stores all system metadata and wal
+   * default base dir, stores all IoTDB runtime files
    */
-  private String baseDir = "data";
+  private static final String DEFAULT_BASE_DIR = "data";
 
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
+  private String systemDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+  private String schemaDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
       + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+  private String syncDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
       + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /**
    * Performance tracing directory, stores performance tracing files
    */
-  private String tracingDir = baseDir + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
+  private String tracingDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = baseDir + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+  private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -219,7 +219,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walDir = baseDir + File.separator + "wal";
+  private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -702,6 +702,16 @@ public class IoTDBConfig {
 
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
+
+  /**
+   * thrift max frame size, the default is 15MB, we change it to 64MB
+   */
+  private int thriftMaxFrameSize = 67108864;
+
+  /**
+   * thrift init buffer size, the default is 1KB.
+   */
+  private int thriftInitBufferSize = 1024;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1900,6 +1910,22 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public int getThriftMaxFrameSize() {
+    return thriftMaxFrameSize;
+  }
+
+  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  public int getThriftInitBufferSize() {
+    return thriftInitBufferSize;
+  }
+
+  public void setThriftInitBufferSize(int thriftInitBufferSize) {
+    this.thriftInitBufferSize = thriftInitBufferSize;
   }
 
   public int getMaxQueryDeduplicatedPathNum() {

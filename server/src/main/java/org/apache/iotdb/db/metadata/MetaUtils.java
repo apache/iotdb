@@ -79,7 +79,7 @@ public class MetaUtils {
    * @param path path
    * @param level level
    */
-  static PartialPath getStorageGroupPathByLevel(PartialPath path, int level) throws MetadataException {
+  public static PartialPath getStorageGroupPathByLevel(PartialPath path, int level) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path.getFullPath());

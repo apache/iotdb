@@ -1724,6 +1724,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(path);
+    return SchemaUtils.getSeriesTypeByPaths(path);
   }
 }
