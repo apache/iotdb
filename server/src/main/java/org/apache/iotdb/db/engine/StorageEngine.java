@@ -51,7 +51,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -393,7 +393,7 @@ public class StorageEngine implements IService {
    * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchInsertionException {
+      throws StorageEngineException, BatchProcessException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());

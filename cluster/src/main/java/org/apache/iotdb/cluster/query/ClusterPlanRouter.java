@@ -40,6 +40,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
@@ -121,6 +122,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((InsertRowPlan) plan);
     } else if (plan instanceof AlterTimeSeriesPlan) {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
+    } else if (plan instanceof CreateMultiTimeSeriesPlan) {
+      return splitAndRoutePlan((CreateMultiTimeSeriesPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -289,6 +292,66 @@ public class ClusterPlanRouter {
           result.put(plan1, partitionTable.route(entry.getKey(), 0));
         }
       }
+    }
+    return result;
+  }
+
+  @SuppressWarnings("SuspiciousSystemArraycopy")
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateMultiTimeSeriesPlan plan)
+    throws MetadataException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Map<PartitionGroup, PhysicalPlan> groupHoldPlan = new HashMap<>();
+
+    for (int i = 0; i < plan.getPaths().size(); i++) {
+      PartialPath path = plan.getPaths().get(i);
+      PartitionGroup partitionGroup =
+        partitionTable.partitionByPathTime(path, 0);
+      CreateMultiTimeSeriesPlan subPlan = null;
+      if (groupHoldPlan.get(partitionGroup) == null) {
+        subPlan = new CreateMultiTimeSeriesPlan();
+        subPlan.setPaths(new ArrayList<>());
+        subPlan.setDataTypes(new ArrayList<>());
+        subPlan.setEncodings(new ArrayList<>());
+        subPlan.setCompressors(new ArrayList<>());
+        if (plan.getAlias() != null) {
+          subPlan.setAlias(new ArrayList<>());
+        }
+        if (plan.getProps() != null) {
+          subPlan.setProps(new ArrayList<>());
+        }
+        if (plan.getTags() != null) {
+          subPlan.setTags(new ArrayList<>());
+        }
+        if (plan.getAttributes() != null) {
+          subPlan.setAttributes(new ArrayList<>());
+        }
+        subPlan.setIndexes(new ArrayList<>());
+        groupHoldPlan.put(partitionGroup, subPlan);
+      } else {
+        subPlan = (CreateMultiTimeSeriesPlan) groupHoldPlan.get(partitionGroup);
+      }
+
+      subPlan.getPaths().add(path);
+      subPlan.getDataTypes().add(plan.getDataTypes().get(i));
+      subPlan.getEncodings().add(plan.getEncodings().get(i));
+      subPlan.getCompressors().add(plan.getCompressors().get(i));
+      if (plan.getAlias() != null) {
+        subPlan.getAlias().add(plan.getAlias().get(i));
+      }
+      if (plan.getProps() != null) {
+        subPlan.getProps().add(plan.getProps().get(i));
+      }
+      if (plan.getTags() != null) {
+        subPlan.getTags().add(plan.getTags().get(i));
+      }
+      if (plan.getAttributes() != null) {
+        subPlan.getAttributes().add(plan.getAttributes().get(i));
+      }
+      subPlan.getIndexes().add(plan.getIndexes().get(i));
+    }
+
+    for (Map.Entry<PartitionGroup, PhysicalPlan> entry : groupHoldPlan.entrySet()) {
+      result.put(entry.getValue(), entry.getKey());
     }
     return result;
   }

@@ -81,7 +81,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -1334,9 +1334,9 @@ public abstract class RaftMember {
   private TSStatus handleLogExecutionException(
       PhysicalPlanLog log, LogExecutionException e) {
     Throwable cause = IOUtils.getRootCause(e);
-    if (cause instanceof BatchInsertionException) {
+    if (cause instanceof BatchProcessException) {
       return RpcUtils
-          .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
+          .getStatus(Arrays.asList(((BatchProcessException) cause).getFailingStatus()));
     }
     TSStatus tsStatus = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
         cause.getMessage());
