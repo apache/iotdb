@@ -186,8 +186,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     TThreadedSelectorServer.Args poolArgs =
         new TThreadedSelectorServer.Args((TNonblockingServerTransport) socket);
     poolArgs.selectorThreads(CommonUtils.getCpuCores());
+    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
+            config.getMaxConcurrentClientNum());
     poolArgs.executorService(new ThreadPoolExecutor(CommonUtils.getCpuCores(),
-        config.getMaxConcurrentClientNum(), poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
+            maxConcurrentClientNum, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
 
