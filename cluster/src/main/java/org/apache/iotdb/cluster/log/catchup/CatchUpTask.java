@@ -70,8 +70,9 @@ public class CatchUpTask implements Runnable {
     long lo = 0;
     long hi = 0;
     logger.debug("Checking the match index of {}", node);
+    long localFirstIndex = 0;
     try {
-      long localFirstIndex = raftMember.getLogManager().getFirstIndex();
+      localFirstIndex = raftMember.getLogManager().getFirstIndex();
       lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
       hi = raftMember.getLogManager().getLastLogIndex() + 1;
       logs = raftMember.getLogManager().getEntries(lo, hi);
@@ -96,11 +97,13 @@ public class CatchUpTask implements Runnable {
     if (index == -1) {
       logger.info("Cannot find matched of {} within [{}, {}] in memory", node, lo, hi);
       if (judgeUseLogsInDiskToCatchUp()) {
-        List<Log> logsInDisk = getLogsInStableEntryManager(peer.getMatchIndex() + 1,
-            raftMember.getLogManager().getCommitLogIndex());
+        long startIndex = peer.getMatchIndex() + 1;
+        long endIndex = raftMember.getLogManager().getCommitLogIndex();
+        List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
         if (!logsInDisk.isEmpty()) {
-          logger.info("{}, found {} logs in disk to catch up", raftMember.getName(),
-              logsInDisk.size());
+          logger.info(
+              "{}, found {} logs in disk to catch up, startIndex={}, endIndex={}, memoryFirstIndex={}",
+              raftMember.getName(), logsInDisk.size(), startIndex, endIndex, localFirstIndex);
           logs = logsInDisk;
           return true;
         }
@@ -131,7 +134,7 @@ public class CatchUpTask implements Runnable {
     List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
         .getLogs(startIndex, endIndex);
     logger.debug("{}, found {} logs in disk to catchup, startIndex={}, endIndex={}",
-        raftMember.getLogManager(), logs.size(), startIndex, endIndex);
+        raftMember.getLogManager(), logsInDisk.size(), startIndex, endIndex);
     return logsInDisk;
   }
 

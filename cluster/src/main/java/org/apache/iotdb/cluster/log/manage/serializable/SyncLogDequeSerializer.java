@@ -373,8 +373,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void forceFlushLogBuffer() {
-    flushLogBuffer();
     lock.writeLock().lock();
+    flushLogBuffer();
+    serializeMeta(meta);
+    checkCloseCurrentFile(meta.getCommitLogIndex());
     try {
       if (currentLogDataOutputStream != null) {
         currentLogDataOutputStream.getChannel().force(true);
@@ -490,6 +492,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         Files.delete(file.toPath());
       } catch (IOException e) {
         logger.warn("Cannot delete outdated log file {}", file);
+      }
+      return false;
+    }
+
+    String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
+    // start index should be smaller than end index
+    if (Long.parseLong(splits[0]) > Long.parseLong(splits[1])) {
+      try {
+        Files.delete(file.toPath());
+      } catch (IOException e) {
+        logger.warn("Cannot delete incorrect log file {}", file);
       }
       return false;
     }
@@ -695,18 +708,24 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   public void checkDeletePersistRaftLog() {
-    if (logIndexOffsetList.size() > maxRaftLogIndexSizeInMemory) {
-      int compactIndex = logIndexOffsetList.size() - maxRaftLogIndexSizeInMemory;
-      logIndexOffsetList.subList(0, compactIndex).clear();
-      firstLogIndex = logIndexOffsetList.get(0);
+    // 1. check the log index offset list size
+    try {
+      lock.writeLock().lock();
+      if (logIndexOffsetList.size() > maxRaftLogIndexSizeInMemory) {
+        int compactIndex = logIndexOffsetList.size() - maxRaftLogIndexSizeInMemory;
+        logIndexOffsetList.subList(0, compactIndex).clear();
+        firstLogIndex += compactIndex;
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
 
-    // 1. check the persist log file number
+    // 2. check the persist log file number
     while (logDataFileList.size() > maxNumberOfPersistRaftLogFiles) {
       deleteLogDataAndIndexFile(0);
     }
 
-    // 2. check the persist log index number
+    // 3. check the persist log index number
     while (!logDataFileList.isEmpty()) {
       File firstFile = logDataFileList.get(0);
       String[] splits = firstFile.getName().split(FILE_NAME_SEPARATOR);
