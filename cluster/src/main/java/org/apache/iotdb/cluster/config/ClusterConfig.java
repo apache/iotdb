@@ -105,7 +105,7 @@ public class ClusterConfig {
 
   private int flushRaftLogThreshold = 10000;
 
-  private int forceRaftLogPeriodInMS = 10;
+  private int forceRaftLogPeriodInMS = 1000;
 
   /**
    * Size of log buffer. If raft log persistence is enabled and the size of a insert plan is smaller
