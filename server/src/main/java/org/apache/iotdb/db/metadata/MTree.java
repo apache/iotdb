@@ -585,7 +585,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
@@ -595,7 +595,7 @@ public class MTree implements Serializable {
           return getCount(node.getChild(nodeReg), nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + " does not have the child node " + nodeReg);
+        return 0;
       }
     } else {
       int cnt = 0;
