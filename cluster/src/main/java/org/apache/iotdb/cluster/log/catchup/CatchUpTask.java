@@ -257,14 +257,15 @@ public class CatchUpTask implements Runnable {
       if (catchUpSucceeded) {
         // the catch up may be triggered by an old heartbeat, and the node may have already
         // caught up, so logs can be empty
-        if (!logs.isEmpty()) {
-          peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
+        if (!logs.isEmpty() || snapshot != null) {
+          long lastIndex = !logs.isEmpty() ? logs.get(logs.size() - 1).getCurrLogIndex() :
+              snapshot.getLastLogIndex();
+          peer.setMatchIndex(lastIndex);
           // update peer's status so raftMember can send logs in main thread.
           peer.setCatchUp(true);
           if (logger.isDebugEnabled()) {
             logger.debug("{}: Catch up {} finished, update it's matchIndex to {}",
-                raftMember.getName(), node,
-                logs.get(logs.size() - 1).getCurrLogIndex());
+                raftMember.getName(), node, lastIndex);
           }
         } else {
           logger.debug("{}: Logs are empty when catching up {}, it may have been caught up",

@@ -115,11 +115,11 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       return false;
     }
     logger
-        .debug("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
+        .info("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
             node);
     doLogCatchUp();
     if (!abort) {
-      logger.debug("{}: Catch up {} finished", raftMember.getName(), node);
+      logger.info("{}: Catch up {} finished", raftMember.getName(), node);
     } else {
       logger.warn("{}: Log catch up {} failed", raftMember.getName(), node);
     }
