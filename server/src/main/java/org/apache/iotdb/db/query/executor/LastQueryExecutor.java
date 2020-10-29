@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -48,6 +49,9 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -56,12 +60,14 @@ public class LastQueryExecutor {
 
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
+  private IExpression expression;
   private static boolean lastCacheEnabled =
           IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
+    this.expression = lastQueryPlan.getExpression();
   }
 
   public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
@@ -118,7 +124,7 @@ public class LastQueryExecutor {
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
     return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
-        deviceMeasurements);
+        expression, deviceMeasurements);
   }
 
   /**
@@ -129,7 +135,8 @@ public class LastQueryExecutor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
-      PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
+      PartialPath seriesPath, TSDataType tsDataType, QueryContext context,
+      IExpression expression, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
@@ -139,91 +146,55 @@ public class LastQueryExecutor {
         node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(seriesPath);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath);
-        if (timeValuePair != null) {
+        if (timeValuePair != null && satisfyFilter(expression, timeValuePair)) {
           return timeValuePair;
         }
       }
 
       if (node != null && node.getCachedLast() != null) {
-        return node.getCachedLast();
+        TimeValuePair timeValuePair =  node.getCachedLast();
+        if (timeValuePair != null && satisfyFilter(expression, timeValuePair)) {
+          return timeValuePair;
+        }
       }
     }
 
-    return calculateLastPairByScanningTsFiles(seriesPath, tsDataType, context, deviceMeasurements, node);
+    return calculateLastPairByScanningTsFiles(
+        seriesPath, tsDataType, context, expression, deviceMeasurements, node);
   }
 
   private static TimeValuePair calculateLastPairByScanningTsFiles(
-          PartialPath seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements,
-          MeasurementMNode node) throws QueryProcessException, StorageEngineException, IOException {
+          PartialPath seriesPath, TSDataType tsDataType, QueryContext context,
+          IExpression expression, Set<String> deviceMeasurements, MeasurementMNode node)
+      throws QueryProcessException, StorageEngineException, IOException {
 
+    Filter filter = null;
+    if (expression != null) {
+      filter = ((GlobalTimeExpression) expression).getFilter();
+    }
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, filter);
 
-    List<TsFileResource> seqFileResources = dataSource.getSeqResources();
-    List<TsFileResource> unseqFileResources = dataSource.getUnseqResources();
+    LastPointReader lastReader = new LastPointReader(
+        seriesPath, tsDataType, deviceMeasurements, context, dataSource, Long.MAX_VALUE, filter);
+    TimeValuePair resultPair = lastReader.readLastPoint();
 
-    TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
-
-    if (!seqFileResources.isEmpty()) {
-      for (int i = seqFileResources.size() - 1; i >= 0; i--) {
-        TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-            seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
-        if (timeseriesMetadata != null) {
-          if (!timeseriesMetadata.isModified()) {
-            Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
-            resultPair = constructLastPair(
-                timeseriesMetadataStats.getEndTime(),
-                timeseriesMetadataStats.getLastValue(),
-                tsDataType);
-            break;
-          } else {
-            List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
-            if (!chunkMetadataList.isEmpty()) {
-              ChunkMetadata lastChunkMetaData = chunkMetadataList.get(chunkMetadataList.size() - 1);
-              Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-              resultPair =
-                  constructLastPair(
-                      chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    long version = 0;
-    for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        continue;
-      }
-      TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils
-              .loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
-      if (timeseriesMetadata != null) {
-        for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
-              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-              && chunkMetaData.getVersion() > version)) {
-            Statistics chunkStatistics = chunkMetaData.getStatistics();
-            resultPair =
-                constructLastPair(
-                    chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-            version = chunkMetaData.getVersion();
-          }
-        }
-      }
-    }
-
-    // Update cached last value with low priority
-    if (lastCacheEnabled) {
+    // Update cached last value with low priority unless From expression exists
+    if (lastCacheEnabled && expression == null) {
       IoTDB.metaManager.updateLastCache(seriesPath,
               resultPair, false, Long.MIN_VALUE, node);
     }
     return resultPair;
   }
 
-  private static TimeValuePair constructLastPair(long timestamp, Object value,
-                                                 TSDataType dataType) {
-    return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
+  private static boolean satisfyFilter(IExpression expression, TimeValuePair tvPair) {
+    if (expression == null) {
+      return true;
+    }
+    Filter filter = ((GlobalTimeExpression) expression).getFilter();
+    if (filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue())) {
+      return true;
+    }
+    return false;
   }
 }
