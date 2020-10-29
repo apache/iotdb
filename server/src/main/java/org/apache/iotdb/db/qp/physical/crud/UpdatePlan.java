@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.LINE_FEED_SIGNAL;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -43,9 +44,9 @@ public class UpdatePlan extends PhysicalPlan {
    * Construct function for UpdatePlan.
    *
    * @param startTime -start time
-   * @param endTime -end time
-   * @param value -value
-   * @param path -path
+   * @param endTime   -end time
+   * @param value     -value
+   * @param path      -path
    */
   public UpdatePlan(long startTime, long endTime, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
@@ -57,9 +58,9 @@ public class UpdatePlan extends PhysicalPlan {
   /**
    * Construct function for UpdatePlan.
    *
-   * @param list -list to initial intervals
+   * @param list  -list to initial intervals
    * @param value -value
-   * @param path -path
+   * @param path  -path
    */
   public UpdatePlan(List<Pair<Long, Long>> list, String value, PartialPath path) {
     super(false, Operator.OperatorType.UPDATE);
@@ -98,11 +99,7 @@ public class UpdatePlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    List<PartialPath> ret = new ArrayList<>();
-    if (path != null) {
-      ret.add(path);
-    }
-    return ret;
+    return path != null ? Collections.singletonList(path) : Collections.emptyList();
   }
 
   @Override

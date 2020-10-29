@@ -121,6 +121,7 @@ struct StartUpStatus {
   2: required int hashSalt
   3: required int replicationNumber
   4: required list<Node> seedNodeList
+  5: required string clusterName
 }
 
 // follower -> leader
@@ -129,6 +130,7 @@ struct CheckStatusResponse {
   2: required bool hashSaltEquals
   3: required bool replicationNumEquals
   4: required bool seedNodeEquals
+  5: required bool clusterNameEquals
 }
 
 struct SendSnapshotRequest {
@@ -350,6 +352,8 @@ service TSDataService extends RaftService {
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
+  list<string> getUnregisteredTimeseries(1: Node header, 2: list<string> timeseriesList)
+
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 
   /**
@@ -372,6 +376,11 @@ service TSDataService extends RaftService {
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
 
   /**
+  * Pull all measurement schemas prefixed by a given path.
+  **/
+  PullSchemaResp pullMeasurementSchema(1: PullSchemaRequest request)
+
+  /**
   * Perform a previous fill and return the timevalue pair in binary.
   * @return a binary TimeValuePair
   **/
@@ -382,6 +391,14 @@ service TSDataService extends RaftService {
   * @return a binary TimeValuePair
   **/
   binary last(1: LastQueryRequest request)
+
+  int getPathCount(1: Node header 2: list<string> pathsToQuery 3: int level)
+
+  /**
+  * During slot transfer, when a member has pulled snapshot from a group, the member will use this
+  * method to inform the group that one replica of such slots has been pulled.
+  **/
+  bool onSnapshotApplied(1: Node header 2: list<int> slots)
 }
 
 service TSMetaService extends RaftService {

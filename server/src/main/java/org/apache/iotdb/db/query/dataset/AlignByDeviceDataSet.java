@@ -169,6 +169,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             groupByTimePlan.setDeduplicatedPaths(executePaths);
             groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
+            groupByTimePlan.setExpression(expression);
             currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
             break;
           case AGGREGATE:
@@ -204,7 +205,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return false;
   }
 
-  private Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
+  protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       return deviceNode.getChildren().keySet();
