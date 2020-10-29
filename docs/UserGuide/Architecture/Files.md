@@ -21,7 +21,7 @@
 
 # Files
 
-In IoTDB, there are many kinds of data needed to be storage. In this section, we will introduce IoTDB's data storage strategy in order to give you an intuitive understanding of IoTDB's data management.
+In IoTDB, there are many kinds of data needed to be stored. In this section, we will introduce IoTDB's data storage strategy in order to give you an explicit understanding of IoTDB's data management.
 
 The data that IoTDB stores is divided into three categories, namely data files, system files, and pre-write log files.
 
@@ -29,7 +29,7 @@ The data that IoTDB stores is divided into three categories, namely data files, 
 
 Data files store all the data that the user wrote to IoTDB, which contains TsFile and other files. TsFile storage directory can be configured with the `data_dirs` configuration item (see [file layer](../Server/Config%20Manual.md) for details). Other files can be configured through [data_dirs](../Server/Config%20Manual.md) configuration item (see [Engine Layer](../Server/Config%20Manual.md) for details).
 
-In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](../Server/Config%20Manual.md) configuration item), and you can specify or customize the directory selection policy (see [multi_dir_strategy](../Server/Config%20Manual.md) configuration item for details).
+In order to better support users' storage requirements such as disk space expansion, IoTDB supports multiple file directories storage methods for TsFile storage configuration. Users can set multiple storage paths as data storage locations( see [data_dirs](../Server/Config%20Manual.md) configuration item), and you can specify or customize the directory selection strategy (see [multi_dir_strategy](../Server/Config%20Manual.md) configuration item for details).
 
 ## System files
 
