@@ -23,6 +23,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -52,7 +53,7 @@ public class SetTTLPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

@@ -16,24 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.List;
-
-public class PathNotExistException extends MetadataException {
-
-  public PathNotExistException(String path) {
-    super(String.format("Path [%s] does not exist", path),
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
-  }
-
-  public PathNotExistException(List<String> paths) {
-    super(String.format("Path [%s] does not exist",
-            paths.size() == 1 ? paths.get(0) : paths.get(0) + " ... " + paths.get(paths.size() - 1)),
-            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode());
-  }
-
+public class DataTypeMismatchException extends MetadataException{
+    public DataTypeMismatchException(String measurementName, TSDataType insertType, TSDataType realType) {
+        super(String.format(
+                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurementName, insertType, realType));
+    }
 }

@@ -651,7 +651,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
 
-To enable GC log, just add a paramenter "printgc" when you start the server.
+To enable GC log, just add a parameter "printgc" when you start the server.
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &

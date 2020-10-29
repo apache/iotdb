@@ -37,7 +37,7 @@
 <!-- /TOC -->
 # IoTDB-Grafana
 
-This project provides a connector which reads data from IoTDB and sends to Grafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
+Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. We have developed IoTDB-Grafana, a connector to show time series data in IoTDB by reading data from IoTDB and sends to Grafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
 
 ## Grafana installation
 
@@ -118,13 +118,14 @@ If you need to configure properties, move the `grafana/src/main/resources/applic
 
 ## Explore in Grafana
 
-The default port of Grafana is 3000, see http://localhost:3000
+The default port of Grafana is 3000, see http://localhost:3000/
 
 Username and password are both "admin" by default.
 
 ### Add data source
 
-Select `Data Sources` and  then `Add data source`, select `SimpleJson` in `Type` and `URL` is http://localhost:8888
+Select `Data Sources` and  then `Add data source`, select `SimpleJson` in `Type` and `URL` is http://localhost:8888. 
+After that, make sure IoTDB has been started, click "Save & Test", and "Data Source is working" will be shown to indicate successful configuration.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664777-2766ae00-1ff5-11e9-9d2f-7489f8ccbfc2.png">
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664842-554bf280-1ff5-11e9-97d2-54eebe0b2ca1.png">
