@@ -428,7 +428,10 @@ public class SeriesReader {
   }
 
   private boolean firstPageOverlapped() {
-    return firstPageReader != null && (!seqPageReaders.isEmpty() && orderUtils
+    if (firstPageReader == null) {
+      return false;
+    }
+    return (!seqPageReaders.isEmpty() && orderUtils
         .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics())) || (
         !unSeqPageReaders.isEmpty() && orderUtils.isOverlapped(firstPageReader.getStatistics(),
             unSeqPageReaders.peek().getStatistics()));
