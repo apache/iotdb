@@ -54,7 +54,6 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -91,7 +90,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -514,7 +515,7 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new,
+    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot::new,
         snapshotSave));
   }
 
@@ -630,27 +631,13 @@ public class DataGroupMember extends RaftMember {
       return true;
     }
     FlushPlan flushPlan = new FlushPlan(null, true, localDataMemberStorageGroupPartitions);
-    PhysicalPlanLog log = new PhysicalPlanLog();
-    // assign term and index to the new log and append it
-    synchronized (logManager) {
-      log.setCurrLogTerm(getTerm().get());
-      long blockIndex = logManager.getLastLogIndex() + 1;
-      log.setCurrLogIndex(blockIndex);
-
-      log.setPlan(flushPlan);
-      logManager.append(log);
-      logManager.setBlockAppliedCommitIndex(blockIndex);
-    }
     try {
-      boolean result = appendLogInGroup(log);
-      if (!result) {
-        logger.error("{}: append log in group failed when do snapshot", name);
-      }
-      return result;
-    } catch (LogExecutionException e) {
-      logger.error("{}, flush file failed when do snapshot", name, e);
-      return false;
+      PlanExecutor.flushSpecifiedStorageGroups(flushPlan);
+      return true;
+    } catch (StorageGroupNotSetException e) {
+      logger.error("Some SGs are missing while flushing", e);
     }
+    return false;
   }
 
 

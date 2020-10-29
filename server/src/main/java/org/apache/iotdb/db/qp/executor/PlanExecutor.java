@@ -162,7 +162,7 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
-  private final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
+  private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
@@ -324,7 +324,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
+  public static void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
     Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan
         .getStorageGroupPartitionIds();
     for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {

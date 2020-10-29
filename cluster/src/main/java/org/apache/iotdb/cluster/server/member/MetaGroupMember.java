@@ -337,7 +337,6 @@ public class MetaGroupMember extends RaftMember {
     }
     addSeedNodes();
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
-    StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
     super.start();
   }
 
