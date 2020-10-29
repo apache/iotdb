@@ -75,10 +75,15 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   public void takeSnapshot() throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());
+      // record current commit index and prevent further logs from being applied, so the
+      // underlying state machine will not change during the snapshotting
+      setBlockAppliedCommitIndex(getCommitLogIndex());
+      // wait until all logs before BlockAppliedCommitIndex are applied
+      super.takeSnapshot();
+      // flush data to disk so that the disk files will represent a complete state
       syncFlushAllProcessor();
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
-      super.takeSnapshot();
       synchronized (this) {
         collectTimeseriesSchemas();
         snapshotLastLogIndex = getBlockAppliedCommitIndex();
@@ -89,6 +94,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     } catch (EntryCompactedException e) {
       logger.error("failed to do snapshot.", e);
     } finally {
+      // now further logs can be applied
       super.resetBlockAppliedCommitIndex();
     }
   }

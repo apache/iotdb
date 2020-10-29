@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.catchup;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -29,6 +30,7 @@ import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -220,6 +222,23 @@ public class CatchUpTask implements Runnable {
     }
   }
 
+  /**
+   * Remove logs that are contained in the snapshot.
+   */
+  private void removeSnapshotLogs() {
+    Log logToSearch = new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
+    int pos = Collections
+        .binarySearch(logs, logToSearch, Comparator.comparingLong(Log::getCurrLogIndex));
+    if (pos >= 0) {
+      logs.subList(0, pos + 1).clear();
+    } else {
+      int insertPos = -pos - 1;
+      if (insertPos > 0) {
+        logs.subList(0, insertPos).clear();
+      }
+    }
+  }
+
   @Override
   public void run() {
     try {
@@ -227,6 +246,8 @@ public class CatchUpTask implements Runnable {
       boolean catchUpSucceeded;
       if (!findMatchedIndex) {
         doSnapshot();
+        // snapshot may overlap with logs
+        removeSnapshotLogs();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
         catchUpSucceeded = task.call();
       } else {

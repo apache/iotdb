@@ -160,6 +160,8 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
      */
     private void installPartitionedSnapshot(PartitionedSnapshot<T> snapshot)
         throws SnapshotInstallationException {
+      logger.info("{}: start to install a snapshot of {}-{}", dataGroupMember.getName(),
+          snapshot.lastLogIndex, snapshot.lastLogTerm);
       synchronized (dataGroupMember.getSnapshotApplyLock()) {
         List<Integer> slots =
             ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())

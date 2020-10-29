@@ -1320,7 +1320,11 @@ public class MetaGroupMember extends RaftMember {
     try {
       execRet = getLocalExecutor().processNonQuery(plan);
     } catch (QueryProcessException e) {
-      logger.debug("meet error while processing non-query. ", e);
+      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+        logger.debug("meet error while processing non-query. ", e);
+      } else {
+        logger.warn("meet error while processing non-query. ", e);
+      }
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
