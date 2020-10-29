@@ -36,6 +36,8 @@ import org.junit.Test;
 
 public class IoTDBQueryMemoryControlIT {
 
+  private int defaultMaxQueryDeduplicatedPathNum;
+
   private static final String[] sqls = new String[]{
       "set storage group to root.ln",
 
@@ -60,6 +62,8 @@ public class IoTDBQueryMemoryControlIT {
 
   @Before
   public void setUp() throws Exception {
+    defaultMaxQueryDeduplicatedPathNum = IoTDBDescriptor.getInstance().getConfig()
+        .getMaxQueryDeduplicatedPathNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxQueryDeduplicatedPathNum(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -81,6 +85,8 @@ public class IoTDBQueryMemoryControlIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setMaxQueryDeduplicatedPathNum(defaultMaxQueryDeduplicatedPathNum);
   }
 
   @Test
