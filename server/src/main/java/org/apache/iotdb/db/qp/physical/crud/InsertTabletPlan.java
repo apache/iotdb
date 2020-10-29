@@ -587,4 +587,5 @@ public class InsertTabletPlan extends InsertPlan {
 
     failedColumns = null;
   }
+
 }

@@ -786,7 +786,6 @@ public class StorageEngine implements IService {
     StorageEngine.enablePartition = enablePartition;
   }
 
-
   @TestOnly
   public static boolean isEnablePartition() {
     return enablePartition;

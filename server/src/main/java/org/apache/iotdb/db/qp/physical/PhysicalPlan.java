@@ -290,6 +290,7 @@ public abstract class PhysicalPlan {
         case CREATE_MULTI_TIMESERIES:
           plan = new CreateMultiTimeSeriesPlan();
           plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }

@@ -1743,8 +1743,6 @@ public class StorageGroupProcessor {
    * Finally, update the latestTimeForEachDevice and partitionLatestFlushedTimeForEachDevice.
    *
    * @param newTsFileResource tsfile resource
-   * @param preserveVersion   if true, the version of the file will be set to its
-   *                          maxHistoricalVersion, or a new version will be assigned to it
    * @UsedBy load external tsfile module
    */
   public void loadNewTsFile(TsFileResource newTsFileResource)

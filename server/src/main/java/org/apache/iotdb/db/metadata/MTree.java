@@ -871,7 +871,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getCount(MNode node, String[] nodes, int idx) throws PathNotExistException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);

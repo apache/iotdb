@@ -483,4 +483,5 @@ public class InsertRowPlan extends InsertPlan {
 
     failedValues = null;
   }
+
 }
