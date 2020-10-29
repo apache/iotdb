@@ -667,7 +667,7 @@ public class MetaGroupMember extends RaftMember {
   private void updateNodeList(Collection<Node> nodes) {
     allNodes = new ArrayList<>(nodes);
     initPeerMap();
-    logger.info("Received cluster nodes from the leader: {}", allNodes);
+    logger.info("All nodes in the partition table: {}", allNodes);
     initIdNodeMap();
     for (Node n : allNodes) {
       idNodeMap.put(n.getNodeIdentifier(), n);
@@ -768,8 +768,8 @@ public class MetaGroupMember extends RaftMember {
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
-        initSubServers();
         getDataClusterServer().buildDataGroupMembers(partitionTable);
+        initSubServers();
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();

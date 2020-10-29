@@ -142,6 +142,12 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
+  /**
+   * When a new partition table is installed, all data members will be checked if unchanged. If
+   * not, such members will be removed.
+   */
+  private boolean unchanged;
+
   @TestOnly
   public DataGroupMember() {
     // constructor for test
@@ -809,5 +815,13 @@ public class DataGroupMember extends RaftMember {
   @TestOnly
   public void setLocalQueryExecutor(LocalQueryExecutor localQueryExecutor) {
     this.localQueryExecutor = localQueryExecutor;
+  }
+
+  public boolean isUnchanged() {
+    return unchanged;
+  }
+
+  public void setUnchanged(boolean unchanged) {
+    this.unchanged = unchanged;
   }
 }

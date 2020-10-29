@@ -411,7 +411,7 @@ public abstract class RaftMember {
           commitLogTask.registerCallback(new CommitLogCallback(this));
           // if the log is not consistent, the commitment will be blocked until the leader makes the
           // node catch up
-          if (commitLogPool != null) {
+          if (commitLogPool != null && !commitLogPool.isShutdown()) {
             commitLogPool.submit(commitLogTask);
           }
 
