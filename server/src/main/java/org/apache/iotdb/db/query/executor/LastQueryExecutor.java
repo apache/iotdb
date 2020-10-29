@@ -181,7 +181,7 @@ public class LastQueryExecutor {
   }
 
   private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-    if (filter != null &&
+    if (filter == null ||
         filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue())) {
       return true;
     }
