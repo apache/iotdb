@@ -38,7 +38,7 @@
     <!--    <logger name="org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer" level="DEBUG"/>-->
     <!--    <logger name="org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader" level="DEBUG"/>-->
     <logger name="org.apache.thrift.server.TThreadPoolServer" level="ERROR"/>
-    <root level="debug">
+    <root level="warn">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>
