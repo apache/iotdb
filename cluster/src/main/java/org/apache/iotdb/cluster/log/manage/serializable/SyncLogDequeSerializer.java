@@ -53,6 +53,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -431,10 +432,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * The file name rules are as follows: ${startLogIndex}-${endLogIndex}-${version}.data
    */
   private void recoverLogFiles() {
-    // 1. recover the log data file
-    recoverLogFiles(LOG_DATA_FILE_SUFFIX);
-    // 2. recover the log index file
+    // 1. first we should recover the log index file
     recoverLogFiles(LOG_INDEX_FILE_SUFFIX);
+
+    // 2. recover the log data file
+    recoverLogFiles(LOG_DATA_FILE_SUFFIX);
+
+    // 3. recover the last log file in case of abnormal exit
+    recoverTheLastLogFile();
   }
 
   private void recoverLogFiles(String logFileType) {
@@ -504,6 +509,122 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       return false;
     }
     return true;
+  }
+
+  private void recoverTheLastLogFile() {
+    if (logIndexFileList.isEmpty()) {
+      logger.info("no log index file to recover");
+      return;
+    }
+
+    File lastIndexFile = logIndexFileList.get(logIndexFileList.size() - 1);
+    long endIndex = Long.parseLong(lastIndexFile.getName().split(FILE_NAME_SEPARATOR)[1]);
+    boolean success = true;
+    if (endIndex != Long.MAX_VALUE) {
+      logger.info("last log index file={} no need to recover", lastIndexFile.getAbsoluteFile());
+    } else {
+      success = recoverTheLastLogIndexFile(lastIndexFile);
+    }
+
+    if (!success) {
+      logger.error("recover log index file failed, clear all logs in disk, {}",
+          lastIndexFile.getAbsoluteFile());
+      for (int i = 0; i < logIndexFileList.size(); i++) {
+        deleteLogDataAndIndexFile(i);
+      }
+      clearFirstLogIndex();
+
+      return;
+    }
+
+    File lastDataFile = logDataFileList.get(logDataFileList.size() - 1);
+    endIndex = Long.parseLong(lastDataFile.getName().split(FILE_NAME_SEPARATOR)[1]);
+    if (endIndex != Long.MAX_VALUE) {
+      logger.info("last log data file={} no need to recover", lastDataFile.getAbsoluteFile());
+      return;
+    }
+
+    success = recoverTheLastLogDataFile(logDataFileList.get(logDataFileList.size() - 1));
+    if (!success) {
+      logger.error("recover log data file failed, clear all logs in disk,{}",
+          lastDataFile.getAbsoluteFile());
+      for (int i = 0; i < logIndexFileList.size(); i++) {
+        deleteLogDataAndIndexFile(i);
+      }
+      clearFirstLogIndex();
+    }
+  }
+
+  private boolean recoverTheLastLogDataFile(File file) {
+    String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
+    long startIndex = Long.parseLong(splits[0]);
+    Pair<File, Pair<Long, Long>> fileStartAndEndIndex = getLogIndexFile(startIndex);
+    if (fileStartAndEndIndex.right.left == startIndex) {
+      long endIndex = fileStartAndEndIndex.right.right;
+      String newDataFileName = file.getName()
+          .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(endIndex));
+      File newLogDataFile = SystemFileFactory.INSTANCE
+          .getFile(file.getParent() + File.separator + newDataFileName);
+      if (!file.renameTo(newLogDataFile)) {
+        logger.error("rename log data file={} failed when recover", file.getAbsoluteFile());
+      }
+      logDataFileList.remove(logDataFileList.size() - 1);
+      logDataFileList.add(newLogDataFile);
+      return true;
+    }
+    return false;
+  }
+
+  private boolean recoverTheLastLogIndexFile(File file) {
+    logger.debug("start to recover the last log index file={}", file.getAbsoluteFile());
+    String[] splits = file.getName().split(FILE_NAME_SEPARATOR);
+    long startIndex = Long.parseLong(splits[0]);
+    int longLength = 8;
+    byte[] bytes = new byte[longLength];
+
+    int totalCount = 0;
+    long offset = 0;
+    try (FileInputStream inputStream = new FileInputStream(file)) {
+      firstLogIndex = startIndex;
+      while (inputStream.read(bytes) != -1) {
+        offset = BytesUtils.bytesToLong(bytes);
+        logIndexOffsetList.add(offset);
+        totalCount++;
+      }
+    } catch (IOException e) {
+      logger.error("recover log index file failed,", e);
+    }
+    long endIndex = startIndex + totalCount - 1;
+    logger.debug("recover log index file={}, startIndex={}, endIndex={}", file.getAbsoluteFile(),
+        startIndex, endIndex);
+
+    if (endIndex < meta.getCommitLogIndex()) {
+      logger.error(
+          "due to the last abnormal exit, part of the raft logs are lost. "
+              + "The commit index saved by the meta shall prevail, and all logs will be deleted"
+              + "meta commitLogIndex={}, endIndex={}", meta.getCommitLogIndex(), endIndex);
+      return false;
+    }
+    if (endIndex >= startIndex) {
+      String newIndexFileName = file.getName()
+          .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(endIndex));
+      File newLogIndexFile = SystemFileFactory.INSTANCE
+          .getFile(file.getParent() + File.separator + newIndexFileName);
+      if (!file.renameTo(newLogIndexFile)) {
+        logger.error("rename log index file={} failed when recover", file.getAbsoluteFile());
+      }
+      logIndexFileList.remove(logIndexFileList.size() - 1);
+      logIndexFileList.add(newLogIndexFile);
+    } else {
+      logger.error("recover log index file failed,{}", file.getAbsoluteFile());
+      return false;
+    }
+    return true;
+  }
+
+  private void clearFirstLogIndex() {
+    firstLogIndex = meta.getCommitLogIndex() + 1;
+    logIndexOffsetList.clear();
   }
 
   private void recoverMetaFile() {
@@ -1003,11 +1124,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         return result;
       }
 
-      logger
-          .debug(
-              "start to read file={} and skip {} bytes, startOffset={}, endOffset={}, fileLength={}",
-              file.getAbsoluteFile(), bytesSkip, startAndEndOffset.left, startAndEndOffset.right,
-              file.length());
+      logger.debug(
+          "start to read file={} and skip {} bytes, startOffset={}, endOffset={}, fileLength={}",
+          file.getAbsoluteFile(), bytesSkip, startAndEndOffset.left, startAndEndOffset.right,
+          file.length());
 
       long currentReadOffset = bytesSkip;
       // because we want to get all the logs whose offset between [startAndEndOffset.left, startAndEndOffset.right]
@@ -1065,5 +1185,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   @TestOnly
   public List<File> getLogIndexFileList() {
     return logIndexFileList;
+  }
+
+  @TestOnly
+  public long getFirstLogIndex() {
+    return firstLogIndex;
+  }
+
+  @TestOnly
+  public List<Long> getLogIndexOffsetList() {
+    return logIndexOffsetList;
   }
 }

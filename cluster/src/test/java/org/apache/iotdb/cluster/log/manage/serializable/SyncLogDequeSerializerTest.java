@@ -318,7 +318,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
 
   @Test
-  public void testRecovery() {
+  public void testRecoveryForClose() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum = 10;
     int maxHaveAppliedCommitIndex = 7;
@@ -347,6 +347,83 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
         Assert.assertEquals(testLogs1.get(i), logDeque.get(i - maxHaveAppliedCommitIndex));
       }
       Assert.assertEquals(hardState, syncLogDequeSerializer.getHardState());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
+
+
+  @Test
+  public void testRecoveryForNotClose() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    int logNum = 10;
+    int maxHaveAppliedCommitIndex = 7;
+    List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
+    HardState hardState = new HardState();
+    hardState.setCurrentTerm(10);
+    hardState.setVoteFor(TestUtils.getNode(5));
+    try {
+      syncLogDequeSerializer.append(testLogs1, maxHaveAppliedCommitIndex);
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+    syncLogDequeSerializer.forceFlushLogBuffer();
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      int expectSize =
+          (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
+              + 1;
+      Assert.assertEquals(expectSize, logDeque.size());
+      for (int i = maxHaveAppliedCommitIndex; i < logNum; i++) {
+        Assert.assertEquals(testLogs1.get(i), logDeque.get(i - maxHaveAppliedCommitIndex));
+      }
+      Assert.assertEquals(hardState, syncLogDequeSerializer.getHardState());
+    } finally {
+      syncLogDequeSerializer.close();
+    }
+  }
+
+  @Test
+  public void testRecoveryForNotCloseAndLoseData() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    int logNum = 20;
+    int maxHaveAppliedCommitIndex = 7;
+    List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
+    HardState hardState = new HardState();
+    hardState.setCurrentTerm(10);
+    hardState.setVoteFor(TestUtils.getNode(5));
+    try {
+      syncLogDequeSerializer.append(testLogs1.subList(0, 10), maxHaveAppliedCommitIndex);
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+    syncLogDequeSerializer.forceFlushLogBuffer();
+
+    // add more logs, bug this logs will lost for not close
+    try {
+      syncLogDequeSerializer.append(testLogs1.subList(10, 20), maxHaveAppliedCommitIndex);
+      syncLogDequeSerializer.setHardStateAndFlush(hardState);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      // all log files are deleted, the first new log file is newly created and the length is 0
+      Assert.assertEquals(1, syncLogDequeSerializer.getLogDataFileList().size());
+      Assert.assertEquals(1, syncLogDequeSerializer.getLogIndexFileList().size());
+
+      Assert.assertEquals(0, syncLogDequeSerializer.getLogDataFileList()
+          .get(syncLogDequeSerializer.getLogDataFileList().size() - 1).length());
+
+      Assert.assertEquals(0, syncLogDequeSerializer.getLogIndexFileList()
+          .get(syncLogDequeSerializer.getLogIndexFileList().size() - 1).length());
     } finally {
       syncLogDequeSerializer.close();
     }
