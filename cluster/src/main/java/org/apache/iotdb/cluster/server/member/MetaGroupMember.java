@@ -1345,10 +1345,10 @@ public class MetaGroupMember extends RaftMember {
       if (status != null) {
         return status;
       }
-    } else if (leader != null) {
-      TSStatus result = forwardPlan(plan, leader, null);
+    } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
+      TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1361,9 +1361,9 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     }
-    TSStatus result = forwardPlan(plan, leader, null);
+    TSStatus result = forwardPlan(plan, leader.get(), null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
-      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+      result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
     }
     return result;
   }
@@ -1392,9 +1392,9 @@ public class MetaGroupMember extends RaftMember {
       logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
       return forwardPlan(globalGroups, plan);
     } catch (CheckConsistencyException e) {
-      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
+      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader.get());
       waitLeader();
-      return forwardPlan(plan, leader, null);
+      return forwardPlan(plan, leader.get(), null);
     }
   }
 
@@ -1968,7 +1968,7 @@ public class MetaGroupMember extends RaftMember {
         // changed and there will also be one less group
         getDataClusterServer().removeNode(oldNode, result);
         // the leader is removed, start the next election ASAP
-        if (oldNode.equals(leader)) {
+        if (oldNode.equals(leader.get())) {
           setCharacter(NodeCharacter.ELECTOR);
           lastHeartbeatReceivedTime = Long.MIN_VALUE;
         }
@@ -1980,7 +1980,7 @@ public class MetaGroupMember extends RaftMember {
           if (clientServer != null) {
             clientServer.stop();
           }
-        } else if (thisNode.equals(leader)) {
+        } else if (thisNode.equals(leader.get())) {
           // as the old node is removed, it cannot know this by heartbeat or log, so it should be
           // directly kicked out of the cluster
           exileNode(oldNode);
@@ -2018,7 +2018,7 @@ public class MetaGroupMember extends RaftMember {
   private MetaMemberReport genMemberReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
-    return new MetaMemberReport(character, leader, term.get(),
+    return new MetaMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex()
         , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());

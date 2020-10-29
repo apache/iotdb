@@ -41,11 +41,14 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class InsertTabletPlan extends InsertPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
+  private static final Logger logger = LoggerFactory.getLogger(InsertTabletPlan.class);
 
   private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
@@ -395,6 +398,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    logger.info("insert Tablet buffersize: {}", buffer.array().length);
     this.deviceId = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
