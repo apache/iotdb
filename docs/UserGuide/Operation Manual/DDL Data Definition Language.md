@@ -36,7 +36,7 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ## Show Storage Group

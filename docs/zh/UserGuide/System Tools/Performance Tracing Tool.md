@@ -35,12 +35,13 @@ IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追�
 - Start time
 - Query statement
 - Number of series paths
-- Number of tsfiles
 - Number of sequence files
-- Number of unsequence files
+- Statistics of each sequence file
+- Number of unSequence files
+- Statistics of each unSequence file
 - Number of chunks
 - Average size of chunks
-- End time
+- Total cost time
 
 ## Example
 
@@ -50,12 +51,13 @@ IoTDB 支持使用 `TRACING` 语句来启用/禁用对查询语句的性能追�
 Query Id: 2 - Start time: 2020-06-28 10:53:54.727
 Query Id: 2 - Query Statement: select * from root
 Query Id: 2 - Number of series paths: 3
-Query Id: 2 - Number of tsfiles: 2
-Query Id: 2 - Number of sequence files: 2
-Query Id: 2 - Number of unsequence files: 0
+Query Id: 2 - Number of sequence files: 1
+Query Id: 2 - SeqFile_1603336100446-1-0.tsfile root.sg.d1[1, 10000]
+Query Id: 2 - Number of unsequence files: 1
+Query Id: 2 - UnSeqFile_1603354798303-2-0.tsfile root.sg.d1[9, 1000]
 Query Id: 2 - Number of chunks: 3
 Query Id: 2 - Average size of chunks: 4113
-Query Id: 2 - End time: 2020-06-28 10:54:44.059
+Query Id: 2 - Total cost time: 11ms
 ```
 
 为了避免多个查询同时执行导致输出信息乱序，在每条输出信息前均增加了该次查询的 Query Id，用户可以使用 `grep "Query Id: 2" tracing.txt` 来提取某次查询的所有追踪信息。

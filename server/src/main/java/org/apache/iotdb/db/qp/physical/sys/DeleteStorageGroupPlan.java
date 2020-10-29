@@ -54,6 +54,8 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     for (PartialPath path : this.getPaths()) {
       putString(stream, path.getFullPath());
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -64,6 +66,8 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     for (PartialPath path : this.getPaths()) {
       putString(buffer, path.getFullPath());
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -73,6 +77,8 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
     for (int i = 0; i < pathNum; i++) {
       deletePathList.add(new PartialPath(readString(buffer)));
     }
+
+    this.index = buffer.getLong();
   }
 
 }

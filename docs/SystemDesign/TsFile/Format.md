@@ -55,6 +55,7 @@
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
+  - 7: LZ4
 - **TsDigest Statistics Type Hardcode**
   - 0: min_value
   - 1: max_value

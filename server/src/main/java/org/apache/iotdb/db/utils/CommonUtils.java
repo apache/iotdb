@@ -31,6 +31,13 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class CommonUtils {
 
+  private static final int CPUS = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Default executor pool maximum size.
+   */
+  public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
+
   private CommonUtils() {
   }
 
@@ -137,5 +144,13 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+  }
+
+  public static int getCpuCores() {
+    return CPUS;
+  }
+
+  public static int getMaxExecutorPoolSize() {
+    return MAX_EXECUTOR_POOL_SIZE;
   }
 }
