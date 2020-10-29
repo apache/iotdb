@@ -87,7 +87,7 @@ public class LastQueryExecutor {
         Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
-    for (int i = 0; i < selectedSeries.size(); i++) {
+     for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair;
       lastTimeValuePair = calculateLastPairForOneSeries(
               selectedSeries.get(i), dataTypes.get(i), context,
@@ -133,7 +133,6 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context,
       IExpression expression, Set<String> deviceMeasurements)
@@ -179,10 +178,10 @@ public class LastQueryExecutor {
         seriesPath, tsDataType, deviceMeasurements, context, dataSource, Long.MAX_VALUE, filter);
     TimeValuePair resultPair = lastReader.readLastPoint();
 
-    // Update cached last value with low priority unless From expression exists
+    // Update cached last value with low priority unless "FROM" expression exists
     if (lastCacheEnabled && expression == null) {
-      IoTDB.metaManager.updateLastCache(seriesPath,
-              resultPair, false, Long.MIN_VALUE, node);
+      IoTDB.metaManager.updateLastCache(
+          seriesPath, resultPair, false, Long.MIN_VALUE, node);
     }
     return resultPair;
   }
