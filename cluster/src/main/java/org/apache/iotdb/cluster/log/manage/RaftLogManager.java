@@ -292,8 +292,19 @@ public abstract class RaftLogManager {
   public long getTerm(long index) throws EntryCompactedException {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
+      // search in disk
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+          && ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
+        List<Log> logsInDisk = getStableEntryManager().getLogs(index, index);
+        if (logsInDisk.isEmpty()) {
+          return -1;
+        } else {
+          return logsInDisk.get(0).getCurrLogTerm();
+        }
+      }
       return -1;
     }
+
     long lastIndex = getLastLogIndex();
     if (index > lastIndex) {
       return -1;
@@ -302,23 +313,9 @@ public abstract class RaftLogManager {
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
       return getUnCommittedEntryManager().maybeTerm(index);
     }
-    // search in memory
-    long searchInMemoryIndex = getCommittedEntryManager().maybeTerm(index);
-    if (searchInMemoryIndex != -1) {
-      return searchInMemoryIndex;
-    }
 
-    // search in disk
-    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        && ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
-      List<Log> logsInDisk = getStableEntryManager().getLogs(index, index);
-      if (logsInDisk.isEmpty()) {
-        return -1;
-      } else {
-        return logsInDisk.get(0).getCurrLogTerm();
-      }
-    }
-    return -1;
+    // search in memory
+    return getCommittedEntryManager().maybeTerm(index);
   }
 
   /**
