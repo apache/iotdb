@@ -32,7 +32,7 @@ import static org.junit.Assert.assertEquals;
 
 public class DiffEncoderIntegerTest {
 
-  private static final int ROW_NUM = 100_000_00;//行数，数组的大小
+  private static final int ROW_NUM = 100_000_00;
   ByteArrayOutputStream out;
   private DiffEncoder writer;
   private DiffDecoder reader;
@@ -74,7 +74,6 @@ public class DiffEncoderIntegerTest {
     int data[] = new int[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt();
-      System.out.printf("%d ",data[i]);
     }
     System.out.println();
     shouldReadAndWrite(data, ROW_NUM);
@@ -118,7 +117,6 @@ public class DiffEncoderIntegerTest {
     byte[] page = out.toByteArray();
      System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
-     System.out.println(buffer.capacity());
     int i = 0;
 
     Long decodeStart=System.nanoTime();

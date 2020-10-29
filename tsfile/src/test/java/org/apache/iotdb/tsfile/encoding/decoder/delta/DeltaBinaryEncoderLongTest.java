@@ -197,7 +197,6 @@ public class DeltaBinaryEncoderLongTest {
     byte[] page = out.toByteArray();
     System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
-    System.out.println(buffer.capacity());
     int i = 0;
 
     Long decodeStart=System.nanoTime();

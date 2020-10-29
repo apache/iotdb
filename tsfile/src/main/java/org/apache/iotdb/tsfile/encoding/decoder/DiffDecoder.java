@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
  */
 public abstract class DiffDecoder extends Decoder {
 
-  //protected long count = 0;
   protected byte[] deltaBuf;
 
   /**
