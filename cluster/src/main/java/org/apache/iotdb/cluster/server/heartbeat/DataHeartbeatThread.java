@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
 public class DataHeartbeatThread extends HeartbeatThread {
 
-  private static final int MAX_ELECTIONS_TO_SKIP = 60;
+  private static final int MAX_ELECTIONS_TO_SKIP = 5;
 
   private DataGroupMember dataGroupMember;
   private int skippedElectionNumber = 0;
@@ -55,8 +55,9 @@ public class DataHeartbeatThread extends HeartbeatThread {
   void startElection() {
     // skip first few elections to let the header have a larger chance to become the leader, so
     // possibly each node will only be one leader at the same time
-    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader()) && skippedElectionNumber
-        < MAX_ELECTIONS_TO_SKIP) {
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader()) &&
+        skippedElectionNumber < MAX_ELECTIONS_TO_SKIP &&
+        !hasHadLeader) {
       skippedElectionNumber++;
       return;
     }
@@ -69,12 +70,5 @@ public class DataHeartbeatThread extends HeartbeatThread {
     electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
 
     super.startElection();
-  }
-
-  @Override
-  protected void onElectionsEnd() {
-    super.onElectionsEnd();
-    // once a leader is elected, we do no more skips to accelerate recovery after the leader is down
-    skippedElectionNumber = MAX_ELECTIONS_TO_SKIP;
   }
 }
