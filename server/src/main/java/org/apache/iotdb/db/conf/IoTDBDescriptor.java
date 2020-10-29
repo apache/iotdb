@@ -338,9 +338,6 @@ public class IoTDBDescriptor {
         conf.setChunkBufferPoolEnable(Boolean
             .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
       }
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-      logger.info("Time zone has been set to {}", conf.getZoneID());
 
       conf.setEnableExternalSort(Boolean.parseBoolean(properties
           .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
@@ -680,10 +677,6 @@ public class IoTDBDescriptor {
 
       // update WAL conf
       loadWALProps(properties);
-
-      // time zone
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
 
       // dynamic parameters
       long tsfileSizeThreshold = Long.parseLong(properties
