@@ -29,6 +29,9 @@ import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -300,6 +303,12 @@ public abstract class TsFileManagement {
     writeLock();
     try {
       removeAll(unseqFiles, false);
+      // clean cache
+      if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
+        ChunkCache.getInstance().clear();
+        ChunkMetadataCache.getInstance().clear();
+        TimeSeriesMetadataCache.getInstance().clear();
+      }
     } finally {
       writeUnlock();
       mergeLock.writeLock().unlock();
