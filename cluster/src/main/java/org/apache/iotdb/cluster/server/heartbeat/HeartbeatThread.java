@@ -99,9 +99,9 @@ public class HeartbeatThread implements Runnable {
             break;
           case ELECTOR:
           default:
-            logger.info("{}: Start elections", memberName);
+            onElectionsStart();
             startElections();
-            logger.info("{}: End elections", memberName);
+            onElectionsEnd();
             break;
         }
       } catch (InterruptedException e) {
@@ -113,6 +113,14 @@ public class HeartbeatThread implements Runnable {
     }
 
     logger.info("{}: Heartbeat thread exits", memberName);
+  }
+
+  protected void onElectionsStart() {
+    logger.info("{}: Start elections", memberName);
+  }
+
+  protected void onElectionsEnd() {
+    logger.info("{}: End elections", memberName);
   }
 
   /**

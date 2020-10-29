@@ -27,7 +27,7 @@ public class DataHeartbeatThread extends HeartbeatThread {
   private static final int MAX_ELECTIONS_TO_SKIP = 60;
 
   private DataGroupMember dataGroupMember;
-  int skippedElectionNumber = 0;
+  private int skippedElectionNumber = 0;
 
   public DataHeartbeatThread(DataGroupMember raftMember) {
     super(raftMember);
@@ -69,5 +69,12 @@ public class DataHeartbeatThread extends HeartbeatThread {
     electionRequest.setDataLogLastTerm(dataGroupMember.getLogManager().getLastLogTerm());
 
     super.startElection();
+  }
+
+  @Override
+  protected void onElectionsEnd() {
+    super.onElectionsEnd();
+    // once a leader is elected, we do no more skips to accelerate recovery after the leader is down
+    skippedElectionNumber = MAX_ELECTIONS_TO_SKIP;
   }
 }
