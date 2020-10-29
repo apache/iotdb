@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -51,7 +52,11 @@ public class ForwardPlanHandler implements AsyncMethodCallback<TSStatus> {
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot send plan {} to node {}", plan, node, exception);
+    if (exception instanceof IOException) {
+      logger.warn("Cannot send plan {} to node {}: {}", plan, node, exception.getMessage());
+    } else {
+      logger.error("Cannot send plan {} to node {}", plan, node, exception);
+    }
     synchronized (result) {
       TSStatus status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, exception.getMessage());
       result.set(status);

@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MetaSimpleSnapshot extends Snapshot {
 
+  private static final Logger logger = LoggerFactory.getLogger(MetaSimpleSnapshot.class);
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
@@ -104,12 +105,14 @@ public class MetaSimpleSnapshot extends Snapshot {
       dataOutputStream.writeInt(userMap.size());
       for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.info("A user into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(roleMap.size());
       for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.info("A role into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
@@ -144,6 +147,8 @@ public class MetaSimpleSnapshot extends Snapshot {
       User user = new User();
       user.deserialize(buffer);
       userMap.put(userName, user);
+      // TODO: to remove
+      logger.info("A user from snapshot: {}", user);
     }
 
     int roleMapSize = buffer.getInt();
@@ -153,6 +158,7 @@ public class MetaSimpleSnapshot extends Snapshot {
       Role role = new Role();
       role.deserialize(buffer);
       roleMap.put(userName, role);
+      logger.info("A role from snapshot: {}", role);
     }
 
     setLastLogIndex(buffer.getLong());

@@ -179,8 +179,8 @@ public class CatchUpTask implements Runnable {
       if (client == null) {
         return false;
       }
-      matched = SyncClientAdaptor
-          .matchTerm(client, node, logIndex, logTerm, raftMember.getHeader());
+      Node header = raftMember.getHeader();
+      matched = SyncClientAdaptor.matchTerm(client, node, logIndex, logTerm, header);
     } else {
       Client client = raftMember.getSyncClient(node);
       try {
@@ -261,16 +261,12 @@ public class CatchUpTask implements Runnable {
           long lastIndex = !logs.isEmpty() ? logs.get(logs.size() - 1).getCurrLogIndex() :
               snapshot.getLastLogIndex();
           peer.setMatchIndex(lastIndex);
-          // update peer's status so raftMember can send logs in main thread.
-          peer.setCatchUp(true);
-          if (logger.isDebugEnabled()) {
-            logger.debug("{}: Catch up {} finished, update it's matchIndex to {}",
-                raftMember.getName(), node, lastIndex);
-          }
-        } else {
-          logger.debug("{}: Logs are empty when catching up {}, it may have been caught up",
-              raftMember.getName(), node);
         }
+        if (logger.isInfoEnabled()) {
+          logger.info("{}: Catch up {} finished, update it's matchIndex to {}",
+              raftMember.getName(), node, peer.getMatchIndex());
+        }
+        peer.setCatchUp(true);
         peer.resetInconsistentHeartbeatNum();
       }
 

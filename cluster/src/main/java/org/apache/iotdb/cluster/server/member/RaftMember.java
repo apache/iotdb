@@ -693,7 +693,7 @@ public abstract class RaftMember {
         lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
       }
     }
-
+    logger.info("{}: Start to make {} catch up", name, follower);
     catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
   }
 
@@ -1139,6 +1139,8 @@ public abstract class RaftMember {
         (leader != null) && leader.equals(leader)) {
       // leader is down, trigger a new election by resetting heartbeat
       lastHeartbeatReceivedTime = -1;
+      leader = null;
+      waitLeader();
     }
     return status;
   }
