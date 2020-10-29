@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -41,11 +40,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -54,7 +49,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LastQueryExecutor {
 
@@ -87,7 +81,7 @@ public class LastQueryExecutor {
         Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
-     for (int i = 0; i < selectedSeries.size(); i++) {
+    for (int i = 0; i < selectedSeries.size(); i++) {
       TimeValuePair lastTimeValuePair;
       lastTimeValuePair = calculateLastPairForOneSeries(
               selectedSeries.get(i), dataTypes.get(i), context,
@@ -140,37 +134,37 @@ public class LastQueryExecutor {
 
     // Retrieve last value from MNode
     MeasurementMNode node = null;
+    Filter filter = null;
     if (lastCacheEnabled) {
+      if (expression != null) {
+        filter = ((GlobalTimeExpression) expression).getFilter();
+      }
       try {
         node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(seriesPath);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath);
-        if (timeValuePair != null && satisfyFilter(expression, timeValuePair)) {
+        if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
         }
       }
 
       if (node != null && node.getCachedLast() != null) {
         TimeValuePair timeValuePair =  node.getCachedLast();
-        if (timeValuePair != null && satisfyFilter(expression, timeValuePair)) {
+        if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
         }
       }
     }
 
     return calculateLastPairByScanningTsFiles(
-        seriesPath, tsDataType, context, expression, deviceMeasurements, node);
+        seriesPath, tsDataType, context, filter, deviceMeasurements, node);
   }
 
   private static TimeValuePair calculateLastPairByScanningTsFiles(
           PartialPath seriesPath, TSDataType tsDataType, QueryContext context,
-          IExpression expression, Set<String> deviceMeasurements, MeasurementMNode node)
+          Filter filter, Set<String> deviceMeasurements, MeasurementMNode node)
       throws QueryProcessException, StorageEngineException, IOException {
 
-    Filter filter = null;
-    if (expression != null) {
-      filter = ((GlobalTimeExpression) expression).getFilter();
-    }
     QueryDataSource dataSource =
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, filter);
 
@@ -179,19 +173,16 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = lastReader.readLastPoint();
 
     // Update cached last value with low priority unless "FROM" expression exists
-    if (lastCacheEnabled && expression == null) {
+    if (lastCacheEnabled && filter == null) {
       IoTDB.metaManager.updateLastCache(
           seriesPath, resultPair, false, Long.MIN_VALUE, node);
     }
     return resultPair;
   }
 
-  private static boolean satisfyFilter(IExpression expression, TimeValuePair tvPair) {
-    if (expression == null) {
-      return true;
-    }
-    Filter filter = ((GlobalTimeExpression) expression).getFilter();
-    if (filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue())) {
+  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
+    if (filter != null &&
+        filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue())) {
       return true;
     }
     return false;
