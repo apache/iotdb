@@ -91,6 +91,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -1127,11 +1128,19 @@ public abstract class RaftMember {
     }
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
+    TSStatus status;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return forwardPlanAsync(plan, node, header);
+      status = forwardPlanAsync(plan, node, header);
     } else {
-      return forwardPlanSync(plan, node, header);
+      status = forwardPlanSync(plan, node, header);
     }
+    if (status.getCode() == TSStatusCode.NO_CONNECTION.getStatusCode() &&
+        (header == null || header.equals(getHeader())) &&
+        (leader != null) && leader.equals(leader)) {
+      // leader is down, trigger a new election by resetting heartbeat
+      lastHeartbeatReceivedTime = -1;
+    }
+    return status;
   }
 
   /**
@@ -1145,7 +1154,8 @@ public abstract class RaftMember {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
       logger.debug("{}: can not get client for node={}", name, receiver);
-      return StatusUtils.INTERNAL_ERROR;
+      return StatusUtils.NO_CONNECTION.deepCopy().setMessage(String.format("%s cannot be reached"
+          , receiver));
     }
     return forwardPlanAsync(plan, receiver, header, client);
   }
@@ -1213,7 +1223,8 @@ public abstract class RaftMember {
   /**
    * Get an asynchronous thrift client of the given node.
    *
-   * @return an asynchronous thrift client or null if the caller tries to connect the local node.
+   * @return an asynchronous thrift client or null if the caller tries to connect the local node
+   * or the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
     return getAsyncClient(node, asyncClientPool);

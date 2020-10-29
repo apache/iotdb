@@ -544,9 +544,15 @@ public class MetaGroupMember extends RaftMember {
     AddNodeResponse resp;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
+      if (client == null) {
+        return false;
+      }
       resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+      if (client == null) {
+        return false;
+      }
       try {
         resp = client.addNode(thisNode, startUpStatus);
       } finally {
@@ -1004,6 +1010,9 @@ public class MetaGroupMember extends RaftMember {
   private CheckStatusResponse checkStatus(Node seedNode) {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
+      if (client == null) {
+        return null;
+      }
       try {
         return SyncClientAdaptor.checkStatus(client, getStartUpStatus());
       } catch (TException e) {
@@ -1014,6 +1023,9 @@ public class MetaGroupMember extends RaftMember {
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode);
+      if (client == null) {
+        return null;
+      }
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
@@ -1112,7 +1124,9 @@ public class MetaGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
       try {
-        client.appendEntry(request, handler);
+        if (client != null) {
+          client.appendEntry(request, handler);
+        }
       } catch (TException e) {
         logger.error("Cannot send log to node {}", node, e);
       }
@@ -2000,12 +2014,17 @@ public class MetaGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(node);
       try {
-        asyncMetaClient.exile(new GenericHandler<>(node, null));
+        if (asyncMetaClient != null) {
+          asyncMetaClient.exile(new GenericHandler<>(node, null));
+        }
       } catch (TException e) {
         logger.warn("Cannot inform {} its removal", node, e);
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+      if (client == null) {
+        return;
+      }
       try {
         client.exile();
       } catch (TException e) {

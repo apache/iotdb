@@ -73,6 +73,7 @@ public enum TSStatusCode {
   NO_PERMISSION_ERROR(602),
   UNINITIALIZED_AUTH_ERROR(603),
 
+  // cluster-related errors
   // TODO-Cluster: update docs when ready to merge
   PARTITION_NOT_READY(700),
   TIME_OUT(701),
@@ -80,6 +81,7 @@ public enum TSStatusCode {
   UNSUPPORTED_OPERATION(703),
   NODE_READ_ONLY(704),
   CONSISTENCY_FAILURE(705),
+  NO_CONNECTION(706),
 
   ;
 

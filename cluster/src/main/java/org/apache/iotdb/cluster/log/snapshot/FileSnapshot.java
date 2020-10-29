@@ -292,8 +292,10 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(sourceNode);
-          client.removeHardLink(resource.getTsFile().getAbsolutePath(),
-              new GenericHandler<>(sourceNode, null));
+          if (client != null) {
+            client.removeHardLink(resource.getTsFile().getAbsolutePath(),
+                new GenericHandler<>(sourceNode, null));
+          }
         } else {
           SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
           try {
