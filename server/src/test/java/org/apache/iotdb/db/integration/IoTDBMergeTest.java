@@ -97,16 +97,16 @@ public class IoTDBMergeTest {
         statement.execute("MERGE");
 
         int cnt;
-        try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM root.mergeTest")) {
+        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
           cnt = 0;
           while (resultSet.next()) {
             long time = resultSet.getLong("Time");
-//            long s1 = resultSet.getLong("root.mergeTest.s1");
+            long s1 = resultSet.getLong("root.mergeTest.s1");
             long s2 = resultSet.getLong("root.mergeTest.s2");
-//            long s3 = resultSet.getLong("root.mergeTest.s3");
-//            assertEquals(time + 10, s1);
+            long s3 = resultSet.getLong("root.mergeTest.s3");
+            assertEquals(time + 10, s1);
             assertEquals(time + 20, s2);
-//            assertEquals(time + 30, s3);
+            assertEquals(time + 30, s3);
             cnt++;
           }
         }
