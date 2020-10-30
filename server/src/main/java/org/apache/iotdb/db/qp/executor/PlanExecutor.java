@@ -1055,31 +1055,26 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
-    Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
-    for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan) {
+    Map<Integer, Exception> results = new HashMap<>(multiPlan.getPaths().size());
+    for (int i = 0; i < multiPlan.getPaths().size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
-          createMultiTimeSeriesPlan.getPaths().get(i),
-          createMultiTimeSeriesPlan.getDataTypes().get(i),
-          createMultiTimeSeriesPlan.getEncodings().get(i),
-          createMultiTimeSeriesPlan.getCompressors().get(i),
-          createMultiTimeSeriesPlan.getProps() == null ? null
-              : createMultiTimeSeriesPlan.getProps().get(i),
-          createMultiTimeSeriesPlan.getTags() == null ? null
-              : createMultiTimeSeriesPlan.getTags().get(i),
-          createMultiTimeSeriesPlan.getAttributes() == null ? null
-              : createMultiTimeSeriesPlan.getAttributes().get(i),
-          createMultiTimeSeriesPlan.getAlias() == null ? null
-              : createMultiTimeSeriesPlan.getAlias().get(i));
-
+          multiPlan.getPaths().get(i),
+          multiPlan.getDataTypes().get(i),
+          multiPlan.getEncodings().get(i),
+          multiPlan.getCompressors().get(i),
+          multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
+          multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
+          multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
+          multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
       } catch (QueryProcessException e) {
-        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), e);
+        results.put(multiPlan.getIndexes().get(i), e);
         logger.debug("meet error while processing create timeseries. ", e);
       }
     }
-    createMultiTimeSeriesPlan.setResults(results);
+    multiPlan.setResults(results);
     return true;
   }
 
