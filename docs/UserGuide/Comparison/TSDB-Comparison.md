@@ -53,7 +53,7 @@ Druid focuses on data analysis with OLAP workload. We omit them here.
  
 
 ## Comparison 
-The above time series database are comparedfrom two aspects: the feature comparison and the performance
+The above time series databases are compared from two aspects: the feature comparison and the performance
 comparison.
 
 
