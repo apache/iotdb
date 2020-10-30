@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Properties;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -355,6 +356,12 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecoveryForNotClose() {
+    Properties pop = System.getProperties();
+    String osName = pop.getProperty("os.name");
+    // for window os, skip the test because windows do not support reopen a file which is already opened.
+    if (osName.contains("Windows")) {
+      return;
+    }
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum = 10;
     int maxHaveAppliedCommitIndex = 7;
@@ -389,6 +396,12 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecoveryForNotCloseAndLoseData() {
+    Properties pop = System.getProperties();
+    String osName = pop.getProperty("os.name");
+    // for window os, skip the test because windows do not support reopen a file which is already opened.
+    if (osName.contains("Windows")) {
+      return;
+    }
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     int logNum = 20;
     int maxHaveAppliedCommitIndex = 7;
