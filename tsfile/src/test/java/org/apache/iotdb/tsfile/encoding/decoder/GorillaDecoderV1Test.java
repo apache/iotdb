@@ -33,15 +33,13 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.SinglePrecisionDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV1;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
 
-public class GorillaDecoderTest {
+public class GorillaDecoderV1Test {
 
-  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoderTest.class);
+  private static final Logger logger = LoggerFactory.getLogger(GorillaDecoderV1Test.class);
   private final double delta = 0.0000001;
   private final int floatMaxPointValue = 10000;
   private final long doubleMaxPointValue = 1000000000000000L;
@@ -90,7 +88,7 @@ public class GorillaDecoderTest {
 
   @Test
   public void testNegativeNumber() throws IOException {
-    Encoder encoder = new SinglePrecisionEncoder();
+    Encoder encoder = new SinglePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     float value = -7.101f;
     encoder.encode(value, baos);
@@ -103,7 +101,7 @@ public class GorillaDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new SinglePrecisionDecoder();
+      Decoder decoder = new SinglePrecisionDecoderV1();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readFloat(buffer), delta);
       }
@@ -118,7 +116,7 @@ public class GorillaDecoderTest {
 
   @Test
   public void testZeroNumber() throws IOException {
-    Encoder encoder = new DoublePrecisionEncoder();
+    Encoder encoder = new DoublePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     double value = 0f;
     encoder.encode(value, baos);
@@ -131,7 +129,7 @@ public class GorillaDecoderTest {
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < 2; i++) {
-      Decoder decoder = new DoublePrecisionDecoder();
+      Decoder decoder = new DoublePrecisionDecoderV1();
       if (decoder.hasNext(buffer)) {
         assertEquals(value, decoder.readDouble(buffer), delta);
       }
@@ -160,7 +158,7 @@ public class GorillaDecoderTest {
 
   @Test
   public void testFloat() throws IOException {
-    Encoder encoder = new SinglePrecisionEncoder();
+    Encoder encoder = new SinglePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     float value = 7.101f;
     int num = 10000;
@@ -169,7 +167,7 @@ public class GorillaDecoderTest {
     }
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    Decoder decoder = new SinglePrecisionDecoder();
+    Decoder decoder = new SinglePrecisionDecoderV1();
     for (int i = 0; i < num; i++) {
       if (decoder.hasNext(buffer)) {
         assertEquals(value + 2 * i, decoder.readFloat(buffer), delta);
@@ -181,7 +179,7 @@ public class GorillaDecoderTest {
 
   @Test
   public void testDouble() throws IOException {
-    Encoder encoder = new DoublePrecisionEncoder();
+    Encoder encoder = new DoublePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     double value = 7.101f;
     int num = 1000;
@@ -190,7 +188,7 @@ public class GorillaDecoderTest {
     }
     encoder.flush(baos);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    Decoder decoder = new DoublePrecisionDecoder();
+    Decoder decoder = new DoublePrecisionDecoderV1();
     for (int i = 0; i < num; i++) {
       if (decoder.hasNext(buffer)) {
         // System.out.println("turn "+i);
@@ -203,7 +201,7 @@ public class GorillaDecoderTest {
 
   private void testFloatLength(List<Float> valueList, boolean isDebug, int repeatCount)
       throws Exception {
-    Encoder encoder = new SinglePrecisionEncoder();
+    Encoder encoder = new SinglePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
       for (float value : valueList) {
@@ -214,7 +212,7 @@ public class GorillaDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     for (int i = 0; i < repeatCount; i++) {
 
-      Decoder decoder = new SinglePrecisionDecoder();
+      Decoder decoder = new SinglePrecisionDecoderV1();
       for (float value : valueList) {
         // System.out.println("Repeat: "+i+" value: "+value);
         if (decoder.hasNext(buffer)) {
@@ -232,7 +230,7 @@ public class GorillaDecoderTest {
 
   private void testDoubleLength(List<Double> valueList, boolean isDebug, int repeatCount)
       throws Exception {
-    Encoder encoder = new DoublePrecisionEncoder();
+    Encoder encoder = new DoublePrecisionEncoderV1();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (int i = 0; i < repeatCount; i++) {
       for (double value : valueList) {
@@ -244,7 +242,7 @@ public class GorillaDecoderTest {
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
     for (int i = 0; i < repeatCount; i++) {
-      Decoder decoder = new DoublePrecisionDecoder();
+      Decoder decoder = new DoublePrecisionDecoderV1();
       for (double value : valueList) {
         if (decoder.hasNext(buffer)) {
           double value_ = decoder.readDouble(buffer);
