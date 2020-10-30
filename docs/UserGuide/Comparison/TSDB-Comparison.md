@@ -100,7 +100,7 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB supports SQL like language. In addition, the integration of IoTDB and Calcite is alomost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
+  * IoTDB and InfluxDB support SQL like language. In addition, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
   * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
   * TimescaleDB uses the SQL the same as PG.
   
