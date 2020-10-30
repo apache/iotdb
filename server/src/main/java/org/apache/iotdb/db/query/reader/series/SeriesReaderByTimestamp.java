@@ -28,28 +28,29 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  protected SeriesReader seriesReader;
-  protected BatchData batchData;
-
-  public SeriesReaderByTimestamp() {
-  }
+  private SeriesReader seriesReader;
+  private BatchData batchData;
+  private boolean ascending;
 
   public SeriesReaderByTimestamp(PartialPath seriesPath, Set<String> allSensors,
       TSDataType dataType, QueryContext context, QueryDataSource dataSource,
-      TsFileFilter fileFilter) {
+      TsFileFilter fileFilter, boolean ascending) {
+    UnaryFilter timeFilter =
+        ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
     seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
-        dataSource, TimeFilter.gtEq(Long.MIN_VALUE), null, fileFilter, true);
+        dataSource, timeFilter, null, fileFilter, ascending);
+    this.ascending = ascending;
   }
 
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
     seriesReader.setTimeFilter(timestamp);
-    if ((batchData == null || (batchData.getTimeByIndex(batchData.length() - 1) < timestamp))
-        && !hasNext(timestamp)) {
+    if ((batchData == null || !hasAvailableData(batchData, timestamp)) && !hasNext(timestamp)) {
       return null;
     }
 
@@ -119,7 +120,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       if (isEmpty(batchData)) {
         continue;
       }
-      if (batchData.getTimeByIndex(batchData.length() - 1) >= timestamp) {
+      if (hasAvailableData(batchData, timestamp)) {
         return true;
       }
     }
@@ -132,5 +133,9 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
   private boolean isEmpty(BatchData batchData) {
     return batchData == null || !batchData.hasCurrent();
+  }
+
+  private boolean hasAvailableData(BatchData data, long time) {
+    return ascending ? data.getMaxTimestamp() >= time : data.getMinTimestamp() <= time;
   }
 }

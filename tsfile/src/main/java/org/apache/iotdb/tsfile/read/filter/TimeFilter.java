@@ -70,7 +70,7 @@ public class TimeFilter {
   public static class TimeIn extends In {
 
     private TimeIn(Set<Long> values, boolean not) {
-      super(values, FilterType.TIME_FILTER, not);
+      super(values, FilterType.TIME_FILTER,not);
     }
   }
 

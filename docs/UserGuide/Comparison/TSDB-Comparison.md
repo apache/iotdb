@@ -23,12 +23,12 @@
 
 ## Known Time Series Database
 
-As the time series data is more and more important, 
-several open sourced time series databases are intorduced in the world.
+As the time series data becomes more and more important, 
+several open sourced time series databases are introduced to the world.
 However, few of them are developed for IoT or IIoT (Industrial IoT) scenario in particular. 
 
 
-We choose 3 kinds of TSDBs here.
+We select 3 kinds of TSDBs here.
 
 * InfluxDB - Native Time series database
 
@@ -100,14 +100,14 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB supports SQL like language. Besides, The integration of IoTDB and Calcite is alomost done (a PR has been submitted), which means IoTDB will support Standard SQL.
-  * OpenTSDB and KairosDB only support Rest API. Besides, IoTDB also supports Rest API (a PR has been submitted).
+  * IoTDB and InfluxDB supports SQL like language. In addition, The integration of IoTDB and Calcite is alomost done (a PR has been submitted), which means IoTDB will support Standard SQL.
+  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
   * TimescaleDB uses the SQL the same with PG.
   
 * Schema:
 
   * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/Concept/Data%20Model%20and%20Terminology.html). 
-   It is quite different with other TSDBs. However, the kind of schema has the following advantages:
+   It is quite different from other TSDBs. However, the kind of schema has the following advantages:
     
     * In many industrial scenarios, the management of devices are hierarchical, rather than flat.
     That is why we think a tree based schema is better than tag-value based schema.
@@ -116,9 +116,9 @@ Legend:
     always identify their wind turbines by which country it locates, the farm name it belongs to, and its ID in the farm.
     So, a 4-depth tree ("root.the-country-name.the-farm-name.the-id") is fine. 
     You do not need to repeat to tell IoTDB the 2nd level of the tree is for country name, 
-    the 3rd level is for farm id, etc..
+    the 3rd level is for farm id, etc.
     
-    * A path based time series ID definition also supports flexible queries, like "root.\*.a.b.\*", wehre \* is wildcard character.
+    * A path based time series ID definition also supports flexible queries, like "root.\*.a.b.\*", where \* is wildcard character.
   
   * InfluxDB, KairosDB, OpenTSDB are tag-value based, which is more popular currently.
   
@@ -126,7 +126,7 @@ Legend:
 
 * Order by time:
   
-  Order by time seems quite trivil for time series database. But... if we consider another feature, called align by time,
+  Order by time seems quite trivial for time series database. But... if we consider another feature, called align by time,
   something becomes interesting.  And, that is why we mark OpenTSDB and KairosDB unsupported.
   
   Actually, in each time series, all these TSDBs support order data by timestamps.
@@ -242,15 +242,15 @@ I listed some interesting features that these systems may differ.
 
 * Running on Edge-side Device:
   
-  Nowdays, edge computing is more and more popular, which means the edge device has more powerful compution resources. 
+  Nowdays, edge computing is more and more popular, which means the edge device has more powerful computational resources. 
   Deploying a TSDB on the edge side is useful for managing data on the edge side and serve for edge computing. 
   As OpenTSDB and KairosDB rely another DB, the architecture is a little heavy. Especially, it is hard to run Hadoop on the edge side.
 
 * Multi-instance Sync:
   
   Ok, now we have many TSDB instances on the edge-side. Then, how to upload their data to the data center, to form a ... data lake (or ocean, river,..., whatever).
-  One choice is read data from these instances and write the data point by point to the data center instance.
-  IoTDB provides another choice, just uploading the data file into the data center incrementally, then the data center can support service on the data. 
+  One solution is to read data from these instances and write the data point by point to the data center instance.
+  IoTDB provides another choice, which is just uploading the data file into the data center incrementally, then the data center can support service on the data. 
   
 * JDBC driver:
 
@@ -258,7 +258,7 @@ I listed some interesting features that these systems may differ.
 
 * Standard SQL:
 
-  As mentioned, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
+  As mentioned before, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 
@@ -269,7 +269,7 @@ I listed some interesting features that these systems may differ.
   Sharing nothing architecture is good, but sometimes you have to add new servers even your CPU and memory is idle but the disk is full...
   Besides, if we can save the data file directly to HDFS, it will be more easy to use Spark and other softwares to analyze data, without ETL.
   
-  * IoTDB supports write data locally or on HDFS directly. IoTDB also allows user extend to store data on other NFS.
+  * IoTDB supports writing data locally or on HDFS directly. IoTDB also allows user to extend to store data on other NFS.
   * InfluxDB, KairosDB have to write data locally.
   * OpenTSDB has to write data on HDFS.
     

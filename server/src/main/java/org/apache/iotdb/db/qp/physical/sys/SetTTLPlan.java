@@ -23,6 +23,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -52,7 +53,7 @@ public class SetTTLPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
@@ -61,6 +62,8 @@ public class SetTTLPlan extends PhysicalPlan {
     stream.writeByte((byte) type);
     stream.writeLong(dataTTL);
     putString(stream, storageGroup.getFullPath());
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -69,12 +72,16 @@ public class SetTTLPlan extends PhysicalPlan {
     buffer.put((byte) type);
     buffer.putLong(dataTTL);
     putString(buffer, storageGroup.getFullPath());
+
+    buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.dataTTL = buffer.getLong();
     this.storageGroup = new PartialPath(readString(buffer));
+
+    this.index = buffer.getLong();
   }
 
   public PartialPath getStorageGroup() {

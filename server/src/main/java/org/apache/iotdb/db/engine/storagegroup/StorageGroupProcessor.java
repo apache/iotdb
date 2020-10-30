@@ -48,6 +48,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.CloseFileListener;
+import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
@@ -91,7 +93,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -234,6 +235,19 @@ public class StorageGroupProcessor {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+
+  public boolean isReady() {
+    return isReady;
+  }
+
+  public void setReady(boolean ready) {
+    isReady = ready;
+  }
+
+  private boolean isReady = false;
+
+  private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
+  private List<FlushListener> customFlushListeners = Collections.emptyList();
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -962,6 +976,8 @@ public class StorageGroupProcessor {
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
     }
+    tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
+    tsFileProcessor.addFlushListeners(customFlushListeners);
 
     tsFileProcessor.setTimeRangeId(timePartitionId);
     return tsFileProcessor;
@@ -984,6 +1000,28 @@ public class StorageGroupProcessor {
         + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
+  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
+    synchronized (closeStorageGroupCondition) {
+      try {
+        asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
+        long startTime = System.currentTimeMillis();
+        while (closingSequenceTsFileProcessor.contains(tsFileProcessor)
+            || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger
+                .warn("{} has spent {}s to wait for closing one tsfile.", this.storageGroupName,
+                    (System.currentTimeMillis() - startTime) / 1000);
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger
+            .error("syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
+                + "group {}", storageGroupName, e);
+      }
+    }
+  }
 
   /**
    * thread-safety should be ensured by caller
@@ -1345,12 +1383,12 @@ public class StorageGroupProcessor {
   /**
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
-   *
-   * @param path the timeseries path of the to be deleted.
+   *  @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
+   * @param planIndex
    */
-  public void delete(PartialPath path, long startTime, long endTime) throws IOException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws IOException {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1389,8 +1427,10 @@ public class StorageGroupProcessor {
         updatedModFiles.add(tsFileManagement.mergingModification);
       }
 
-      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, devicePaths, updatedModFiles);
-      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, devicePaths, updatedModFiles);
+      deleteDataInFiles(tsFileManagement.getTsFileList(true), deletion, devicePaths,
+          updatedModFiles, planIndex);
+      deleteDataInFiles(tsFileManagement.getTsFileList(false), deletion, devicePaths,
+          updatedModFiles, planIndex);
 
     } catch (Exception e) {
       // roll back
@@ -1438,8 +1478,8 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles)
-          throws IOException, MetadataException {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
+          throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(), deletion.getEndTime())) {
         continue;
@@ -1452,6 +1492,8 @@ public class StorageGroupProcessor {
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
       tsFileResource.getModFile().close();
+
+      tsFileResource.updatePlanIndexes(planIndex);
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
@@ -2104,8 +2146,10 @@ public class StorageGroupProcessor {
     }
     partitionDirectFileVersions.computeIfAbsent(filePartitionId,
         p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
-    updatePartitionFileVersion(filePartitionId,
-        Collections.max(tsFileResource.getHistoricalVersions()));
+    if (!tsFileResource.getHistoricalVersions().isEmpty()) {
+      updatePartitionFileVersion(filePartitionId,
+          Collections.max(tsFileResource.getHistoricalVersions()));
+    }
     return true;
   }
 
@@ -2320,6 +2364,8 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions",
+            processor.getTsFileResource().getTsFilePath());
       }
     }
   }
@@ -2331,6 +2377,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
   }
@@ -2371,5 +2418,15 @@ public class StorageGroupProcessor {
   public interface TimePartitionFilter {
 
     boolean satisfy(String storageGroupName, long timePartitionId);
+  }
+
+  public void setCustomCloseFileListeners(
+      List<CloseFileListener> customCloseFileListeners) {
+    this.customCloseFileListeners = customCloseFileListeners;
+  }
+
+  public void setCustomFlushListeners(
+      List<FlushListener> customFlushListeners) {
+    this.customFlushListeners = customFlushListeners;
   }
 }

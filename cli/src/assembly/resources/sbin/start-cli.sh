@@ -54,25 +54,25 @@ PARAMETERS="$@"
 # fi
 
 # Added parameters when default parameters are missing
-if [[ $PARAMETERS =~ "-h" ]]
+if [[ $PARAMETERS =~ "-h " ]]
 then
   PARAMETERS=$PARAMETERS
 else
   PARAMETERS="$PARAMETERS -h 127.0.0.1"
 fi
-if [[ $PARAMETERS =~ "-p" ]]
+if [[ $PARAMETERS =~ "-p " ]]
 then
   PARAMETERS=$PARAMETERS
 else
   PARAMETERS="$PARAMETERS -p 6667"
 fi
-if [[ $PARAMETERS =~ "-u" ]]
+if [[ $PARAMETERS =~ "-u " ]]
 then
   PARAMETERS=$PARAMETERS
 else
   PARAMETERS="$PARAMETERS -u root"
 fi
-if [[ $PARAMETERS =~ "-pw" ]]
+if [[ $PARAMETERS =~ "-pw " ]]
 then
   PARAMETERS=$PARAMETERS
 else

@@ -50,3 +50,4 @@ class Compressor(Enum):
     SDT = 4
     PAA = 5
     PLA = 6
+    LZ4 = 7
