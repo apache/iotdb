@@ -132,11 +132,9 @@ public class IoTDBQueryMemoryControlIT {
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
       assertEquals(1 + 5, resultSetMetaData.getColumnCount());
       for (int i = 2; i < 3 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
       for (int i = 3 + 2; i < 5 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf03.wt0"));
       }
     } catch (Exception e) {
@@ -154,7 +152,6 @@ public class IoTDBQueryMemoryControlIT {
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
       assertEquals(1 + 5, resultSetMetaData.getColumnCount());
       for (int i = 2; i < 5 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
     } catch (Exception e) {
@@ -172,11 +169,9 @@ public class IoTDBQueryMemoryControlIT {
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
       assertEquals(1 + 10, resultSetMetaData.getColumnCount());
       for (int i = 2; i < 5 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf03.wt0"));
       }
       for (int i = 5 + 2; i < 10 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
     } catch (Exception e) {
@@ -205,15 +200,14 @@ public class IoTDBQueryMemoryControlIT {
       ResultSetMetaData resultSetMetaData = statement.getResultSet().getMetaData();
       assertEquals(1 + 3, resultSetMetaData.getColumnCount());
       for (int i = 2; i < 1 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf01.wt0"));
       }
       for (int i = 1 + 2; i < 3 + 2; ++i) {
-        System.out.println(resultSetMetaData.getColumnName(i));
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
