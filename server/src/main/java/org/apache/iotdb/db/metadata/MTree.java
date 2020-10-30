@@ -776,11 +776,16 @@ public class MTree implements Serializable {
    * Get all timeseries paths under the given path
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
+   *
+   * @return Pair.left  contains all the satisfied paths
+   *         Pair.right means the current offset or zero if we don't set offset.
    */
-  List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath) throws MetadataException {
+  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
-    List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan);
+    plan.setLimit(limit);
+    plan.setOffset(offset);
+    List<Pair<PartialPath, String[]>> res = getAllMeasurementSchema(plan, false);
     List<PartialPath> paths = new ArrayList<>();
     for (Pair<PartialPath, String[]> p : res) {
       if (prePath.getMeasurement().equals(p.right[0])) {
@@ -788,7 +793,13 @@ public class MTree implements Serializable {
       }
       paths.add(p.left);
     }
-    return paths;
+    if (curOffset.get() == null) {
+      offset = 0;
+    } else {
+      offset = curOffset.get() + 1;
+    }
+    curOffset.remove();
+    return new Pair<>(paths, offset);
   }
 
   /**
@@ -856,7 +867,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
@@ -867,7 +878,7 @@ public class MTree implements Serializable {
           return getCount(next, nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
+        return 0;
       }
     } else {
       int cnt = 0;
@@ -986,6 +997,12 @@ public class MTree implements Serializable {
    */
   List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
+    return getAllMeasurementSchema(plan, true);
+  }
+
+
+  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan, boolean removeCurrentOffset)
+      throws MetadataException {
     List<Pair<PartialPath, String[]>> res;
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -1005,7 +1022,9 @@ public class MTree implements Serializable {
     // avoid memory leaks
     limit.remove();
     offset.remove();
-    curOffset.remove();
+    if (removeCurrentOffset) {
+      curOffset.remove();
+    }
     count.remove();
     return res;
   }
@@ -1150,9 +1169,11 @@ public class MTree implements Serializable {
    * @param idx   the current index of array nodes
    * @param res   store all matched device names
    */
+  @SuppressWarnings("squid:S3776")
   private void findDevices(MNode node, String[] nodes, int idx, Set<PartialPath> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
+    // the node path doesn't contains '*'
+    if (!nodeReg.contains(PATH_WILDCARD)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
         if (next instanceof MeasurementMNode && idx >= nodes.length) {
@@ -1161,9 +1182,14 @@ public class MTree implements Serializable {
           findDevices(next, nodes, idx + 1, res);
         }
       }
-    } else {
+    } else { // the node path contains '*'
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
+        // use '.*' to replace '*' to form a regex to match
+        // if the match failed, skip it.
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
+          continue;
+        }
         if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
           res.add(node.getPartialPath());
           deviceAdded = true;

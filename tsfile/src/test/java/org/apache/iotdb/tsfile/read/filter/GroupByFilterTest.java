@@ -101,7 +101,7 @@ public class GroupByFilterTest {
 
     assertTrue(groupByFilter.satisfy(9, null));
 
-    assertTrue(groupByFilter.satisfy(11, null));
+    assertFalse(groupByFilter.satisfy(11, null));
 
   }
 

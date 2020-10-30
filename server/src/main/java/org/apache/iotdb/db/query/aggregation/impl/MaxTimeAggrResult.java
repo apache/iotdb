@@ -38,7 +38,7 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public Long getResult() {
-    return hasResult() ? getLongValue() : null;
+    return hasCandidateResult() ? getLongValue() : null;
   }
 
   @Override
@@ -49,17 +49,11 @@ public class MaxTimeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    int maxIndex = dataInThisPage.length() - 1;
-    if (maxIndex < 0) {
-      return;
-    }
-    long time = dataInThisPage.getTimeByIndex(maxIndex);
-    updateMaxTimeResult(time);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
@@ -79,14 +73,13 @@ public class MaxTimeAggrResult extends AggregateResult {
       }
     }
 
-    if (time == -1) {
-      return;
+    if (time != -1) {
+      updateMaxTimeResult(time);
     }
-    updateMaxTimeResult(time);
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -104,12 +97,12 @@ public class MaxTimeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+  protected void serializeSpecificFields(OutputStream outputStream) {
 
   }
 
-  private void updateMaxTimeResult(long value) {
-    if (!hasResult() || value >= getLongValue()) {
+  protected void updateMaxTimeResult(long value) {
+    if (!hasCandidateResult() || value >= getLongValue()) {
       setLongValue(value);
     }
   }

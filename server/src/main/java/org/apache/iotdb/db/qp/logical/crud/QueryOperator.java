@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.Map;
 
 /**
  * this class extends {@code RootOperator} and process getIndex statement

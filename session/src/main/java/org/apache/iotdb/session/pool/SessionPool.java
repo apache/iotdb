@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session.pool;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -75,21 +76,28 @@ public class SessionPool implements IInsertSession {
   private int fetchSize;
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
-  private boolean enableCompression;
+  private boolean enableCompression = false;
   private AsyncSession asyncHandler;
+  private ZoneId zoneId;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       boolean enableCompression) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
+        null);
+  }
+
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      ZoneId zoneId) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId);
   }
 
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout, boolean enableCompression) {
+      long timeout, boolean enableCompression, ZoneId zoneId) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -99,6 +107,7 @@ public class SessionPool implements IInsertSession {
     this.timeout = timeout;
     this.enableCompression = enableCompression;
     this.asyncHandler = new AsyncSession();
+    this.zoneId = zoneId;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -126,7 +135,8 @@ public class SessionPool implements IInsertSession {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000, ip, port, user, password);
-                logger.warn("current occupied size {}, queue size {}, considered size {} ",occupied.size(), queue.size(), size);
+                logger.warn("current occupied size {}, queue size {}, considered size {} ",
+                    occupied.size(), queue.size(), size);
                 if (System.currentTimeMillis() - start > timeout) {
                   throw new IoTDBConnectionException(
                       String.format("timeout to get a connection from %s:%s", ip, port));
@@ -146,14 +156,14 @@ public class SessionPool implements IInsertSession {
       if (logger.isDebugEnabled()) {
         logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
-      session = new Session(ip, port, user, password, fetchSize);
+      session = new Session(ip, port, user, password, fetchSize, zoneId);
       try {
         session.open(enableCompression);
       } catch (IoTDBConnectionException e) {
         //if exception, we will throw the exception.
         //Meanwhile, we have to set size--
         synchronized (this) {
-          size --;
+          size--;
         }
         throw e;
       }
@@ -234,7 +244,8 @@ public class SessionPool implements IInsertSession {
     }
   }
 
-  private void cleanSessionAndMayThrowConnectionException(Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
+  private void cleanSessionAndMayThrowConnectionException(Session session, int times,
+      IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
     removeSession();
     if (times == FINAL_RETRY) {
@@ -651,7 +662,8 @@ public class SessionPool implements IInsertSession {
    * this method should be used to test other time cost in client
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {

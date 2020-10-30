@@ -25,12 +25,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -61,6 +61,10 @@ public abstract class AbstractMemTable implements IMemTable {
   private long totalPointsNum = 0;
 
   private long totalPointsNumThreshold = 0;
+
+  private long maxPlanIndex = Long.MIN_VALUE;
+
+  private long minPlanIndex = Long.MAX_VALUE;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -102,6 +106,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
+    updatePlanIndexes(insertRowPlan.getIndex());
     for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
       if (insertRowPlan.getValues()[i] == null) {
@@ -121,6 +126,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
+    updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
@@ -141,6 +147,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    updatePlanIndexes(insertTabletPlan.getIndex());
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
@@ -193,6 +200,7 @@ public abstract class AbstractMemTable implements IMemTable {
     seriesNumber = 0;
     totalPointsNum = 0;
     totalPointsNumThreshold = 0;
+    maxPlanIndex = 0;
   }
 
   @Override
@@ -203,7 +211,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       TSEncoding encoding, Map<String, String> props, long timeLowerBound)
-      throws IOException, QueryProcessException {
+      throws IOException, QueryProcessException, MetadataException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
@@ -216,13 +224,13 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private List<TimeRange> constructDeletionList(String deviceId, String measurement,
-      long timeLowerBound) {
+      long timeLowerBound) throws MetadataException {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
+        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
             && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
@@ -274,5 +282,20 @@ public abstract class AbstractMemTable implements IMemTable {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }
+  }
+
+  @Override
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  @Override
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  void updatePlanIndexes(long index) {
+    maxPlanIndex = Math.max(index, maxPlanIndex);
+    minPlanIndex = Math.min(index, minPlanIndex);
   }
 }

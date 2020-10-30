@@ -41,6 +41,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -880,7 +881,13 @@ public class IoTDBSessionComplexIT {
     paths.add(path4);
     paths.add(path5);
     paths.add(path6);
-    session.deleteData(paths, deleteTime);
+    try {
+      session.deleteData(paths, deleteTime);
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode()) {
+        throw e;
+      }
+    }
   }
 
   private void deleteTimeseries() throws IoTDBConnectionException, StatementExecutionException {

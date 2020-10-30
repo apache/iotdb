@@ -62,7 +62,8 @@ import org.slf4j.LoggerFactory;
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
-  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance().getCachedPool();
+  private static Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+      .getCachedPool();
 
   // tsfile
   private File file;
@@ -153,6 +154,16 @@ public class TsFileResource {
    * lock of originTsFileResource
    */
   private TsFileResource originTsFileResource;
+
+  /**
+   * Maximum index of plans executed within this TsFile.
+   */
+  private long maxPlanIndex = Long.MIN_VALUE;
+
+  /**
+   * Minimum index of plans executed within this TsFile.
+   */
+  private long minPlanIndex = Long.MAX_VALUE;
 
   public TsFileResource() {
   }
@@ -274,6 +285,9 @@ public class TsFileResource {
         }
       }
 
+      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
+      ReadWriteIOUtils.write(minPlanIndex, outputStream);
+
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
@@ -322,6 +336,9 @@ public class TsFileResource {
         long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
       }
+
+      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
@@ -783,7 +800,8 @@ public class TsFileResource {
     }
 
     while (true) {
-      String hardlinkSuffix = TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
+      String hardlinkSuffix =
+          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
 
       try {
@@ -809,7 +827,7 @@ public class TsFileResource {
 
   public long getMaxVersion() {
     long maxVersion = 0;
-    if (historicalVersions != null) {
+    if (historicalVersions != null && !historicalVersions.isEmpty()) {
       maxVersion = Collections.max(historicalVersions);
     }
     return maxVersion;
@@ -821,5 +839,31 @@ public class TsFileResource {
       Files.delete(FSFactoryProducer.getFSFactory()
           .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
     }
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public void updatePlanIndexes(long planIndex) {
+    maxPlanIndex = Math.max(maxPlanIndex, planIndex);
+    minPlanIndex = Math.min(minPlanIndex, planIndex);
+    if (closed) {
+      try {
+        serialize();
+      } catch (IOException e) {
+        logger.error("Cannot serialize TsFileResource {} when updating plan index {}-{}", this,
+            maxPlanIndex, planIndex);
+      }
+    }
+  }
+
+  public boolean isPlanIndexOverlap(TsFileResource another) {
+    return another.maxPlanIndex >= this.minPlanIndex &&
+           another.minPlanIndex <= this.maxPlanIndex;
   }
 }

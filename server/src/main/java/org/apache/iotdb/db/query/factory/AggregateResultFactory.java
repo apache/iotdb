@@ -25,10 +25,14 @@ import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.FirstValueDescAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.LastValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.LastValueDescAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MaxTimeAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MaxTimeDescAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MaxValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MinTimeDescAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.MinValueAggrResult;
 import org.apache.iotdb.db.query.aggregation.impl.SumAggrResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,8 +49,40 @@ public class AggregateResultFactory {
    * construct AggregateFunction using factory pattern.
    *
    * @param aggrFuncName function name.
-   * @param dataType data type.
+   * @param dataType     data type.
    */
+  public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType,
+      boolean ascending) {
+    if (aggrFuncName == null) {
+      throw new IllegalArgumentException("AggregateFunction Name must not be null");
+    }
+
+    switch (aggrFuncName.toLowerCase()) {
+      case SQLConstant.MIN_TIME:
+        return !ascending ? new MinTimeDescAggrResult() : new MinTimeAggrResult();
+      case SQLConstant.MAX_TIME:
+        return !ascending ? new MaxTimeDescAggrResult() : new MaxTimeAggrResult();
+      case SQLConstant.MIN_VALUE:
+        return new MinValueAggrResult(dataType);
+      case SQLConstant.MAX_VALUE:
+        return new MaxValueAggrResult(dataType);
+      case SQLConstant.COUNT:
+        return new CountAggrResult();
+      case SQLConstant.AVG:
+        return new AvgAggrResult(dataType);
+      case SQLConstant.FIRST_VALUE:
+        return !ascending ? new FirstValueDescAggrResult(dataType)
+            : new FirstValueAggrResult(dataType);
+      case SQLConstant.SUM:
+        return new SumAggrResult(dataType);
+      case SQLConstant.LAST_VALUE:
+        return !ascending ? new LastValueDescAggrResult(dataType)
+            : new LastValueAggrResult(dataType);
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
+    }
+  }
+
   public static AggregateResult getAggrResultByName(String aggrFuncName, TSDataType dataType) {
     if (aggrFuncName == null) {
       throw new IllegalArgumentException("AggregateFunction Name must not be null");
@@ -56,7 +92,7 @@ public class AggregateResultFactory {
       case SQLConstant.MIN_TIME:
         return new MinTimeAggrResult();
       case SQLConstant.MAX_TIME:
-        return new MaxTimeAggrResult();
+        return new MaxTimeDescAggrResult();
       case SQLConstant.MIN_VALUE:
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
@@ -70,14 +106,14 @@ public class AggregateResultFactory {
       case SQLConstant.SUM:
         return new SumAggrResult(dataType);
       case SQLConstant.LAST_VALUE:
-        return new LastValueAggrResult(dataType);
+        return new LastValueDescAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggrFuncName);
     }
   }
 
   public static AggregateResult getAggrResultByType(AggregationType aggregationType,
-      TSDataType dataType) {
+      TSDataType dataType, boolean ascending) {
     switch (aggregationType) {
       case AVG:
         return new AvgAggrResult(dataType);
@@ -86,13 +122,15 @@ public class AggregateResultFactory {
       case SUM:
         return new SumAggrResult(dataType);
       case FIRST_VALUE:
-        return new FirstValueAggrResult(dataType);
+        return !ascending ? new FirstValueDescAggrResult(dataType)
+            : new FirstValueAggrResult(dataType);
       case LAST_VALUE:
-        return new LastValueAggrResult(dataType);
+        return !ascending ? new LastValueDescAggrResult(dataType)
+            : new LastValueAggrResult(dataType);
       case MAX_TIME:
-        return new MaxTimeAggrResult();
+        return !ascending ? new MaxTimeDescAggrResult() : new MaxTimeAggrResult();
       case MIN_TIME:
-        return new MinTimeAggrResult();
+        return !ascending ? new MinTimeDescAggrResult() : new MinTimeAggrResult();
       case MAX_VALUE:
         return new MaxValueAggrResult(dataType);
       case MIN_VALUE:
