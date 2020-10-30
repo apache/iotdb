@@ -25,11 +25,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -277,6 +277,10 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < totalSize; i++) {
       encodings.add(TSEncoding.values()[buffer.get()]);
     }
+    compressors = new ArrayList<>(totalSize);
+    for (int i = 0; i < totalSize; i++) {
+      compressors.add(CompressionType.values()[buffer.get()]);
+    }
 
     if (buffer.get() == 1) {
       alias = new ArrayList<>(totalSize);
@@ -307,5 +311,24 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     }
 
     this.index = buffer.getLong();
+  }
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateMultiTimeSeriesPlan that = (CreateMultiTimeSeriesPlan) o;
+    return Objects.equals(paths, that.paths) &&
+        Objects.equals(dataTypes,that.dataTypes) &&
+        Objects.equals(encodings,that.encodings) &&
+        Objects.equals(compressors,that.compressors);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(paths, dataTypes, encodings, compressors);
   }
 }
