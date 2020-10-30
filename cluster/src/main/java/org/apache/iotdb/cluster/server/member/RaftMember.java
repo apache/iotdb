@@ -1529,7 +1529,7 @@ public abstract class RaftMember {
     try {
       if (allNodes.size() > 2) {
         // if there are more than one followers, send the requests in parallel so that one slow
-        // follower will not blocked
+        // follower will not be blocked
         for (Node node : allNodes) {
           appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
               leaderShipStale, newLeaderTerm, request));
