@@ -153,8 +153,8 @@ public class CatchUpTask implements Runnable {
     long prevLogTerm = getPrevLogTerm(index);
 
     if (prevLogTerm == -1) {
-      // prev log cannot be found, we cannot know whether is matches
-      return false;
+      // prev log cannot be found, we cannot know whether is matches if it is not the first log
+      return prevLogIndex == -1;
     }
 
     boolean matched = checkLogIsMatch(prevLogIndex, prevLogTerm);

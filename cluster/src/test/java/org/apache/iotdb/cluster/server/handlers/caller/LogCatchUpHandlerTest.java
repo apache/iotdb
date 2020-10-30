@@ -82,7 +82,7 @@ public class LogCatchUpHandlerTest {
       new Thread(() -> handler.onComplete(Response.RESPONSE_LOG_MISMATCH)).start();
       appendSucceed.wait();
     }
-    assertFalse(appendSucceed.get());
+    assertTrue(appendSucceed.get());
   }
 
   @Test
