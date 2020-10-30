@@ -164,7 +164,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (alias != null) {
       stream.write(1);
-      stream.writeInt(alias.size());
       for (String name : alias) {
         putString(stream, name);
       }
@@ -174,7 +173,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (props != null) {
       stream.write(1);
-      stream.writeInt(props.size());
       for (Map<String, String> prop : props) {
         ReadWriteIOUtils.write(prop, stream);
       }
@@ -184,7 +182,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (tags != null) {
       stream.write(1);
-      stream.writeInt(tags.size());
       for (Map<String, String> tag : tags) {
         ReadWriteIOUtils.write(tag, stream);
       }
@@ -194,7 +191,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (attributes != null) {
       stream.write(1);
-      stream.writeInt(attributes.size());
       for (Map<String, String> attribute : attributes) {
         ReadWriteIOUtils.write(attribute, stream);
       }
@@ -229,7 +225,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (alias != null) {
       buffer.put((byte) 1);
-      buffer.putInt(alias.size());
       for (String name : alias) {
         putString(buffer, name);
       }
@@ -239,7 +234,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (props != null) {
       buffer.put((byte) 1);
-      buffer.putInt(props.size());
       for (Map<String, String> prop : props) {
         ReadWriteIOUtils.write(prop, buffer);
       }
@@ -249,7 +243,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (tags != null) {
       buffer.put((byte) 1);
-      buffer.putInt(tags.size());
       for (Map<String, String> tag : tags) {
         ReadWriteIOUtils.write(tag, buffer);
       }
@@ -259,7 +252,6 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
 
     if (attributes != null) {
       buffer.put((byte) 1);
-      buffer.putInt(attributes.size());
       for (Map<String, String> attribute : attributes) {
         ReadWriteIOUtils.write(attribute, buffer);
       }
@@ -291,33 +283,29 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     }
 
     if (buffer.get() == 1) {
-      int size = buffer.getInt();
-      alias = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
+      alias = new ArrayList<>(totalSize);
+      for (int i = 0; i < totalSize; i++) {
         alias.add(readString(buffer));
       }
     }
 
     if (buffer.get() == 1) {
-      int size = buffer.getInt();
-      props = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
+      props = new ArrayList<>(totalSize);
+      for (int i = 0; i < totalSize; i++) {
         props.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
 
     if (buffer.get() == 1) {
-      int size = buffer.getInt();
-      tags = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
+      tags = new ArrayList<>(totalSize);
+      for (int i = 0; i < totalSize; i++) {
         tags.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
 
     if (buffer.get() == 1) {
-      int size = buffer.getInt();
-      attributes = new ArrayList<>(size);
-      for (int i = 0; i < size; i++) {
+      attributes = new ArrayList<>(totalSize);
+      for (int i = 0; i < totalSize; i++) {
         attributes.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
