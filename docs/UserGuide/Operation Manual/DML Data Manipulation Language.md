@@ -55,7 +55,7 @@ After inserting the data, we can simply query the inserted data using the SELECT
 IoTDB > select * from root.ln.wf02 where time < 3
 ```
 
-The result is shown below. The query result shows, it can be seen that the insertion statements of single column and multi column data are performed correctly.
+The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
 
