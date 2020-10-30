@@ -97,6 +97,10 @@ public class Session {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
+  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+    this(host, rpcPort, username, password, fetchSize, null);
+  }
+
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
@@ -916,11 +920,11 @@ public class Session {
     return result;
   }
 
-  public synchronized String getTimeZone() {
-    if (zoneId != null) {
-      return zoneId.toString();
+  public String getTimeZone() {
+    if (zoneId == null) {
+      zoneId = ZoneId.systemDefault();
     }
-    return ZoneId.systemDefault().getId();
+    return zoneId.toString();
   }
 
   public synchronized void setTimeZone(String zoneId)
