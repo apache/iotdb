@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -46,7 +47,7 @@ public class DataAuthPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
@@ -58,6 +59,8 @@ public class DataAuthPlan extends PhysicalPlan {
     for (String user : users) {
       putString(stream, user);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -69,6 +72,8 @@ public class DataAuthPlan extends PhysicalPlan {
     for (String user : users) {
       putString(buffer, user);
     }
+
+    buffer.putLong(index);
   }
 
   @Override

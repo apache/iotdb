@@ -66,7 +66,7 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID(), 1024);
+    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
   }
 
   /**

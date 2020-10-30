@@ -92,5 +92,4 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     private RPCServiceHolder() {
     }
   }
-
 }

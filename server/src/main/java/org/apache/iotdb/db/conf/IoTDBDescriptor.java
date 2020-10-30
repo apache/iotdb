@@ -49,7 +49,7 @@ public class IoTDBDescriptor {
   private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
 
-  private IoTDBDescriptor() {
+  protected IoTDBDescriptor() {
     loadProps();
   }
 
@@ -231,11 +231,8 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
-      conf.setTracingDir(FilePathUtils
-          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
-
       conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
@@ -341,9 +338,6 @@ public class IoTDBDescriptor {
         conf.setChunkBufferPoolEnable(Boolean
             .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
       }
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-      logger.info("Time zone has been set to {}", conf.getZoneID());
 
       conf.setEnableExternalSort(Boolean.parseBoolean(properties
           .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
@@ -381,6 +375,8 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setEnableMTreeSnapshot(Boolean.parseBoolean(properties.getProperty(
+          "enable_mtree_snapshot", Boolean.toString(conf.isEnableMTreeSnapshot()))));
       conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
           "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
       conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
@@ -474,6 +470,13 @@ public class IoTDBDescriptor {
       conf.setPrimitiveArraySize((Integer.parseInt(
           properties.getProperty(
               "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
+
+      conf.setThriftMaxFrameSize(Integer.parseInt(properties
+          .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+      conf.setThriftInitBufferSize(Integer.parseInt(properties
+          .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -678,10 +681,6 @@ public class IoTDBDescriptor {
 
       // update WAL conf
       loadWALProps(properties);
-
-      // time zone
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
 
       // dynamic parameters
       long tsfileSizeThreshold = Long.parseLong(properties

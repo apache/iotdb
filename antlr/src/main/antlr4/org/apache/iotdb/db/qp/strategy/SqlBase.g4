@@ -202,6 +202,7 @@ compressor
     | SDT
     | PAA
     | PLA
+    | LZ4
     ;
 
 attributeClause
@@ -1174,6 +1175,10 @@ PAA
 
 PLA
    : P L A
+   ;
+
+LZ4
+   : L Z '4' 
    ;
 
 LATEST

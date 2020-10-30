@@ -59,8 +59,22 @@ public class InsertRowPlan extends InsertPlan {
   // if values is object[], we could use the raw type of them, and we should set this to false
   private boolean isNeedInferType = false;
 
+  private List<Object> failedValues;
+
   public InsertRowPlan() {
     super(OperatorType.INSERT);
+  }
+
+  public InsertRowPlan(InsertRowPlan another) {
+    super(OperatorType.INSERT);
+    this.deviceId = another.deviceId;
+    this.time = another.time;
+    this.measurements = new String[another.measurements.length];
+    System.arraycopy(another.measurements, 0, this.measurements, 0, another.measurements.length);
+    this.values = new Object[another.values.length];
+    System.arraycopy(another.values, 0, this.values, 0, another.values.length);
+    this.dataTypes = new TSDataType[another.dataTypes.length];
+    System.arraycopy(another.dataTypes, 0, this.dataTypes, 0, another.dataTypes.length);
   }
 
   public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
@@ -155,7 +169,8 @@ public class InsertRowPlan extends InsertPlan {
       for (int i = 0; i < measurementMNodes.length; i++) {
         if (measurementMNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
+            markFailedMeasurementInsertion(i, new QueryProcessException(new PathNotExistException(
+                deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i])));
           } else {
             throw new QueryProcessException(new PathNotExistException(
                 deviceId.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
@@ -169,7 +184,7 @@ public class InsertRowPlan extends InsertPlan {
           logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
               measurements[i], values[i], dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markFailedMeasurementInsertion(i);
+            markFailedMeasurementInsertion(i, e);
             measurementMNodes[i] = null;
           } else {
             throw e;
@@ -180,8 +195,20 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void markFailedMeasurementInsertion(int index) {
-    super.markFailedMeasurementInsertion(index);
+  public long getMinTime() {
+    return getTime();
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    if (failedValues == null) {
+      failedValues = new ArrayList<>();
+    }
+    failedValues.add(values[index]);
     values[index] = null;
   }
 
@@ -247,6 +274,8 @@ public class InsertRowPlan extends InsertPlan {
 
     // the types are not inferred before the plan is serialized
     stream.write((byte) (isNeedInferType ? 1 : 0));
+
+    stream.writeLong(index);
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
@@ -380,11 +409,12 @@ public class InsertRowPlan extends InsertPlan {
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
-      e.printStackTrace();
+      logger.error("Failed to serialize values for {}", this, e);
     }
 
     // the types are not inferred before the plan is serialized
     buffer.put((byte) (isNeedInferType ? 1 : 0));
+    buffer.putLong(index);
   }
 
   @Override
@@ -408,6 +438,7 @@ public class InsertRowPlan extends InsertPlan {
     }
 
     isNeedInferType = buffer.get() == 1;
+    this.index = buffer.getLong();
   }
 
   @Override
@@ -422,5 +453,15 @@ public class InsertRowPlan extends InsertPlan {
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
         TsPrimitiveType.getByType(measurementMNodes[measurementIndex].getSchema().getType(), value));
+  }
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
+      return null;
+    }
+    values = failedValues.toArray(new Object[0]);
+    failedValues = null;
+    return this;
   }
 }

@@ -96,6 +96,7 @@ public class AggregationExecutor {
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(
         selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
+    // TODO-Cluster: group the paths by storage group to reduce communications
     for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
       aggregateOneSeries(entry, aggregateResultList,
           aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,

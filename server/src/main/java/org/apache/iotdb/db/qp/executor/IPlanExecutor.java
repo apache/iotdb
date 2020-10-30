@@ -77,11 +77,13 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path      : delete series seriesPath
+   * @param path      delete series seriesPath
    * @param startTime start time in delete command
    * @param endTime   end time in delete command
+   * @param planIndex index of the deletion plan
    */
-  void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException;
+  void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.
@@ -93,7 +95,6 @@ public interface IPlanExecutor {
   /**
    * execute batch insert plan
    *
-   * @return result of each row
    * @throws BatchInsertionException when some of the rows failed
    */
   void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;

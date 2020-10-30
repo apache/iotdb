@@ -367,7 +367,7 @@ public class StatMonitor implements IService {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
               fManager.delete(new PartialPath(entry.getKey(), statParamName), Long.MIN_VALUE,
-                  currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+                  currentTimeMillis - statMonitorRetainIntervalSec * 1000, -1);
             }
           }
         }

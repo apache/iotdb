@@ -115,8 +115,7 @@ public class UDFContext {
           builder.append(", ");
         }
         String key = attributeKeysInOriginalOrder.get(0);
-        builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))
-            .append("\"");
+        builder.append("\"").append(key).append("\"=\"").append(attributes.get(key)).append("\"");
         for (int i = 1; i < attributeKeysInOriginalOrder.size(); ++i) {
           key = attributeKeysInOriginalOrder.get(i);
           builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))

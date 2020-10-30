@@ -21,21 +21,24 @@ package org.apache.iotdb.db.utils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,6 +92,22 @@ public class SchemaUtils {
     }
   }
 
+  public static void cacheTimeseriesSchema(TimeseriesSchema schema) {
+    PartialPath path;
+    try {
+      path = new PartialPath(schema.getFullPath());
+    } catch (IllegalPathException e) {
+      logger.error("Cannot cache an illegal path {}", schema.getFullPath());
+      return;
+    }
+    TSDataType dataType = schema.getType();
+    TSEncoding encoding = schema.getEncodingType();
+    CompressionType compressionType = schema.getCompressor();
+    IoTDB.metaManager.cacheMeta(path,
+        new MeasurementMeta(new MeasurementSchema(path.getMeasurement(),
+        dataType, encoding, compressionType)));
+  }
+
   public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -103,7 +122,7 @@ public class SchemaUtils {
    * @param aggregation aggregation function, may be null
    * @return The data type of aggregation or (data type of paths if aggregation is null)
    */
-  public static List<TSDataType> getSeriesTypesByString(Collection<PartialPath> paths,
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths,
       String aggregation) throws MetadataException {
     TSDataType dataType = getAggregationType(aggregation);
     if (dataType != null) {
@@ -116,7 +135,25 @@ public class SchemaUtils {
     return dataTypes;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
+  /**
+   * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value), return
+   * 'measurementDataType' directly, or return a list whose elements are all the datatype of 'aggregation' and its length
+   * is the same as 'measurementDataType'.
+   * @param measurementDataType
+   * @param aggregation
+   * @return
+   * @throws MetadataException
+   */
+  public static List<TSDataType> getAggregatedDataTypes(List<TSDataType> measurementDataType,
+      String aggregation) throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return Collections.nCopies(measurementDataType.size(), dataType);
+    }
+    return measurementDataType;
+  }
+
+  public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }
 
@@ -124,7 +161,8 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getAggregationType(aggregations.get(i));
+      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
@@ -158,6 +196,27 @@ public class SchemaUtils {
       default:
         return null;
     }
+  }
+
+  /**
+   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
+   * return such an exception or null if it cannot be found.
+   *
+   * @param currEx
+   * @return null or a PathNotExistException or a StorageGroupNotSetException
+   */
+  public static Throwable findMetaMissingException(Throwable currEx) {
+    while (true) {
+      if (currEx instanceof PathNotExistException
+          || currEx instanceof StorageGroupNotSetException) {
+        return currEx;
+      }
+      if (currEx.getCause() == null) {
+        break;
+      }
+      currEx = currEx.getCause();
+    }
+    return null;
   }
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
