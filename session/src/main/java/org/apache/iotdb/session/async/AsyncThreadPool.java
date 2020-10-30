@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session.pool;
+package org.apache.iotdb.session.async;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
@@ -31,19 +31,19 @@ import org.apache.iotdb.session.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SessionThreadPool {
+public class AsyncThreadPool {
 
-  private static final Logger logger = LoggerFactory.getLogger(SessionThreadPool.class);
+  private static final Logger logger = LoggerFactory.getLogger(AsyncThreadPool.class);
   private ExecutorService pool;
   private BlockingQueue<Runnable> threadQueue;
 
-  public SessionThreadPool() {
+  public AsyncThreadPool() {
     threadQueue = new LinkedBlockingQueue<>(Config.DEFAULT_BLOCKING_QUEUE_SIZE);
     pool = new ThreadPoolExecutor(Config.DEFAULT_THREAD_POOL_SIZE, Config.DEFAULT_THREAD_POOL_SIZE,
         0L, TimeUnit.MILLISECONDS, threadQueue, new CustomPolicy());
   }
 
-  public SessionThreadPool(int poolSize, int blockingQueueSize) {
+  public AsyncThreadPool(int poolSize, int blockingQueueSize) {
     threadQueue = new LinkedBlockingQueue<>(blockingQueueSize);
     pool = new ThreadPoolExecutor(poolSize, poolSize,
         0L, TimeUnit.MILLISECONDS, threadQueue, new CustomPolicy());

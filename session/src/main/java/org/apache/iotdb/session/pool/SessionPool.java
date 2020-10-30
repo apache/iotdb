@@ -20,13 +20,16 @@ package org.apache.iotdb.session.pool;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.AsyncSession;
+import org.apache.iotdb.session.async.AsyncSession;
 import org.apache.iotdb.session.Config;
+import org.apache.iotdb.session.IInsertSession;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -56,7 +59,7 @@ import org.slf4j.LoggerFactory;
  * Another case that you have to manually call closeResultSet() is that when there is exception when
  * you call SessionDataSetWrapper.hasNext() or next()
  */
-public class SessionPool extends AsyncSession {
+public class SessionPool implements IInsertSession {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPool.class);
   private static int RETRY = 3;
@@ -72,7 +75,8 @@ public class SessionPool extends AsyncSession {
   private int fetchSize;
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
-  private boolean enableCompression = false;
+  private boolean enableCompression;
+  private AsyncSession asyncHandler;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
@@ -92,7 +96,6 @@ public class SessionPool extends AsyncSession {
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
       long timeout, boolean enableCompression) {
-    super();
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -101,11 +104,11 @@ public class SessionPool extends AsyncSession {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
+    this.asyncHandler = new AsyncSession();
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
       long timeout, boolean enableCompression, int threadPoolSize, int blockingQueueSize) {
-    super(threadPoolSize, blockingQueueSize);
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -114,6 +117,7 @@ public class SessionPool extends AsyncSession {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
+    this.asyncHandler = new AsyncSession();
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -295,7 +299,6 @@ public class SessionPool extends AsyncSession {
    * @param tablet a tablet data of one device
    * @param sorted whether times in Tablet are in ascending order
    */
-  @Override
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -314,6 +317,18 @@ public class SessionPool extends AsyncSession {
     }
   }
 
+  /**
+   * insert a Tablet asynchronously
+   * @param tablet data batch
+   * @param sorted whether times in Tablet are in ascending order
+   * @param timeout asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   * @return async CompletableFuture
+   */
+  public CompletableFuture<Integer> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
+                                                      BiConsumer<Tablet, Throwable> callback) {
+    return asyncHandler.doAsyncInsertTablet(tablet, sorted, timeout, this, callback);
+  }
 
   /**
    * use batch interface to insert data
@@ -330,7 +345,6 @@ public class SessionPool extends AsyncSession {
    *
    * @param tablets multiple batch
    */
-  @Override
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -350,13 +364,26 @@ public class SessionPool extends AsyncSession {
   }
 
   /**
+   * insert the data of several devices asynchronously. Given a device, for each timestamp,
+   * the number of measurements is the same.
+   *
+   * @param tablets  data batch in multiple device
+   * @param sorted   whether times in each Tablet are in ascending order
+   * @param timeout  asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   */
+  public CompletableFuture<Integer> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
+                                                       long timeout, BiConsumer<Map<String, Tablet>, Throwable> callback) {
+    return asyncHandler.doAsyncInsertTablets(tablets, sorted, timeout, this, callback);
+  }
+
+  /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
    * jdbc batch insert, we pack some insert request in batch and send them to server If you want
    * improve your performance, please see insertTablet method
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) throws IoTDBConnectionException, StatementExecutionException {
@@ -377,13 +404,31 @@ public class SessionPool extends AsyncSession {
   }
 
   /**
+   * Insert multiple rows in asynchronous way. This method is just like jdbc executeBatch,
+   * we pack some insert request in batch and send them to server. If you want improve your
+   * performance, please see insertTablet method.
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @param timeout  asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   * @see Session#insertTablet(Tablet)
+   */
+  public CompletableFuture<Integer> asyncInsertRecords(
+      List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList, List<List<Object>> valuesList, long timeout,
+      SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>, List<List<Object>>, Throwable> callback) {
+    return asyncHandler.doAsyncInsertRecords(deviceIds, times, measurementsList,
+        typesList, valuesList, timeout, this, callback);
+  }
+
+  /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
    * jdbc batch insert, we pack some insert request in batch and send them to server If you want
    * improve your performance, please see insertTablet method
    *
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -404,13 +449,31 @@ public class SessionPool extends AsyncSession {
   }
 
   /**
+   * Insert multiple rows in asynchronous way. This method is just like jdbc executeBatch,
+   * we pack some insert request in batch and send them to server. If you want improve your
+   * performance, please see insertTablet method.
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @param timeout  asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   * @see Session#insertTablet(Tablet)
+   */
+  public CompletableFuture<Integer> asyncInsertRecords(
+      List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,
+      List<List<String>> valuesList, long timeout,
+      FiveInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<String>>, Throwable> callback) {
+    return asyncHandler.doAsyncInsertRecords(deviceIds, times, measurementsList,
+        valuesList, timeout, this, callback);
+  }
+
+  /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -431,13 +494,29 @@ public class SessionPool extends AsyncSession {
   }
 
   /**
+   * insert data in one row asynchronously. if you want improve your performance,
+   * please use insertRecords method or insertTablet method
+   *
+   * @param timeout  asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  public CompletableFuture<Integer> asyncInsertRecord(
+      String deviceId, long time, List<String> measurements, List<TSDataType> types,
+      List<Object> values, long timeout,
+      SixInputConsumer<String, Long, List<String>, List<TSDataType>, List<Object>, Throwable> callback) {
+    return asyncHandler.doAsyncInsertRecord(deviceId, time, measurements, types,
+        values, timeout, this, callback);
+  }
+
+  /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  @Override
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -455,6 +534,22 @@ public class SessionPool extends AsyncSession {
         throw e;
       }
     }
+  }
+
+  /**
+   * insert data in one row asynchronously. if you want improve your performance,
+   * please use insertRecords method or insertTablet method
+   *
+   * @param timeout  asynchronous call timeout in millisecond
+   * @param callback user provided callback if failed, set to null if user does not specify.
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  public CompletableFuture<Integer> asyncInsertRecord(
+      String deviceId, long time, List<String> measurements, List<String> values, long timeout,
+      FiveInputConsumer<String, Long, List<String>, List<String>, Throwable> callback) {
+    return asyncHandler.doAsyncInsertRecord(deviceId, time, measurements, values,
+        timeout, this, callback);
   }
 
   /**

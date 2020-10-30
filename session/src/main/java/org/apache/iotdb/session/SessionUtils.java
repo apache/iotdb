@@ -96,46 +96,4 @@ public class SessionUtils {
     valueBuffer.flip();
     return valueBuffer;
   }
-
-  // From jdk9 CompletableFuture.java
-  static final class TimeOutCanceller implements BiConsumer<Object, Throwable> {
-    final Future<?> f;
-    TimeOutCanceller(Future<?> f) { this.f = f; }
-    public void accept(Object ignore, Throwable ex) {
-      if (ex == null && f != null && !f.isDone())
-        f.cancel(false);
-    }
-  }
-
-  static final class Delayer {
-    static ScheduledFuture<?> delay(Runnable command, long delay,
-        TimeUnit unit) {
-      return delayer.schedule(command, delay, unit);
-    }
-
-    static final class DaemonThreadFactory implements ThreadFactory {
-      public Thread newThread(Runnable r) {
-        Thread t = new Thread(r);
-        t.setDaemon(true);
-        t.setName("CompletableFutureDelayScheduler");
-        return t;
-      }
-    }
-
-    static final ScheduledThreadPoolExecutor delayer;
-    static {
-      (delayer = new ScheduledThreadPoolExecutor(
-          1, new DaemonThreadFactory())).
-          setRemoveOnCancelPolicy(true);
-    }
-  }
-
-  static final class Timeout implements Runnable {
-    final CompletableFuture<?> f;
-    Timeout(CompletableFuture<?> f) { this.f = f; }
-    public void run() {
-      if (f != null && !f.isDone())
-        f.completeExceptionally(new TimeoutException());
-    }
-  }
 }
