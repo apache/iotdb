@@ -345,7 +345,17 @@ public class SyncClientAdaptorTest {
         TestUtils.getNode(0), 1, 1, 1));
     assertEquals(snapshotMap, SyncClientAdaptor.pullSnapshot(dataClient,
         new PullSnapshotRequest(), Arrays.asList(0, 1, 2),
-        (SnapshotFactory<Snapshot>) () -> new SimpleSnapshot(0, 0)));
+        new SnapshotFactory<Snapshot>() {
+          @Override
+          public Snapshot create() {
+            return new SimpleSnapshot(0, 0);
+          }
+
+          @Override
+          public Snapshot copy(Snapshot origin) {
+            return new SimpleSnapshot(0, 0);
+          }
+        }));
     assertEquals(lastResult, SyncClientAdaptor.last(dataClient, new Path("1"), TSDataType.INT64,
         new QueryContext(), Collections.emptySet(), TestUtils.getNode(0)));
     assertTrue(SyncClientAdaptor.onSnapshotApplied(dataClient, TestUtils.getNode(0),

@@ -49,7 +49,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
       throws IOException, WriteProcessException {
 
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
-    PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(FileSnapshot::new);
+    PartitionedSnapshot partitionedSnapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     for (int i = 0; i < 10; i++) {
       FileSnapshot snapshot = new FileSnapshot();
       snapshot.addFile(tsFileResources.get(i), TestUtils.getNode(i));
@@ -63,7 +63,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
 
     ByteBuffer buffer = partitionedSnapshot.serialize();
 
-    PartitionedSnapshot deserialized = new PartitionedSnapshot(FileSnapshot::new);
+    PartitionedSnapshot deserialized = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     deserialized.deserialize(buffer);
     assertEquals(partitionedSnapshot, deserialized);
   }
@@ -72,7 +72,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
   public void testInstall()
       throws IOException, WriteProcessException, SnapshotInstallationException, IllegalPathException, StorageEngineException {
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
-    PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot::new);
+    PartitionedSnapshot snapshot = new PartitionedSnapshot(FileSnapshot.Factory.INSTANCE);
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();

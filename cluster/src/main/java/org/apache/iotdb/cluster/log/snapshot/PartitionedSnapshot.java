@@ -201,4 +201,11 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       defaultInstaller.install(snapshot, slot);
     }
   }
+
+  @Override
+  public void truncateBefore(long minIndex) {
+    for (T value : slotSnapshots.values()) {
+      value.truncateBefore(minIndex);
+    }
+  }
 }

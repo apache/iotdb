@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.auth.AuthException;
@@ -147,8 +148,6 @@ public class MetaSimpleSnapshot extends Snapshot {
       User user = new User();
       user.deserialize(buffer);
       userMap.put(userName, user);
-      // TODO: to remove
-      logger.info("A user from snapshot: {}", user);
     }
 
     int roleMapSize = buffer.getInt();
@@ -158,7 +157,6 @@ public class MetaSimpleSnapshot extends Snapshot {
       Role role = new Role();
       role.deserialize(buffer);
       roleMap.put(userName, role);
-      logger.info("A role from snapshot: {}", role);
     }
 
     setLastLogIndex(buffer.getLong());
@@ -276,5 +274,27 @@ public class MetaSimpleSnapshot extends Snapshot {
   @Override
   public int hashCode() {
     return Objects.hash(storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
+  }
+
+  public static class Factory implements SnapshotFactory<MetaSimpleSnapshot> {
+
+    public static final FileSnapshot.Factory INSTANCE = new FileSnapshot.Factory();
+
+    @Override
+    public MetaSimpleSnapshot create() {
+      return new MetaSimpleSnapshot();
+    }
+
+    @Override
+    public MetaSimpleSnapshot copy(MetaSimpleSnapshot origin) {
+      MetaSimpleSnapshot metaSimpleSnapshot = create();
+      metaSimpleSnapshot.lastLogIndex = origin.lastLogIndex;
+      metaSimpleSnapshot.lastLogTerm = origin.lastLogTerm;
+      metaSimpleSnapshot.partitionTableBuffer = origin.partitionTableBuffer.duplicate();
+      metaSimpleSnapshot.roleMap = new HashMap<>(origin.roleMap);
+      metaSimpleSnapshot.userMap = new HashMap<>(origin.userMap);
+      metaSimpleSnapshot.storageGroupTTLMap = new HashMap<>(origin.storageGroupTTLMap);
+      return metaSimpleSnapshot;
+    }
   }
 }

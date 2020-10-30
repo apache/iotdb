@@ -1839,6 +1839,10 @@ public class StorageGroupProcessor {
         continue;
       }
 
+      if (!localFile.isClosed()) {
+        // we cannot compare two files by TsFileResource unless they are both closed
+        syncCloseOneTsFileProcessor(true, localFile.getProcessor());
+      }
       int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
       switch (fileComparison) {
         case 0:
@@ -1903,7 +1907,6 @@ public class StorageGroupProcessor {
   @SuppressWarnings("unused")
   public void removeFullyOverlapFiles(TsFileResource resource) {
     writeLock();
-    closeQueryLock.writeLock().lock();
     try {
       Iterator<TsFileResource> iterator = tsFileManagement.getIterator(true);
       removeFullyOverlapFiles(resource, iterator, true);
@@ -1911,7 +1914,6 @@ public class StorageGroupProcessor {
       iterator = tsFileManagement.getIterator(false);
       removeFullyOverlapFiles(resource, iterator, false);
     } finally {
-      closeQueryLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -1923,6 +1925,9 @@ public class StorageGroupProcessor {
       if (newTsFile.isPlanRangeCovers(existingTsFile)
           && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
           && existingTsFile.tryWriteLock()) {
+        logger.info("{} is covered by {}: [{}, {}], [{}, {}], remove it", existingTsFile,
+            newTsFile, existingTsFile.minPlanIndex, existingTsFile.maxPlanIndex,
+            newTsFile.minPlanIndex, newTsFile.maxPlanIndex);
         // if we fail to lock the file, it means it is being queried or merged and we will not
         // wait until it is free, we will just leave it to the next merge
         try {
@@ -1944,16 +1949,21 @@ public class StorageGroupProcessor {
   private void removeFullyOverlapFile(TsFileResource tsFileResource,
       Iterator<TsFileResource> iterator
       , boolean isSeq) {
+    logger.info("Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
     if (!tsFileResource.isClosed()) {
-      // also remove the TsFileProcessor if the overlapped file is not closed
-      long timePartition = tsFileResource.getTimePartition();
-      Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
-          workUnsequenceTsFileProcessors;
-      TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
-      if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
-        //have to take some time to close the tsFileProcessor
-        tsFileProcessor.syncClose();
-        fileProcessorMap.remove(timePartition);
+      try {
+        // also remove the TsFileProcessor if the overlapped file is not closed
+        long timePartition = tsFileResource.getTimePartition();
+        Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
+            workUnsequenceTsFileProcessors;
+        TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
+        if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
+          //have to take some time to close the tsFileProcessor
+          tsFileProcessor.syncClose();
+          fileProcessorMap.remove(timePartition);
+        }
+      } catch (Exception e) {
+        logger.error("Cannot close {}", tsFileResource, e);
       }
     }
     tsFileManagement.remove(tsFileResource, isSeq);
@@ -2281,25 +2291,47 @@ public class StorageGroupProcessor {
     // examine working processor first as they have the largest plan index
     for (TsFileProcessor workSequenceTsFileProcessor : getWorkSequenceTsFileProcessors()) {
       if (workSequenceTsFileProcessor.getTimeRangeId() == partitionNum) {
-        return workSequenceTsFileProcessor.getTsFileResource().getMaxPlanIndex() >= tsFileResource
-            .getMaxPlanIndex();
+        TsFileResource workResource = workSequenceTsFileProcessor.getTsFileResource();
+        boolean isCovered =
+            workResource.getMaxPlanIndex() >= tsFileResource
+                .getMaxPlanIndex();
+        if (isCovered) {
+          logger.info("{} is covered by a working file {}: [{}, {}] [{}, {}]", tsFileResource,
+              workResource, tsFileResource.minPlanIndex, tsFileResource.maxPlanIndex,
+              workResource.minPlanIndex, workResource.maxPlanIndex);
+        }
+        return isCovered;
       }
     }
     for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessor()) {
       if (workUnsequenceTsFileProcessor.getTimeRangeId() == partitionNum) {
-        return workUnsequenceTsFileProcessor.getTsFileResource().getMaxPlanIndex() >= tsFileResource
-            .getMaxPlanIndex();
+        TsFileResource workResource = workUnsequenceTsFileProcessor.getTsFileResource();
+        boolean isCovered =
+            workResource.getMaxPlanIndex() >= tsFileResource
+                .getMaxPlanIndex();
+        if (isCovered) {
+          logger.info("{} is covered by a working file {}: [{}, {}] [{}, {}]", tsFileResource,
+              workResource, tsFileResource.minPlanIndex, tsFileResource.maxPlanIndex,
+              workResource.minPlanIndex, workResource.maxPlanIndex);
+        }
+        return isCovered;
       }
     }
     for (TsFileResource resource : getSequenceFileTreeSet()) {
       if (resource.getTimePartition() == partitionNum
           && resource.getMaxPlanIndex() >= tsFileResource.getMaxPlanIndex()) {
+        logger.info("{} is covered by a closed file {}: [{}, {}] [{}, {}]", tsFileResource,
+            resource, tsFileResource.minPlanIndex, tsFileResource.maxPlanIndex,
+            resource.minPlanIndex, resource.maxPlanIndex);
         return true;
       }
     }
     for (TsFileResource resource : getUnSequenceFileList()) {
       if (resource.getTimePartition() == partitionNum
           && resource.getMaxPlanIndex() >= tsFileResource.getMaxPlanIndex()) {
+        logger.info("{} is covered by a closed file {}: [{}, {}] [{}, {}]", tsFileResource,
+            resource, tsFileResource.minPlanIndex, tsFileResource.maxPlanIndex,
+            resource.minPlanIndex, resource.maxPlanIndex);
         return true;
       }
     }

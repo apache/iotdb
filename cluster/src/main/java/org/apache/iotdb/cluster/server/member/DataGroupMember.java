@@ -57,6 +57,7 @@ import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
@@ -384,7 +385,7 @@ public class DataGroupMember extends RaftMember {
    */
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     logger.debug("{}: received a snapshot", name);
-    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
+    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
@@ -521,7 +522,7 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot::new,
+    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
         snapshotSave));
   }
 

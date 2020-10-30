@@ -400,7 +400,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @throws IOException
      */
     private File pullRemoteFile(RemoteTsFileResource resource, Node node) throws IOException {
-      logger.debug("{}: pulling remote file {} from {}", name, resource, node);
+      logger.info("{}: pulling remote file {} from {}, plan index [{}, {}]", name, resource, node
+          , resource.getMinPlanIndex(), resource.getMaxPlanIndex());
 
       String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
       int segSize = pathSegments.length;
@@ -551,7 +552,40 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
+  public void truncateBefore(long minIndex) {
+    dataFiles.removeIf(res -> {
+      boolean toBeTruncated = res.getMaxPlanIndex() <= minIndex;
+      if (toBeTruncated) {
+        // also remove the hardlink
+        res.remove();
+      }
+      return toBeTruncated;
+    });
+  }
+
+  @Override
   public int hashCode() {
     return Objects.hash(timeseriesSchemas, dataFiles);
+  }
+
+  public static class Factory implements SnapshotFactory<FileSnapshot> {
+
+    public static final Factory INSTANCE = new Factory();
+
+    @Override
+    public FileSnapshot create() {
+      return new FileSnapshot();
+    }
+
+    @Override
+    public FileSnapshot copy(FileSnapshot origin) {
+      FileSnapshot fileSnapshot = new FileSnapshot();
+      fileSnapshot.setLastLogIndex(origin.lastLogIndex);
+      fileSnapshot.setLastLogTerm(origin.lastLogTerm);
+      fileSnapshot.dataFiles = origin.dataFiles == null ? null : new ArrayList<>(origin.dataFiles);
+      fileSnapshot.timeseriesSchemas = origin.timeseriesSchemas == null ? null :
+          new ArrayList<>(origin.timeseriesSchemas);
+      return fileSnapshot;
+    }
   }
 }

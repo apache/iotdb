@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotInstaller;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
@@ -81,4 +82,24 @@ public class TestSnapshot extends Snapshot {
   public int hashCode() {
     return Objects.hash(id);
   }
+
+  public static class Factory implements SnapshotFactory<TestSnapshot> {
+
+    public static final Factory INSTANCE = new Factory();
+
+    @Override
+    public TestSnapshot create() {
+      return new TestSnapshot();
+    }
+
+    @Override
+    public TestSnapshot copy(TestSnapshot origin) {
+      TestSnapshot testSnapshot = create();
+      testSnapshot.id = origin.id;
+      testSnapshot.lastLogIndex = origin.lastLogIndex;
+      testSnapshot.lastLogTerm = origin.lastLogTerm;
+      return testSnapshot;
+    }
+  }
+
 }

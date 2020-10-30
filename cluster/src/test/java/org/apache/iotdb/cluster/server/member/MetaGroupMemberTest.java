@@ -241,7 +241,7 @@ public class MetaGroupMemberTest extends MemberTest {
     };
 
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
-        partitionTable, group.getHeader(), TestSnapshot::new));
+        partitionTable, group.getHeader(), TestSnapshot.Factory.INSTANCE));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLocalQueryExecutor(new LocalQueryExecutor(dataGroupMember) {

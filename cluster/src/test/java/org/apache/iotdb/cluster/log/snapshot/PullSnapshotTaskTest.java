@@ -222,7 +222,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor(partitionGroup, slots,
         requiresReadOnly);
 
-    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember, FileSnapshot::new, null);
+    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember, FileSnapshot.Factory.INSTANCE, null);
     task.call();
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {

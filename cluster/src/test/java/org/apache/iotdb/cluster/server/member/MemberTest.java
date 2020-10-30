@@ -215,7 +215,7 @@ public class MemberTest {
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
       DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
-        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot.Factory.INSTANCE) {
       @Override
       public void takeSnapshot() {
       }

@@ -21,7 +21,8 @@ package org.apache.iotdb.cluster.log.snapshot;
 
 import org.apache.iotdb.cluster.log.Snapshot;
 
-@FunctionalInterface
 public interface SnapshotFactory<T extends Snapshot> {
   T create();
+
+  T copy(T origin);
 }

@@ -69,7 +69,7 @@ public class RaftLogManagerTest {
     }
 
     @Override
-    public Snapshot getSnapshot() {
+    public Snapshot getSnapshot(long minIndex) {
       return snapshot;
     }
 

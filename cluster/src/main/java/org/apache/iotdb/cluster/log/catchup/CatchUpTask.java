@@ -100,6 +100,7 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
+    peer.setMatchIndex(logs.get(index).getCurrLogIndex());
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
     logs.subList(0, index).clear();
     if (logger.isDebugEnabled()) {
@@ -215,7 +216,7 @@ public class CatchUpTask implements Runnable {
     } catch (IOException e) {
       logger.error("Unexpected error when taking snapshot.", e);
     }
-    snapshot = raftMember.getLogManager().getSnapshot();
+    snapshot = raftMember.getLogManager().getSnapshot(peer.getMatchIndex());
     if (logger.isDebugEnabled()) {
       logger
           .debug("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
