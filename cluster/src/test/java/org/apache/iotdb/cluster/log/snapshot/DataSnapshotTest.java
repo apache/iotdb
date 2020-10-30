@@ -156,6 +156,8 @@ public abstract class DataSnapshotTest {
   public void tearDown() throws Exception {
     metaGroupMember.closeLogManager();
     dataGroupMember.closeLogManager();
+    metaGroupMember.stop();
+    dataGroupMember.stop();
     EnvironmentUtils.cleanEnv();
   }
 }
