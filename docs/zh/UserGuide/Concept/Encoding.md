@@ -43,9 +43,7 @@ PLAIN编码，默认的编码方式，即不编码，支持多种数据类型，
 
 GORILLA编码是一种无损编码，它比较适合编码前后值比较接近的数值序列，不适合编码前后波动较大的数据。
 
-当前系统中存在两个版本的GORILLA编码实现，推荐使用最新的`GORILLA_V2`。
-
-在使用Java Session API创建Gorilla编码的序列时，需要显式指定序列编码为`GORILLA_V2`；使用其余的方法创建Gorilla编码的序列时，直接指定编码为`GORILLA`即可，无需显式指定版本，系统会自动使用最新版本的Gorilla编码创建序列。
+当前系统中存在两个版本的GORILLA编码实现，推荐使用`GORILLA`，不推荐使用`GORILLA_V1`（已过时）。
 
 使用限制：使用Gorilla编码INT32数据时，需要保证序列中不存在值为`Integer.MIN_VALUE`的数据点；使用Gorilla编码INT64数据时，需要保证序列中不存在值为`Long.MIN_VALUE`的数据点。
 

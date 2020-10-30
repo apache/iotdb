@@ -40,7 +40,7 @@ public abstract class GorillaDecoderV2 extends Decoder {
   private int bitsLeft = 0;
 
   protected GorillaDecoderV2() {
-    super(TSEncoding.GORILLA_V2);
+    super(TSEncoding.GORILLA);
   }
 
   @Override

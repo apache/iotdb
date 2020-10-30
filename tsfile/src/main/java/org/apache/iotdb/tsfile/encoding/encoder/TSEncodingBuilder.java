@@ -66,7 +66,7 @@ public abstract class TSEncodingBuilder {
         return new GorillaV1();
       case REGULAR:
         return new Regular();
-      case GORILLA_V2:
+      case GORILLA:
         return new GorillaV2();
       default:
         throw new UnsupportedOperationException(type.toString());
@@ -285,7 +285,7 @@ public abstract class TSEncodingBuilder {
         case INT64:
           return new LongGorillaEncoder();
         default:
-          throw new UnSupportedDataTypeException("GORILLA_V2 doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
       }
     }
 

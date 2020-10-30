@@ -77,7 +77,7 @@ public class TsFileReadWriteTest {
   public void intTest() throws IOException, WriteProcessException {
     List<TSEncoding> encodings = Arrays
         .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
-            TSEncoding.GORILLA_V2);
+            TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       intTest(encoding);
     }
@@ -92,7 +92,7 @@ public class TsFileReadWriteTest {
   public void longTest() throws IOException, WriteProcessException {
     List<TSEncoding> encodings = Arrays
         .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
-            TSEncoding.GORILLA_V2);
+            TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       longTest(encoding);
     }
@@ -107,7 +107,7 @@ public class TsFileReadWriteTest {
   public void floatTest() throws IOException, WriteProcessException {
     List<TSEncoding> encodings = Arrays
         .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
-            TSEncoding.GORILLA_V2);
+            TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       floatTest(encoding);
     }
@@ -123,7 +123,7 @@ public class TsFileReadWriteTest {
   public void doubleTest() throws IOException, WriteProcessException {
     List<TSEncoding> encodings = Arrays
         .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
-            TSEncoding.GORILLA_V2);
+            TSEncoding.GORILLA);
     for (TSEncoding encoding : encodings) {
       doubleTest(encoding);
     }

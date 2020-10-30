@@ -94,7 +94,7 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
-      case GORILLA_V2:
+      case GORILLA:
         switch (dataType) {
           case FLOAT:
             return new SinglePrecisionDecoderV2();

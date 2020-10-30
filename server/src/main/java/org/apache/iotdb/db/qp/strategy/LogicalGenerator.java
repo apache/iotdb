@@ -201,7 +201,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private UpdateOperator updateOp;
   private QueryOperator queryOp;
   private DeleteDataOperator deleteDataOp;
-  private static final String DELETE_RANGE_ERROR_MSG = 
+  private static final String DELETE_RANGE_ERROR_MSG =
     "For delete statement, where clause can only contain atomic expressions like : " +
       "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
@@ -1181,7 +1181,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     TSEncoding encoding = ioTDBDescriptor.getDefualtEncodingByType(tsDataType);
     if (Objects.nonNull(ctx.encoding())) {
       String encodingString = ctx.encoding().getChild(0).getText().toUpperCase();
-      encoding = TSEncoding.valueOf(TSEncoding.formalNameOf(encodingString));
+      encoding = TSEncoding.valueOf(encodingString);
     }
     createTimeSeriesOperator.setEncoding(encoding);
 

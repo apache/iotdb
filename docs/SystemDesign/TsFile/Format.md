@@ -52,7 +52,7 @@
   - 5: BITMAP
   - 6: GORILLA_V1
   - 7: REGULAR 
-  - 8: GORILLA_V2
+  - 8: GORILLA
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
