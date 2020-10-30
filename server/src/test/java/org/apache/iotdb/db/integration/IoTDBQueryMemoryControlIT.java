@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -94,9 +95,20 @@ public class IoTDBQueryMemoryControlIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select * from root");
+      try {
+        statement.execute("select * from root");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
+
+      try {
+        statement.execute("select count(*) from root");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -106,7 +118,8 @@ public class IoTDBQueryMemoryControlIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("select * from root slimit 10");
-    } catch (Exception e) {
+      statement.execute("select count(*) from root slimit 10");
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -117,9 +130,20 @@ public class IoTDBQueryMemoryControlIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select * from root slimit 11");
+      try {
+        statement.execute("select * from root slimit 11");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
+
+      try {
+        statement.execute("select count(*) from root slimit 11");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -137,7 +161,18 @@ public class IoTDBQueryMemoryControlIT {
       for (int i = 3 + 2; i < 5 + 2; ++i) {
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf03.wt0"));
       }
-    } catch (Exception e) {
+
+      statement.execute(
+          "select count(wf01.*), avg(wf02.*), sum(wf03.*) from root.ln slimit 5 soffset 7");
+      resultSetMetaData = statement.getResultSet().getMetaData();
+      assertEquals(5, resultSetMetaData.getColumnCount());
+      for (int i = 1; i < 3 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
+      }
+      for (int i = 3 + 1; i < 5 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf03.wt0"));
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -154,7 +189,15 @@ public class IoTDBQueryMemoryControlIT {
       for (int i = 2; i < 5 + 2; ++i) {
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
-    } catch (Exception e) {
+
+      statement.execute(
+          "select count(wf01.*), sum(wf02.*), avg(wf03.*) from root.ln slimit 5 soffset 5");
+      resultSetMetaData = statement.getResultSet().getMetaData();
+      assertEquals(5, resultSetMetaData.getColumnCount());
+      for (int i = 1; i < 5 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -174,7 +217,18 @@ public class IoTDBQueryMemoryControlIT {
       for (int i = 5 + 2; i < 10 + 2; ++i) {
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
-    } catch (Exception e) {
+
+      statement.execute(
+          "select sum(wf01.*), avg(wf03.*), count(wf02.*) from root.ln slimit 15 soffset 5");
+      resultSetMetaData = statement.getResultSet().getMetaData();
+      assertEquals(10, resultSetMetaData.getColumnCount());
+      for (int i = 1; i < 5 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf03.wt0"));
+      }
+      for (int i = 5 + 1; i < 10 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -185,9 +239,20 @@ public class IoTDBQueryMemoryControlIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 15 soffset 4");
+      try {
+        statement.execute("select wf01.*, wf02.*, wf03.* from root.ln slimit 15 soffset 4");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
+      try {
+        statement.execute(
+            "select count(wf01.*), avg(wf02.*), sum(wf03.*) from root.ln slimit 15 soffset 4");
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      }
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("Too many paths in one query!"));
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -205,7 +270,18 @@ public class IoTDBQueryMemoryControlIT {
       for (int i = 1 + 2; i < 3 + 2; ++i) {
         assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
       }
-    } catch (Exception e) {
+
+      statement.execute(
+          "select sum(wf01.*), count(wf02.*), avg(wf03.*) from root.ln slimit 3 soffset 4");
+      resultSetMetaData = statement.getResultSet().getMetaData();
+      assertEquals(3, resultSetMetaData.getColumnCount());
+      for (int i = 1; i < 1 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf01.wt0"));
+      }
+      for (int i = 1 + 1; i < 3 + 1; ++i) {
+        assertTrue(resultSetMetaData.getColumnName(i).contains("root.ln.wf02.wt0"));
+      }
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
