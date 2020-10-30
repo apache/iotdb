@@ -659,9 +659,10 @@ public class LocalQueryExecutor {
         .getQueryContext(request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
     PartialPath path = new PartialPath(request.getPath());
     ClusterQueryUtils.checkPathExistence(path);
+    // TODO-Cluster: support expression in last
     TimeValuePair timeValuePair = LastQueryExecutor
         .calculateLastPairForOneSeriesLocally(path,
-            TSDataType.values()[request.getDataTypeOrdinal()], queryContext,
+            TSDataType.values()[request.getDataTypeOrdinal()], queryContext, null,
             request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

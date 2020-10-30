@@ -53,6 +53,7 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +86,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     List<Future<TimeValuePair>> groupFutures = new ArrayList<>(globalGroups.size());
     for (PartitionGroup globalGroup : globalGroups) {
       GroupLastTask task = new GroupLastTask(globalGroup, seriesPath, tsDataType, context,
-          deviceMeasurements);
+          deviceMeasurements, expression);
       groupFutures.add(lastQueryPool.submit(task));
     }
     for (Future<TimeValuePair> groupFuture : groupFutures) {
@@ -111,15 +112,17 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private TSDataType dataType;
     private QueryContext queryContext;
     private Set<String> deviceMeasurements;
+    private IExpression expression;
 
     GroupLastTask(PartitionGroup group, PartialPath seriesPath,
         TSDataType dataType, QueryContext queryContext,
-        Set<String> deviceMeasurements) {
+        Set<String> deviceMeasurements, IExpression expression) {
       this.group = group;
       this.seriesPath = seriesPath;
       this.dataType = dataType;
       this.queryContext = queryContext;
       this.deviceMeasurements = deviceMeasurements;
+      this.expression = expression;
     }
 
     @Override
@@ -147,7 +150,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context,
+      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context, expression,
           deviceMeasurements);
     }
 

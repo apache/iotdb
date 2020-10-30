@@ -67,9 +67,10 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
-  public SessionConnection(Session session, EndPoint endPoint) throws IoTDBConnectionException {
+  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
+    this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
   }
 
@@ -88,10 +89,12 @@ public class SessionConnection {
     } else {
       client = new TSIService.Client(new TBinaryProtocol(transport));
     }
+    client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
+    openReq.setZoneId(zoneId.getId());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -112,12 +115,6 @@ public class SessionConnection {
 
       sessionId = openResp.getSessionId();
       statementId = client.requestStatementId(sessionId);
-
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
-      }
 
     } catch (Exception e) {
       transport.close();
@@ -618,4 +615,7 @@ public class SessionConnection {
     return flag;
   }
 
+  public void setZoneId(ZoneId zoneId) {
+    this.zoneId = zoneId;
+  }
 }

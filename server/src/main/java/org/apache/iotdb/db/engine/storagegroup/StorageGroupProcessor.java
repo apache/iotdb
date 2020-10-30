@@ -1839,7 +1839,7 @@ public class StorageGroupProcessor {
         continue;
       }
 
-      if (!localFile.isClosed()) {
+      if (!localFile.isClosed() && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
         syncCloseOneTsFileProcessor(true, localFile.getProcessor());
       }

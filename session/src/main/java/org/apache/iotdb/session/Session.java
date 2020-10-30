@@ -19,6 +19,7 @@
 package org.apache.iotdb.session;
 
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,6 +72,7 @@ public class Session {
   private EndPoint defaultEndPoint;
   private SessionConnection defaultSessionConnection;
   protected boolean isClosed = true;
+  private ZoneId zoneId;
 
   // Cluster version cache
   private SessionConnection metaSessionConnection;
@@ -79,22 +81,27 @@ public class Session {
   private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
   public Session(String host, int rpcPort) {
-    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
-  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+  public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, int fetchSize, ZoneId zoneId) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -113,7 +120,7 @@ public class Session {
 
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
-    defaultSessionConnection = new SessionConnection(this, defaultEndPoint);
+    defaultSessionConnection = new SessionConnection(this, defaultEndPoint, zoneId);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
     if (Config.DEFAULT_CACHE_LEADER_MODE) {
@@ -356,7 +363,7 @@ public class Session {
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(e.getEndPoint(), k -> {
             try {
-              return new SessionConnection(this, e.getEndPoint());
+              return new SessionConnection(this, e.getEndPoint(), zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
@@ -377,7 +384,7 @@ public class Session {
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(e.getEndPoint(), k -> {
             try {
-              return new SessionConnection(this, e.getEndPoint());
+              return new SessionConnection(this, e.getEndPoint(), zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
