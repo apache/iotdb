@@ -47,10 +47,6 @@ public class AsyncSession {
     threadPool = new AsyncThreadPool();
   }
 
-  public AsyncSession(int threadPoolSize, int blockingQueueSize) {
-    threadPool = new AsyncThreadPool(threadPoolSize, blockingQueueSize);
-  }
-
   /**
    * insert data in one row asynchronously. if you want improve your performance,
    * please use insertRecords method or insertTablet method
