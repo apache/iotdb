@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -33,6 +33,7 @@ public class CreateSnapshotPlan extends PhysicalPlan {
 
   @Override
   public List<PartialPath> getPaths() {
-    return new ArrayList<>();
+    return Collections.emptyList();
   }
+
 }

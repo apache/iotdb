@@ -36,7 +36,7 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ## 查看存储组

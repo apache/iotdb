@@ -58,12 +58,12 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");

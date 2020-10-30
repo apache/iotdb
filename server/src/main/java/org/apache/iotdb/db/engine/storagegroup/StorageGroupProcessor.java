@@ -94,7 +94,6 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
  * TsFileProcessor in the working status. <br/>
@@ -236,6 +235,16 @@ public class StorageGroupProcessor {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+
+  public boolean isReady() {
+    return isReady;
+  }
+
+  public void setReady(boolean ready) {
+    isReady = ready;
+  }
+
+  private boolean isReady = false;
 
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
   private List<FlushListener> customFlushListeners = Collections.emptyList();
@@ -991,6 +1000,28 @@ public class StorageGroupProcessor {
         + FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
+  public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
+    synchronized (closeStorageGroupCondition) {
+      try {
+        asyncCloseOneTsFileProcessor(sequence, tsFileProcessor);
+        long startTime = System.currentTimeMillis();
+        while (closingSequenceTsFileProcessor.contains(tsFileProcessor)
+            || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger
+                .warn("{} has spent {}s to wait for closing one tsfile.", this.storageGroupName,
+                    (System.currentTimeMillis() - startTime) / 1000);
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger
+            .error("syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
+                + "group {}", storageGroupName, e);
+      }
+    }
+  }
 
   /**
    * thread-safety should be ensured by caller
@@ -2333,6 +2364,8 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions",
+            processor.getTsFileResource().getTsFilePath());
       }
     }
   }
@@ -2344,6 +2377,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }
   }

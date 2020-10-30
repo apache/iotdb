@@ -743,7 +743,7 @@ public class TsFileProcessor {
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: {} get flushQueryLock and vmMergeLock read lock", storageGroupName,
+      logger.debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
           tsFileResource.getTsFile().getName());
     }
     flushQueryLock.readLock().lock();
