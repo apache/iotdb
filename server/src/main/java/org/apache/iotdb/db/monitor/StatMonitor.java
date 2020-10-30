@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.monitor;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -45,14 +52,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class StatMonitor implements IService {
 
@@ -367,8 +366,8 @@ public class StatMonitor implements IService {
         for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
           for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
             if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(new PartialPath(entry.getKey()), statParamName, Long.MIN_VALUE,
-                  currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+              fManager.delete(new PartialPath(entry.getKey(), statParamName), Long.MIN_VALUE,
+                  currentTimeMillis - statMonitorRetainIntervalSec * 1000, -1);
             }
           }
         }

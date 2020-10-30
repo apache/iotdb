@@ -419,6 +419,7 @@ public class IoTDBConnection implements Connection {
 
     openReq.setUsername(params.getUsername());
     openReq.setPassword(params.getPassword());
+    openReq.setZoneId(getTimeZone());
 
     TSOpenSessionResp openResp = null;
     try {
@@ -435,12 +436,6 @@ public class IoTDBConnection implements Connection {
               .format("Protocol not supported, Client version is %s, but Server version is %s",
                   protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
         }
-      }
-
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
       }
 
     } catch (TException e) {
@@ -481,7 +476,7 @@ public class IoTDBConnection implements Connection {
         }
       } catch (Exception e) {
         try {
-          Thread.sleep(Config.RETRY_INTERVAL);
+          Thread.sleep(Config.RETRY_INTERVAL_MS);
         } catch (InterruptedException e1) {
           logger.error("reconnect is interrupted.", e1);
           Thread.currentThread().interrupt();
@@ -491,7 +486,7 @@ public class IoTDBConnection implements Connection {
     return flag;
   }
 
-  public String getTimeZone() throws TException, IoTDBSQLException {
+  public String getTimeZone() {
     if (zoneId != null) {
       return zoneId.toString();
     }

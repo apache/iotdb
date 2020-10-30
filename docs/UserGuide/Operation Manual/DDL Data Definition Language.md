@@ -36,7 +36,7 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ## Show Storage Group
@@ -248,7 +248,7 @@ You will get following results:
 
 ## Count Nodes
 
-IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+IoTDB is able to use `COUNT NODES <PrefixPath> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
 
 ```
 IoTDB > COUNT NODES root LEVEL=2
@@ -261,6 +261,7 @@ As for the above mentioned example and Metadata tree, you can get following resu
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
+`PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
 
 ## Delete Timeseries
 

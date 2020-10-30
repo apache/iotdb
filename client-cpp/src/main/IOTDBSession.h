@@ -92,7 +92,7 @@ namespace CompressionType{
 
     enum CompressionType
     {
-        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA
+        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4
     };
 }
 namespace TSDataType{

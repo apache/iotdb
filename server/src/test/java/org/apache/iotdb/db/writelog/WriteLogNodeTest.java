@@ -38,7 +38,6 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Before;
@@ -104,7 +103,7 @@ public class WriteLogNodeTest {
     tabletPlan.setStart(0);
     tabletPlan.setEnd(4);
 
-    tabletPlan.markFailedMeasurementInsertion(1);
+    tabletPlan.markFailedMeasurementInsertion(1, new Exception());
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
