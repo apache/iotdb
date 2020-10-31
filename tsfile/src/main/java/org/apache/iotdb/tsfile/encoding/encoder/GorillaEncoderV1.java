@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
  * Gorilla encoding. For more information about how it works, please see
  * http://www.vldb.org/pvldb/vol8/p1816-teller.pdf
  */
-public abstract class GorillaEncoder extends Encoder {
+public abstract class GorillaEncoderV1 extends Encoder {
 
   // flag to indicate whether the first value is saved
   protected boolean flag;
@@ -37,8 +37,8 @@ public abstract class GorillaEncoder extends Encoder {
   // number of bits remaining in buffer
   protected int numberLeftInBuffer;
 
-  public GorillaEncoder() {
-    super(TSEncoding.GORILLA);
+  protected GorillaEncoderV1() {
+    super(TSEncoding.GORILLA_V1);
     this.flag = false;
   }
 
@@ -57,19 +57,11 @@ public abstract class GorillaEncoder extends Encoder {
   }
 
   protected void writeBit(int i, ByteArrayOutputStream out) {
-    if (i == 0) {
-      writeBit(false, out);
-    } else {
-      writeBit(true, out);
-    }
+    writeBit(i != 0, out);
   }
 
   protected void writeBit(long i, ByteArrayOutputStream out) {
-    if (i == 0) {
-      writeBit(false, out);
-    } else {
-      writeBit(true, out);
-    }
+    writeBit(i != 0, out);
   }
 
   protected void clearBuffer(ByteArrayOutputStream out) {

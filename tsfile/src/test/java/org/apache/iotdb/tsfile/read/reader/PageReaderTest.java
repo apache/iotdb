@@ -25,18 +25,18 @@ import java.util.List;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV1;
 import org.apache.iotdb.tsfile.encoding.decoder.IntRleDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.LongRleDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
-import org.apache.iotdb.tsfile.encoding.decoder.SinglePrecisionDecoder;
+import org.apache.iotdb.tsfile.encoding.decoder.SinglePrecisionDecoderV1;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV1;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.IntRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.LongRleEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -92,8 +92,8 @@ public class PageReaderTest {
 
   @Test
   public void testFloat() {
-    LoopWriteReadTest test = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoder(),
-        new SinglePrecisionDecoder(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoderV1(),
+        new SinglePrecisionDecoderV1(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
         return Float.valueOf(i) / 10 - Float.valueOf(i) / 100;
@@ -101,8 +101,8 @@ public class PageReaderTest {
     };
     test.test(TSDataType.FLOAT);
 
-    LoopWriteReadTest test2 = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoder(),
-        new SinglePrecisionDecoder(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
+    LoopWriteReadTest test2 = new LoopWriteReadTest("Test FLOAT", new SinglePrecisionEncoderV1(),
+        new SinglePrecisionDecoderV1(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
         return Float.valueOf(i) / 100 - Float.valueOf(i) / 10;
@@ -113,8 +113,8 @@ public class PageReaderTest {
 
   @Test
   public void testDouble() {
-    LoopWriteReadTest test = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoder(),
-        new DoublePrecisionDecoder(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoderV1(),
+        new DoublePrecisionDecoderV1(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
         return Double.valueOf(i) / 10 - Double.valueOf(i) / 100;
@@ -122,8 +122,8 @@ public class PageReaderTest {
     };
     test.test(TSDataType.DOUBLE);
 
-    LoopWriteReadTest test2 = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoder(),
-        new DoublePrecisionDecoder(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
+    LoopWriteReadTest test2 = new LoopWriteReadTest("Test Double", new DoublePrecisionEncoderV1(),
+        new DoublePrecisionDecoderV1(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
         return Double.valueOf(i) / 1000 - Double.valueOf(i) / 100;

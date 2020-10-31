@@ -49,27 +49,33 @@ public class SchemaUtils {
 
   }
 
-  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
+  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(
+      TSDataType.class);
 
   static {
     Set<TSEncoding> booleanSet = new HashSet<>();
     booleanSet.add(TSEncoding.PLAIN);
     booleanSet.add(TSEncoding.RLE);
     schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
-    Set<TSEncoding> int32Set = new HashSet<>();
-    int32Set.add(TSEncoding.PLAIN);
-    int32Set.add(TSEncoding.RLE);
-    int32Set.add(TSEncoding.TS_2DIFF);
-    int32Set.add(TSEncoding.REGULAR);
-    schemaChecker.put(TSDataType.INT32, int32Set);
-    schemaChecker.put(TSDataType.INT64, int32Set);
+
+    Set<TSEncoding> intSet = new HashSet<>();
+    intSet.add(TSEncoding.PLAIN);
+    intSet.add(TSEncoding.RLE);
+    intSet.add(TSEncoding.TS_2DIFF);
+    intSet.add(TSEncoding.REGULAR);
+    intSet.add(TSEncoding.GORILLA);
+    schemaChecker.put(TSDataType.INT32, intSet);
+    schemaChecker.put(TSDataType.INT64, intSet);
+
     Set<TSEncoding> floatSet = new HashSet<>();
     floatSet.add(TSEncoding.PLAIN);
     floatSet.add(TSEncoding.RLE);
     floatSet.add(TSEncoding.TS_2DIFF);
+    floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
+
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
     schemaChecker.put(TSDataType.TEXT, textSet);

@@ -487,10 +487,10 @@ public class IoTDBConnection implements Connection {
   }
 
   public String getTimeZone() {
-    if (zoneId != null) {
-      return zoneId.toString();
+    if (zoneId == null) {
+      zoneId = ZoneId.systemDefault();
     }
-    return ZoneId.systemDefault().getId();
+    return zoneId.toString();
   }
 
   public void setTimeZone(String zoneId) throws TException, IoTDBSQLException {

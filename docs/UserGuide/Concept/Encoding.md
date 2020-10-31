@@ -41,7 +41,11 @@ Run-length encoding can also be used to encode floating-point numbers, while it 
 
 * GORILLA
 
-GORILLA encoding is more suitable for floating-point sequence with similar values, but it is not recommended for sequence data with large fluctuations.
+GORILLA encoding is lossless. It is more suitable for numerical sequence with similar values and is not recommended for sequence data with large fluctuations.
+
+Currently, there are two versions of GORILLA encoding implementation, it is recommended to use `GORILLA` instead of `GORILLA_V1` (deprecated).
+
+Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using GORILLA to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
 * REGULAR
 
@@ -58,8 +62,8 @@ The four encodings described in the previous sections are applicable to differen
 |Data Type	|Supported Encoding|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR|
-|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR|
+|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|
