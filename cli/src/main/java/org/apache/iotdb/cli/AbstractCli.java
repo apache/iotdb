@@ -360,6 +360,7 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
+      // remove "-e" and it's parameter
       args = Arrays.copyOfRange(args, 0, index);
       return args;
     }

@@ -42,7 +42,15 @@ set CLASSPATH="%IOTDB_CLI_HOME%\lib\*"
 REM -----------------------------------------------------------------------------
 set PARAMETERS=%*
 
-if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
+@REM if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
+
+@REM Added parameters when default parameters are missing
+echo %PARAMETERS% | find "-pw ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=-pw root %PARAMETERS%)
+echo %PARAMETERS% | find "-u ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=-u root %PARAMETERS%)
+echo %PARAMETERS% | find "-p ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=-p 6667 %PARAMETERS%)
+echo %PARAMETERS% | find "-h ">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=-h 127.0.0.1 %PARAMETERS%)
+
+@REM echo %PARAMETERS%
 
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 
