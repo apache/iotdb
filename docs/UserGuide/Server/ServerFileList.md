@@ -62,32 +62,32 @@
 
 #### WAL
 > under directory basedir/wal
-1. ${StorageGroupName}-${TsFileName}/wal1
+1. {StorageGroupName}-{TsFileName}/wal1
     + every storage group has several wal files, and every memtable has one associated wal file before it is flushed into a TsFile 
 
 #### TsFile
-> under directory data/sequence or unsequence/${StorageGroupName}/${TimePartitionId}/
-1. ${time}-${version}-${mergeCnt}.tsfile
+> under directory data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/
+1. {time}-{version}-{mergeCnt}.tsfile
     + normal data file
-2. ${TsFileName}-${level}-${time}.vm
+2. {TsFileName}-{level}-{time}.vm
     + virtual merged TsFile
     + to optimize query performance, more details in https://issues.apache.org/jira/browse/IOTDB-706
-3. ${TsFileName}.tsfile.mod
+3. {TsFileName}.tsfile.mod
     + modification file
     + record delete operation
 
 #### TsFileResource
-1. ${TsFileName}.tsfile.resource
+1. {TsFileName}.tsfile.resource
     + descriptor and statistic file of a TsFile
-2. ${TsFileName}.tsfile.resource.temp
+2. {TsFileName}.tsfile.resource.temp
     + temp file
     + avoid damaging the tsfile.resource when updating it
-3. ${TsFileName}.tsfile.resource.closing
+3. {TsFileName}.tsfile.resource.closing
     + close flag file, to mark a tsfile closing so during restarts we can continue to close it or reopen it
 
 #### Version
-> under directory basedir/system/storage_groups/${StorageGroupName}/${TimePartitionId} or upgrade
-1. Version-${version}
+> under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
+1. Version-{version}
     + version file, record the max version in fileName of a stroage group
 
 #### Upgrade
@@ -96,7 +96,7 @@
     + record which files have been upgraded
 
 #### Merge
-> under directory basedir/system/storage_groups/${StrorageGroup}/
+> under directory basedir/system/storage_groups/{StrorageGroup}/
 1. merge.mods
     + modification file generated during a merge
 2. merge.log
@@ -110,7 +110,7 @@
 
 #### CompressRatio
 > under directory basedir/system/compression_ration
-1. Ration-${compressionRatioSum}-${calTimes}
+1. Ration-{compressionRatioSum}-{calTimes}
     + record compression ratio of each tsfile
 
 ---
@@ -128,16 +128,16 @@
     + the identifier of the local node in a cluster
 2. partitions
     + partition table file, records the distribution of data
-3. ${time}_${random}.task
+3. {time}_{random}.task
     + pullSnapshotTask file, record the slots and owners. When a node joins a cluster,
     it will create pullSnapshotTask file to track which data to be pulled
-    + under directory basedir/raft/${nodeIdentifier}/snapshot_task/
+    + under directory basedir/raft/{nodeIdentifier}/snapshot_task/
 
 ## Raft Related Files
-> under directory basedir/system/raftLog/${nodeIdentifier}/
+> under directory basedir/system/raftLog/{nodeIdentifier}/
 
 ### Raft Log
-1. .data-${version}
+1. .data-{version}
     + raft committed logs, only save the latest 1000(configurable) committed logs
 
 ### Raft Meta
@@ -150,8 +150,8 @@
     + temp file, to avoid damaging the logMeta when updating it
 
 ### Raft Catch Up
-> under directory basedir/remote/${nodeIdentifier}/${storageGroupName}/${partitionNum}/
-1. ${fileName}.tsfile
+> under directory basedir/remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/
+1. {fileName}.tsfile
     + remote TsFile, will be loaded during snapshot installation
-2. ${fileName}.tsfile.mod
+2. {fileName}.tsfile.mod
     + remote TsFile modification file, will be loaded during snapshot installation
