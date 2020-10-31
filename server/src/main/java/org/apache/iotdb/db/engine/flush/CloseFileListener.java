@@ -17,26 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.encoding.common;
+package org.apache.iotdb.db.engine.flush;
 
-/**
- * This class defines several constants using in encoding algorithm.
- */
-public class EncodingConfig {
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 
-  private EncodingConfig() {
-    throw new IllegalAccessError("Utility class");
-  }
-
-  /**
-   * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle
-   * encoding, otherwise use bit-packing.
-   */
-  public static final int RLE_MAX_REPEATED_NUM = 8;
-
-  // when to start a new bit-pacing group
-  public static final int RLE_MAX_BIT_PACKED_NUM = 63;
-
-  // bit width for Bitmap Encoding
-  public static final int BITMAP_BITWIDTH = 1;
+@FunctionalInterface
+public interface CloseFileListener {
+  void onClosed(TsFileProcessor processor) throws TsFileProcessorException;
 }

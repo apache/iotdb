@@ -33,7 +33,7 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 ### Privilege
 
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges can be divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
 ### Role
 
@@ -45,7 +45,7 @@ There is a default user in IoTDB after the initial installation: root, and the d
 
 ## Privilege Management Operation Examples
 
-According to the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
+According to the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the sample data of IoTDB might belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
 
 ### Create User
 
@@ -105,7 +105,6 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |:---|:---|
 |SET\_STORAGE\_GROUP|create timeseries; set storage groups; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
-|UPDATE\_TIMESERIES|update data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|
@@ -128,7 +127,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 IoTDB specifies that the character length of a username should not be less than 4, and the username cannot contain spaces.
 ### Password Restrictions
 
-IoTDB specifies that the character length of a password should not be less than 4, and the password cannot contain spaces. The password is encrypted with MD5.
+IoTDB specifies that the character length of a password should have no less than 4 character length, and no spaces. The password is encrypted with MD5.
 ### Role Name Restrictions
 
-IoTDB specifies that the character length of a role name should not be less than 4, and the role name cannot contain spaces.
+IoTDB specifies that the character length of a role name should have no less than 4 character length, and no spaces.

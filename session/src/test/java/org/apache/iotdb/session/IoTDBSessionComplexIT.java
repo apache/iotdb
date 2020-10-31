@@ -39,6 +39,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -646,7 +647,13 @@ public class IoTDBSessionComplexIT {
     paths.add(path4);
     paths.add(path5);
     paths.add(path6);
-    session.deleteData(paths, deleteTime);
+    try {
+      session.deleteData(paths, deleteTime);
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode()) {
+        throw e;
+      }
+    }
   }
 
   private void deleteTimeseries() throws IoTDBConnectionException, StatementExecutionException {
@@ -738,56 +745,11 @@ public class IoTDBSessionComplexIT {
         "insert into root.sg1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
   }
 
-  @Test
-  public void checkPathTest() throws IoTDBConnectionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
-    checkSetSG(session, "root.vehicle", true);
-    checkSetSG(session, "root.123456", true);
-    checkSetSG(session, "root._1234", true);
-    checkSetSG(session, "root._vehicle", true);
-    checkSetSG(session, "root.\tvehicle", false);
-    checkSetSG(session, "root.\nvehicle", false);
-    checkSetSG(session, "root..vehicle", false);
-    checkSetSG(session, "root.1234a4", true);
-    checkSetSG(session, "root.1_2", true);
-    checkSetSG(session, "root.%12345", false);
-    checkSetSG(session, "root.+12345", false);
-    checkSetSG(session, "root.-12345", false);
-    checkSetSG(session, "root.a{12345}", false);
-
-    checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
-    checkCreateTimeseries(session, "root.vehicle.1110.s0", true);
-    checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
-    checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
-    checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
-    checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.4\"", true);
-    checkCreateTimeseries(session, "root.vehicle./d0.s0", true);
-    checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
-    checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
-    checkCreateTimeseries(session, "root.vehicle.d{dfewrew0}.s0", true);
-
-    session.close();
-  }
-
   private void checkSetSG(Session session, String sg, boolean correctStatus)
       throws IoTDBConnectionException {
     boolean status = true;
     try {
       session.setStorageGroup(sg);
-    } catch (StatementExecutionException e) {
-      status = false;
-    }
-    assertEquals(correctStatus, status);
-  }
-
-  private void checkCreateTimeseries(Session session, String timeseries, boolean correctStatus)
-      throws IoTDBConnectionException {
-    boolean status = true;
-    try {
-      session.createTimeseries(timeseries, TSDataType.INT64, TSEncoding.RLE,
-          CompressionType.SNAPPY);
     } catch (StatementExecutionException e) {
       status = false;
     }

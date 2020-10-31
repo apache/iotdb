@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -435,6 +436,39 @@ public class IoTDBMultiSeriesIT {
       assertEquals(
           "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeSeriesWithoutEncoding() throws SQLException {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.name WITH DATATYPE=TEXT");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.salary WITH DATATYPE=INT64");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.score WITH DATATYPE=FLOAT");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.grade WITH DATATYPE=DOUBLE");
+
+      ResultSet nameRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.name");
+      nameRs.next();
+      Assert.assertTrue(TSEncoding.PLAIN.name().equalsIgnoreCase(nameRs.getString(5)));
+
+      ResultSet ageRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.age");
+      ageRs.next();
+      Assert.assertTrue(TSEncoding.RLE.name().equalsIgnoreCase(ageRs.getString(5)));
+
+      ResultSet salaryRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.salary");
+      salaryRs.next();
+      Assert.assertTrue(TSEncoding.RLE.name().equalsIgnoreCase(salaryRs.getString(5)));
+
+      ResultSet scoreRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.score");
+      scoreRs.next();
+      Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(scoreRs.getString(5)));
+
+      ResultSet gradeRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.grade");
+      gradeRs.next();
+      Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(gradeRs.getString(5)));
     }
   }
 }

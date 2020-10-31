@@ -292,11 +292,11 @@ public class IoTDBAliasIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString("timeseries")
-                  + "," + resultSet.getString("alias")
-                  + "," + resultSet.getString("storage group")
-                  + "," + resultSet.getString("dataType")
-                  + "," + resultSet.getString("encoding")
-                  + "," + resultSet.getString("compression");
+              + "," + resultSet.getString("alias")
+              + "," + resultSet.getString("storage group")
+              + "," + resultSet.getString("dataType")
+              + "," + resultSet.getString("encoding")
+              + "," + resultSet.getString("compression");
           assertEquals(ret, ans);
         }
       }

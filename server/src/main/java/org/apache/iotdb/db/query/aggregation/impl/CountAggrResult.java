@@ -86,7 +86,7 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 

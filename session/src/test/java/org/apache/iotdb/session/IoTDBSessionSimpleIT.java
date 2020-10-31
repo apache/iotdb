@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -204,8 +205,8 @@ public class IoTDBSessionSimpleIT {
         .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
             null, null);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     MeasurementMNode mNode = (MeasurementMNode) MManager
         .getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
@@ -260,6 +261,27 @@ public class IoTDBSessionSimpleIT {
       count++;
     }
     Assert.assertEquals(10, count);
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void createTimeSeriesWithDoubleTicks() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    session.createTimeseries("root.sg.\"my.device.with.colon:\".s", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertTrue(dataSet.hasNext());
+
     session.deleteStorageGroup(storageGroup);
     session.close();
   }

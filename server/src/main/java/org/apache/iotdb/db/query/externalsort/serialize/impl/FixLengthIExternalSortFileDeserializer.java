@@ -24,12 +24,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * FileFormat: [Header][Body]

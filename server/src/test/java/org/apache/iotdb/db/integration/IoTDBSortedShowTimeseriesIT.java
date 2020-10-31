@@ -99,6 +99,7 @@ public class IoTDBSortedShowTimeseriesIT {
 
   @Test
   public void showTimeseriesOrderByHeatTest1() throws ClassNotFoundException {
+
     List<String> retArray1 = Arrays.asList(
         "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
             + "turbine this is a test1\",\"unit\":\"f\"},{\"H_Alarm\":\"100\",\"M_Alarm\":\"50\"}",
@@ -126,7 +127,7 @@ public class IoTDBSortedShowTimeseriesIT {
             + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"
     );
 
-    String[] retArray2 = new String[]{
+    List<String> retArray2 = Arrays.asList(
         "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 "
             + "this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
         "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
@@ -150,8 +151,8 @@ public class IoTDBSortedShowTimeseriesIT {
         "root.ln.d0.s1,power,root.ln,FLOAT,RLE,SNAPPY,{\"description\":\"ln this is a test2\",\""
             + "unit\":\"w\"},{\"H_Alarm\":\"9.9\",\"M_Alarm\":\"4.4\"}",
         "root.ln.d1.s0,status,root.ln,INT32,RLE,SNAPPY,{\"description\":\"ln this is a test3\"},"
-            + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}",
-    };
+            + "{\"H_Alarm\":\"90\",\"M_Alarm\":\"50\"}"
+        );
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -191,10 +192,10 @@ public class IoTDBSortedShowTimeseriesIT {
             + "," + resultSet.getString("tags")
             + "," + resultSet.getString("attributes");
         System.out.println("\"" + ans + "\",");
-        assertEquals(retArray2[count], ans);
+        assertTrue(retArray2.contains(ans));
         count++;
       }
-      assertEquals(retArray2.length, count);
+      assertEquals(retArray2.size(), count);
 
     } catch (Exception e) {
       e.printStackTrace();
