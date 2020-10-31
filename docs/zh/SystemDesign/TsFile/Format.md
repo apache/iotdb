@@ -49,8 +49,9 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA 
 - **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY

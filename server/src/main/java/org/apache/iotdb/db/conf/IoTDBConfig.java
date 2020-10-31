@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
-import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -255,8 +254,6 @@ public class IoTDBConfig {
    * How many threads can concurrently query. When <= 0, use CPU core number.
    */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
-
-  private ZoneId zoneID = ZoneId.systemDefault();
 
   /**
    * Is the write mem control for writing enable.
@@ -791,14 +788,6 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
-  }
-
-  public ZoneId getZoneID() {
-    return zoneID;
-  }
-
-  void setZoneID(ZoneId zoneID) {
-    this.zoneID = zoneID;
   }
 
   void updatePath() {
