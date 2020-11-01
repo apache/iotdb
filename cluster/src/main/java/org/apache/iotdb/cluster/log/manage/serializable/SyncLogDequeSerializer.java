@@ -332,8 +332,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     logger.debug("rename index file={} to file={}", currentLogIndexFile.getAbsoluteFile(),
         newCurrentLogIndexFile.getAbsoluteFile());
 
-    logIndexFileList.remove(logIndexFileList.size() - 1);
-    logIndexFileList.add(newCurrentLogIndexFile);
+    logIndexFileList.set(logIndexFileList.size() - 1,newCurrentLogIndexFile);
 
     offsetOfTheCurrentLogDataOutputStream = 0;
   }
