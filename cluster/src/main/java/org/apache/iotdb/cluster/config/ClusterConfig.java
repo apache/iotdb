@@ -54,11 +54,6 @@ public class ClusterConfig {
   private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = 20 * 1000;
-  /**
-   * This parameter controls when to actually delete snapshot logs because we can't remove snapshot
-   * logs directly from disk now
-   */
-  private long maxUnsnapshotLogSize = 1024 * 1024 * 128L;
 
   private int readOperationTimeoutMS = 30_1000;
 
@@ -134,14 +129,15 @@ public class ClusterConfig {
   private int maxRaftLogIndexSizeInMemory = 10000;
 
   /**
-   * The maximum value of the raft log persisted on disk per file(in byte) per raft group
+   * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The
+   * default size is 1GB
    */
   private int maxRaftLogPersistDataSizePerFile = 1073741824;
 
   /**
-   * The maximum number of persistent raft log files on disk per raft group, So each raft group's,
-   * So each raft group's log takes up disk space approximately equals
-   * max_raft_log_persist_data_size_per_file * max_number_of_persist_raft_log_files
+   * The maximum number of persistent raft log files on disk per raft group, So each raft group's
+   * log takes up disk space approximately equals max_raft_log_persist_data_size_per_file *
+   * max_number_of_persist_raft_log_files
    */
   private int maxNumberOfPersistRaftLogFiles = 5;
 
@@ -176,14 +172,6 @@ public class ClusterConfig {
 
   public void setUseBatchInLogCatchUp(boolean useBatchInLogCatchUp) {
     this.useBatchInLogCatchUp = useBatchInLogCatchUp;
-  }
-
-  public long getMaxUnsnapshotLogSize() {
-    return maxUnsnapshotLogSize;
-  }
-
-  void setMaxUnsnapshotLogSize(long maxUnsnapshotLogSize) {
-    this.maxUnsnapshotLogSize = maxUnsnapshotLogSize;
   }
 
   public String getClusterRpcIp() {

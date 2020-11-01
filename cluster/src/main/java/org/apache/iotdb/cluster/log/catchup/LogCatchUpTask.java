@@ -191,7 +191,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
         logger.error("getTerm failed for newly append entries", e);
       }
     }
-    logger.debug("{}, node={} catchup request={}", raftMember.getName(), node, request.toString());
+    logger.debug("{}, node={} catchup request={}", raftMember.getName(), node, request);
     return request;
   }
 

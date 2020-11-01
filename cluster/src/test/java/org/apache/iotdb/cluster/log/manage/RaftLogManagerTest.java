@@ -1280,7 +1280,7 @@ public class RaftLogManagerTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logs = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logs = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       assertEquals(30, logs.size());
       for (int i = 0; i < logs.size(); i++) {
         assertEquals(testLogs1.get(i + 100), logs.get(i));

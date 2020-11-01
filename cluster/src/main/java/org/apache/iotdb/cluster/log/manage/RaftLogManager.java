@@ -130,7 +130,7 @@ public abstract class RaftLogManager {
     this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
-      this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesBeforeAppliedIndex());
+      this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesAfterAppliedIndex());
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }

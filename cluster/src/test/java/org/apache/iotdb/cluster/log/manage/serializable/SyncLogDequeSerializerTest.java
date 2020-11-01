@@ -339,7 +339,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
           (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
               + 1;
@@ -380,7 +380,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
           (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
               + 1;
@@ -498,7 +498,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       Assert.assertTrue(logDeque.isEmpty());
     } finally {
       syncLogDequeSerializer.close();
@@ -527,7 +527,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       for (int i = 0; i < logDeque.size(); i++) {
         Assert.assertEquals(testLogs1.get(i + maxHaveAppliedCommitIndex), logDeque.get(i));
       }
@@ -578,7 +578,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
       metaFile.renameTo(tempMetaFile);
       metaFile.createNewFile();
-      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesBeforeAppliedIndex();
+      List<Log> logDeque = syncLogDequeSerializer.getAllEntriesAfterAppliedIndex();
       int expectSize =
           (int) testLogs1.get(testLogs1.size() - 1).getCurrLogIndex() - maxHaveAppliedCommitIndex
               + 1;
