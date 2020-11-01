@@ -45,6 +45,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -1612,6 +1615,12 @@ public class StorageGroupProcessor {
       try {
         unseqFile.remove();
       } finally {
+        // clean cache
+        if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
+          ChunkCache.getInstance().clear();
+          ChunkMetadataCache.getInstance().clear();
+          TimeSeriesMetadataCache.getInstance().clear();
+        }
         unseqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
