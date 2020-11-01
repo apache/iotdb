@@ -493,6 +493,9 @@ public abstract class RaftMember {
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.getOperationStartTime();
     Log log = LogParser.getINSTANCE().parse(request.entry);
+    if (log instanceof PhysicalPlanLog && ((PhysicalPlanLog) log).getPlan().getOperatorType() == Operator.OperatorType.BATCHINSERT) {
+      logger.info("wangchao deserialize insert {}:{} size: {}", log.getCurrLogIndex(), log.getCurrLogTerm(), request.entry.array().length);
+    }
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
     long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
@@ -522,6 +525,9 @@ public abstract class RaftMember {
       Log log;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
+        if (log instanceof PhysicalPlanLog && ((PhysicalPlanLog) log).getPlan().getOperatorType() == Operator.OperatorType.BATCHINSERT) {
+          logger.info("wangchao deserialize insert {}:{} size: {}", log.getCurrLogIndex(), log.getCurrLogTerm(), buffer.array().length);
+        }
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
@@ -574,6 +580,7 @@ public abstract class RaftMember {
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
       Peer peer) {
     AsyncClient client = getSendLogAsyncClient(node);
+    logger.debug("wangchao client {}, receiver {}", (client == null), node);
     if (client != null) {
       AppendNodeEntryHandler handler = getAppendNodeEntryHandler(log, voteCounter, node,
           leaderShipStale, newLeaderTerm, peer);
@@ -1230,6 +1237,7 @@ public abstract class RaftMember {
 
   private AsyncClient getAsyncClient(Node node, AsyncClientPool pool) {
     if (ClusterConstant.EMPTY_NODE.equals(node)) {
+      logger.debug("wangchao empty {} node {}", ClusterConstant.EMPTY_NODE, node);
       return null;
     }
     AsyncClient client = null;
@@ -1456,10 +1464,19 @@ public abstract class RaftMember {
       return true;
     }
 
+    ByteBuffer data = log.serialize();
+    if (log instanceof PhysicalPlanLog && ((PhysicalPlanLog) log).getPlan().getOperatorType() == Operator.OperatorType.BATCHINSERT) {
+      logger.info("wangchao serialize insert {}:{} size: {}", log.getCurrLogIndex(), log.getCurrLogTerm(), data.limit() - data.position());
+    }
+
     int retryTime = 0;
     while (true) {
       long startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.getOperationStartTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
+      if (character != NodeCharacter.LEADER) {
+        logger.debug("has lose leadership, so need not to send log");
+        return false;
+      }
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
       switch (result) {
@@ -1756,6 +1773,9 @@ public abstract class RaftMember {
         resp = Response.RESPONSE_AGREE;
       } else {
         // the incoming log points to an illegal position, reject it
+        logger.debug("wangchao failed {} append a new log list index{} term{}, prevIndex{}, preTerm{} commit to {}",
+          name, logs.get(0).getCurrLogIndex(), logs.get(0).getCurrLogTerm(),
+          prevLogIndex, prevLogTerm, leaderCommit);
         resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }

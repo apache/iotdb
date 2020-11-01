@@ -132,15 +132,18 @@ public class NodeReport {
   public static class DataMemberReport extends RaftMemberReport {
     Node header;
     long headerLatency;
+    List<Node> nodes;
 
     public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
         long lastLogIndex, long commitIndex, long commitTerm, Node header, boolean isReadOnly,
         long headerLatency,
-        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
+        long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex,
+                            List<Node> allNodes) {
       super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
           lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
       this.header = header;
       this.headerLatency = headerLatency;
+      this.nodes = allNodes;
     }
 
     @Override
@@ -159,6 +162,7 @@ public class NodeReport {
           ", headerLatency=" + headerLatency + "ns" +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           ", logIncrement=" + (lastLogIndex - prevLastLogIndex) +
+          ", allNodes=" + nodes +
           '}';
     }
   }

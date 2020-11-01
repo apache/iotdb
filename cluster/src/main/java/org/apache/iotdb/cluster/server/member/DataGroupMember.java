@@ -764,7 +764,7 @@ public class DataGroupMember extends RaftMember {
         logManager.getCommitLogTerm(), getHeader(), readOnly,
         QueryCoordinator.getINSTANCE()
             .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex,
-        logManager.getMaxHaveAppliedCommitIndex());
+        logManager.getMaxHaveAppliedCommitIndex(), allNodes);
   }
 
   @TestOnly

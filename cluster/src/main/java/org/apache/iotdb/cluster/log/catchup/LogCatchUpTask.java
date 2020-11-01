@@ -245,6 +245,8 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private void sendBatchLogs(List<ByteBuffer> logList, int firstLogPos)
       throws TException, InterruptedException {
+    logger.debug("{} send logs from {} num {} for {}", raftMember.getThisNode(),
+      logs.get(firstLogPos).getCurrLogIndex(), logList.size(), node);
     AppendEntriesRequest request = prepareRequest(logList, firstLogPos);
     if (request == null) {
       return;
@@ -309,6 +311,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
   }
 
+  @Override
   public Boolean call() throws TException, InterruptedException, LeaderUnknownException {
     if (logs.isEmpty()) {
       return true;
@@ -319,7 +322,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     } else {
       doLogCatchUp();
     }
-    logger.debug("{}: Catch up {} finished", raftMember.getName(), node);
+    logger.debug("{}: Catch up {} finished with result {}", raftMember.getName(), node, abort);
 
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);

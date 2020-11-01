@@ -47,6 +47,7 @@ public class SnapshotCatchUpHandler implements AsyncMethodCallback<Void> {
   @Override
   public void onComplete(Void resp) {
     synchronized (succeed) {
+      logger.debug("success send snapshot {} to {}", snapshot, receiver);
       succeed.set(true);
       succeed.notifyAll();
     }
