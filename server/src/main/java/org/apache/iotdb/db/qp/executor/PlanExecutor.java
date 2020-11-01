@@ -73,9 +73,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -149,19 +149,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PlanExecutor implements IPlanExecutor {
+
   // logger
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
 
   // for data query
   protected IQueryRouter queryRouter;
-  // for system schema
-  private MManager mManager;
   // for administration
   private IAuthorizer authorizer;
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
-    mManager = IoTDB.metaManager;
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
@@ -295,7 +293,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateCreateSnapshot() {
-    mManager.createMTreeSnapshot();
+    IoTDB.metaManager.createMTreeSnapshot();
   }
 
   private void operateTracing(TracingPlan plan) {
@@ -303,28 +301,44 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
-    if (plan.getPaths() == null) {
+    if (plan.getPaths().isEmpty()) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
-      if (plan.isSeq() == null) {
-        for (PartialPath storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
-        }
-      } else {
-        for (PartialPath storageGroup : plan.getPaths()) {
-          StorageEngine.getInstance().asyncCloseProcessor(storageGroup, plan.isSeq());
-        }
-      }
+      flushSpecifiedStorageGroups(plan);
     }
 
-    if (plan.getPaths() != null) {
+    if (!plan.getPaths().isEmpty()) {
       List<PartialPath> noExistSg = checkStorageGroupExist(plan.getPaths());
       if (!noExistSg.isEmpty()) {
         StringBuilder sb = new StringBuilder();
-        noExistSg.forEach((storageGroup) -> sb.append(storageGroup.getFullPath()).append(","));
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         throw new StorageGroupNotSetException(
             sb.subSequence(0, sb.length() - 1).toString());
+      }
+    }
+  }
+
+  private void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
+      PartialPath storageGroupName = entry.getKey();
+      // normal flush
+      if (entry.getValue() == null) {
+        if (plan.isSeq() == null) {
+          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
+          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
+        } else {
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, plan.isSeq(), plan.isSync());
+        }
+      }
+      // partition specified flush, for snapshot flush plan
+      else {
+        List<Pair<Long, Boolean>> partitionIdSequencePairs = entry.getValue();
+        for (Pair<Long, Boolean> pair : partitionIdSequencePairs) {
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, pair.left, pair.right, true);
+        }
       }
     }
   }
@@ -711,7 +725,8 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(),
+          deletePlan.getIndex());
     }
   }
 
@@ -801,7 +816,7 @@ public class PlanExecutor implements IPlanExecutor {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
       MNode node = null;
-      node = mManager
+      node = IoTDB.metaManager
           .getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series = new PartialPath(
@@ -818,7 +833,7 @@ public class PlanExecutor implements IPlanExecutor {
                     chunkMetadata.getMeasurementUid()));
           }
           if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-            mManager.createTimeseries(
+            IoTDB.metaManager.createTimeseries(
                 series,
                 schema.getType(),
                 schema.getEncodingType(),
@@ -881,9 +896,14 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime) throws QueryProcessException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException {
     try {
-      StorageEngine.getInstance().delete(path, startTime, endTime);
+      if (!IoTDB.metaManager.isPathExist(path)) {
+        throw new QueryProcessException(
+            String.format("Time series %s does not exist.", path.getFullPath()));
+      }
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -891,7 +911,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private MNode getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
-    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    return IoTDB.metaManager
+        .getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
   @Override
@@ -910,8 +931,26 @@ public class PlanExecutor implements IPlanExecutor {
 
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException(
-            "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
+        // check if all path not exist exceptions
+        List<String> failedPaths = insertRowPlan.getFailedMeasurements();
+        List<Exception> exceptions = insertRowPlan.getFailedExceptions();
+        boolean isPathNotExistException = true;
+        for (Exception e : exceptions) {
+          Throwable curException = e;
+          while (curException.getCause() != null) {
+            curException = curException.getCause();
+          }
+          if (!(curException instanceof PathNotExistException)) {
+            isPathNotExistException = false;
+            break;
+          }
+        }
+        if (isPathNotExistException) {
+          throw new PathNotExistException(failedPaths);
+        } else {
+          throw new StorageEngineException(
+              "failed to insert points " + insertRowPlan.getFailedMeasurements());
+        }
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -1009,32 +1048,33 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
       throws QueryProcessException {
     try {
-      mManager.createTimeseries(createTimeSeriesPlan);
+      IoTDB.metaManager.createTimeseries(createTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     return true;
   }
 
-  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan) {
-    Map<Integer, Exception> results = new HashMap<>(createMultiTimeSeriesPlan.getPaths().size());
-    for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(createMultiTimeSeriesPlan.getPaths().get(i),
-        createMultiTimeSeriesPlan.getDataTypes().get(i), createMultiTimeSeriesPlan.getEncodings().get(i),
-        createMultiTimeSeriesPlan.getCompressors().get(i),
-        createMultiTimeSeriesPlan.getProps() == null ? null : createMultiTimeSeriesPlan.getProps().get(i),
-        createMultiTimeSeriesPlan.getTags() == null ? null : createMultiTimeSeriesPlan.getTags().get(i),
-        createMultiTimeSeriesPlan.getAttributes() == null ? null : createMultiTimeSeriesPlan.getAttributes().get(i),
-        createMultiTimeSeriesPlan.getAlias() == null ? null : createMultiTimeSeriesPlan.getAlias().get(i));
-
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan) {
+    Map<Integer, Exception> results = new HashMap<>(multiPlan.getPaths().size());
+    for (int i = 0; i < multiPlan.getPaths().size(); i++) {
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
+          multiPlan.getPaths().get(i),
+          multiPlan.getDataTypes().get(i),
+          multiPlan.getEncodings().get(i),
+          multiPlan.getCompressors().get(i),
+          multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
+          multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
+          multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
+          multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
       } catch (QueryProcessException e) {
-        results.put(createMultiTimeSeriesPlan.getIndexes().get(i), e);
+        results.put(multiPlan.getIndexes().get(i), e);
         logger.debug("meet error while processing create timeseries. ", e);
       }
     }
-    createMultiTimeSeriesPlan.setResults(results);
+    multiPlan.setResults(results);
     return true;
   }
 
@@ -1044,8 +1084,8 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       List<String> failedNames = new LinkedList<>();
       for (PartialPath path : deletePathList) {
-        StorageEngine.getInstance().deleteTimeseries(path);
-        String failedTimeseries = mManager.deleteTimeseries(path);
+        StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
+        String failedTimeseries = IoTDB.metaManager.deleteTimeseries(path);
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
         }
@@ -1068,22 +1108,22 @@ public class PlanExecutor implements IPlanExecutor {
         case RENAME:
           String beforeName = alterMap.keySet().iterator().next();
           String currentName = alterMap.get(beforeName);
-          mManager.renameTagOrAttributeKey(beforeName, currentName, path);
+          IoTDB.metaManager.renameTagOrAttributeKey(beforeName, currentName, path);
           break;
         case SET:
-          mManager.setTagsOrAttributesValue(alterMap, path);
+          IoTDB.metaManager.setTagsOrAttributesValue(alterMap, path);
           break;
         case DROP:
-          mManager.dropTagsOrAttributes(alterMap.keySet(), path);
+          IoTDB.metaManager.dropTagsOrAttributes(alterMap.keySet(), path);
           break;
         case ADD_TAGS:
-          mManager.addTags(alterMap, path);
+          IoTDB.metaManager.addTags(alterMap, path);
           break;
         case ADD_ATTRIBUTES:
-          mManager.addAttributes(alterMap, path);
+          IoTDB.metaManager.addAttributes(alterMap, path);
           break;
         case UPSERT:
-          mManager.upsertTagsAndAttributes(alterTimeSeriesPlan.getAlias(),
+          IoTDB.metaManager.upsertTagsAndAttributes(alterTimeSeriesPlan.getAlias(),
               alterTimeSeriesPlan.getTagsMap(), alterTimeSeriesPlan.getAttributesMap(),
               path);
           break;
@@ -1102,7 +1142,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     PartialPath path = setStorageGroupPlan.getPath();
     try {
-      mManager.setStorageGroup(path);
+      IoTDB.metaManager.setStorageGroup(path);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1114,10 +1154,17 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(storageGroupPath);
-        deletePathList.add(storageGroupPath);
+        List<PartialPath> allRelatedStorageGroupPath = IoTDB.metaManager
+            .getStorageGroupPaths(storageGroupPath);
+        if (allRelatedStorageGroupPath.isEmpty()) {
+          throw new PathNotExistException(storageGroupPath.getFullPath());
+        }
+        for (PartialPath path : allRelatedStorageGroupPath) {
+          StorageEngine.getInstance().deleteStorageGroup(path);
+          deletePathList.add(path);
+        }
       }
-      mManager.deleteStorageGroups(deletePathList);
+      IoTDB.metaManager.deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -1336,7 +1383,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected String deleteTimeSeries(PartialPath path) throws MetadataException {
-    return mManager.deleteTimeseries(path);
+    return IoTDB.metaManager.deleteTimeseries(path);
   }
 
   @SuppressWarnings("unused") // for the distributed version
@@ -1393,7 +1440,7 @@ public class PlanExecutor implements IPlanExecutor {
       return noExistSg;
     }
     for (PartialPath storageGroup : storageGroups) {
-      if (!MManager.getInstance().isStorageGroup(storageGroup)) {
+      if (!IoTDB.metaManager.isStorageGroup(storageGroup)) {
         noExistSg.add(storageGroup);
       }
     }

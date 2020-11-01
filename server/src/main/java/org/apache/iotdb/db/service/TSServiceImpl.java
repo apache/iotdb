@@ -224,7 +224,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
-      sessionIdZoneIdMap.put(sessionId, config.getZoneID());
+      sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
@@ -649,9 +649,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
+          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement);
+          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
         }
       }
       // put it into the corresponding Set
@@ -659,7 +659,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
 
       if (plan instanceof AuthorPlan) {
-        ((AuthorPlan) plan).setLoginUserName(username);
+        plan.setLoginUserName(username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
@@ -1724,6 +1724,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPath(path);
+    return SchemaUtils.getSeriesTypeByPaths(path);
   }
 }

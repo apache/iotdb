@@ -35,7 +35,6 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -87,27 +86,32 @@ public class Session {
   private int connectionTimeoutInMs;
 
   public Session(String host, int rpcPort) {
-    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this.host = host;
-    this.rpcPort = rpcPort;
-    this.username = username;
-    this.password = password;
-    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+    this(host, rpcPort, username, password, fetchSize, null);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, int fetchSize, ZoneId zoneId) {
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -146,6 +150,7 @@ public class Session {
     TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername(username);
     openReq.setPassword(password);
+    openReq.setZoneId(getTimeZone());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -166,12 +171,6 @@ public class Session {
 
       statementId = client.requestStatementId(sessionId);
 
-      if (zoneId != null) {
-        setTimeZone(zoneId.toString());
-      } else {
-        zoneId = ZoneId.of(getTimeZone());
-      }
-
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
@@ -179,7 +178,6 @@ public class Session {
     isClosed = false;
 
     client = RpcUtils.newSynchronizedClient(client);
-
   }
 
   public synchronized void close() throws IoTDBConnectionException {
@@ -251,7 +249,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -313,7 +312,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -373,7 +373,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -429,7 +430,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -474,7 +476,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -517,7 +520,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
   }
@@ -916,23 +920,14 @@ public class Session {
     return result;
   }
 
-  private synchronized String getTimeZone()
-      throws StatementExecutionException, IoTDBConnectionException {
-    if (zoneId != null) {
-      return zoneId.toString();
+  public synchronized String getTimeZone() {
+    if (zoneId == null) {
+      zoneId = ZoneId.systemDefault();
     }
-
-    TSGetTimeZoneResp resp;
-    try {
-      resp = client.getTimeZone(sessionId);
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-    RpcUtils.verifySuccess(resp.getStatus());
-    return resp.getTimeZone();
+    return zoneId.toString();
   }
 
-  private synchronized void setTimeZone(String zoneId)
+  public synchronized void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);
     TSStatus resp;
@@ -969,7 +964,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
 
@@ -999,7 +995,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
     RpcUtils.verifySuccess(execResp.getStatus());
@@ -1034,7 +1031,8 @@ public class Session {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server. Please check server status");
+        throw new IoTDBConnectionException(
+            "Fail to reconnect to server. Please check server status");
       }
     }
 

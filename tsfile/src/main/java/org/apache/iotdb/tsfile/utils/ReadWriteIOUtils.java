@@ -95,7 +95,7 @@ public class ReadWriteIOUtils {
    * read bytes array in given size
    *
    * @param buffer buffer
-   * @param size size
+   * @param size   size
    * @return bytes array
    */
   public static byte[] readBytes(ByteBuffer buffer, int size) {
@@ -134,20 +134,11 @@ public class ReadWriteIOUtils {
 
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     int length = 0;
-    byte[] bytes;
     stream.writeInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
-      bytes = entry.getKey().getBytes();
-      stream.writeInt(bytes.length);
-      length += 4;
-      stream.write(bytes);
-      length += bytes.length;
-      bytes = entry.getValue().getBytes();
-      stream.writeInt(bytes.length);
-      length += 4;
-      stream.write(bytes);
-      length += bytes.length;
+      length += write(entry.getKey(), stream);
+      length += write(entry.getValue(), stream);
     }
     return length;
   }
@@ -171,8 +162,6 @@ public class ReadWriteIOUtils {
     }
     return length;
   }
-
-
 
   /**
    * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
@@ -266,8 +255,6 @@ public class ReadWriteIOUtils {
     return INT_LEN;
   }
 
-
-
   /**
    * write the size (int) of the binary and then the bytes in binary
    */
@@ -353,6 +340,11 @@ public class ReadWriteIOUtils {
    */
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
+    if (s == null) {
+      len += write(0, outputStream);
+      return len;
+    }
+
     byte[] bytes = s.getBytes();
     len += write(bytes.length, outputStream);
     outputStream.write(bytes);
@@ -392,10 +384,18 @@ public class ReadWriteIOUtils {
   /**
    * write byteBuffer.array to outputStream without capacity.
    */
-  public static int writeWithoutSize(ByteBuffer byteBuffer, OutputStream outputStream) throws IOException {
+  public static int writeWithoutSize(ByteBuffer byteBuffer, OutputStream outputStream)
+      throws IOException {
     byte[] bytes = byteBuffer.array();
     outputStream.write(bytes);
     return bytes.length;
+  }
+
+  public static int writeWithoutSize(ByteBuffer byteBuffer, int offset, int len,
+      OutputStream outputStream) throws IOException {
+    byte[] bytes = byteBuffer.array();
+    outputStream.write(bytes, offset, len);
+    return len;
   }
 
   /**
@@ -574,6 +574,9 @@ public class ReadWriteIOUtils {
    */
   public static String readString(InputStream inputStream) throws IOException {
     int strLength = readInt(inputStream);
+    if (strLength <= 0) {
+      return null;
+    }
     byte[] bytes = new byte[strLength];
     int readLen = inputStream.read(bytes, 0, strLength);
     if (readLen != strLength) {
@@ -588,7 +591,7 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
-    if (strLength < 0) {
+    if (strLength <= 0) {
       return null;
     }
     byte[] bytes = new byte[strLength];
@@ -690,7 +693,7 @@ public class ReadWriteIOUtils {
   /**
    * read bytes from byteBuffer, this method makes sure that you can read length bytes or reach to
    * the end of the buffer.
-   *
+   * <p>
    * read a int + buffer
    */
   public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
@@ -845,8 +848,8 @@ public class ReadWriteIOUtils {
 
 
   /**
-   * to check whether the byte buffer is reach the magic string
-   * this method doesn't change the position of the byte buffer
+   * to check whether the byte buffer is reach the magic string this method doesn't change the
+   * position of the byte buffer
    *
    * @param byteBuffer byte buffer
    * @return whether the byte buffer is reach the magic string
@@ -859,8 +862,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * to check whether the inputStream is reach the magic string
-   * this method doesn't change the position of the inputStream
+   * to check whether the inputStream is reach the magic string this method doesn't change the
+   * position of the inputStream
    *
    * @param inputStream inputStream
    * @return whether the inputStream is reach the magic string
@@ -874,38 +877,38 @@ public class ReadWriteIOUtils {
   }
 
   public static void writeObject(Object value, DataOutputStream outputStream) {
-      try {
-        if (value instanceof Long) {
-          outputStream.write(LONG.ordinal());
-          outputStream.writeLong((Long) value);
-        } else if (value instanceof Double) {
-          outputStream.write(DOUBLE.ordinal());
-          outputStream.writeDouble((Double) value);
-        } else if (value instanceof Integer) {
-          outputStream.write(INTEGER.ordinal());
-          outputStream.writeInt((Integer) value);
-        } else if (value instanceof Float) {
-          outputStream.write(FLOAT.ordinal());
-          outputStream.writeFloat((Float) value);
-        } else if (value instanceof Binary) {
-          outputStream.write(BINARY.ordinal());
-          byte[] bytes = ((Binary) value).getValues();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        } else if (value instanceof Boolean) {
-          outputStream.write(BOOLEAN.ordinal());
-          outputStream.write(((Boolean) value) ? 1 : 0);
-        } else if (value == null) {
-          outputStream.write(NULL.ordinal());
-        } else {
-          outputStream.write(STRING.ordinal());
-          byte[] bytes = value.toString().getBytes();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        }
-      } catch (IOException ignored) {
-        // ignored
+    try {
+      if (value instanceof Long) {
+        outputStream.write(LONG.ordinal());
+        outputStream.writeLong((Long) value);
+      } else if (value instanceof Double) {
+        outputStream.write(DOUBLE.ordinal());
+        outputStream.writeDouble((Double) value);
+      } else if (value instanceof Integer) {
+        outputStream.write(INTEGER.ordinal());
+        outputStream.writeInt((Integer) value);
+      } else if (value instanceof Float) {
+        outputStream.write(FLOAT.ordinal());
+        outputStream.writeFloat((Float) value);
+      } else if (value instanceof Binary) {
+        outputStream.write(BINARY.ordinal());
+        byte[] bytes = ((Binary) value).getValues();
+        outputStream.writeInt(bytes.length);
+        outputStream.write(bytes);
+      } else if (value instanceof Boolean) {
+        outputStream.write(BOOLEAN.ordinal());
+        outputStream.write(((Boolean) value) ? 1 : 0);
+      } else if (value == null) {
+        outputStream.write(NULL.ordinal());
+      } else {
+        outputStream.write(STRING.ordinal());
+        byte[] bytes = value.toString().getBytes();
+        outputStream.writeInt(bytes.length);
+        outputStream.write(bytes);
       }
+    } catch (IOException ignored) {
+      // ignored
+    }
   }
 
   public static Object readObject(ByteBuffer buffer) {

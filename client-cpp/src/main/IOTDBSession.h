@@ -92,7 +92,7 @@ namespace CompressionType{
 
     enum CompressionType
     {
-        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA
+        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4
     };
 }
 namespace TSDataType{
@@ -103,7 +103,15 @@ namespace TSDataType{
 }
 namespace TSEncoding {
     enum TSEncoding {
-        PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR
+        PLAIN = 0,
+        PLAIN_DICTIONARY = 1,
+        RLE = 2,
+        DIFF = 3,
+        TS_2DIFF = 4,
+        BITMAP = 5,
+        GORILLA_V1 = 6,
+        REGULAR = 7,
+        GORILLA = 8
     };
 }
 namespace TSStatusCode {

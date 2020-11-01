@@ -66,7 +66,7 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID(), 1024);
+    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
   }
 
   /**
@@ -115,8 +115,10 @@ public class Planner {
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
 
-    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
-    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO,
+        timePath, Long.toString(startTime));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath,
+        Long.toString(endTime));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
 
