@@ -216,12 +216,7 @@ public class LogDispatcher {
           }
           for (SendLogRequest request : currBatch) {
             // do serialization here to avoid taking LogManager for too long
-            Log log = request.getLog();
-            ByteBuffer data = log.serialize();
-            if (log instanceof PhysicalPlanLog && ((PhysicalPlanLog) log).getPlan().getOperatorType() == Operator.OperatorType.BATCHINSERT) {
-              logger.info("wangchao serialize insert {}:{} size: {}", log.getCurrLogIndex(), log.getCurrLogTerm(), data.array().length);
-            }
-            request.getAppendEntryRequest().setEntry(data);
+            request.getAppendEntryRequest().setEntry(request.getLog().serialize());
           }
 
           if (currBatch.size() > 1) {
@@ -246,7 +241,7 @@ public class LogDispatcher {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       AsyncClient client = member.getSendLogAsyncClient(receiver);
       if (logger.isDebugEnabled()) {
-        logger.debug("wangchao {} {}: Catching up {} with {} logs", (client == null), member.getName(), receiver, logList.size());
+        logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
       }
       if (client != null) {
         client.appendEntries(request, handler);
@@ -319,7 +314,6 @@ public class LogDispatcher {
 
         for (; logIndex < currBatch.size(); logIndex++) {
           long curSize = currBatch.get(logIndex).getAppendEntryRequest().entry.array().length;
-          logger.debug(" {} current size {}", logIndex, curSize);
           if (logSize - curSize <= ClusterConstant.LEFT_SIZE_IN_REQUEST) {
             break;
           }
@@ -329,7 +323,6 @@ public class LogDispatcher {
           logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
         }
 
-        logger.debug("begin send logs from {} to {}", prevIndex, logIndex);
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));

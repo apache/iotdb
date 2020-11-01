@@ -104,9 +104,6 @@ public class AsyncClientPool {
         client = clientStack.pop();
       }
     }
-    if (client == null) {
-      logger.debug("wangchao - node {} client num {}", node, nodeClientNumMap.get(node));
-    }
     return client;
   }
 

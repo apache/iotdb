@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 
 public class Timer {
 
-  public static final boolean ENABLE_INSTRUMENTING = false;
+  public static final boolean ENABLE_INSTRUMENTING = true;
 
   private static final String META_GROUP_MEMBER = "Meta group member";
   private static final String DATA_GROUP_MEMBER = "Data group member";

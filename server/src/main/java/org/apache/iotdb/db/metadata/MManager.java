@@ -1847,7 +1847,6 @@ public class MManager {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
       dataType = TypeInferenceUtils
           .getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
-      logger.info(String.valueOf(dataType));
     } else if (plan instanceof InsertTabletPlan) {
       dataType = (plan).getDataTypes()[loc];
     } else {

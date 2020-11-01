@@ -245,8 +245,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private void sendBatchLogs(List<ByteBuffer> logList, int firstLogPos)
       throws TException, InterruptedException {
-    logger.debug("{} send logs from {} num {} for {}", raftMember.getThisNode(),
-      logs.get(firstLogPos).getCurrLogIndex(), logList.size(), node);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} send logs from {} num {} for {}", raftMember.getThisNode(),
+        logs.get(firstLogPos).getCurrLogIndex(), logList.size(), node);
+    }
     AppendEntriesRequest request = prepareRequest(logList, firstLogPos);
     if (request == null) {
       return;

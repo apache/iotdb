@@ -149,8 +149,6 @@ public class CatchUpTask implements Runnable {
     long prevLogIndex = log.getCurrLogIndex() - 1;
     long prevLogTerm = getPrevLogTerm(index);
 
-    logger.debug("wangchao check log: {} {}", prevLogIndex, prevLogTerm);
-
     if (prevLogTerm == -1) {
       // prev log cannot be found, we cannot know whether is matches
       return false;

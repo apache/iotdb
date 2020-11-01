@@ -610,8 +610,6 @@ public abstract class RaftLogManager {
     } catch (Exception e) {
       return false;
     }
-    logger.debug("wangchao {} index {} local {} commit {} first {} last {} remote {}",
-      getName(), index, t, getCommitLogIndex(), getFirstIndex(), getLastLogIndex(), term);
     return t == term;
   }
 

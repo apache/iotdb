@@ -57,6 +57,6 @@ public abstract class AsyncClientFactory {
    * @return
    * @throws IOException
    */
-  protected abstract RaftService.AsyncClient getAsqyncClient(Node node, AsyncClientPool pool)
+  protected abstract RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
       throws IOException;
 }
