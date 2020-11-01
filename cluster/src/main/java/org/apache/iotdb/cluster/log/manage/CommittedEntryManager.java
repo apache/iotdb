@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
@@ -38,6 +39,8 @@ public class CommittedEntryManager {
 
   // memory cache for logs which have been persisted in disk.
   private List<Log> entries;
+
+  private StableEntryManager stableEntryManager;
 
   /**
    * Note that it is better to use applyingSnapshot to update dummy entry immediately after this

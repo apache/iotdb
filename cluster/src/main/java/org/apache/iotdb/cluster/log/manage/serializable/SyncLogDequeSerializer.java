@@ -104,6 +104,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private long offsetOfTheCurrentLogDataOutputStream = 0;
 
+  private static final int maxNumberOfLogsPerFetchOnDisk = ClusterDescriptor.getInstance()
+      .getConfig().getMaxNumberOfLogsPerFetchOnDisk();
+
+
   /**
    * file name pattern:
    * <p>
@@ -905,7 +909,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   @Override
   public List<Log> getLogs(long startIndex, long endIndex) {
-    logger.debug("start to get logs between[{}, {}]", startIndex, endIndex);
     if (startIndex > endIndex) {
       logger
           .error("startIndex={} should be less than or equal to endIndex={}", startIndex,
@@ -919,9 +922,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       return Collections.emptyList();
     }
 
-    List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
-        startIndex, endIndex);
+    long newEndIndex = endIndex;
+    if (endIndex - startIndex > maxNumberOfLogsPerFetchOnDisk) {
+      newEndIndex = startIndex + maxNumberOfLogsPerFetchOnDisk;
+    }
+    logger.debug("intend to get logs between[{}, {}], actually get logs between[{},{}]", startIndex,
+        endIndex, startIndex, newEndIndex);
 
+    List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
+        startIndex, newEndIndex);
     if (logDataFileAndOffsetList.isEmpty()) {
       return Collections.emptyList();
     }

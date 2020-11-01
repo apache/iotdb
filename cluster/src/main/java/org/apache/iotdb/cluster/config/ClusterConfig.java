@@ -149,6 +149,12 @@ public class ClusterConfig {
 
   private boolean enableUsePersistLogOnDiskToCatchUp = false;
 
+  /**
+   * The number of logs read on the disk at one time, which is mainly used to control the memory
+   * usage.This value multiplied by the log size is about the amount of memory used to read logs
+   * from the disk at one time.
+   */
+  private int maxNumberOfLogsPerFetchOnDisk = 1000;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -420,5 +426,13 @@ public class ClusterConfig {
 
   public void setEnableUsePersistLogOnDiskToCatchUp(boolean enableUsePersistLogOnDiskToCatchUp) {
     this.enableUsePersistLogOnDiskToCatchUp = enableUsePersistLogOnDiskToCatchUp;
+  }
+
+  public int getMaxNumberOfLogsPerFetchOnDisk() {
+    return maxNumberOfLogsPerFetchOnDisk;
+  }
+
+  public void setMaxNumberOfLogsPerFetchOnDisk(int maxNumberOfLogsPerFetchOnDisk) {
+    this.maxNumberOfLogsPerFetchOnDisk = maxNumberOfLogsPerFetchOnDisk;
   }
 }

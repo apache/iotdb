@@ -102,9 +102,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
-
   }
-
 
   @Test
   public void testAppend() {

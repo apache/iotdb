@@ -127,7 +127,7 @@ public abstract class RaftLogManager {
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
-    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
+    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem, stableEntryManager));
     this.setStableEntryManager(stableEntryManager);
     try {
       this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesAfterAppliedIndex());
@@ -293,8 +293,7 @@ public abstract class RaftLogManager {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
       // search in disk
-      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-          && ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
         List<Log> logsInDisk = getStableEntryManager().getLogs(index, index);
         if (logsInDisk.isEmpty()) {
           return -1;
