@@ -150,10 +150,12 @@ public class MemberTest {
     metaLogManager.close();
     for (DataGroupMember member : dataGroupMemberMap.values()) {
       member.stop();
+      member.closeLogManager();
     }
     dataGroupMemberMap.clear();
     for (MetaGroupMember member : metaGroupMemberMap.values()) {
       member.stop();
+      member.closeLogManager();
     }
     metaGroupMemberMap.clear();
     EnvironmentUtils.cleanEnv();

@@ -127,7 +127,7 @@ public abstract class RaftLogManager {
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
-    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem, stableEntryManager));
+    this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
       this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesAfterAppliedIndex());

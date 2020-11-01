@@ -103,7 +103,9 @@ public class DataLogApplierTest extends IoTDBTest {
         return new TestAsyncMetaClient(null, null, node, null) {
           @Override
           public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-            new Thread(() -> new MetaAsyncService(testMetaGroupMember).queryNodeStatus(resultHandler)).start();
+            new Thread(
+                () -> new MetaAsyncService(testMetaGroupMember).queryNodeStatus(resultHandler))
+                .start();
           }
         };
       } catch (IOException e) {
@@ -188,8 +190,9 @@ public class DataLogApplierTest extends IoTDBTest {
           @Override
           public void pullMeasurementSchema(PullSchemaRequest request,
               AsyncMethodCallback<PullSchemaResp> resultHandler) {
-            new Thread(() -> new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
-                resultHandler)).start();
+            new Thread(
+                () -> new DataAsyncService(testDataGroupMember).pullMeasurementSchema(request,
+                    resultHandler)).start();
           }
         };
       }
@@ -200,7 +203,9 @@ public class DataLogApplierTest extends IoTDBTest {
   @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    testDataGroupMember.stop();
     testDataGroupMember.closeLogManager();
+    testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
     QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
@@ -209,7 +214,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-    throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -223,7 +228,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setNeedInferType(true);
     insertPlan
-      .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
+        .setMeasurementMNodes(new MeasurementMNode[]{TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -262,7 +267,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-    throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
@@ -282,7 +287,7 @@ public class DataLogApplierTest extends IoTDBTest {
   public void testApplyCloseFile()
       throws org.apache.iotdb.db.exception.IoTDBException {
     StorageGroupProcessor storageGroupProcessor =
-      StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+        StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
