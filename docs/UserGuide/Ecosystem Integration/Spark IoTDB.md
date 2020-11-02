@@ -57,7 +57,7 @@ df.printSchema()
 df.show()
 ```
 
-### if you want to partition your rdd, you can do as following
+### To partition rdd:
 ```
 spark-shell --jars spark-iotdb-connector-0.10.0.jar,iotdb-jdbc-0.10.0-jar-with-dependencies.jar
 

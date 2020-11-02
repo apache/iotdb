@@ -94,6 +94,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -677,12 +678,12 @@ public class DataGroupMember extends RaftMember {
       if (status != null) {
         return status;
       }
-    } else if (leader != null) {
+    } else if (leader.get() != null && !ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       long startTime = Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.getOperationStartTime();
-      TSStatus result = forwardPlan(plan, leader, getHeader());
+      TSStatus result = forwardPlan(plan, leader.get(), getHeader());
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -736,7 +737,7 @@ public class DataGroupMember extends RaftMember {
         // update the group if the deleted node was in it
         allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
         initPeerMap();
-        if (removedNode.equals(leader)) {
+        if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
@@ -765,7 +766,7 @@ public class DataGroupMember extends RaftMember {
   public DataMemberReport genReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
-    return new DataMemberReport(character, leader, term.get(),
+    return new DataMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(), getHeader(), readOnly,
         QueryCoordinator.getINSTANCE()

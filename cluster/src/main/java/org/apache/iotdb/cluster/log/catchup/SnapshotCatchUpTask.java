@@ -84,6 +84,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
     AsyncClient client = raftMember.getAsyncClient(node);
     if (client == null) {
+      logger.debug("{}: client null for node {}", raftMember.getThisNode(), node);
       abort = true;
       return false;
     }

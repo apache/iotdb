@@ -32,7 +32,7 @@ IoTDB > set storage group to root.sgcc
 
 We can thus create two storage groups using the above two SQL statements.
 
-It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when there exist two storage groups `root.ln` and `root.sgcc`. The system will give the corresponding error prompt as shown below:
+It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> set storage group to root.ln.wf01
@@ -53,11 +53,13 @@ The result is as follows:
 
 ## Delete Storage Group
 
-User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
+// delete all data, all timeseries and all storage groups
+IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 ## Create Timeseries
@@ -73,7 +75,7 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-It is worth noting that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system will give the corresponding error prompt as shown below:
+Notice that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -133,7 +135,7 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  There are four optional clauses could be added in SHOW TIMESERIES, return information of time series 
+  There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
@@ -226,7 +228,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 
 Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level in current Metadata Tree. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`.
 
-For example, if there are several timeseires (use `show timeseries` to show all timeseries):
+For example, if there are several timeseries (use `show timeseries` to show all timeseries):
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
 
 Then the Metadata Tree will be as below:
@@ -358,7 +360,7 @@ IoTDB> CLEAR CACHE
 
 ## CREATE SNAPSHOT FOR SCHEMA
 
-To speed up restarting of IoTDB, users could create snapshot of schema and avoid recovering schema from mlog file.
+To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
 ```
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```

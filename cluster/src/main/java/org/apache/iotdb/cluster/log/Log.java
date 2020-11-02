@@ -50,7 +50,7 @@ public abstract class Log implements Comparable<Log> {
 
   public enum Types {
     // DO CHECK LogParser when you add a new type of log
-    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT
+    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT, TEST_LARGE_CONTENT
   }
 
   public long getCurrLogIndex() {

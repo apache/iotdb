@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -109,6 +110,17 @@ public class TestUtils {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < logNum; i++) {
       Log log = new EmptyContentLog();
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      logList.add(log);
+    }
+    return logList;
+  }
+
+  public static List<Log> prepareLargeTestLogs(int logNum) {
+    List<Log> logList = new ArrayList<>();
+    for (int i = 0; i < logNum; i++) {
+      Log log = new LargeTestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
       logList.add(log);

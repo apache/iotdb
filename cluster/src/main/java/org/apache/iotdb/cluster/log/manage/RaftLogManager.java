@@ -712,7 +712,12 @@ public abstract class RaftLogManager {
 
   @TestOnly
   public void setMaxHaveAppliedCommitIndex(long maxHaveAppliedCommitIndex) {
-    this.checkLogApplierExecutorService.shutdown();
+    this.checkLogApplierExecutorService.shutdownNow();
+    try {
+      this.checkLogApplierExecutorService.awaitTermination(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
     this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 

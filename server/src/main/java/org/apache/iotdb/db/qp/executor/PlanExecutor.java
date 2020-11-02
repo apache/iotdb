@@ -1079,41 +1079,26 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan)
-      throws QueryProcessException {
-    TSStatus[] results = null;
-    boolean hasFailed = false;
-    for (int i = 0; i < createMultiTimeSeriesPlan.getPaths().size(); i++) {
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan) {
+    Map<Integer, Exception> results = new HashMap<>(multiPlan.getPaths().size());
+    for (int i = 0; i < multiPlan.getPaths().size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
-          createMultiTimeSeriesPlan.getPaths().get(i),
-          createMultiTimeSeriesPlan.getDataTypes().get(i),
-          createMultiTimeSeriesPlan.getEncodings().get(i),
-          createMultiTimeSeriesPlan.getCompressors().get(i),
-          createMultiTimeSeriesPlan.getProps() == null ? null
-              : createMultiTimeSeriesPlan.getProps().get(i),
-          createMultiTimeSeriesPlan.getTags() == null ? null
-              : createMultiTimeSeriesPlan.getTags().get(i),
-          createMultiTimeSeriesPlan.getAttributes() == null ? null
-              : createMultiTimeSeriesPlan.getAttributes().get(i),
-          createMultiTimeSeriesPlan.getAlias() == null ? null
-              : createMultiTimeSeriesPlan.getAlias().get(i));
-
+          multiPlan.getPaths().get(i),
+          multiPlan.getDataTypes().get(i),
+          multiPlan.getEncodings().get(i),
+          multiPlan.getCompressors().get(i),
+          multiPlan.getProps() == null ? null : multiPlan.getProps().get(i),
+          multiPlan.getTags() == null ? null : multiPlan.getTags().get(i),
+          multiPlan.getAttributes() == null ? null : multiPlan.getAttributes().get(i),
+          multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
       } catch (QueryProcessException e) {
-        if (results == null) {
-          results = new TSStatus[createMultiTimeSeriesPlan.getIndexes().size()];
-          Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
-        }
-        results[i] = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-        hasFailed = true;
+        results.put(multiPlan.getIndexes().get(i), e);
         logger.debug("meet error while processing create timeseries. ", e);
       }
     }
-
-    if (hasFailed) {
-      throw new BatchProcessException(results);
-    }
+    multiPlan.setResults(results);
     return true;
   }
 
@@ -1208,8 +1193,15 @@ public class PlanExecutor implements IPlanExecutor {
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(storageGroupPath);
-        deletePathList.add(storageGroupPath);
+        List<PartialPath> allRelatedStorageGroupPath = IoTDB.metaManager
+            .getStorageGroupPaths(storageGroupPath);
+        if (allRelatedStorageGroupPath.isEmpty()) {
+          throw new PathNotExistException(storageGroupPath.getFullPath());
+        }
+        for (PartialPath path : allRelatedStorageGroupPath) {
+          StorageEngine.getInstance().deleteStorageGroup(path);
+          deletePathList.add(path);
+        }
       }
       IoTDB.metaManager.deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {

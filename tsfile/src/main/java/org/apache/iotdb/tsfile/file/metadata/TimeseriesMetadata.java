@@ -142,7 +142,7 @@ public class TimeseriesMetadata implements Accountable {
   }
 
   public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
-    return chunkMetadataLoader.loadChunkMetadataList();
+    return chunkMetadataLoader.loadChunkMetadataList(this);
   }
 
   public boolean isModified() {
