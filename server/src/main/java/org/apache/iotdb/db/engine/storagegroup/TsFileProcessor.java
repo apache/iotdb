@@ -326,16 +326,18 @@ public class TsFileProcessor {
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
       }
       else {
-        int currntPointNum = workMemTable.getCurrentChunkPointNum(insertTabletPlan.getDeviceId().getFullPath(),
-            insertTabletPlan.getMeasurements()[i]);
-        if (currntPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+        int currentChunkPointNum = workMemTable
+            .getCurrentChunkPointNum(insertTabletPlan.getDeviceId().getFullPath(),
+                insertTabletPlan.getMeasurements()[i]);
+        if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
           memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
         }
         else {
-          memTableIncrement += ((end - start + (currntPointNum % PrimitiveArrayManager.ARRAY_SIZE))
-            / PrimitiveArrayManager.ARRAY_SIZE)
-            * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
+          memTableIncrement +=
+              ((end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
+                  / PrimitiveArrayManager.ARRAY_SIZE)
+                  * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
         }
       }
       // TEXT data size
@@ -363,9 +365,7 @@ public class TsFileProcessor {
       }
     }
     workMemTable.addTVListRamCost(memTableIncrement);
-    if (textDataIncrement != 0) {
-      workMemTable.addTextDataSize(textDataIncrement);
-    }
+    workMemTable.addTextDataSize(textDataIncrement);
   }
 
   private void blockInsertionIfReject() throws WriteProcessException {
@@ -423,13 +423,12 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       return false;
     }
-
+    if (shouldFlush) {
+      return true;
+    }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
       logger.info("The memtable size {} of tsfile {} reaches the threshold",
           workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
-      return true;
-    }
-    if (shouldFlush) {
       return true;
     }
     if (workMemTable.reachTotalPointNumThreshold()) {

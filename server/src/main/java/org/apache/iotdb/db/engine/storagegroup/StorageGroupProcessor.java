@@ -590,7 +590,6 @@ public class StorageGroupProcessor {
             this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
             tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
                 .getTsFileResource().calculateRamSize());
-            SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
           }
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         } else {
@@ -604,7 +603,6 @@ public class StorageGroupProcessor {
             this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
             tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
                 .getTsFileResource().calculateRamSize());
-            SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
           }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         }
@@ -622,7 +620,6 @@ public class StorageGroupProcessor {
               }
             }
           }
-          SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
         }
       }
       tsFileManagement.add(tsFileResource, isSeq);
@@ -1012,7 +1009,6 @@ public class StorageGroupProcessor {
         this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
         tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
             .getTsFileResource().calculateRamSize());
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       }
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
@@ -1026,7 +1022,6 @@ public class StorageGroupProcessor {
         this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
         tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
             .getTsFileResource().calculateRamSize());
-        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       }
     }
     tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
