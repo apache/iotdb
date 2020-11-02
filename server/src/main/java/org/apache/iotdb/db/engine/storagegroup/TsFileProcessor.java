@@ -178,9 +178,7 @@ public class TsFileProcessor {
       blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
-    if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
-    }
+
     workMemTable.insert(insertRowPlan);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
@@ -255,8 +253,8 @@ public class TsFileProcessor {
   private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
-    long chunkMetadataCost = 0L;
-    long unsealedResourceCost = 
+    long chunkMetadataIncrement = 0L;
+    long unsealedResourceIncrement = 
         tsFileResource.estimateRamIncrement(insertRowPlan.getDeviceId().getFullPath());
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -265,8 +263,8 @@ public class TsFileProcessor {
       }
       if (workMemTable.checkIfChunkDoesNotExist(insertRowPlan.getDeviceId().getFullPath(),
           insertRowPlan.getMeasurements()[i])) {
-        // ChunkMetadataCost
-        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
+        // ChunkMetadataIncrement
+        chunkMetadataIncrement += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
             insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
@@ -284,16 +282,16 @@ public class TsFileProcessor {
     }
     memTableIncrement += textDataIncrement;
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceIncrement);
+    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
         blockInsertionIfReject();
       } catch (WriteProcessException e) {
         tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
-        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataCost);
+        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceIncrement);
+        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
       }
@@ -311,8 +309,8 @@ public class TsFileProcessor {
     }
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
-    long chunkMetadataCost = 0L;
-    long unsealedResourceCost = 
+    long chunkMetadataIncrement = 0L;
+    long unsealedResourceIncrement = 
         tsFileResource.estimateRamIncrement(insertTabletPlan.getDeviceId().getFullPath());
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -322,8 +320,8 @@ public class TsFileProcessor {
 
       if (workMemTable.checkIfChunkDoesNotExist(insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getMeasurements()[i])) {
-        // ChunkMetadataCost
-        chunkMetadataCost += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
+        // ChunkMetadataIncrement
+        chunkMetadataIncrement += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
             insertTabletPlan.getDataTypes()[i]);
         memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
@@ -351,16 +349,16 @@ public class TsFileProcessor {
     }
     memTableIncrement += textDataIncrement;
     tsFileProcessorInfo.addMemTableCost(memTableIncrement);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceCost);
-    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(unsealedResourceIncrement);
+    tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
         blockInsertionIfReject();
       } catch (WriteProcessException e) {
         tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
-        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataCost);
+        tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceIncrement);
+        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
       }
