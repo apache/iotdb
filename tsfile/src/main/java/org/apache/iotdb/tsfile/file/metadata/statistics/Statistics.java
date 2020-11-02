@@ -87,7 +87,7 @@ public abstract class Statistics<T> {
       case INT64:
         return LongStatistics.LONG_STATISTICS_FIXED_RAM_SIZE;
       case TEXT:
-        return BinaryStatistics.Binary_STATISTICS_FIXED_RAM_SIZE;
+        return BinaryStatistics.BINARY_STATISTICS_FIXED_RAM_SIZE;
       case BOOLEAN:
         return BooleanStatistics.BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
       case DOUBLE:
