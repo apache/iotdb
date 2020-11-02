@@ -140,7 +140,7 @@ public interface IMemTable {
   /**
    * only used when mem control enabled
    */
-  int getCurrentTVListSize(String deviceId, String measurement);
+  int getCurrentPointNum(String deviceId, String measurement);
 
   /**
    * only used when mem control enabled

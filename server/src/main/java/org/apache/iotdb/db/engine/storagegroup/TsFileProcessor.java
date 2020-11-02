@@ -269,9 +269,9 @@ public class TsFileProcessor {
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
       else {
-        int tvListSize = workMemTable.getCurrentTVListSize(insertRowPlan.getDeviceId().getFullPath(),
+        int currntPointNum = workMemTable.getCurrentPointNum(insertRowPlan.getDeviceId().getFullPath(),
             insertRowPlan.getMeasurements()[i]);
-        memTableIncrement += ((tvListSize + 1) % PrimitiveArrayManager.ARRAY_SIZE)
+        memTableIncrement += ((currntPointNum + 1) % PrimitiveArrayManager.ARRAY_SIZE)
             / PrimitiveArrayManager.ARRAY_SIZE
             * TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
@@ -327,14 +327,14 @@ public class TsFileProcessor {
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
       }
       else {
-        int tvListSize = workMemTable.getCurrentTVListSize(insertTabletPlan.getDeviceId().getFullPath(),
+        int currntPointNum = workMemTable.getCurrentPointNum(insertTabletPlan.getDeviceId().getFullPath(),
             insertTabletPlan.getMeasurements()[i]);
-        if (tvListSize % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+        if (currntPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
           memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
         }
         else {
-          memTableIncrement += ((end - start + (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
+          memTableIncrement += ((end - start + (currntPointNum % PrimitiveArrayManager.ARRAY_SIZE))
             / PrimitiveArrayManager.ARRAY_SIZE)
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
         }
