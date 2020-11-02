@@ -42,5 +42,7 @@ public class MetadataIndexNodeTest {
     Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s10", false));
     Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s13", false));
     Assert.assertEquals(4, metadataIndexNode.binarySearchInChildren("s23", false));
+    Assert.assertEquals(-1, metadataIndexNode.binarySearchInChildren("s13", true));
+    Assert.assertEquals(-1, metadataIndexNode.binarySearchInChildren("s23", true));
   }
 }
