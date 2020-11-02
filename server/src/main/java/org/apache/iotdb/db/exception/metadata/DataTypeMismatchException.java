@@ -16,27 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.metadata;
 
-package org.apache.iotdb.tsfile.encoding.common;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * This class defines several constants using in encoding algorithm.
- */
-public class EncodingConfig {
-
-  private EncodingConfig() {
-    throw new IllegalAccessError("Utility class");
-  }
-
-  /**
-   * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle
-   * encoding, otherwise use bit-packing.
-   */
-  public static final int RLE_MAX_REPEATED_NUM = 8;
-
-  // when to start a new bit-pacing group
-  public static final int RLE_MAX_BIT_PACKED_NUM = 63;
-
-  // bit width for Bitmap Encoding
-  public static final int BITMAP_BITWIDTH = 1;
+public class DataTypeMismatchException extends MetadataException{
+    public DataTypeMismatchException(String measurementName, TSDataType insertType, TSDataType realType) {
+        super(String.format(
+                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurementName, insertType, realType));
+    }
 }

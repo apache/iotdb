@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -121,9 +122,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
         result = getQueryDataSet();
         index = 0;
       } catch (MetadataException e) {
-        logger.error("Something wrong happened while showing {}", paths.stream().map(
-            Path::getFullPath).reduce((a, b) -> a + "," + b), e);
-        throw new IOException(e.getCause());
+        throw new IOException(e);
       }
     }
     return index < result.size();

@@ -80,6 +80,8 @@ Correspondence between versions and branches on the official website:
 Precautions:
 
 * Images in Markdown can be uploaded to https://github.com/thulab/iotdb/issues/543 for url
+* Do not use special Unicode chars, e.g., U+FF1A 
+* Do not use the character of dollar (as we will use Latex to generate pdf files)
 
 ## Contributing code
 

@@ -25,39 +25,70 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LocalTsFileInput implements TsFileInput {
 
-  private FileChannel channel;
+  private static final Logger logger = LoggerFactory.getLogger(LocalTsFileInput.class);
+
+  private final FileChannel channel;
+  private final String filePath;
 
   public LocalTsFileInput(Path file) throws IOException {
     channel = FileChannel.open(file, StandardOpenOption.READ);
+    filePath = file.toString();
   }
 
   @Override
   public long size() throws IOException {
-    return channel.size();
+    try {
+      return channel.size();
+    } catch (IOException e) {
+      logger.error("Error happened while getting {} size", filePath);
+      throw e;
+    }
   }
 
   @Override
   public long position() throws IOException {
-    return channel.position();
+    try {
+      return channel.position();
+    } catch (IOException e) {
+      logger.error("Error happened while getting {} current position", filePath);
+      throw e;
+    }
   }
 
   @Override
   public TsFileInput position(long newPosition) throws IOException {
-    channel.position(newPosition);
-    return this;
+    try {
+      channel.position(newPosition);
+      return this;
+    } catch (IOException e) {
+      logger.error("Error happened while changing {} position to {}", filePath, newPosition);
+      throw e;
+    }
   }
 
   @Override
   public int read(ByteBuffer dst) throws IOException {
-    return channel.read(dst);
+    try {
+      return channel.read(dst);
+    } catch (IOException e) {
+      logger.error("Error happened while reading {} from current position", filePath);
+      throw e;
+    }
   }
 
   @Override
   public int read(ByteBuffer dst, long position) throws IOException {
-    return channel.read(dst, position);
+    try {
+      return channel.read(dst, position);
+    } catch (IOException e) {
+      logger.error("Error happened while reading {} from position {}", filePath, position);
+      throw e;
+    }
   }
 
   @Override
@@ -66,27 +97,32 @@ public class LocalTsFileInput implements TsFileInput {
   }
 
   @Override
-  public int read(byte[] b, int off, int len) throws IOException {
+  public int read(byte[] b, int off, int len) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public FileChannel wrapAsFileChannel() throws IOException {
+  public FileChannel wrapAsFileChannel() {
     return channel;
   }
 
   @Override
-  public InputStream wrapAsInputStream() throws IOException {
+  public InputStream wrapAsInputStream() {
     return Channels.newInputStream(channel);
   }
 
   @Override
   public void close() throws IOException {
-    channel.close();
+    try {
+      channel.close();
+    } catch (IOException e) {
+      logger.error("Error happened while closing {}", filePath);
+      throw e;
+    }
   }
 
   @Override
-  public int readInt() throws IOException {
+  public int readInt() {
     throw new UnsupportedOperationException();
   }
 }

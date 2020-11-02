@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -42,12 +43,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.*;
 
 public class IoTDBSimpleQueryIT {
 
@@ -75,8 +70,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath(
-        "root.sg1.d0.s1"));
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
+        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
@@ -96,7 +91,7 @@ public class IoTDBSimpleQueryIT {
         }
 
         resultSet = statement.executeQuery(
-                "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+            "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
         // has an empty time column
         Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -125,8 +120,8 @@ public class IoTDBSimpleQueryIT {
         }
 
         resultSet = statement.executeQuery(
-                "select count(*) from root where time >= 1 and time <= 100 "
-                        + "group by ([0, 100), 20ms, 20ms) align by device");
+            "select count(*) from root where time >= 1 and time <= 100 "
+                + "group by ([0, 100), 20ms, 20ms) align by device");
         // has time and device columns
         Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -201,7 +196,6 @@ public class IoTDBSimpleQueryIT {
 
       statement.execute("flush");
 
-
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
@@ -237,7 +231,6 @@ public class IoTDBSimpleQueryIT {
       statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
-
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
@@ -275,9 +268,8 @@ public class IoTDBSimpleQueryIT {
 
       statement.execute("flush");
 
-
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")){
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           count++;
         }
@@ -311,7 +303,6 @@ public class IoTDBSimpleQueryIT {
       statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
-
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries limit 8")) {
@@ -381,7 +372,6 @@ public class IoTDBSimpleQueryIT {
 
       statement.execute("flush");
 
-
       long count = 0;
       try (ResultSet resultSet = statement
           .executeQuery("select s0 from root.sg1.d0 where s0 > 18")) {
@@ -412,7 +402,6 @@ public class IoTDBSimpleQueryIT {
       } catch (IoTDBSQLException e) {
         assertTrue(e.getMessage().contains("s1"));
       }
-
 
       try (ResultSet resultSet = statement.executeQuery("select s0, s1 from root.sg1.d0")) {
         while (resultSet.next()) {
@@ -486,7 +475,6 @@ public class IoTDBSimpleQueryIT {
 
       statement.execute("flush");
 
-
       long count = 0;
 
       try (ResultSet resultSet = statement
@@ -528,7 +516,6 @@ public class IoTDBSimpleQueryIT {
       }
 
       statement.execute("delete from root.sg1.d0.s0 where time <= 15");
-
 
       long count = 0;
 
@@ -584,14 +571,6 @@ public class IoTDBSimpleQueryIT {
       }
 
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=INT32, encoding=GORILLA");
-      } catch (Exception e) {
-        Assert.assertEquals(
-            "303: org.apache.iotdb.db.exception.metadata.MetadataException: encoding INT32 does not support GORILLA",
-            e.getMessage());
-      }
-
-      try {
         statement
             .execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {
@@ -616,18 +595,22 @@ public class IoTDBSimpleQueryIT {
 
   @Test
   public void testUseSameStatement() throws SQLException {
-    try (Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+      statement.execute(
+          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
 
       statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(1,1,1)");
       statement.execute("insert into root.sg1.d1(timestamp,s0,s1) values(1000,1000,1000)");
       statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(10,10,10)");
-
 
       List<ResultSet> resultSetList = new ArrayList<>();
 

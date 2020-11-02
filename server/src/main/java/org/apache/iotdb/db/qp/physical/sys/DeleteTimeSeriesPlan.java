@@ -80,4 +80,9 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
     this.index = buffer.getLong();
   }
+
+  @Override
+  public void setPaths(List<PartialPath> fullPaths) {
+    this.deletePathList = fullPaths;
+  }
 }
