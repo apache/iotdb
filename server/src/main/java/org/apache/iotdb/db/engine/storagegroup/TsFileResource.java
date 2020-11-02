@@ -854,8 +854,6 @@ public class TsFileResource {
       if (deviceToIndex.isEmpty()) {
         ramIncrement += 80;
       }
-      // 16 is the Integer ram size
-      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
       // if needs to extend the startTimes and endTimes arrays
       if (deviceToIndex.size() >= startTimes.length) {
         ramIncrement += startTimes.length * Long.BYTES;
