@@ -261,7 +261,7 @@ public class ChunkMetadata implements Accountable {
 
   public static long calculateRamSize(String measurementId, TSDataType dataType) {
     return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementId) + Statistics
-        .getStatsByType(dataType).calculateRamSize();
+        .getSizeByType(dataType);
   }
 
   public void setRamSize(long size) {

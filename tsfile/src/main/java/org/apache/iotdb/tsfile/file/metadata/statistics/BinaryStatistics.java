@@ -36,7 +36,9 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
-  private static final String BINARY_STATS_UNSUPPORTED_MSG = "Binary statistics does not support: %s"; 
+  private static final String BINARY_STATS_UNSUPPORTED_MSG = "Binary statistics does not support: %s";
+  static final int Binary_STATISTICS_FIXED_RAM_SIZE = 16;
+
   @Override
   public TSDataType getType() {
     return TSDataType.TEXT;
