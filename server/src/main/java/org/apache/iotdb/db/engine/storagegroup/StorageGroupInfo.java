@@ -33,24 +33,9 @@ public class StorageGroupInfo {
   private StorageGroupProcessor storageGroupProcessor;
 
   /**
-   * The total memory cost of the unsealed TsFileResources in this SG
-   */
-  private AtomicLong unsealedResourceMemCost;
-
-  /**
-   * The total memtable memory cost in this SG
+   * The total Storage group memory cost
    */
   private AtomicLong memTableCost;
-
-  /**
-   * The total memory cost of ChunkMetadata in this SG
-   */
-  private AtomicLong chunkMetadataMemCost;
-
-  /**
-   * The total memory cost of WALs in this SG
-   */
-  private AtomicLong walMemCost;
 
   /**
    * The threshold of reporting it's size to SystemInfo
@@ -67,10 +52,7 @@ public class StorageGroupInfo {
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
-    unsealedResourceMemCost = new AtomicLong();
     memTableCost = new AtomicLong();
-    chunkMetadataMemCost = new AtomicLong();
-    walMemCost = new AtomicLong();
   }
 
   public StorageGroupProcessor getStorageGroupProcessor() {
@@ -82,40 +64,15 @@ public class StorageGroupInfo {
    */
   public void reportTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     if (reportedTsps.add(tsFileProcessor)) {
-      walMemCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
+      memTableCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
     }
   }
 
-  public void addUnsealedResourceMemCost(long cost) {
-    unsealedResourceMemCost.getAndAdd(cost);
-  }
-
-  public void addChunkMetadataMemCost(long cost) {
-    chunkMetadataMemCost.getAndAdd(cost);
-  }
-
-  public void addMemTableCost(long cost) {
+  public void addStorageGroupMemCost(long cost) {
     memTableCost.getAndAdd(cost);
   }
 
-  /**
-   * called by TSPInfo when closing a TSP
-   */
-  public void resetUnsealedResourceMemCost(long cost) {
-    unsealedResourceMemCost.getAndAdd(-cost);
-  }
-
-  /**
-   * called by TSPInfo when closing a TSP
-   */
-  public void resetChunkMetadataMemCost(long cost) {
-    chunkMetadataMemCost.getAndAdd(-cost);
-  }
-
-  /**
-   * called by TSPInfo when a memTable flushed
-   */
-  public void resetMemTableCost(long cost) {
+  public void releaseStorageGroupMemCost(long cost) {
     memTableCost.getAndAdd(-cost);
     lastReportedSize -= cost;
   }
@@ -123,13 +80,12 @@ public class StorageGroupInfo {
   /**
    * called by TSPInfo when closing a TSP
    */
-  public void resetWalMemCost(long cost) {
-    walMemCost.getAndAdd(-cost);
+  public void releaseWalMemCost(long cost) {
+    memTableCost.getAndAdd(-cost);
   }
 
   public long getSgMemCost() {
-    return unsealedResourceMemCost.get() + memTableCost.get() +
-        chunkMetadataMemCost.get() + walMemCost.get();
+    return memTableCost.get();
   }
 
   public Set<TsFileProcessor> getAllReportedTsp() {

@@ -135,11 +135,11 @@ public class MManager {
   /**
    * threshold total size of MTree
    */
-  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForMTree();
+  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
 
   private boolean allowToCreateNewSeries = true;
 
-  private static final int ESTIMATED_SERIES_SIZE = 300;
+  private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
   private static class MManagerHolder {
 
@@ -379,7 +379,7 @@ public class MManager {
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!allowToCreateNewSeries) {
       throw new MetadataException("IoTDB system load is too large to create timeseries, "
-          + "please increase memory");
+          + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     try {
       PartialPath path = plan.getPath();

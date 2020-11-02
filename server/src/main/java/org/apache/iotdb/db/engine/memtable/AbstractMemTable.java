@@ -56,6 +56,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
+  /**
+   * The initial value is false because we should calculate the text data size when recover
+   * memTable!!
+   */
   protected boolean enableMemControl = false;
 
   /**

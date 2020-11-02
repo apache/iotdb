@@ -94,11 +94,11 @@ public class BooleanTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getDataListsByType(TSDataType.INT64, size);
+          .generateDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (boolean[][]) PrimitiveArrayManager
-          .getDataListsByType(TSDataType.BOOLEAN, size);
+          .generateDataListsByType(TSDataType.BOOLEAN, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -154,7 +154,7 @@ public class BooleanTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((boolean[]) getDataListByType(TSDataType.BOOLEAN));
+    values.add((boolean[]) getPrimitiveArraysByType(TSDataType.BOOLEAN));
   }
 
   @Override

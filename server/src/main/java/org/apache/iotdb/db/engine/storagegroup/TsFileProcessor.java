@@ -298,7 +298,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
         tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataCost);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
       }
@@ -360,7 +360,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         tsFileProcessorInfo.resetMemTableCost(memTableIncrement);
         tsFileProcessorInfo.resetUnsealedResourceMemCost(unsealedResourceCost);
-        tsFileProcessorInfo.addChunkMetadataMemCost(chunkMetadataCost);
+        tsFileProcessorInfo.resetChunkMetadataMemCost(chunkMetadataCost);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
       }

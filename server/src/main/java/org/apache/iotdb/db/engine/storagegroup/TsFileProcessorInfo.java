@@ -60,26 +60,25 @@ public class TsFileProcessorInfo {
 
   public void addUnsealedResourceMemCost(long cost) {
     unsealedResourceMemCost += cost;
-    storageGroupInfo.addUnsealedResourceMemCost(cost);
+    storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
   public void addChunkMetadataMemCost(long cost) {
     chunkMetadataMemCost += cost;
-    storageGroupInfo.addChunkMetadataMemCost(cost);
+    storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
   public void addMemTableCost(long cost) {
     memTableCost += cost;
-    storageGroupInfo.addMemTableCost(cost);
+    storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
   /**
    * call this method when closing TSP
    */
   public void clear() {
-    storageGroupInfo.resetUnsealedResourceMemCost(unsealedResourceMemCost);
-    storageGroupInfo.resetChunkMetadataMemCost(chunkMetadataMemCost);
-    storageGroupInfo.resetWalMemCost(walMemCost);
+    storageGroupInfo.releaseStorageGroupMemCost(unsealedResourceMemCost +
+        walMemCost + chunkMetadataMemCost);
     walMemCost = 0;
     unsealedResourceMemCost = 0;
     chunkMetadataMemCost = 0;
@@ -89,17 +88,17 @@ public class TsFileProcessorInfo {
    * call this method when a memTable flushed
    */
   public void resetMemTableCost(long cost) {
-    storageGroupInfo.resetMemTableCost(cost);
+    storageGroupInfo.releaseStorageGroupMemCost(cost);
     memTableCost -= cost;
   }
 
   public void resetUnsealedResourceMemCost(long cost) {
-    storageGroupInfo.resetUnsealedResourceMemCost(cost);
+    storageGroupInfo.releaseStorageGroupMemCost(cost);
     unsealedResourceMemCost -= cost;
   }
 
   public void resetChunkMetadataMemCost(long cost) {
-    storageGroupInfo.resetChunkMetadataMemCost(cost);
+    storageGroupInfo.releaseStorageGroupMemCost(cost);
     chunkMetadataMemCost -= cost;
   }
 

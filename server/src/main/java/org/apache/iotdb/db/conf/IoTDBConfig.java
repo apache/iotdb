@@ -132,7 +132,7 @@ public class IoTDBConfig {
   /**
    * Memory allocated for the mtree
    */
-  private long allocateMemoryForMTree = Runtime.getRuntime().maxMemory() * 1 / 10;
+  private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /**
    * Memory allocated for the read process besides cache
@@ -144,12 +144,12 @@ public class IoTDBConfig {
   /**
    * Ratio of memory allocated for buffered arrays
    */
-  private double bufferedArraysMemoryProportion = 0.6;
+  private double bufferedArraysMemoryProportion = 0.8;
 
   /**
    * Flush proportion for system
    */
-  private double flushProportion = 0.5;
+  private double flushProportion = 0.3;
 
   /**
    * Reject proportion for system
@@ -192,6 +192,8 @@ public class IoTDBConfig {
    * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
+
+  private int estimatedSeriesSize = 300;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -1168,6 +1170,14 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getEstimatedSeriesSize() {
+    return estimatedSeriesSize;
+  }
+
+  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
+    this.estimatedSeriesSize = estimatedSeriesSize;
+  }
+  
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }
@@ -1248,12 +1258,12 @@ public class IoTDBConfig {
     this.allocateMemoryForWrite = allocateMemoryForWrite;
   }
 
-  public long getAllocateMemoryForMTree() {
-    return allocateMemoryForMTree;
+  public long getAllocateMemoryForSchema() {
+    return allocateMemoryForSchema;
   }
 
-  void setAllocateMemoryForMTree(long allocateMemoryForMTree) {
-    this.allocateMemoryForMTree = allocateMemoryForMTree;
+  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+    this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
   long getAllocateMemoryForRead() {

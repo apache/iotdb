@@ -249,16 +249,16 @@ public abstract class TVList {
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add((long[]) getDataListByType(TSDataType.INT64));
+      timestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
     }
   }
 
-  protected Object getDataListByType(TSDataType dataType) {
-    return PrimitiveArrayManager.getDataListByType(dataType);
+  protected Object getPrimitiveArraysByType(TSDataType dataType) {
+    return PrimitiveArrayManager.getPrimitiveArraysByType(dataType);
   }
 
   public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
-    return size + lengthToBeAdded < ARRAY_SIZE;
+    return (size % ARRAY_SIZE) + lengthToBeAdded < ARRAY_SIZE;
   }
 
   protected long[] cloneTime(long[] array) {
@@ -481,7 +481,7 @@ public abstract class TVList {
     long size = 0;
     // time size
     size +=
-        PrimitiveArrayManager.ARRAY_SIZE * TSDataType.INT64.getDataTypeSize();
+        PrimitiveArrayManager.ARRAY_SIZE * 8;
     // value size
     size +=
         PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize();

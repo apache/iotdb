@@ -95,10 +95,10 @@ public class BinaryTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getDataListsByType(TSDataType.INT64, size);
+          .generateDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
-      sortedValues = (Binary[][]) PrimitiveArrayManager.getDataListsByType(TSDataType.TEXT, size);
+      sortedValues = (Binary[][]) PrimitiveArrayManager.generateDataListsByType(TSDataType.TEXT, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -154,7 +154,7 @@ public class BinaryTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((Binary[]) getDataListByType(TSDataType.TEXT));
+    values.add((Binary[]) getPrimitiveArraysByType(TSDataType.TEXT));
   }
 
   @Override

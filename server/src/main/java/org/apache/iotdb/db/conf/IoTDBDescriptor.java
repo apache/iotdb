@@ -283,6 +283,10 @@ public class IoTDBDescriptor {
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
+      conf.setEstimatedSeriesSize(Integer.parseInt(properties
+          .getProperty("estimated_series_size",
+              Integer.toString(conf.getEstimatedSeriesSize()))));
+
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
@@ -742,7 +746,7 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_mtree_free_memory_proportion");
+    String memoryAllocateProportion = properties.getProperty("write_read_schema_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -755,14 +759,14 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-        conf.setAllocateMemoryForMTree(
+        conf.setAllocateMemoryForSchema(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       }
     }
 
     logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
-    logger.info("allocateMemoryForMTree = {}", conf.getAllocateMemoryForMTree());
+    logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     if (!conf.isMetaDataCacheEnable()) {
       return;

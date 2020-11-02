@@ -95,11 +95,11 @@ public class DoubleTVList extends TVList {
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .getDataListsByType(TSDataType.INT64, size);
+          .generateDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (double[][]) PrimitiveArrayManager
-          .getDataListsByType(TSDataType.DOUBLE, size);
+          .generateDataListsByType(TSDataType.DOUBLE, size);
     }
     sort(0, size);
     clearSortedValue();
@@ -155,7 +155,7 @@ public class DoubleTVList extends TVList {
 
   @Override
   protected void expandValues() {
-    values.add((double[]) getDataListByType(TSDataType.DOUBLE));
+    values.add((double[]) getPrimitiveArraysByType(TSDataType.DOUBLE));
   }
 
   @Override

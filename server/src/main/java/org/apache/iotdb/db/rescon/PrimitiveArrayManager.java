@@ -94,13 +94,13 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @return an array
    */
-  public static Object getDataListByType(TSDataType dataType) {
+  public static Object getPrimitiveArraysByType(TSDataType dataType) {
     // check buffered array num (to avoid entering synchronized block every time)
     if (bufferedArraysSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       // return an out of buffer array
       outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-      return getDataList(dataType);
+      return createPrimitiveArray(dataType);
     }
 
     synchronized (bufferedArraysMap.get(dataType)) {
@@ -115,10 +115,10 @@ public class PrimitiveArrayManager {
 
     // if no buffered array is returned, return an out of buffer array
     outOfBufferArraysSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
-    return getDataList(dataType);
+    return createPrimitiveArray(dataType);
   }
 
-  private static Object getDataList(TSDataType dataType) {
+  private static Object createPrimitiveArray(TSDataType dataType) {
     Object dataArray;
     switch (dataType) {
       case BOOLEAN:
@@ -153,7 +153,7 @@ public class PrimitiveArrayManager {
    * @param size     needed capacity
    * @return an array of primitive data arrays
    */
-  public static synchronized Object getDataListsByType(TSDataType dataType, int size) {
+  public static synchronized Object generateDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
