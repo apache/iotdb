@@ -26,14 +26,18 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ParseDriver.
  *
  */
 public class ParseDriver {
-  private ParseTreeWalker walker;
+  private final ParseTreeWalker walker;
+  private static final Logger logger = LoggerFactory.getLogger(ParseDriver.class);
 
   public ParseDriver() {
     walker = new ParseTreeWalker();
@@ -41,6 +45,7 @@ public class ParseDriver {
 
   public Operator parse(String sql, ZoneId zoneId) throws ParseCancellationException {
     LogicalGenerator logicalGenerator = new LogicalGenerator(zoneId);
+    logger.debug("Input sql is " + sql);
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
