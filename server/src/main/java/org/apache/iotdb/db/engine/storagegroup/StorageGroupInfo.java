@@ -68,6 +68,9 @@ public class StorageGroupInfo {
     }
   }
 
+  public void addTsFileProcessor() {
+    
+  }
   public void addStorageGroupMemCost(long cost) {
     memoryCost.getAndAdd(cost);
   }

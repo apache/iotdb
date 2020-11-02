@@ -43,6 +43,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -129,6 +130,8 @@ public class StorageGroupProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * indicating the file to be loaded already exists locally.
    */
@@ -239,6 +242,7 @@ public class StorageGroupProcessor {
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
+
   public boolean isReady() {
     return isReady;
   }
@@ -342,7 +346,7 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
 
-      updateLastestFlushedTime();
+      updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -377,7 +381,7 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice and timePartitionIdVersionControllerMap
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void updateLastestFlushedTime() throws IOException {
+  private void updateLatestFlushedTime() throws IOException {
 
     VersionController versionController = new SimpleFileVersionController(
         storageGroupSysDir.getPath());
@@ -580,19 +584,35 @@ public class StorageGroupProcessor {
               getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               true, writer);
+          if (enableMemControl) {
+            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+                .getTsFileResource().calculateRamSize());
+            SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+          }
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         } else {
           tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
               getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer);
+          if (enableMemControl) {
+            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+                .getTsFileResource().calculateRamSize());
+            SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+          }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         }
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()) {
+        if (enableMemControl) {
           // get chunkMetadata size
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
@@ -986,12 +1006,28 @@ public class StorageGroupProcessor {
           storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
+      if (enableMemControl) {
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+            .getTsFileResource().calculateRamSize());
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      }
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath),
           storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
+      if (enableMemControl) {
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+            .getTsFileResource().calculateRamSize());
+        SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
+      }
     }
     tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
     tsFileProcessor.addFlushListeners(customFlushListeners);

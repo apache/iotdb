@@ -133,10 +133,6 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
-      this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-      this.storageGroupInfo.initTsFileProcessorInfo(this);
-      this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
@@ -158,10 +154,6 @@ public class TsFileProcessor {
     this.tsFileResource = tsFileResource;
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
-      this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-      this.storageGroupInfo.initTsFileProcessorInfo(this);
-      this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
     this.versionController = versionController;
     this.writer = writer;
@@ -271,7 +263,7 @@ public class TsFileProcessor {
       if (insertRowPlan.getDataTypes()[i] == null) {
         continue;
       }
-      if (workMemTable.checkIfNeedStartNewChunk(insertRowPlan.getDeviceId().getFullPath(),
+      if (workMemTable.checkIfChunkDoesNotExist(insertRowPlan.getDeviceId().getFullPath(),
           insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataCost
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
@@ -328,7 +320,7 @@ public class TsFileProcessor {
         continue;
       }
 
-      if (workMemTable.checkIfNeedStartNewChunk(insertTabletPlan.getDeviceId().getFullPath(),
+      if (workMemTable.checkIfChunkDoesNotExist(insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getMeasurements()[i])) {
         // ChunkMetadataCost
         chunkMetadataCost += ChunkMetadata.calculateRamSize(insertTabletPlan.getMeasurements()[i],
@@ -974,6 +966,10 @@ public class TsFileProcessor {
 
   public TsFileProcessorInfo getTsFileProcessorInfo() {
     return tsFileProcessorInfo;
+  }
+
+  public void setTsFileProcessorInfo(TsFileProcessorInfo tsFileProcessorInfo) {
+    this.tsFileProcessorInfo = tsFileProcessorInfo;
   }
 
   public long getWorkMemTableRamCost() {

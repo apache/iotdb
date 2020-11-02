@@ -135,7 +135,7 @@ public interface IMemTable {
   /**
    * only used when mem control enabled
    */
-  boolean checkIfNeedStartNewChunk(String deviceId, String measurement);
+  boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
 
   /**
    * only used when mem control enabled

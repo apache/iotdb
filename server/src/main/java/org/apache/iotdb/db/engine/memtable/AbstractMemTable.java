@@ -172,7 +172,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean checkIfNeedStartNewChunk(String deviceId, String measurement) {
+  public boolean checkIfChunkDoesNotExist(String deviceId, String measurement) {
     if (!memTableMap.containsKey(deviceId)) {
       return true;
     }

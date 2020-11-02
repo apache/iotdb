@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -88,6 +89,12 @@ public class TsFileProcessorTest {
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -139,6 +146,12 @@ public class TsFileProcessorTest {
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -216,6 +229,12 @@ public class TsFileProcessorTest {
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -251,6 +270,12 @@ public class TsFileProcessorTest {
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     processor.query(deviceId, measurementId, dataType, encoding, props, context,

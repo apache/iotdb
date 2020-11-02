@@ -54,17 +54,17 @@ public class SystemInfo {
     long delta = storageGroupInfo.getSgMemCost() -
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
     totalSgMemCost += delta;
-    logger.debug("Report Storage Group Status to system. "
-          + "Current sg mem cost is {}, delta is {}.", totalSgMemCost, delta);
+    logger.debug("Report Storage Group Status to the system. "
+          + "After adding {}, current sg mem cost is {}.", delta, totalSgMemCost);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
-    if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+    if (totalSgMemCost >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}", totalSgMemCost);
       flush();
     }
-    if (getTotalMemCost() >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-      logger.debug("Change system to reject status...");
+    if (totalSgMemCost >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      logger.info("Change system to reject status...");
       rejected = true;
     }
   }
@@ -79,25 +79,25 @@ public class SystemInfo {
       this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
           - storageGroupInfo.getSgMemCost();
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
-      if (getTotalMemCost() > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.debug("Some sg memery released, call flush.");
-        logCost();
+      if (totalSgMemCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+        logger.debug("Some sg memory released, call flush.");
+        logCurrentTotalSGMemory();
         forceFlush();
       }
-      if (getTotalMemCost() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.debug("Some sg memery released, set system to normal status.");
-        logCost();
+      if (totalSgMemCost < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+        logger.debug("Some sg memory released, set system to normal status.");
+        logCurrentTotalSGMemory();
         rejected = false;
       } else {
-        logger.warn("Some sg memery released, but system is still in reject status.");
-        logCost();
+        logger.warn("Some sg memory released, but system is still in reject status.");
+        logCurrentTotalSGMemory();
         rejected = true;
       }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     }
   }
 
-  private void logCost() {
+  private void logCurrentTotalSGMemory() {
     logger.debug("Current Sg cost is {}", totalSgMemCost);
   }
 
@@ -155,7 +155,7 @@ public class SystemInfo {
     }
     List<TsFileProcessor> processors = new ArrayList<>();
     long memCost = 0;
-    while (getTotalMemCost() - memCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+    while (totalSgMemCost - memCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       if (tsps.isEmpty() || tsps.peek().getWorkMemTableRamCost() == 0) {
         return processors;
       }
