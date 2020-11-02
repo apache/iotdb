@@ -46,7 +46,8 @@ public class SystemInfo {
   private static final double REJECT_PROPORTION = config.getRejectProportion();
 
   /**
-   * Report current mem cost of storage group to system.
+   * Report current mem cost of storage group to system. Called when the memory of
+   * storage group newly accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
    *
    * @param storageGroupInfo storage group
    */
@@ -70,7 +71,8 @@ public class SystemInfo {
   }
 
   /**
-   * Report resetting the mem cost of sg to system. It will be invoked after closing file.
+   * Report resetting the mem cost of sg to system.
+   * It will be invoked after flushing, closing and failed to insert
    *
    * @param storageGroupInfo storage group
    */
@@ -80,7 +82,7 @@ public class SystemInfo {
           - storageGroupInfo.getSgMemCost();
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
       if (totalSgMemCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.debug("Some sg memory released, call flush.");
+        logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
         logCurrentTotalSGMemory();
         forceFlush();
       }
@@ -168,10 +170,6 @@ public class SystemInfo {
 
   public boolean isRejected() {
     return rejected;
-  }
-
-  public long getTotalMemCost() {
-    return totalSgMemCost;
   }
 
   public void close() {
