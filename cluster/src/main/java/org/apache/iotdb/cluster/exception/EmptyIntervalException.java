@@ -16,27 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.cluster.exception;
 
-package org.apache.iotdb.tsfile.encoding.common;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-/**
- * This class defines several constants using in encoding algorithm.
- */
-public class EncodingConfig {
+public class EmptyIntervalException extends Exception {
 
-  private EncodingConfig() {
-    throw new IllegalAccessError("Utility class");
+  public EmptyIntervalException(Filter filter) {
+    super(String.format("The interval of the filter %s is empty.", filter));
   }
-
-  /**
-   * if number n repeats more than(>=) RLE_MAX_REPEATED_NUM times, use rle
-   * encoding, otherwise use bit-packing.
-   */
-  public static final int RLE_MAX_REPEATED_NUM = 8;
-
-  // when to start a new bit-pacing group
-  public static final int RLE_MAX_BIT_PACKED_NUM = 63;
-
-  // bit width for Bitmap Encoding
-  public static final int BITMAP_BITWIDTH = 1;
 }

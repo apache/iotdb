@@ -29,7 +29,7 @@ IoTDB provides users with a variety of ways to insert real-time data, such as di
 This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) for real-time data import in the scenario.
 
 #### Use of INSERT Statements
-The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.md) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.md)).
+The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.md) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
@@ -55,7 +55,7 @@ After inserting the data, we can simply query the inserted data using the SELECT
 IoTDB > select * from root.ln.wf02 where time < 3
 ```
 
-The result is shown below. From the query results, it can be seen that the insertion statements of single column and multi column data are performed correctly.
+The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
 
@@ -211,7 +211,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 
 The actual meanings of the three types of parameters are shown in Figure 5.2 below. 
 Among them, the parameter 3 is optional. 
-Next we will give three typical examples of frequency reduction aggregation: 
+There are three typical examples of frequency reduction aggregation: 
 parameter 3 not specified, 
 parameter 3 specified, 
 and value filtering conditions specified.
@@ -230,7 +230,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2
 ```
 which means:
 
-Since the user does not specify the sliding step length, the GROUP BY statement will by default set the sliding step same as the time interval which is `1d`.
+Since the sliding step length is not specified, the GROUP BY statement by default set the sliding step the same as the time interval which is `1d`.
 
 The fist parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
@@ -393,10 +393,12 @@ The Last point query is to return the most recent data point of the given timese
 The SQL statement is defined as:
 
 ```
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
 which means: Query and return the last data points of timeseries prefixPath.path.
+
+Only time filter is supported in \<WhereClause\>. Any value filters given in the \<WhereClause\> take no effects.
 
 The result will be returned in a three column table format.
 
@@ -414,10 +416,11 @@ Example 1: get the last point of root.ln.wf01.wt01.speed:
 |  5   | root.ln.wf01.wt01.speed | 100   |
 ```
 
-Example 2: get the last speed, status and temperature points of root.ln.wf01.wt01
+Example 2: get the last speed, status and temperature points of root.ln.wf01.wt01,
+whose timestamp in range [5, 10).
 
 ```
-> select last speed, status, temperature from root.ln.wf01.wt01
+> select last speed, status, temperature from root.ln.wf01.wt01 where time >= 5 and time < 10
 
 | Time | Path                         | Value |
 | ---  | ---------------------------- | ----- |
@@ -555,7 +558,7 @@ This chapter mainly introduces related examples of row and column control of que
 
 #### Row Control over Query Results
 
-By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
+By using LIMIT and OFFSET clauses, users control the query results in a row-related manner. We demonstrate how to use LIMIT and OFFSET clauses through the following examples.
 
 * Example 1: basic LIMIT clause
 
@@ -566,7 +569,7 @@ select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 rows of the query result be returned.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 rows of the query result.
 
 The result is shown below:
 
@@ -596,7 +599,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be returned (with the first row numbered as row 0).
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -724,7 +727,7 @@ For example：
 select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ```
 
-The result set will be like：
+The result set is：
 
 | Time | temperature | speed |
 | ---- | ----------- | ----- |
@@ -732,7 +735,7 @@ The result set will be like：
 
 #### Other ResultSet Format
 
-In addition, IoTDB supports two another resultset format: 'align by device' and 'disable align'.
+In addition, IoTDB supports two other result set format: 'align by device' and 'disable align'.
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
@@ -748,7 +751,7 @@ The 'disable align' indicaes that there are 3 columns for each time series in th
 
 ####  Error Handling
 
-When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
+If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
@@ -757,7 +760,7 @@ The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578187-ad9cca80-1ef7-11e9-897a-83e66a0f3d94.jpg"></center>
 
-When the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system will prompt errors. For example, executing the following SQL statement:
+If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
@@ -766,7 +769,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
 
-When the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system will prompt errors. For example, executing the following SQL statement:
+If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
@@ -776,7 +779,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
 
-When the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
+If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
@@ -784,7 +787,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The result is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578227-c60ce500-1ef7-11e9-98eb-175beb8d4086.jpg"></center>
 
-When the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system will prompt errors. For example, executing the following SQL statement:
+If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
@@ -836,7 +839,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 
 ### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.md) can be used to delete the data. The SQL statement for this operation is:
+If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -865,5 +868,4 @@ data folders or convert a timestamp manually to an id using `timestamp / partiti
 ` (flooring), and the `partitionInterval` should be in your config (if time-partitioning is
 supported in your version).
 
-Please notice that this function is experimental and mainly for development, please use it with
-extreme care.
+Please notice that this function is experimental and mainly for development, please use it with care.

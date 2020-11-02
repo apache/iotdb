@@ -28,7 +28,7 @@
   - Cli/Shell Parameters
   - Cli/shell tool with -e parameter
 
-IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document will show how Cli/shell tool works and what does it parameters mean.
+IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document shows how Cli/shell tool works and the meaning of its parameters.
 
 > Note: In this document, \$IOTDB\_HOME represents the path of the IoTDB installation directory.
 
@@ -40,7 +40,7 @@ Under the root path of incubator-iotdb:
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB cli will be at the folder "cli/target/iotdb-cli-{project.version}".
+After build, the IoTDB cli will be in the folder "cli/target/iotdb-cli-{project.version}".
 
 ## Running Cli/Shell
 

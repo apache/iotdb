@@ -69,7 +69,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   }
 
   @Override
-  public Snapshot getSnapshot() {
+  public Snapshot getSnapshot(long minIndex) {
     // copy snapshots
     synchronized (slotSnapshots) {
       PartitionedSnapshot<T> partitionedSnapshot = new PartitionedSnapshot<>(factory);
@@ -78,6 +78,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       }
       partitionedSnapshot.setLastLogIndex(snapshotLastLogIndex);
       partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
+      partitionedSnapshot.truncateBefore(minIndex);
       return partitionedSnapshot;
     }
   }

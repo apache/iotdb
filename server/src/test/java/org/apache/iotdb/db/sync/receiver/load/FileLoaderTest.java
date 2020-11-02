@@ -131,6 +131,7 @@ public class FileLoaderTest {
         tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.setMaxPlanIndex(j);
         tsFileResource.setMinPlanIndex(j);
+
         tsFileResource.serialize();
       }
     }

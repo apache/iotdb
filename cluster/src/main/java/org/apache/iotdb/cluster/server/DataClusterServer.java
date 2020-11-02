@@ -531,17 +531,30 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     for (DataGroupMember value : headerGroupMap.values()) {
       value.stop();
     }
-    headerGroupMap.clear();
-    asyncServiceMap.clear();
-    syncServiceMap.clear();
+
+    for (DataGroupMember value : headerGroupMap.values()) {
+      value.setUnchanged(false);
+    }
 
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      logger.debug("Building member of data group: {}", partitionGroup);
-      DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
-      dataGroupMember.start();
-      addDataGroupMember(dataGroupMember);
+      DataGroupMember prevMember = headerGroupMap.get(partitionGroup.getHeader());
+      if (prevMember == null || !prevMember.getAllNodes().equals(partitionGroup)) {
+        logger.info("Building member of data group: {}", partitionGroup);
+        // no previous member or member changed
+        DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
+        dataGroupMember.start();
+        // the previous member will be replaced here
+        addDataGroupMember(dataGroupMember);
+        dataGroupMember.setUnchanged(true);
+      } else {
+        prevMember.setUnchanged(true);
+      }
     }
+
+    // remove out-dated members of this node
+    headerGroupMap.entrySet().removeIf(e -> !e.getValue().isUnchanged());
+
     logger.info("Data group members are ready");
   }
 
@@ -615,6 +628,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {
+
       dataMemberReports.add(value.genReport());
     }
     return dataMemberReports;

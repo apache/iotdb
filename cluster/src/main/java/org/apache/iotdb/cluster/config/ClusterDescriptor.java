@@ -158,7 +158,7 @@ public class ClusterDescriptor {
       boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
       if (!isInvalidSeedIp) {
         String newSeedIP = hostnameToIP(seedIP);
-        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2]);
+        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2]+ ":" + splits[3]);
       } else {
         newSeedUrls.add(seedUrl);
       }

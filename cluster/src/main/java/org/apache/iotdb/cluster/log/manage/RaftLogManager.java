@@ -197,7 +197,11 @@ public abstract class RaftLogManager {
     }
   }
 
-  public abstract Snapshot getSnapshot();
+  public Snapshot getSnapshot() {
+    return getSnapshot(-1);
+  };
+
+  public abstract Snapshot getSnapshot(long minLogIndex);
 
   /**
    * IMPORTANT!!!
@@ -721,7 +725,12 @@ public abstract class RaftLogManager {
 
   @TestOnly
   public void setMaxHaveAppliedCommitIndex(long maxHaveAppliedCommitIndex) {
-    this.checkLogApplierExecutorService.shutdown();
+    this.checkLogApplierExecutorService.shutdownNow();
+    try {
+      this.checkLogApplierExecutorService.awaitTermination(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
     this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
   }
 
@@ -865,7 +874,7 @@ public abstract class RaftLogManager {
     try {
       long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
       if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
-          .getLastIndex()) {
+          .getLastIndex() || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
         Thread.sleep(5);
         return;
@@ -925,5 +934,9 @@ public abstract class RaftLogManager {
 
   public String getName() {
     return name;
+  }
+
+  public long getBlockAppliedCommitIndex() {
+    return blockAppliedCommitIndex;
   }
 }

@@ -281,21 +281,21 @@ public class IoTDBDescriptor {
           .getProperty("tsfile_manage_strategy",
               conf.getTsFileManagementStrategy().toString())));
 
-      conf.setMaxLevelNum(Integer.parseInt(properties
-          .getProperty("max_level_num",
-              Integer.toString(conf.getMaxLevelNum()))));
+      conf.setSeqLevelNum(Integer.parseInt(properties
+          .getProperty("seq_level_num",
+              Integer.toString(conf.getSeqLevelNum()))));
 
-      conf.setMaxFileNumInEachLevel(Integer.parseInt(properties
-          .getProperty("max_file_num_in_each_level",
-              Integer.toString(conf.getMaxFileNumInEachLevel()))));
+      conf.setSeqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("seq_file_num_in_each_level",
+              Integer.toString(conf.getSeqFileNumInEachLevel()))));
 
-      conf.setMaxUnseqLevelNum(Integer.parseInt(properties
-          .getProperty("max_unseq_level_num",
-              Integer.toString(conf.getMaxUnseqLevelNum()))));
+      conf.setUnseqLevelNum(Integer.parseInt(properties
+          .getProperty("unseq_level_num",
+              Integer.toString(conf.getUnseqLevelNum()))));
 
-      conf.setMaxUnseqFileNumInEachLevel(Integer.parseInt(properties
-          .getProperty("max_unseq_file_num_in_each_level",
-              Integer.toString(conf.getMaxUnseqFileNumInEachLevel()))));
+      conf.setUnseqFileNumInEachLevel(Integer.parseInt(properties
+          .getProperty("unseq_file_num_in_each_level",
+              Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -338,9 +338,6 @@ public class IoTDBDescriptor {
         conf.setChunkBufferPoolEnable(Boolean
             .parseBoolean(properties.getProperty("chunk_buffer_pool_enable")));
       }
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
-      logger.info("Time zone has been set to {}", conf.getZoneID());
 
       conf.setEnableExternalSort(Boolean.parseBoolean(properties
           .getProperty("enable_external_sort", Boolean.toString(conf.isEnableExternalSort()))));
@@ -680,10 +677,6 @@ public class IoTDBDescriptor {
 
       // update WAL conf
       loadWALProps(properties);
-
-      // time zone
-      conf.setZoneID(
-          ZoneId.of(properties.getProperty("time_zone", conf.getZoneID().toString().trim())));
 
       // dynamic parameters
       long tsfileSizeThreshold = Long.parseLong(properties

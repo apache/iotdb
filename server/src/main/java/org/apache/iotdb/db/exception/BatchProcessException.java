@@ -22,12 +22,12 @@ package org.apache.iotdb.db.exception;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class BatchInsertionException extends QueryProcessException {
+public class BatchProcessException extends QueryProcessException {
 
   private TSStatus[] failingStatus;
 
-  public BatchInsertionException(TSStatus[] failingStatus) {
-    super("Batch insertion failed");
+  public BatchProcessException(TSStatus[] failingStatus) {
+    super("Batch process failed");
     this.failingStatus = failingStatus;
   }
 

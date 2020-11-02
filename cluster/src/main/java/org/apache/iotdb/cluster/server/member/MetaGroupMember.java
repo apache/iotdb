@@ -54,7 +54,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
@@ -68,6 +67,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
@@ -136,6 +136,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -334,7 +335,6 @@ public class MetaGroupMember extends RaftMember {
     }
     addSeedNodes();
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
-    StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
     super.start();
   }
 
@@ -542,9 +542,15 @@ public class MetaGroupMember extends RaftMember {
     AddNodeResponse resp;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
+      if (client == null) {
+        return false;
+      }
       resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+      if (client == null) {
+        return false;
+      }
       try {
         resp = client.addNode(thisNode, startUpStatus);
       } finally {
@@ -659,7 +665,7 @@ public class MetaGroupMember extends RaftMember {
   private void updateNodeList(Collection<Node> nodes) {
     allNodes = new ArrayList<>(nodes);
     initPeerMap();
-    logger.info("Received cluster nodes from the leader: {}", allNodes);
+    logger.info("All nodes in the partition table: {}", allNodes);
     initIdNodeMap();
     for (Node n : allNodes) {
       idNodeMap.put(n.getNodeIdentifier(), n);
@@ -760,8 +766,8 @@ public class MetaGroupMember extends RaftMember {
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
-        initSubServers();
         getDataClusterServer().buildDataGroupMembers(partitionTable);
+        initSubServers();
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();
@@ -1002,6 +1008,9 @@ public class MetaGroupMember extends RaftMember {
   private CheckStatusResponse checkStatus(Node seedNode) {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
+      if (client == null) {
+        return null;
+      }
       try {
         return SyncClientAdaptor.checkStatus(client, getStartUpStatus());
       } catch (TException e) {
@@ -1012,6 +1021,9 @@ public class MetaGroupMember extends RaftMember {
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode);
+      if (client == null) {
+        return null;
+      }
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
@@ -1110,7 +1122,9 @@ public class MetaGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
       try {
-        client.appendEntry(request, handler);
+        if (client != null) {
+          client.appendEntry(request, handler);
+        }
       } catch (TException e) {
         logger.error("Cannot send log to node {}", node, e);
       }
@@ -1318,7 +1332,11 @@ public class MetaGroupMember extends RaftMember {
     try {
       execRet = getLocalExecutor().processNonQuery(plan);
     } catch (QueryProcessException e) {
-      logger.debug("meet error while processing non-query. ", e);
+      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+        logger.debug("meet error while processing non-query. ", e);
+      } else {
+        logger.warn("meet error while processing non-query. ", e);
+      }
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -1343,10 +1361,10 @@ public class MetaGroupMember extends RaftMember {
       if (status != null) {
         return status;
       }
-    } else if (leader != null) {
-      TSStatus result = forwardPlan(plan, leader, null);
+    } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
+      TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -1359,9 +1377,9 @@ public class MetaGroupMember extends RaftMember {
         return status;
       }
     }
-    TSStatus result = forwardPlan(plan, leader, null);
+    TSStatus result = forwardPlan(plan, leader.get(), null);
     if (!StatusUtils.NO_LEADER.equals(result)) {
-      result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+      result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
     }
     return result;
   }
@@ -1390,9 +1408,9 @@ public class MetaGroupMember extends RaftMember {
       logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
       return forwardPlan(globalGroups, plan);
     } catch (CheckConsistencyException e) {
-      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
+      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader.get());
       waitLeader();
-      return forwardPlan(plan, leader, null);
+      return forwardPlan(plan, leader.get(), null);
     }
   }
 
@@ -1466,18 +1484,18 @@ public class MetaGroupMember extends RaftMember {
    */
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
-    TSStatus status;
+    TSStatus status = null;
     if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
-      if (plan instanceof InsertTabletPlan) {
-        // InsertTabletPlans contain many rows, each will correspond to a TSStatus as its
+      if (plan instanceof InsertTabletPlan || plan instanceof CreateMultiTimeSeriesPlan) {
+        // InsertTabletPlan and CreateMultiTimeSeriesPlan contains many rows, each will correspond to a TSStatus as its
         // execution result, as the plan is split and the sub-plans may have interleaving ranges,
         // we must assure that each TSStatus is placed to the right position
         // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
         // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
         // failure and success should be placed into proper positions in TSStatus.subStatus
-        status = forwardInsertTabletPlan(planGroupMap, (InsertTabletPlan) plan);
+        status = forwardMultiSubPlan(planGroupMap, plan);
       } else {
         status = forwardToMultipleGroup(planGroupMap);
       }
@@ -1510,46 +1528,66 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param planGroupMap sub-plan -> data group pairs
    */
-  private TSStatus forwardInsertTabletPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-      InsertTabletPlan plan) {
+  private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
+                                           PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     TSStatus[] subStatus = null;
     boolean noFailure = true;
     boolean isBatchFailure = false;
     EndPoint endPoint = null;
-    InsertTabletPlan subPlan;
+    int totalRowNum = 0;
+    // for we put the result to right position for CreateMultiTimeSeriesPlan
+    Map<Integer, Integer> indexToPos = new HashMap<>();
+    if (parentPlan instanceof InsertTabletPlan) {
+      totalRowNum = ((InsertTabletPlan) parentPlan).getRowCount();
+    } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
+      totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
+
+      // index -> pos in the indexs array
+      for (int i = 0; i < totalRowNum; i++) {
+        indexToPos.put(((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().get(i), i);
+      }
+    }
     // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
-      subPlan = (InsertTabletPlan) entry.getKey();
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
-          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+        (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-          || isBatchFailure;
-      if (tmpStatus.isSetRedirectNode() && subPlan.getMaxTime() == plan.getMaxTime()) {
-        endPoint = tmpStatus.getRedirectNode();
+        || isBatchFailure;
+      if (parentPlan instanceof InsertTabletPlan) {
+        if (tmpStatus.isSetRedirectNode() &&
+          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan).getMaxTime()) {
+          endPoint = tmpStatus.getRedirectNode();
+        }
       }
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         if (subStatus == null) {
-          subStatus = new TSStatus[plan.getRowCount()];
+          subStatus = new TSStatus[totalRowNum];
           Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
         }
         // set the status from one group to the proper positions of the overall status
-        PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+        if (parentPlan instanceof InsertTabletPlan) {
+          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
             tmpStatus.subStatus.toArray(new TSStatus[]{}));
+        } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
+          CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
+          for (int i = 0; i < subPlan.getIndexes().size(); i++) {
+            subStatus[indexToPos.get(subPlan.getIndexes().get(i))] = tmpStatus.subStatus.get(i);
+          }
+        }
       }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-            tmpStatus.getCode(), entry.getValue().getHeader(),
-            tmpStatus.getMessage(), tmpStatus.subStatus));
+          tmpStatus.getCode(), entry.getValue().getHeader(),
+          tmpStatus.getMessage(), tmpStatus.subStatus));
       }
     }
 
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
-        errorCodePartitionGroups);
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
@@ -1654,7 +1692,9 @@ public class MetaGroupMember extends RaftMember {
             partitionGroup.getHeader());
         status = forwardPlan(plan, partitionGroup);
       }
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() && (
+          !(plan instanceof DeleteTimeSeriesPlan) ||
+              status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
             status.getCode(), partitionGroup.getHeader(),
@@ -1728,8 +1768,11 @@ public class MetaGroupMember extends RaftMember {
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
    */
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path) throws
-      StorageEngineException {
+      StorageEngineException, EmptyIntervalException {
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    if (intervals.isEmpty()) {
+      throw new EmptyIntervalException(filter);
+    }
     return routeIntervals(intervals, path);
   }
 
@@ -1941,7 +1984,7 @@ public class MetaGroupMember extends RaftMember {
         // changed and there will also be one less group
         getDataClusterServer().removeNode(oldNode, result);
         // the leader is removed, start the next election ASAP
-        if (oldNode.equals(leader)) {
+        if (oldNode.equals(leader.get())) {
           setCharacter(NodeCharacter.ELECTOR);
           lastHeartbeatReceivedTime = Long.MIN_VALUE;
         }
@@ -1953,7 +1996,7 @@ public class MetaGroupMember extends RaftMember {
           if (clientServer != null) {
             clientServer.stop();
           }
-        } else if (thisNode.equals(leader)) {
+        } else if (thisNode.equals(leader.get())) {
           // as the old node is removed, it cannot know this by heartbeat or log, so it should be
           // directly kicked out of the cluster
           exileNode(oldNode);
@@ -1969,12 +2012,17 @@ public class MetaGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(node);
       try {
-        asyncMetaClient.exile(new GenericHandler<>(node, null));
+        if (asyncMetaClient != null) {
+          asyncMetaClient.exile(new GenericHandler<>(node, null));
+        }
       } catch (TException e) {
         logger.warn("Cannot inform {} its removal", node, e);
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+      if (client == null) {
+        return;
+      }
       try {
         client.exile();
       } catch (TException e) {
@@ -1991,7 +2039,7 @@ public class MetaGroupMember extends RaftMember {
   private MetaMemberReport genMemberReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
-    return new MetaMemberReport(character, leader, term.get(),
+    return new MetaMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex()
         , logManager.getCommitLogTerm(), readOnly, lastHeartbeatReceivedTime, prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());

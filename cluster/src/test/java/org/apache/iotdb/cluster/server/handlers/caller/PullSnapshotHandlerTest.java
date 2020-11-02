@@ -53,7 +53,7 @@ public class PullSnapshotHandlerTest {
     }
 
     PullSnapshotHandler<TestSnapshot> handler = new PullSnapshotHandler<>(result, owner, slots,
-        TestSnapshot::new);
+        TestSnapshot.Factory.INSTANCE);
     synchronized (result) {
       new Thread(() -> {
         PullSnapshotResp resp = new PullSnapshotResp();
@@ -71,7 +71,7 @@ public class PullSnapshotHandlerTest {
     Node owner = TestUtils.getNode(1);
     List<Integer> slots = new ArrayList<>();
     PullSnapshotHandler<TestSnapshot> handler = new PullSnapshotHandler<>(result, owner, slots,
-        TestSnapshot::new);
+        TestSnapshot.Factory.INSTANCE);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
       result.wait();

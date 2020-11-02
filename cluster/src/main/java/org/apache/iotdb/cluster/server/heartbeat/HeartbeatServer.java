@@ -168,9 +168,11 @@ public abstract class HeartbeatServer {
 
   private TServer getAsyncHeartbeatServer() throws TTransportException {
     heartbeatSocket = getHeartbeatServerSocket();
+    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
+            config.getMaxConcurrentClientNum());
     Args poolArgs =
         new Args((TNonblockingServerTransport) heartbeatSocket)
-            .maxWorkerThreads(config.getMaxConcurrentClientNum())
+            .maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
 
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,

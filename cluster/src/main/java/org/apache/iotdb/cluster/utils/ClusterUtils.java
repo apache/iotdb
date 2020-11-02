@@ -234,8 +234,10 @@ public class ClusterUtils {
   public static TServer createTThreadPoolServer(TServerTransport socket,
       String clientThreadPrefix, TProcessor processor, TProtocolFactory protocolFactory) {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
+            config.getMaxConcurrentClientNum());
     TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
+        new TThreadPoolServer.Args(socket).maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
 
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,

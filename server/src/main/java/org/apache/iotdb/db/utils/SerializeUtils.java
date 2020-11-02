@@ -38,8 +38,12 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SerializeUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(SerializeUtils.class);
 
   private SerializeUtils() {
     // util class
@@ -59,7 +63,7 @@ public class SerializeUtils {
     int length = buffer.getInt();
     byte[] strBytes = new byte[length];
     buffer.get(strBytes);
-    return new String(strBytes);
+    return new String(strBytes, TSFileConfig.STRING_CHARSET);
   }
 
   public static void serializeStringList(List<String> strs, DataOutputStream dataOutputStream) {

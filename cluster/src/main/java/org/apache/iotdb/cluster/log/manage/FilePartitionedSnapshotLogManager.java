@@ -22,11 +22,15 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -51,7 +55,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, DataGroupMember dataGroupMember) {
-    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new, dataGroupMember);
+    super(logApplier, partitionTable, header, thisNode, Factory.INSTANCE, dataGroupMember);
   }
 
   /**
@@ -73,18 +77,26 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   public void takeSnapshot() throws IOException {
     try {
       logger.info("{}: Taking snapshots, flushing IoTDB", getName());
+      // record current commit index and prevent further logs from being applied, so the
+      // underlying state machine will not change during the snapshotting
+      setBlockAppliedCommitIndex(getCommitLogIndex());
+      // wait until all logs before BlockAppliedCommitIndex are applied
+      super.takeSnapshot();
+      // flush data to disk so that the disk files will represent a complete state
       syncFlushAllProcessor();
       logger.info("{}: Taking snapshots, IoTDB is flushed", getName());
       // TODO-cluster https://issues.apache.org/jira/browse/IOTDB-820
       synchronized (this) {
-        super.takeSnapshot();
         collectTimeseriesSchemas();
-        snapshotLastLogIndex = getCommitLogIndex();
-        snapshotLastLogTerm = getCommitLogTerm();
+        snapshotLastLogIndex = getBlockAppliedCommitIndex();
+        snapshotLastLogTerm = getTerm(snapshotLastLogIndex);
         collectTsFilesAndFillTimeseriesSchemas();
         logger.info("{}: Snapshot is taken", getName());
       }
+    } catch (EntryCompactedException e) {
+      logger.error("failed to do snapshot.", e);
     } finally {
+      // now further logs can be applied
       super.resetBlockAppliedCommitIndex();
     }
   }
@@ -164,6 +176,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       logger.debug("{}: File {} is put into snapshot #{}", getName(), tsFileResource, slotNum);
       snapshot.addFile(hardlink, thisNode, isPlanIndexRangeUnique(tsFileResource, resourceList));
     }
+    snapshot.getDataFiles().sort(Comparator.comparingLong(TsFileResource::getMaxPlanIndex));
     return true;
   }
 

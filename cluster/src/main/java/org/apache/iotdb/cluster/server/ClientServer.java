@@ -143,9 +143,10 @@ public class ClientServer extends TSServiceImpl {
         config.getClusterRpcPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
+    int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
+            config.getMaxConcurrentClientNum());
     TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(ClusterDescriptor
-            .getInstance().getConfig().getMaxConcurrentClientNum())
+        new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,

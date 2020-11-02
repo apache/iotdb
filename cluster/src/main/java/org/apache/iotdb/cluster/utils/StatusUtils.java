@@ -44,6 +44,7 @@ public class StatusUtils {
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
   public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
   public static final TSStatus TIMESERIES_NOT_EXIST_ERROR = getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
+  public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
@@ -191,7 +192,10 @@ public class StatusUtils {
         status.setMessage("Uninitialized authorizer. ");
         break;
       case UNSUPPORTED_OPERATION:
-        status.setMessage("unsupported operation. ");
+        status.setMessage("Unsupported operation. ");
+        break;
+      case NO_CONNECTION:
+        status.setMessage("Node cannot be reached.");
         break;
       default:
         status.setMessage("");

@@ -119,7 +119,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     setPeerNotCatchUp();
     if (exception instanceof ConnectException) {
       logger
-          .warn("{}: Cannot connect to {}: {}", member.getName(), receiver, exception.getMessage());
+          .warn("{}: Cannot append log {}: cannot connect to {}: {}", member.getName(), log,
+              receiver, exception.getMessage());
     } else {
       logger.warn("{}: Cannot append log {} to {}", member.getName(), log, receiver, exception);
     }

@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.auth.AuthException;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public class MetaSimpleSnapshot extends Snapshot {
 
+  private static final Logger logger = LoggerFactory.getLogger(MetaSimpleSnapshot.class);
   private Map<PartialPath, Long> storageGroupTTLMap;
   private Map<String, User> userMap;
   private Map<String, Role> roleMap;
@@ -104,12 +106,14 @@ public class MetaSimpleSnapshot extends Snapshot {
       dataOutputStream.writeInt(userMap.size());
       for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.info("A user into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
       dataOutputStream.writeInt(roleMap.size());
       for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        logger.info("A role into snapshot: {}", entry.getValue());
         dataOutputStream.write(entry.getValue().serialize().array());
       }
 
@@ -270,5 +274,27 @@ public class MetaSimpleSnapshot extends Snapshot {
   @Override
   public int hashCode() {
     return Objects.hash(storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
+  }
+
+  public static class Factory implements SnapshotFactory<MetaSimpleSnapshot> {
+
+    public static final FileSnapshot.Factory INSTANCE = new FileSnapshot.Factory();
+
+    @Override
+    public MetaSimpleSnapshot create() {
+      return new MetaSimpleSnapshot();
+    }
+
+    @Override
+    public MetaSimpleSnapshot copy(MetaSimpleSnapshot origin) {
+      MetaSimpleSnapshot metaSimpleSnapshot = create();
+      metaSimpleSnapshot.lastLogIndex = origin.lastLogIndex;
+      metaSimpleSnapshot.lastLogTerm = origin.lastLogTerm;
+      metaSimpleSnapshot.partitionTableBuffer = origin.partitionTableBuffer.duplicate();
+      metaSimpleSnapshot.roleMap = new HashMap<>(origin.roleMap);
+      metaSimpleSnapshot.userMap = new HashMap<>(origin.userMap);
+      metaSimpleSnapshot.storageGroupTTLMap = new HashMap<>(origin.storageGroupTTLMap);
+      return metaSimpleSnapshot;
+    }
   }
 }

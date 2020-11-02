@@ -108,7 +108,7 @@ public class MTree implements Serializable {
     } else {
       try {
         last = calculateLastPairForOneSeriesLocally(node.getPartialPath(),
-            node.getSchema().getType(), queryContext, Collections.emptySet());
+            node.getSchema().getType(), queryContext, null, Collections.emptySet());
         return last.getTimestamp();
       } catch (Exception e) {
         logger.error("Something wrong happened while trying to get last time value pair of {}",
@@ -871,7 +871,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getCount(MNode node, String[] nodes, int idx) throws PathNotExistException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);

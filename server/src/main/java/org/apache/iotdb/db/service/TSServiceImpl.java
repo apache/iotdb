@@ -45,7 +45,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -224,7 +224,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
-      sessionIdZoneIdMap.put(sessionId, config.getZoneID());
+      sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
@@ -1550,6 +1550,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
             req.getPaths().size(), req.getPaths().get(0));
       }
+      boolean hasFailed = false;
       List<TSStatus> statusList = new ArrayList<>(req.paths.size());
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
@@ -1584,6 +1585,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           // not authorized
+          hasFailed = true;
           statusList.add(status);
           continue;
         }
@@ -1619,26 +1621,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       createMultiTimeSeriesPlan.setAttributes(attributes);
       createMultiTimeSeriesPlan.setIndexes(indexes);
 
-      executeNonQuery(createMultiTimeSeriesPlan);
+      TSStatus status = executeNonQueryPlan(createMultiTimeSeriesPlan);
 
-      boolean isAllSuccessful = true;
-
-      if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
-        isAllSuccessful = false;
-        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
-          statusList.set(entry.getKey(),
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
+      if (status.code == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+        return status;
+      } else if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        hasFailed = true;
+        for (int i = 0; i < status.subStatus.size(); i++) {
+          statusList.set(createMultiTimeSeriesPlan.getIndexes().get(i), status.subStatus.get(i));
         }
       }
 
-      if (isAllSuccessful) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Create multiple timeseries successfully");
-        }
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else {
+      if (hasFailed) {
         logger.debug("Create multiple timeseries failed!");
         return RpcUtils.getStatus(statusList);
+      } else {
+        return status;
       }
     } catch (Exception e) {
       logger.error("meet error when create multi timeseries", e);
@@ -1698,7 +1696,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
-    } catch (BatchInsertionException e) {
+    } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
       logger.error("meet error while processing non-query. ", e);

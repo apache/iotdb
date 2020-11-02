@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query.aggregate;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -29,6 +30,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
@@ -81,9 +83,16 @@ public class ClusterAggregator {
       throw new StorageEngineException(e);
     }
     // find groups to be queried using timeFilter and path
-    List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
-    logger.debug("{}: Sending aggregation query of {} to {} groups", metaGroupMember.getName(), path,
-        partitionGroups.size());
+    List<PartitionGroup> partitionGroups;
+    try {
+      partitionGroups = metaGroupMember.routeFilter(timeFilter, path);
+    } catch (EmptyIntervalException e) {
+      logger.info(e.getMessage());
+      partitionGroups = Collections.emptyList();
+    }
+    logger
+        .debug("{}: Sending aggregation query of {} to {} groups", metaGroupMember.getName(), path,
+            partitionGroups.size());
     List<AggregateResult> results = null;
     // get the aggregation result of each group and merge them
     for (PartitionGroup partitionGroup : partitionGroups) {
@@ -126,7 +135,8 @@ public class ClusterAggregator {
             .getAggrResult(aggregations, deviceMeasurements, dataType, path.getFullPath(),
                 timeFilter, context, ascending);
         logger
-            .debug("{}: queried aggregation {} of {} in {} locally are {}", metaGroupMember.getName(),
+            .debug("{}: queried aggregation {} of {} in {} locally are {}",
+                metaGroupMember.getName(),
                 aggregations,
                 path, partitionGroup.getHeader(), aggrResult);
         return aggrResult;
@@ -177,12 +187,15 @@ public class ClusterAggregator {
           }
           // register the queried node to release resources when the query ends
           ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
-          logger.debug("{}: queried aggregation {} of {} from {} of {} are {}", metaGroupMember.getName(),
+          logger.debug("{}: queried aggregation {} of {} from {} of {} are {}",
+              metaGroupMember.getName(),
               aggregations, path, node, partitionGroup.getHeader(), results);
           return results;
         }
       } catch (TException | IOException e) {
-        logger.error("{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
+        logger
+            .error("{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node,
+                e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);

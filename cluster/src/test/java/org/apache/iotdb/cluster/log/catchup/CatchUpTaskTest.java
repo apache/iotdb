@@ -369,6 +369,8 @@ public class CatchUpTaskTest {
       // 2. case 2: no matched index case
       lastMatchedIndex = -1;
       receivedLogs.subList(1, receivedLogs.size()).clear();
+      logList = new ArrayList<>(logList.subList(1, logList.size()));
+      task.setLogs(logList);
       resultMatchIndex = task.findLastMatchIndex(logList);
       assertEquals(lastMatchedIndex, resultMatchIndex);
 

@@ -84,6 +84,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
     AsyncClient client = raftMember.getAsyncClient(node);
     if (client == null) {
+      logger.debug("{}: client null for node {}", raftMember.getThisNode(), node);
       abort = true;
       return false;
     }
@@ -115,11 +116,11 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       return false;
     }
     logger
-        .debug("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
+        .info("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
             node);
     doLogCatchUp();
     if (!abort) {
-      logger.debug("{}: Catch up {} finished", raftMember.getName(), node);
+      logger.info("{}: Catch up {} finished", raftMember.getName(), node);
     } else {
       logger.warn("{}: Log catch up {} failed", raftMember.getName(), node);
     }

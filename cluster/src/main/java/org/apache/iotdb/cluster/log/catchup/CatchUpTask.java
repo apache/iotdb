@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.catchup;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -29,6 +30,7 @@ import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -112,6 +114,7 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
+    peer.setMatchIndex(logs.get(index).getCurrLogIndex());
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
     logs.subList(0, index).clear();
     if (logger.isDebugEnabled()) {
@@ -185,8 +188,8 @@ public class CatchUpTask implements Runnable {
     long prevLogTerm = getPrevLogTerm(index);
 
     if (prevLogTerm == -1) {
-      // prev log cannot be found, we cannot know whether is matches
-      return false;
+      // prev log cannot be found, we cannot know whether is matches if it is not the first log
+      return prevLogIndex == -1;
     }
 
     boolean matched = checkLogIsMatch(prevLogIndex, prevLogTerm);
@@ -212,8 +215,8 @@ public class CatchUpTask implements Runnable {
       if (client == null) {
         return false;
       }
-      matched = SyncClientAdaptor
-          .matchTerm(client, node, logIndex, logTerm, raftMember.getHeader());
+      Node header = raftMember.getHeader();
+      matched = SyncClientAdaptor.matchTerm(client, node, logIndex, logTerm, header);
     } else {
       Client client = raftMember.getSyncClient(node);
       try {
@@ -248,10 +251,27 @@ public class CatchUpTask implements Runnable {
     } catch (IOException e) {
       logger.error("Unexpected error when taking snapshot.", e);
     }
-    snapshot = raftMember.getLogManager().getSnapshot();
+    snapshot = raftMember.getLogManager().getSnapshot(peer.getMatchIndex());
     if (logger.isDebugEnabled()) {
       logger
           .debug("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
+    }
+  }
+
+  /**
+   * Remove logs that are contained in the snapshot.
+   */
+  private void removeSnapshotLogs() {
+    Log logToSearch = new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
+    int pos = Collections
+        .binarySearch(logs, logToSearch, Comparator.comparingLong(Log::getCurrLogIndex));
+    if (pos >= 0) {
+      logs.subList(0, pos + 1).clear();
+    } else {
+      int insertPos = -pos - 1;
+      if (insertPos > 0) {
+        logs.subList(0, insertPos).clear();
+      }
     }
   }
 
@@ -262,6 +282,8 @@ public class CatchUpTask implements Runnable {
       boolean catchUpSucceeded;
       if (!findMatchedIndex) {
         doSnapshot();
+        // snapshot may overlap with logs
+        removeSnapshotLogs();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
         catchUpSucceeded = task.call();
       } else {
@@ -271,19 +293,16 @@ public class CatchUpTask implements Runnable {
       if (catchUpSucceeded) {
         // the catch up may be triggered by an old heartbeat, and the node may have already
         // caught up, so logs can be empty
-        if (!logs.isEmpty()) {
-          peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
-          // update peer's status so raftMember can send logs in main thread.
-          peer.setCatchUp(true);
-          if (logger.isDebugEnabled()) {
-            logger.debug("{}: Catch up {} finished, update it's matchIndex to {}",
-                raftMember.getName(), node,
-                logs.get(logs.size() - 1).getCurrLogIndex());
-          }
-        } else {
-          logger.debug("{}: Logs are empty when catching up {}, it may have been caught up",
-              raftMember.getName(), node);
+        if (!logs.isEmpty() || snapshot != null) {
+          long lastIndex = !logs.isEmpty() ? logs.get(logs.size() - 1).getCurrLogIndex() :
+              snapshot.getLastLogIndex();
+          peer.setMatchIndex(lastIndex);
         }
+        if (logger.isInfoEnabled()) {
+          logger.info("{}: Catch up {} finished, update it's matchIndex to {}",
+              raftMember.getName(), node, peer.getMatchIndex());
+        }
+        peer.setCatchUp(true);
         peer.resetInconsistentHeartbeatNum();
       }
 

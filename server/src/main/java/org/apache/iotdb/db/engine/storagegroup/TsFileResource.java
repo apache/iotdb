@@ -274,6 +274,9 @@ public class TsFileResource {
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
       ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
+      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
+      ReadWriteIOUtils.write(minPlanIndex, outputStream);
+
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
@@ -310,6 +313,9 @@ public class TsFileResource {
       this.startTimes = startTimesArray;
       this.endTimes = endTimesArray;
       this.deviceToIndex = deviceMap;
+
+      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
@@ -640,33 +646,6 @@ public class TsFileResource {
     this.endTimes = endTimes;
   }
 
-  /**
-   * set a file flag indicating that the file is being closed, so during recovery we could know we
-   * should close the file.
-   */
-  void setCloseFlag() {
-    try {
-      if (!fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile()) {
-        logger.error("Cannot create close flag for {}", file);
-      }
-    } catch (IOException e) {
-      logger.error("Cannot create close flag for {}", file, e);
-    }
-  }
-
-  /**
-   * clean the close flag (if existed) when the file is successfully closed.
-   */
-  public void cleanCloseFlag() {
-    if (!fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).delete()) {
-      logger.error("Cannot clean close flag for {}", file);
-    }
-  }
-
-  public boolean isCloseFlagSet() {
-    return fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
-  }
-
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
   }
@@ -808,6 +787,9 @@ public class TsFileResource {
   }
 
   public void updatePlanIndexes(long planIndex) {
+    if (planIndex == Long.MIN_VALUE || planIndex == Long.MAX_VALUE) {
+      return;
+    }
     maxPlanIndex = Math.max(maxPlanIndex, planIndex);
     minPlanIndex = Math.min(minPlanIndex, planIndex);
     if (closed) {

@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -198,6 +199,27 @@ public class LogDispatcherTest {
     LogDispatcher dispatcher = new LogDispatcher(raftMember);
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
+      for (Log log : logs) {
+        SendLogRequest request = raftMember.buildSendLogRequest(log);
+        dispatcher.offer(request);
+      }
+      while (!checkResult(logs, 6)) {
+        // wait
+      }
+    } finally {
+      dispatcher.close();
+    }
+  }
+
+  @Test
+  public void testWithLargeLog() throws InterruptedException {
+    IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(64 * 1024);
+    for (int i = 1; i < 4; i++) {
+      downNode.add(TestUtils.getNode(i));
+    }
+    LogDispatcher dispatcher = new LogDispatcher(raftMember);
+    try {
+      List<Log> logs = TestUtils.prepareLargeTestLogs(20);
       for (Log log : logs) {
         SendLogRequest request = raftMember.buildSendLogRequest(log);
         dispatcher.offer(request);

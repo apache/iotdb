@@ -33,7 +33,7 @@ public class TestLogManager extends RaftLogManager {
   }
 
   @Override
-  public Snapshot getSnapshot() {
+  public Snapshot getSnapshot(long minIndex) {
     return null;
   }
 

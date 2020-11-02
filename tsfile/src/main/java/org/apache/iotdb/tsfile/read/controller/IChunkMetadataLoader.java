@@ -22,13 +22,15 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 
 public interface IChunkMetadataLoader {
 
   /**
    * read all chunk metadata of one time series in one file.
    */
-  List<ChunkMetadata> loadChunkMetadataList() throws IOException;
+  List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeseriesMetadata)
+      throws IOException;
 
   /**
    * For query 0.9/v1 tsfile only

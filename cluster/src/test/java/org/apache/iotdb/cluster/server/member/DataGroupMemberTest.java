@@ -150,10 +150,10 @@ public class DataGroupMemberTest extends MemberTest {
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
       DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
-        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot.Factory.INSTANCE) {
       @Override
-      public Snapshot getSnapshot() {
-        PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
+      public Snapshot getSnapshot(long minIndex) {
+        PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
         if (hasInitialSnapshots) {
           for (int i = 0; i < 100; i++) {
             snapshot.putSnapshot(i, snapshotMap.get(i));
@@ -383,7 +383,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testSendSnapshot() {
     System.out.println("Start testSendSnapshot()");
     PartitionedSnapshot<FileSnapshot> partitionedSnapshot =
-        new PartitionedSnapshot<>(FileSnapshot::new);
+        new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
     partitionedSnapshot.setLastLogIndex(100);
     partitionedSnapshot.setLastLogTerm(100);
 
@@ -487,7 +487,7 @@ public class DataGroupMemberTest extends MemberTest {
     request.setRequiredSlots(requiredSlots);
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
-        TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
+        TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot.Factory.INSTANCE);
     new DataAsyncService(dataGroupMember).pullSnapshot(request, handler);
     assertEquals(requiredSlots.size(), reference.get().size());
     for (Integer requiredSlot : requiredSlots) {
@@ -505,7 +505,7 @@ public class DataGroupMemberTest extends MemberTest {
     request.setRequiredSlots(requiredSlots);
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
-        TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
+        TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot.Factory.INSTANCE);
     new DataAsyncService(dataGroupMember).pullSnapshot(request, handler);
     assertEquals(requiredSlots.size() - 1, reference.get().size());
     for (int i = 0; i < requiredSlots.size() - 1; i++) {

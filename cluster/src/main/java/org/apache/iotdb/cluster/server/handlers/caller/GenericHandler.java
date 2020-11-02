@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -58,7 +59,12 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot receive result from {}", source, exception);
+    if (!(exception instanceof ConnectException)) {
+      logger.error("Cannot receive result from {}", source, exception);
+    } else {
+      logger.warn("Cannot receive result from {} : {}", source, exception.getMessage());
+    }
+
     if (result != null) {
       synchronized (result) {
         result.notifyAll();

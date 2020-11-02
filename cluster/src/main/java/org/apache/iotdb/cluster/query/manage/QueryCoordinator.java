@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
+import java.net.ConnectException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -121,10 +122,14 @@ public class QueryCoordinator {
       } else {
         nodeStatus.setLastResponseLatency(Long.MAX_VALUE);
       }
-      logger.warn("NodeStatus of {} is updated, status: {}, response time: {}", node,
+      logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
           nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
     } catch (TException e) {
-      logger.error("Cannot query the node status of {}", node, e);
+      if (e.getCause() instanceof ConnectException) {
+        logger.warn("Cannot query the node status of {}: {}", node, e.getCause());
+      } else {
+        logger.error("Cannot query the node status of {}", node, e);
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Cannot query the node status of {}", node, e);

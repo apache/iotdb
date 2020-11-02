@@ -328,6 +328,7 @@ public class TsFileProcessor {
     synchronized (flushingMemTables) {
       try {
         asyncClose();
+        logger.info("Start to wait until file {} is closed", tsFileResource);
         long startTime = System.currentTimeMillis();
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
@@ -364,10 +365,11 @@ public class TsFileProcessor {
       if (logger.isInfoEnabled()) {
         if (workMemTable != null) {
           logger.info(
-              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
+              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile "
+                  + "size: {}, plan index: [{}, {}]",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
               workMemTable.memSize(),
-              tsFileResource.getTsFileSize());
+              tsFileResource.getTsFileSize(), workMemTable.getMinPlanIndex(), workMemTable.getMaxPlanIndex());
         } else {
           logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
@@ -394,8 +396,8 @@ public class TsFileProcessor {
 
       try {
         addAMemtableIntoFlushingList(tmpMemTable);
+        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
-        tsFileResource.setCloseFlag();
       } catch (Exception e) {
         logger.error("{}: {} async close failed, because", storageGroupName,
             tsFileResource.getTsFile().getName(), e);
@@ -670,10 +672,11 @@ public class TsFileProcessor {
   }
 
   private void endFile() throws IOException, TsFileProcessorException {
+    logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
     writer.endFile();
-    tsFileResource.cleanCloseFlag();
+    logger.info("Ended file {}", tsFileResource);
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
@@ -748,7 +751,7 @@ public class TsFileProcessor {
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: {} get flushQueryLock and vmMergeLock read lock", storageGroupName,
+      logger.debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
           tsFileResource.getTsFile().getName());
     }
     flushQueryLock.readLock().lock();

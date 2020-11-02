@@ -20,8 +20,11 @@
 package org.apache.iotdb.cluster.query;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.query.reader.ClusterTimeGenerator;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -67,9 +70,15 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
 
       ManagedSeriesReader reader;
-      reader = readerFactory.getSeriesReader(path,
-          queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
-          null, context, queryPlan.isAscending());
+      try {
+        reader = readerFactory.getSeriesReader(path,
+            queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
+            null, context, queryPlan.isAscending());
+      } catch (EmptyIntervalException e) {
+        logger.info(e.getMessage());
+        return Collections.emptyList();
+      }
+
       readersOfSelectedSeries.add(reader);
     }
     if (logger.isDebugEnabled()) {

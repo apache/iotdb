@@ -110,7 +110,6 @@ public abstract class InsertPlan extends PhysicalPlan {
     measurements[index] = null;
   }
 
-
   /**
    * Reconstruct this plan with the failed measurements.
    * @return the plan itself, with measurements replaced with the previously failed ones.
@@ -157,4 +156,5 @@ public abstract class InsertPlan extends PhysicalPlan {
     failedExceptions = null;
     failedMeasurements = null;
   }
+
 }

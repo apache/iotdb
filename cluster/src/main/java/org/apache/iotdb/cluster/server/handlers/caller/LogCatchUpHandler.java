@@ -55,9 +55,11 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
       }
       logger.debug("{}: Succeeded to send log {}", memberName, log);
     } else if (resp == RESPONSE_LOG_MISMATCH) {
-      // this is not probably possible
-      logger.error("{}: Log mismatch occurred when sending log {}", memberName, log);
+      // this may occur when the follower suddenly received a lot of logs, committed them and
+      // discarded the old ones, so we consider in this case the appending succeeded
+      logger.debug("{}: Log mismatch occurred when sending log {}", memberName, log);
       synchronized (appendSucceed) {
+        appendSucceed.set(true);
         appendSucceed.notifyAll();
       }
     } else {

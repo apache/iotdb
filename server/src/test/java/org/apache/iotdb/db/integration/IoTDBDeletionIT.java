@@ -202,6 +202,35 @@ public class IoTDBDeletionIT {
     cleanData();
   }
 
+  @Test
+  public void testDelFlushingMemtable() throws SQLException {
+    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    // Adjust memstable threshold size to make it flush automatically
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(10000);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+         Statement statement = connection.createStatement()) {
+
+      for (int i = 1; i <= 10000; i++) {
+        statement.execute(
+            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+                i % 2 == 0));
+      }
+
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 9000");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(2500, cnt);
+      }
+      cleanData();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+  }
+
   private static void prepareSeries() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",

@@ -56,6 +56,7 @@ public class HeartbeatThread implements Runnable {
   ElectionRequest electionRequest = new ElectionRequest();
 
   private Random random = new Random();
+  boolean hasHadLeader = false;
 
   HeartbeatThread(RaftMember localMember) {
     this.localMember = localMember;
@@ -81,6 +82,7 @@ public class HeartbeatThread implements Runnable {
             // send heartbeats to the followers
             sendHeartbeats();
             Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+            hasHadLeader = true;
             break;
           case FOLLOWER:
             // check if heartbeat times out
@@ -96,12 +98,13 @@ public class HeartbeatThread implements Runnable {
                   localMember.getLeader());
               Thread.sleep(RaftServer.getConnectionTimeoutInMS());
             }
+            hasHadLeader = true;
             break;
           case ELECTOR:
           default:
-            logger.info("{}: Start elections", memberName);
+            onElectionsStart();
             startElections();
-            logger.info("{}: End elections", memberName);
+            onElectionsEnd();
             break;
         }
       } catch (InterruptedException e) {
@@ -113,6 +116,14 @@ public class HeartbeatThread implements Runnable {
     }
 
     logger.info("{}: Heartbeat thread exits", memberName);
+  }
+
+  protected void onElectionsStart() {
+    logger.info("{}: Start elections", memberName);
+  }
+
+  protected void onElectionsEnd() {
+    logger.info("{}: End elections", memberName);
   }
 
   /**

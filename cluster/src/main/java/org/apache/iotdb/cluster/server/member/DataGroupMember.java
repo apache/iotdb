@@ -54,10 +54,10 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
@@ -91,7 +91,10 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -140,6 +143,12 @@ public class DataGroupMember extends RaftMember {
   protected SlotManager slotManager;
 
   private LocalQueryExecutor localQueryExecutor;
+
+  /**
+   * When a new partition table is installed, all data members will be checked if unchanged. If
+   * not, such members will be removed.
+   */
+  private boolean unchanged;
 
   @TestOnly
   public DataGroupMember() {
@@ -377,7 +386,7 @@ public class DataGroupMember extends RaftMember {
    */
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     logger.debug("{}: received a snapshot", name);
-    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
+    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
@@ -514,7 +523,7 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new,
+    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
         snapshotSave));
   }
 
@@ -630,27 +639,13 @@ public class DataGroupMember extends RaftMember {
       return true;
     }
     FlushPlan flushPlan = new FlushPlan(null, true, localDataMemberStorageGroupPartitions);
-    PhysicalPlanLog log = new PhysicalPlanLog();
-    // assign term and index to the new log and append it
-    synchronized (logManager) {
-      log.setCurrLogTerm(getTerm().get());
-      long blockIndex = logManager.getLastLogIndex() + 1;
-      log.setCurrLogIndex(blockIndex);
-
-      log.setPlan(flushPlan);
-      logManager.append(log);
-      logManager.setBlockAppliedCommitIndex(blockIndex);
-    }
     try {
-      boolean result = appendLogInGroup(log);
-      if (!result) {
-        logger.error("{}: append log in group failed when do snapshot", name);
-      }
-      return result;
-    } catch (LogExecutionException e) {
-      logger.error("{}, flush file failed when do snapshot", name, e);
-      return false;
+      PlanExecutor.flushSpecifiedStorageGroups(flushPlan);
+      return true;
+    } catch (StorageGroupNotSetException e) {
+      logger.error("Some SGs are missing while flushing", e);
     }
+    return false;
   }
 
 
@@ -683,12 +678,12 @@ public class DataGroupMember extends RaftMember {
       if (status != null) {
         return status;
       }
-    } else if (leader != null) {
+    } else if (leader.get() != null && !ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       long startTime = Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.getOperationStartTime();
-      TSStatus result = forwardPlan(plan, leader, getHeader());
+      TSStatus result = forwardPlan(plan, leader.get(), getHeader());
       Timer.Statistic.DATA_GROUP_MEMBER_FORWARD_PLAN.calOperationCostTimeFromStart(startTime);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.getIp(), leader.getClientPort()));
+        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
         return result;
       }
     }
@@ -742,7 +737,7 @@ public class DataGroupMember extends RaftMember {
         // update the group if the deleted node was in it
         allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
         initPeerMap();
-        if (removedNode.equals(leader)) {
+        if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
             setCharacter(NodeCharacter.ELECTOR);
@@ -771,7 +766,7 @@ public class DataGroupMember extends RaftMember {
   public DataMemberReport genReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
-    return new DataMemberReport(character, leader, term.get(),
+    return new DataMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(), getHeader(), readOnly,
         QueryCoordinator.getINSTANCE()
@@ -822,5 +817,13 @@ public class DataGroupMember extends RaftMember {
   @TestOnly
   public void setLocalQueryExecutor(LocalQueryExecutor localQueryExecutor) {
     this.localQueryExecutor = localQueryExecutor;
+  }
+
+  public boolean isUnchanged() {
+    return unchanged;
+  }
+
+  public void setUnchanged(boolean unchanged) {
+    this.unchanged = unchanged;
   }
 }

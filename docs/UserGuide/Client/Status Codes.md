@@ -21,7 +21,7 @@
 
 # Status Codes
 
-**Status Code** is introduced in the latest version. For example, as IoTDB requires registering the time series first before writing data, a kind of solution is:
+**Status Code** is introduced in the latest version. A sample solution as IoTDB requires registering the time series first before writing data is:
 
 ```
 try {

@@ -177,10 +177,10 @@ Press enter to execute the command.
 
 The output of the example instruction is as follows:
 ```
-DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010:55560, 127.0.0.1:9005:40012:55561]
+DATA<root.guangzhou.d1, 1576723735188, 1576723735188>	->	[127.0.0.1:9003:40010, 127.0.0.1:9004:40011]
 ```
 The above output shows that the data group to which root.guangzhou.d1 belongs contains two nodes,
-of which 127.0.0.1:9003:40010:55560 is the header node.
+of which 127.0.0.1:9003:40010 is the header node.
 
 
 ### Query the number of slots managed by the node
@@ -215,6 +215,7 @@ Linux and MacOS：
 ```
 Shell > ./sbin/nodetool.sh -h 127.0.0.1 -p 31999 host
 ```
+
 Windows：
 ```
 Shell > .\sbin\nodetool.bat -h 127.0.0.1 -p 31999 host
