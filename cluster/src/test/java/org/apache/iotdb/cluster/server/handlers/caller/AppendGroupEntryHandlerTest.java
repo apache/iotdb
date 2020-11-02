@@ -32,7 +32,6 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.junit.After;
 import org.junit.Before;
@@ -55,6 +54,7 @@ public class AppendGroupEntryHandlerTest {
   @After
   public void tearDown() {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
+    member.stop();
     member.closeLogManager();
   }
 

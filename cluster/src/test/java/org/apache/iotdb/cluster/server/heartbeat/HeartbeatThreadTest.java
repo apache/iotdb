@@ -23,9 +23,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -44,6 +46,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -159,7 +162,7 @@ public class HeartbeatThreadTest {
   }
 
   @After
-  public void tearDown() throws InterruptedException {
+  public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     logManager.close();
     member.closeLogManager();
     logManager = null;
@@ -172,6 +175,7 @@ public class HeartbeatThreadTest {
     }
     dir.delete();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
