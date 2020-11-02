@@ -792,8 +792,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
-    forceFlushLogBuffer();
     lock.writeLock().lock();
+    forceFlushLogBuffer();
     try {
       closeCurrentFile(meta.getCommitLogIndex());
       serializeMeta(meta);

@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -220,5 +221,11 @@ public class LogDispatcherTest {
       }
     }
     return true;
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    raftMember.stop();
+    raftMember.closeLogManager();
   }
 }
