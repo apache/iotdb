@@ -74,7 +74,6 @@ public class StorageGroupInfo {
 
   public void releaseStorageGroupMemCost(long cost) {
     memTableCost.getAndAdd(-cost);
-    lastReportedSize -= cost;
   }
 
   /**
