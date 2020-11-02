@@ -1141,10 +1141,10 @@ public abstract class RaftMember {
     }
     if (status.getCode() == TSStatusCode.NO_CONNECTION.getStatusCode() &&
         (header == null || header.equals(getHeader())) &&
-        (leader != null) && leader.equals(leader)) {
+        (leader.get() != null) && leader.get().equals(node)) {
       // leader is down, trigger a new election by resetting heartbeat
       lastHeartbeatReceivedTime = -1;
-      leader = null;
+      leader.set(null);
       waitLeader();
     }
     return status;
