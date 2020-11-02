@@ -115,8 +115,10 @@ public class Planner {
     filterOp.setIsSingle(true);
     filterOp.setPathSet(pathSet);
 
-    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(startTime));
-    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath, Long.toString(endTime));
+    BasicFunctionOperator left = new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO,
+        timePath, Long.toString(startTime));
+    BasicFunctionOperator right = new BasicFunctionOperator(SQLConstant.LESSTHAN, timePath,
+        Long.toString(endTime));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
 

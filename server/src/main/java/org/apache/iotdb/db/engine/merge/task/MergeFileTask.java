@@ -28,7 +28,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
@@ -314,6 +317,12 @@ class MergeFileTask {
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
+      // clean cache
+      if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
+        ChunkCache.getInstance().clear();
+        ChunkMetadataCache.getInstance().clear();
+        TimeSeriesMetadataCache.getInstance().clear();
+      }
       seqFile.writeUnlock();
     }
   }

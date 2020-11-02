@@ -81,7 +81,7 @@ Note:
 
 ## 5. Schema Inference
 
-The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
+The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is listed:
 
 <center>
 <table style="text-align:center">
@@ -92,7 +92,7 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 </table>
 </center>
 
-The existing data in the TsFile is as follows:
+The existing data in the TsFile are:
 
 <center>
 <table style="text-align:center">
@@ -107,7 +107,7 @@ The existing data in the TsFile is as follows:
 
 
 
-The corresponding SparkSQL table is as follows:
+The corresponding SparkSQL table is:
 
 | time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|--------------------------|----------------------------|
@@ -237,7 +237,7 @@ newDf.show
 
 ## Appendix A: Old Design of Schema Inference
 
-The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three Measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is as follows:
+The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is:
 
 <center>
 <table style="text-align:center">
@@ -249,7 +249,7 @@ The way to display TsFile is related to TsFile Schema. Take the following TsFile
 <span>Basic info of Measurements</span>
 </center>
 
-The existing data in the file is as follows:
+The existing data in the file are:
 
 <center>
 <table style="text-align:center">
@@ -263,16 +263,16 @@ The existing data in the file is as follows:
 </table>
 <span>A set of time-series data</span>
 </center>
-There are two ways to show it out:
+There are two ways to show a set of time-series data:
 
 #### the default way
 
-Two columns will be created to store the full path of the device: time(LongType) and delta_object(StringType).
+Two columns are created to store the full path of the device: time(LongType) and delta_object(StringType).
 
 - `time` : Timestamp, LongType
 - `delta_object` : Delta_object ID, StringType
 
-Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is as follows:
+Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is:
 
 <center>
 	<table style="text-align:center">
@@ -300,11 +300,11 @@ Next, a column is created for each Measurement to store the specific data. The S
 </center>
 
 
-#### unfolding delta_object column
+#### unfold delta_object column
 
-Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. If the user wants to use this display way, the parameter "delta\_object\_name" needs to be set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column will be created for each Measurement to store the specific data.
+Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. To use this display way, the parameter "delta\_object\_name" is set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column is created for each Measurement to store the specific data.
 
-Then The SparkSQL Table Structure is as follow:
+Then SparkSQL Table Structure is as follows:
 
 <center>
 	<table style="text-align:center">
@@ -331,7 +331,7 @@ Then The SparkSQL Table Structure is as follow:
 	</table>
 </center>
 
-TsFile-Spark-Connector can display one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name will have the same data type by default. Note that if there is a situation with the same name but different data types, TsFile-Spark-Connector will not guarantee the correctness of the results.
+TsFile-Spark-Connector displays one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name have the same data type by default. Note that if a situation with the same name but different data types exists, TsFile-Spark-Connector does not guarantee the correctness of the results.
 
 The writing process is to write a DataFrame as one or more TsFiles. By default, two columns need to be included: time and delta_object. The rest of the columns are used as Measurement. If user wants to write the second table structure back to TsFile, user can set the "delta\_object\_name" parameter(refer to Section 5.1 of Section 5.1 of this manual).
 

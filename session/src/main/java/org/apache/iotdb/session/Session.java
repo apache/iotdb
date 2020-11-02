@@ -92,6 +92,10 @@ public class Session {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
   }
 
+  public Session(String host, int rpcPort, String username, String password, int fetchSize) {
+    this(host, rpcPort, username, password, fetchSize, null);
+  }
+
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
   }

@@ -62,29 +62,29 @@
 
 #### WAL
 > 在basedir/wal目录下
-1. ${StroageName}-${TsFileName}/wal1
+1. {StroageName}-{TsFileName}/wal1
     + 每个memtable会对应一个wal文件
 
 #### TsFile
-> 在basedir/data/sequence or unsequence/${StorageGroupName}/${TimePartitionId}/目录下
-1. ${time}-${version}-${mergeCnt}.tsfile
+> 在basedir/data/sequence or unsequence/{StorageGroupName}/{TimePartitionId}/目录下
+1. {time}-{version}-{mergeCnt}.tsfile
     + 数据文件
-2. ${TsFileName}-${level}-${time}.vm
+2. {TsFileName}-{level}-{time}.vm
     + 虚拟合并数据文件，用于优化查询，详细请看https://issues.apache.org/jira/browse/IOTDB-706
-3. ${TsFileName}.tsfile.mod
+3. {TsFileName}.tsfile.mod
     + 更新文件，主要记录删除操作
 
 #### TsFileResource
-1. ${TsFileName}.tsfile.resource
+1. {TsFileName}.tsfile.resource
     + TsFile的概要与索引文件
-2. ${TsFileName}.tsfile.resource.temp
+2. {TsFileName}.tsfile.resource.temp
     + 临时文件，用于避免更新tsfile.resource时损坏tsfile.resource
-3. ${TsFileName}.tsfile.resource.closing
+3. {TsFileName}.tsfile.resource.closing
     + 关闭标记文件，用于标记TsFile处于关闭状态，重启后可以据此选择是关闭或继续写入该文件
 
 #### Version
-> 在basedir/system/storage_groups/${StorageGroupName}/${TimePartitionId} or upgrade目录下
-1. Version-${version}
+> 在basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade目录下
+1. Version-{version}
     + 版本号文件，使用文件名来记录当前最大的版本号
 
 #### Upgrade
@@ -93,7 +93,7 @@
     + 记录升级进度
 
 #### Merge
-> 在basedir/system/storage_groups/${StrorageGroup}/目录下
+> 在basedir/system/storage_groups/{StrorageGroup}/目录下
 1. merge.mods
     + 记录合并过程中发生的删除等操作
 2. merge.log
@@ -107,7 +107,7 @@
 
 #### CompressRatio
 > 在basedir/system/compression_ration目录下
-1. Ration-${compressionRatioSum}-${calTimes}
+1. Ration-{compressionRatioSum}-{calTimes}
     + 记录每个文件的压缩率
 
 ---
@@ -125,15 +125,15 @@
     + 本地节点在集群中的唯一标识
 2. partitions
     + 分区表文件，记录数据分布信息
-3. ${time}_${random}.task
+3. {time}_{random}.task
     + pullSnapshotTask文件，记录的是slot和owner，当一个节点加入集群时，会创建这个文件来跟踪数据拉取情况
-    + 在basedir/raft/${nodeIdentifier}/snapshot_task/目录下
+    + 在basedir/raft/{nodeIdentifier}/snapshot_task/目录下
 
 ## Raft相关文件
-> 在basedir/system/raftLog/${nodeIdentifier}/目录下
+> 在basedir/system/raftLog/{nodeIdentifier}/目录下
 
 ### Raft Log
-1. .data-${version}
+1. .data-{version}
     + raft committed log, 默认只保留最新的1000条日志
 
 ### Raft Meta
@@ -146,8 +146,8 @@
     + 临时文件，用于更新logMeta时防止损坏旧的logMeta文件
 
 ### Raft Catch Up
-> 在basedir/remote/${nodeIdentifier}/${storageGroupName}/${partitionNum}/目录下
-1. ${fileName}.tsfile
+> 在basedir/remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/目录下
+1. {fileName}.tsfile
     + 远程TsFile，拉取完毕会load进对应的存储组数据目录下
-2. ${fileName}.tsfile.mod
+2. {fileName}.tsfile.mod
     + 远程更新文件TsFile.mod，拉取完毕会load进对应的存储组数据目录下
