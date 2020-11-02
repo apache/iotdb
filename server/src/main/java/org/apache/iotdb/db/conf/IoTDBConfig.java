@@ -162,6 +162,15 @@ public class IoTDBConfig {
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
   /**
+   * When inserting rejected, waiting this time to check system again
+   */
+  private int waitingTimeWhenInsertBlocked = 100;
+
+  /**
+   * When inserting rejected exceeds this, throw a exception
+   */
+  private int maxWaitingTimeWhenInsertBlocked = 10000; 
+  /**
    * Is the write ahead log enable.
    */
   private boolean enableWal = true;
@@ -1985,5 +1994,21 @@ public class IoTDBConfig {
 
   public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
+  }
+
+  public int getWaitingTimeWhenInsertBlocked() {
+    return waitingTimeWhenInsertBlocked;
+  }
+
+  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
+    this.waitingTimeWhenInsertBlocked = waitingTimeWhenInsertBlocked;
+  }
+
+  public int getMaxWaitingTimeWhenInsertBlocked() {
+    return maxWaitingTimeWhenInsertBlocked;
+  }
+
+  public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    this.maxWaitingTimeWhenInsertBlocked = maxWaitingTimeWhenInsertBlocked;
   }
 }
