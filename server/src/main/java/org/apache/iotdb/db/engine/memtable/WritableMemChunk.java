@@ -93,11 +93,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
-    return list.checkIfDataListIsEnough(lengthToBeAdded);
-  }
-
-  @Override
   public void putLong(long t, long v) {
     list.putLong(t, v);
   }

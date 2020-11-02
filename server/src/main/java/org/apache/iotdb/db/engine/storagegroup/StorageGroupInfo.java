@@ -76,13 +76,6 @@ public class StorageGroupInfo {
     memTableCost.getAndAdd(-cost);
   }
 
-  /**
-   * called by TSPInfo when closing a TSP
-   */
-  public void releaseWalMemCost(long cost) {
-    memTableCost.getAndAdd(-cost);
-  }
-
   public long getSgMemCost() {
     return memTableCost.get();
   }

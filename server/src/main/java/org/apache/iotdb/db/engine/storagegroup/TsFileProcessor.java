@@ -278,9 +278,12 @@ public class TsFileProcessor {
             insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
-      else if (workMemTable.checkIfNeedToGetDataList(insertRowPlan.getDeviceId().getFullPath(),
-            insertRowPlan.getMeasurements()[i], 1)) {
-        memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
+      else {
+        int tvListSize = workMemTable.getCurrentTVListSize(insertRowPlan.getDeviceId().getFullPath(),
+            insertRowPlan.getMeasurements()[i]);
+        memTableIncrement += ((tvListSize + 1) % PrimitiveArrayManager.ARRAY_SIZE)
+            / PrimitiveArrayManager.ARRAY_SIZE
+            * TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       }
       // TEXT data size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
@@ -333,13 +336,18 @@ public class TsFileProcessor {
         memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
       }
-      else if (workMemTable.checkIfNeedToGetDataList(insertTabletPlan.getDeviceId().getFullPath(),
-          insertTabletPlan.getMeasurements()[i], end - start)) {
+      else {
         int tvListSize = workMemTable.getCurrentTVListSize(insertTabletPlan.getDeviceId().getFullPath(),
             insertTabletPlan.getMeasurements()[i]);
-        memTableIncrement += ((end - start + (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
-            / PrimitiveArrayManager.ARRAY_SIZE + 1)
+        if (tvListSize % PrimitiveArrayManager.ARRAY_SIZE == 0) {
+          memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+              * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
+        }
+        else {
+          memTableIncrement += ((end - start + (tvListSize % PrimitiveArrayManager.ARRAY_SIZE))
+            / PrimitiveArrayManager.ARRAY_SIZE)
             * TVList.tvListArrayMemSize(insertTabletPlan.getDataTypes()[i]);
+        }
       }
       // TEXT data size
       if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT) {
@@ -376,8 +384,8 @@ public class TsFileProcessor {
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(100);
-        if (System.currentTimeMillis() - startTime > 30000) {
-          throw new WriteProcessException("System rejected over 30000ms");
+        if (System.currentTimeMillis() - startTime > 10000) {
+          throw new WriteProcessException("System rejected over 10000ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);

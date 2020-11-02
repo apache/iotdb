@@ -140,11 +140,6 @@ public interface IMemTable {
   /**
    * only used when mem control enabled
    */
-  boolean checkIfNeedToGetDataList(String deviceId, String measurement, int lengthToBeAdded);
-
-  /**
-   * only used when mem control enabled
-   */
   int getCurrentTVListSize(String deviceId, String measurement);
 
   /**

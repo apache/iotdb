@@ -181,13 +181,6 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean checkIfNeedToGetDataList(String deviceId, String measurement, int lengthToBeAdded) {
-    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
-    IWritableMemChunk memChunk = memSeries.get(measurement);
-    return !memChunk.checkIfDataListIsEnough(lengthToBeAdded);
-  }
-
-  @Override
   public int getCurrentTVListSize(String deviceId, String measurement) {
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     IWritableMemChunk memChunk = memSeries.get(measurement);

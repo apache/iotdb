@@ -83,5 +83,4 @@ public interface IWritableMemChunk {
    */
   int delete(long lowerBound, long upperBound);
 
-  boolean checkIfDataListIsEnough(int lengthToBeAdded);
 }

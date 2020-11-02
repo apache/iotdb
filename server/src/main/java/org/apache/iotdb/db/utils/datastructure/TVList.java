@@ -257,10 +257,6 @@ public abstract class TVList {
     return PrimitiveArrayManager.getPrimitiveArraysByType(dataType);
   }
 
-  public boolean checkIfDataListIsEnough(int lengthToBeAdded) {
-    return (size % ARRAY_SIZE) + lengthToBeAdded < ARRAY_SIZE;
-  }
-
   protected long[] cloneTime(long[] array) {
     long[] cloneArray = new long[array.length];
     System.arraycopy(array, 0, cloneArray, 0, array.length);
