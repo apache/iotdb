@@ -270,10 +270,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeStarsInPath(List<PartialPath> paths, List<String> afterConcatAggregations,
-      SelectOperator selectOperator, int limit, int offset, int maxDeduplicatedPathNum)
+      SelectOperator selectOperator, int finalLimit, int finalOffset, int maxDeduplicatedPathNum)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    limit = limit == 0 || maxDeduplicatedPathNum < limit ? maxDeduplicatedPathNum + 1 : limit;
-    boolean hasOffset = offset != 0;
+    int offset = finalOffset;
+    int limit = finalLimit == 0 || maxDeduplicatedPathNum < finalLimit
+        ? maxDeduplicatedPathNum + 1 : finalLimit;
     int consumed = 0;
     List<PartialPath> retPaths = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
@@ -318,8 +319,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
-    if (consumed == 0 ? hasOffset : retPaths.isEmpty()) {
-      throw new LogicalOptimizeException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+    if (consumed == 0 ? finalOffset != 0 : retPaths.isEmpty()) {
+      throw new LogicalOptimizeException(String.format(
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
+          finalOffset, consumed));
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
