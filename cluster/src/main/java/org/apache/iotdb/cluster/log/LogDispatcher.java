@@ -31,7 +31,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -42,6 +45,8 @@ import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -274,7 +279,7 @@ public class LogDispatcher {
     }
 
     private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList,
-        List<SendLogRequest> currBatch) {
+        List<SendLogRequest> currBatch, int firstIndex) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
       if (member.getHeader() != null) {
@@ -289,9 +294,9 @@ public class LogDispatcher {
 
       request.setEntries(logList);
       // set index for raft
-      request.setPrevLogIndex(currBatch.get(0).getLog().getCurrLogIndex() - 1);
+      request.setPrevLogIndex(currBatch.get(firstIndex).getLog().getCurrLogIndex() - 1);
       try {
-        request.setPrevLogTerm(currBatch.get(0).getAppendEntryRequest().prevLogTerm);
+        request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
       } catch (Exception e) {
         logger.error("getTerm failed for newly append entries", e);
       }
@@ -299,22 +304,35 @@ public class LogDispatcher {
     }
 
     private void sendLogs(List<SendLogRequest> currBatch) throws TException {
-      List<ByteBuffer> logList = new ArrayList<>();
-      for (SendLogRequest request : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
-            .calOperationCostTimeFromStart(request.getLog().getCreateTime());
-        logList.add(request.getAppendEntryRequest().entry);
-      }
+      int logIndex = 0;
+      logger.info("send logs from index {} to {}", currBatch.get(0).getLog().getCurrLogIndex(),
+        currBatch.get(currBatch.size() - 1).getLog().getCurrLogIndex());
+      while (logIndex < currBatch.size()) {
+        long logSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
+        List<ByteBuffer> logList = new ArrayList<>();
+        int prevIndex = logIndex;
 
-      AppendEntriesRequest appendEntriesReques = prepareRequest(logList, currBatch);
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        appendEntriesAsync(logList, appendEntriesReques, new ArrayList<>(currBatch));
-      } else {
-        appendEntriesSync(logList, appendEntriesReques, currBatch);
-      }
-      for (SendLogRequest batch : currBatch) {
-        Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-            .calOperationCostTimeFromStart(batch.getLog().getCreateTime());
+        for (; logIndex < currBatch.size(); logIndex++) {
+          long curSize = currBatch.get(logIndex).getAppendEntryRequest().entry.array().length;
+          if (logSize - curSize <= ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+            break;
+          }
+          logSize -= curSize;
+          Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
+            .calOperationCostTimeFromStart(currBatch.get(logIndex).getLog().getCreateTime());
+          logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
+        }
+
+        AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        } else {
+          appendEntriesSync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+        }
+        for (; prevIndex < logIndex; prevIndex++) {
+          Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
+            .calOperationCostTimeFromStart(currBatch.get(prevIndex).getLog().getCreateTime());
+        }
       }
     }
 

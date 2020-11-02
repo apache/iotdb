@@ -71,6 +71,8 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * SyncClientAdaptor convert the async of AsyncClient method call to a sync one by synchronizing on
@@ -79,6 +81,8 @@ import org.apache.thrift.TException;
  */
 @SuppressWarnings("java:S2274") // enable timeout
 public class SyncClientAdaptor {
+
+  private static final Logger logger = LoggerFactory.getLogger(SyncClientAdaptor.class);
 
   private SyncClientAdaptor() {
     // static class
@@ -99,16 +103,21 @@ public class SyncClientAdaptor {
 
   public static Boolean matchTerm(AsyncClient client, Node target, long prevLogIndex,
       long prevLogTerm, Node header) throws TException, InterruptedException {
-    AtomicReference<Boolean> resultRef = new AtomicReference<>(null);
-    GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
+    try {
+      AtomicReference<Boolean> resultRef = new AtomicReference<>(null);
+      GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
 
-    client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
-    synchronized (resultRef) {
-      if (resultRef.get() == null) {
-        resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+      client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
+      synchronized (resultRef) {
+        if (resultRef.get() == null) {
+          resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+        }
       }
+      return resultRef.get();
+    } catch (NullPointerException e) {
+      logger.error("match term null exception", e);
+      throw e;
     }
-    return resultRef.get();
   }
 
   public static Long querySingleSeriesByTimestamp(AsyncDataClient client,

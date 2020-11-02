@@ -19,49 +19,33 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
-import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
+import org.apache.iotdb.cluster.log.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * PhysicalPlanLog contains a non-partitioned physical plan like set storage group.
- */
-public class PhysicalPlanLog extends Log {
+import static org.apache.iotdb.cluster.log.Log.Types.TEST_LARGE_CONTENT;
 
-  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlanLog.class);
-  private PhysicalPlan plan;
-
-  public PhysicalPlanLog() {
-  }
-
-  public PhysicalPlanLog(PhysicalPlan plan) {
-    this.plan = plan;
+public class LargeTestLog extends Log {
+  private ByteBuffer data;
+  public LargeTestLog() {
+    data = ByteBuffer.wrap(new byte[8192]);
   }
 
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-      dataOutputStream.writeByte((byte) PHYSICAL_PLAN.ordinal());
-
+      dataOutputStream.writeByte((byte) TEST_LARGE_CONTENT.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
-
-      plan.serialize(dataOutputStream);
+      dataOutputStream.write(data.array());
     } catch (IOException e) {
       // unreachable
     }
-
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
@@ -69,44 +53,26 @@ public class PhysicalPlanLog extends Log {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
-
-    try {
-      plan = PhysicalPlan.Factory.create(buffer);
-    } catch (IOException | IllegalPathException e) {
-      logger.error("Cannot parse a physical {}:{} plan {}", getCurrLogIndex(), getCurrLogTerm(), buffer.array().length, e);
-    }
-  }
-
-  public PhysicalPlan getPlan() {
-    return plan;
-  }
-
-  public void setPlan(PhysicalPlan plan) {
-    this.plan = plan;
+    data.put(buffer);
   }
 
   @Override
-  public String toString() {
-    return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
+  public boolean equals(Object obj) {
+    if (!(obj instanceof LargeTestLog)) {
       return false;
     }
-    if (!super.equals(o)) {
-      return false;
-    }
-    PhysicalPlanLog that = (PhysicalPlanLog) o;
-    return Objects.equals(plan, that.plan);
+    LargeTestLog obj1 = (LargeTestLog) obj;
+    return getCurrLogIndex() == obj1.getCurrLogIndex() &&
+      getCurrLogTerm() == obj1.getCurrLogTerm();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), plan);
+    return Objects.hash(getCurrLogIndex(), getCurrLogTerm());
+  }
+
+  @Override
+  public String toString() {
+    return "LargeTestLog{" + getCurrLogIndex() + "-" + getCurrLogTerm() + "}";
   }
 }

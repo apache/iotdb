@@ -46,6 +46,7 @@ import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -88,6 +89,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -153,7 +155,7 @@ public abstract class RaftMember {
    */
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
-  volatile Node leader;
+  AtomicReference<Node> leader = new AtomicReference<>(ClusterConstant.EMPTY_NODE);
   /**
    * the node that thisNode has voted for in this round of election, which prevents a node voting
    * twice in a single election.
@@ -521,7 +523,6 @@ public abstract class RaftMember {
       Log log;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
-
       } catch (BufferUnderflowException e) {
         buffer.reset();
         throw e;
@@ -628,19 +629,23 @@ public abstract class RaftMember {
   }
 
   public Node getLeader() {
-    return leader;
+    return leader.get();
   }
 
   public void setLeader(Node leader) {
-    if (!Objects.equals(leader, this.leader)) {
-      if (leader == null) {
+    if (!Objects.equals(leader, this.leader.get())) {
+      if (ClusterConstant.EMPTY_NODE.equals(leader) || leader == null) {
         logger.info("{} has been set to null in term {}", getName(), term.get());
       } else if (!Objects.equals(leader, this.thisNode)) {
         logger.info("{} has become a follower of {} in term {}", getName(), leader, term.get());
       }
       synchronized (waitLeaderCondition) {
-        this.leader = leader;
-        if (leader != null) {
+        if (leader == null) {
+          this.leader.getAndSet(ClusterConstant.EMPTY_NODE);
+        } else {
+          this.leader.getAndSet(leader);
+        }
+        if (!ClusterConstant.EMPTY_NODE.equals(this.leader.get())) {
           waitLeaderCondition.notifyAll();
         }
       }
@@ -757,7 +762,7 @@ public abstract class RaftMember {
       return true;
     }
     waitLeader();
-    if (leader == null) {
+    if (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       // the leader has not been elected, we must assume the node falls behind
       logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       return false;
@@ -765,7 +770,7 @@ public abstract class RaftMember {
     if (character == NodeCharacter.LEADER) {
       return true;
     }
-    logger.debug("{}: try synchronizing with the leader {}", name, leader);
+    logger.debug("{}: try synchronizing with the leader {}", name, leader.get());
     return waitUntilCatchUp();
   }
 
@@ -774,7 +779,7 @@ public abstract class RaftMember {
    */
   public void waitLeader() {
     long startTime = System.currentTimeMillis();
-    while (leader == null) {
+    while (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       synchronized (waitLeaderCondition) {
         try {
           waitLeaderCondition.wait(10);
@@ -789,7 +794,7 @@ public abstract class RaftMember {
         break;
       }
     }
-    logger.debug("{}: current leader is {}", name, leader);
+    logger.debug("{}: current leader is {}", name, leader.get());
   }
 
   /**
@@ -810,11 +815,11 @@ public abstract class RaftMember {
         return false;
       }
     } catch (TException e) {
-      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       return false;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+      logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       return false;
     }
 
@@ -839,7 +844,7 @@ public abstract class RaftMember {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader, e);
+        logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       }
     }
     logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
@@ -973,21 +978,21 @@ public abstract class RaftMember {
   private long requestCommitIdAsync() throws TException, InterruptedException {
     // use Long.MAX_VALUE to indicate a timeout
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
-    AsyncClient client = getAsyncClient(leader);
+    AsyncClient client = getAsyncClient(leader.get());
     if (client == null) {
       // cannot connect to the leader
       logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       return commitIdResult.get();
     }
     synchronized (commitIdResult) {
-      client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
+      client.requestCommitIndex(getHeader(), new GenericHandler<>(leader.get(), commitIdResult));
       commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
     }
     return commitIdResult.get();
   }
 
   private long requestCommitIdSync() throws TException {
-    Client client = getSyncClient(leader);
+    Client client = getSyncClient(leader.get());
     if (client == null) {
       // cannot connect to the leader
       logger.warn(MSG_NO_LEADER_IN_SYNC, name);
@@ -1237,7 +1242,7 @@ public abstract class RaftMember {
   }
 
   private AsyncClient getAsyncClient(Node node, AsyncClientPool pool) {
-    if (node == null) {
+    if (ClusterConstant.EMPTY_NODE.equals(node)) {
       return null;
     }
     AsyncClient client = null;
@@ -1468,6 +1473,10 @@ public abstract class RaftMember {
     while (true) {
       long startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.getOperationStartTime();
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
+      if (character != NodeCharacter.LEADER) {
+        logger.debug("Has lose leadership, so need not to send log");
+        return false;
+      }
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
       switch (result) {
@@ -1537,7 +1546,7 @@ public abstract class RaftMember {
     try {
       if (allNodes.size() > 2) {
         // if there are more than one followers, send the requests in parallel so that one slow
-        // follower will not
+        // follower will not be blocked
         for (Node node : allNodes) {
           appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
               leaderShipStale, newLeaderTerm, request));

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cluster.config;
 
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 public class ClusterConstant {
 
   // a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
@@ -30,6 +32,8 @@ public class ClusterConstant {
 
   public static final int LOG_NUM_IN_BATCH = 1024;
   public static final int LEFT_SIZE_IN_REQUEST = 1024;
+
+  public static final Node EMPTY_NODE = new Node();
 
   private ClusterConstant() {
     // constant class

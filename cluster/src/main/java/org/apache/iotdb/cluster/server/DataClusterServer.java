@@ -628,6 +628,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public List<DataMemberReport> genMemberReports() {
     List<DataMemberReport> dataMemberReports = new ArrayList<>();
     for (DataGroupMember value : headerGroupMap.values()) {
+
       dataMemberReports.add(value.genReport());
     }
     return dataMemberReports;

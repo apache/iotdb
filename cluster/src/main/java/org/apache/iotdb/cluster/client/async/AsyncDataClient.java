@@ -88,6 +88,7 @@ public class AsyncDataClient extends AsyncClient {
       this.protocolFactory = protocolFactory;
     }
 
+    @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
         throws IOException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
@@ -109,6 +110,7 @@ public class AsyncDataClient extends AsyncClient {
       }
     }
 
+    @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
         throws IOException {
       return new AsyncDataClient(protocolFactory, manager, node, pool);
