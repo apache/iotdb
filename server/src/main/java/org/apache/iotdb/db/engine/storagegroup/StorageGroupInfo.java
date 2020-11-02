@@ -68,9 +68,6 @@ public class StorageGroupInfo {
     }
   }
 
-  public void addTsFileProcessor() {
-    
-  }
   public void addStorageGroupMemCost(long cost) {
     memoryCost.getAndAdd(cost);
   }
@@ -88,7 +85,7 @@ public class StorageGroupInfo {
   }
 
   public boolean needToReportToSystem() {
-    return getSgMemCost() - lastReportedSize > storageGroupSizeReportThreshold;
+    return memoryCost.get() - lastReportedSize > storageGroupSizeReportThreshold;
   }
 
   public void setLastReportedSize(long size) {

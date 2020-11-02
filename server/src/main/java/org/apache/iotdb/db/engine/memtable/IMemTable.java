@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -140,7 +142,7 @@ public interface IMemTable {
   /**
    * only used when mem control enabled
    */
-  int getCurrentPointNum(String deviceId, String measurement);
+  int getCurrentChunkPointNum(String deviceId, String measurement);
 
   /**
    * only used when mem control enabled
