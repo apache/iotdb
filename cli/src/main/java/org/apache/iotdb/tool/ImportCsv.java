@@ -135,6 +135,14 @@ public class ImportCsv extends AbstractCsvTool {
         for(String device: deviceToMeasurementsAndPositions.keySet()) {
           devices.add(device);
           Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.get(device);
+          List<String> measurements = new ArrayList<>();
+          List<String> values = new ArrayList<>();
+          for(String measurement : measurementsAndPositions.keySet()) {
+            measurements.add(measurement);
+            values.add(cols[measurementsAndPositions.get(measurement)]);
+          }
+          measurementsList.add(measurements);
+          valuesList.add(values);
         }
       }
 
