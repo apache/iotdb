@@ -25,7 +25,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,8 +52,6 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_SUFFIX = "csv";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
-
-  private static Session session;
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
   /**
@@ -104,7 +101,6 @@ public class ImportCsv extends AbstractCsvTool {
    * Data from csv To tsfile.
    */
   private static void loadDataFromCSV(File file) {
-    session = null;
     int fileLine;
     try {
       fileLine = getFileLineCount(file);
@@ -117,39 +113,33 @@ public class ImportCsv extends AbstractCsvTool {
         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();
-      String[] strHeadInfo = header.split(",");
-      if (strHeadInfo.length <= 1) {
+      String[] cols = header.split(",");
+      if (cols.length <= 1) {
         System.out.println("The CSV file "+ file.getName() +" illegal, please check first line");
         return;
       }
 
       List<String> devices = new ArrayList<>();
       List<Long> times = new ArrayList<>();
-      List<List<String>> measurements = new ArrayList<>();
+      List<List<String>> measurementsList = new ArrayList<>();
       List<List<String>> valuesList = new ArrayList<>();
-      Map<String, List<String>> deviceToMeasurements = new HashMap<>();
-
-      String[] cols = header.split(",");
+      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions = new HashMap<>();
 
       for(int i = 1; i < cols.length; i++) {
-        splitColToDeviceAndMeasurement(cols[i], deviceToMeasurements);
+        splitColToDeviceAndMeasurement(cols[i], deviceToMeasurementsAndPositions, i);
       }
 
       String line;
       while((line = br.readLine()) != null) {
         cols = line.split(",");
-        times.add(Long.parseLong(cols[0]));
-        List<String> values = new ArrayList<>(Arrays.asList(cols).subList(1, cols.length));
-        valuesList.add(values);
-      }
-
-      for(String device: deviceToMeasurements.keySet()) {
-        devices.add(device);
-        measurements.add(deviceToMeasurements.get(device));
+        for(String device: deviceToMeasurementsAndPositions.keySet()) {
+          devices.add(device);
+          Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.get(device);
+        }
       }
 
       try {
-        session.insertRecords(devices, times, measurements, valuesList);
+        session.insertRecords(devices, times, measurementsList, valuesList);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         System.out.println("Meet error when insert csv because " + e.getMessage());
         return;
@@ -226,7 +216,7 @@ public class ImportCsv extends AbstractCsvTool {
       String timeZone){
     try {
       session = new Session(ip, Integer.parseInt(port), username, password);
-      session.open(true);
+      session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
 
@@ -288,7 +278,7 @@ public class ImportCsv extends AbstractCsvTool {
     return line;
   }
 
-  private static void splitColToDeviceAndMeasurement(String col, Map<String, List<String>> deviceToMeasurements) {
+  private static void splitColToDeviceAndMeasurement(String col, Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
     if (col.length() > 0) {
       if (col.charAt(col.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
         int endIndex = col.lastIndexOf('"', col.length() - 2);
@@ -297,7 +287,7 @@ public class ImportCsv extends AbstractCsvTool {
           endIndex = col.lastIndexOf('"', endIndex - 2);
         }
         if (endIndex != -1 && (endIndex == 0 || col.charAt(endIndex - 1) == '.')) {
-          putDeviceAndMeasurement(col.substring(0, endIndex - 1), col.substring(endIndex), deviceToMeasurements);
+          putDeviceAndMeasurement(col.substring(0, endIndex - 1), col.substring(endIndex), deviceToMeasurementsAndPositions, position);
         } else {
           throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
         }
@@ -305,25 +295,25 @@ public class ImportCsv extends AbstractCsvTool {
           && col.charAt(col.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
         int endIndex = col.lastIndexOf(TsFileConstant.PATH_SEPARATOR_CHAR);
         if (endIndex < 0) {
-          putDeviceAndMeasurement("", col, deviceToMeasurements);
+          putDeviceAndMeasurement("", col, deviceToMeasurementsAndPositions, position);
         } else {
-          putDeviceAndMeasurement(col.substring(0, endIndex), col.substring(endIndex + 1), deviceToMeasurements);
+          putDeviceAndMeasurement(col.substring(0, endIndex), col.substring(endIndex + 1), deviceToMeasurementsAndPositions, position);
         }
       } else {
         throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
       }
     } else {
-      putDeviceAndMeasurement("", col, deviceToMeasurements);
+      putDeviceAndMeasurement("", col, deviceToMeasurementsAndPositions, position);
     }
   }
 
-  private static void putDeviceAndMeasurement(String device, String measurement, Map<String, List<String>> deviceToMeasurements) {
-    if(deviceToMeasurements.get(device) == null) {
-      List<String> measurements = new ArrayList<>();
-      measurements.add(measurement);
-      deviceToMeasurements.put(device, measurements);
+  private static void putDeviceAndMeasurement(String device, String measurement, Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
+    if(deviceToMeasurementsAndPositions.get(device) == null) {
+      Map<String, Integer> measurementsAndPositions = new HashMap<>();
+      measurementsAndPositions.put(measurement, position);
+      deviceToMeasurementsAndPositions.put(device, measurementsAndPositions);
     } else {
-      deviceToMeasurements.get(device).add(measurement);
+      deviceToMeasurementsAndPositions.get(device).put(measurement, position);
     }
   }
 }
