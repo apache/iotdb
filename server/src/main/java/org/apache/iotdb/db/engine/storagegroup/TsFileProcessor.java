@@ -134,7 +134,7 @@ public class TsFileProcessor {
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
       this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-      this.storageGroupInfo.reportTsFileProcessorInfo(this);
+      this.storageGroupInfo.initTsFileProcessorInfo(this);
       this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }
@@ -159,7 +159,7 @@ public class TsFileProcessor {
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
       this.tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-      this.storageGroupInfo.reportTsFileProcessorInfo(this);
+      this.storageGroupInfo.initTsFileProcessorInfo(this);
       this.tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileResource.calculateRamSize());
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
     }

@@ -35,7 +35,7 @@ public class StorageGroupInfo {
   /**
    * The total Storage group memory cost
    */
-  private AtomicLong memTableCost;
+  private AtomicLong memoryCost;
 
   /**
    * The threshold of reporting it's size to SystemInfo
@@ -52,7 +52,7 @@ public class StorageGroupInfo {
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
-    memTableCost = new AtomicLong();
+    memoryCost = new AtomicLong();
   }
 
   public StorageGroupProcessor getStorageGroupProcessor() {
@@ -60,24 +60,24 @@ public class StorageGroupInfo {
   }
 
   /**
-   * When create a new TsFileProcessor, call this method to report it
+   * When create a new TsFileProcessor, call this method
    */
-  public void reportTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
+  public void initTsFileProcessorInfo(TsFileProcessor tsFileProcessor) {
     if (reportedTsps.add(tsFileProcessor)) {
-      memTableCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
+      memoryCost.getAndAdd(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize());
     }
   }
 
   public void addStorageGroupMemCost(long cost) {
-    memTableCost.getAndAdd(cost);
+    memoryCost.getAndAdd(cost);
   }
 
   public void releaseStorageGroupMemCost(long cost) {
-    memTableCost.getAndAdd(-cost);
+    memoryCost.getAndAdd(-cost);
   }
 
   public long getSgMemCost() {
-    return memTableCost.get();
+    return memoryCost.get();
   }
 
   public Set<TsFileProcessor> getAllReportedTsp() {
