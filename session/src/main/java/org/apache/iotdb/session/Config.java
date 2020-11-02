@@ -26,7 +26,7 @@ public class Config {
   public static final int DEFAULT_TIMEOUT_MS = 0;
   public static final int DEFAULT_THREAD_POOL_SIZE = 100;
   public static final int DEFAULT_BLOCKING_QUEUE_SIZE = 100000;
-  public static final int DEFAULT_THREAD_WAIT_TIME = 10000;
+  public static final int DEFAULT_THREAD_WAIT_TIME_MS = 10000;
   public static final int RETRY_NUM = 3;
   public static final long RETRY_INTERVAL_MS = 1000;
 }
