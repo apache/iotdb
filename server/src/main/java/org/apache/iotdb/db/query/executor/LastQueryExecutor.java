@@ -145,6 +145,8 @@ public class LastQueryExecutor {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath);
         if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
+        } else if (timeValuePair != null) {
+          return new TimeValuePair(Long.MIN_VALUE, null);
         }
       }
 
@@ -152,6 +154,8 @@ public class LastQueryExecutor {
         TimeValuePair timeValuePair =  node.getCachedLast();
         if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
+        } else if (timeValuePair != null) {
+          return new TimeValuePair(Long.MIN_VALUE, null);
         }
       }
     }
@@ -173,7 +177,7 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = lastReader.readLastPoint();
 
     // Update cached last value with low priority unless "FROM" expression exists
-    if (lastCacheEnabled && filter == null) {
+    if (lastCacheEnabled) {
       IoTDB.metaManager.updateLastCache(
           seriesPath, resultPair, false, Long.MIN_VALUE, node);
     }
