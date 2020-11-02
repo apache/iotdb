@@ -40,6 +40,7 @@ public class StartClientScriptIT extends AbstractScript {
   @Test
   public void test() throws IOException, InterruptedException {
     String os = System.getProperty("os.name").toLowerCase();
+    System.out.println(">>>>>>>>>>> into test()");
     if (os.startsWith("windows")) {
       testOnWindows();
     } else {
@@ -56,14 +57,18 @@ public class StartClientScriptIT extends AbstractScript {
         dir + File.separator + "sbin" + File.separator + "start-cli.bat",
         "-h",
         "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+    System.out.println(">>>>>>>>>>>> before testOutput(builder, output)");
     testOutput(builder, output);
+    System.out.println(">>>>>>>>>>>> after testOutput(builder, output)");
 
     final String[] output2 = {
         "Msg: The statement is executed successfully."};
     ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "sbin" + File.separator + "start-cli.bat",
         "-e", "\"flush\"");
+    System.out.println(">>>>>>>>>>>> before testOutput(builder2, output2)");
     testOutput(builder2, output2);
+    System.out.println(">>>>>>>>>>>> after testOutput(builder2, output2)");
   }
 
   @Override

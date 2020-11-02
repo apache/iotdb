@@ -28,8 +28,11 @@ import java.util.Properties;
 public abstract class AbstractScript {
 
   protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
+    System.out.println(">>>>>>>>>>>>> into testOutput()");
     builder.redirectErrorStream(true);
+    System.out.println(">>>>>>>>>>>>> before build start");
     Process p = builder.start();
+    System.out.println(">>>>>>>>>>>>> after build start");
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
     String line;
     List<String> outputList = new ArrayList<>();
@@ -41,6 +44,7 @@ public abstract class AbstractScript {
         outputList.add(line);
       }
     }
+    System.out.println(">>>>>>>>>>>> after while loop");
     r.close();
     p.destroy();
 
