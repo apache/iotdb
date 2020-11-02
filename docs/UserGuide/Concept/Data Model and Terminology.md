@@ -25,13 +25,13 @@ In this section, a power scenario is taken as an example to illustrate how to cr
 
 Download the attachment: [IoTDB-SampleData.txt](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt).
 
-According to the data attribute layers described in [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), we can express it as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 2.1 below. Its hierarchical relationship is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is called a leaf node. In the process of using IoTDB, you can directly connect the attributes on the path from ROOT node to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
+According to the data attribute layers described in [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), it is expressed as an attribute hierarchy structure based on the coverage of attributes and the subordinate relationship between them, as shown in Figure 2.1 below. The hierarchical from top to bottom is: power group layer - power plant layer - device layer - sensor layer. ROOT is the root node, and each node of sensor layer is a leaf node. In the process of using IoTDB, the attributes on the path from ROOT node is directly connected to each leaf node with ".", thus forming the name of a timeseries in IoTDB. For example, The left-most path in Figure 2.1 can generate a timeseries named `ROOT.ln.wf01.wt01.status`.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
 **Figure 2.1 Attribute hierarchy structure**
 
-After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switching of IO when writing data, and to meet the user's requirement of physical isolation of data in the unit of  groups, we set the storage group at the group layer.
+After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switch of IO when writing data, and meet the user's requirement of physical isolation of data in the unit of groups, storage group is set at the group layer.
 
 Here are the basic concepts of the model involved in IoTDB:
 
@@ -45,7 +45,7 @@ A sensor is a detection equipment in an actual scene, which can sense the inform
 
 * Storage Group
 
-Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group will be continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these sensors will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
+Storage groups are used to let users define how to organize and isolate different time series data on disk. Time series belonging to the same storage group is continuously written to the same file in the corresponding folder. The file may be closed due to user commands or system policies, and hence the data coming next from these sensors will be stored in a new file in the same folder. Time series belonging to different storage groups are stored in different folders.
 
 Users can set any prefix path as a storage group. Provided that there are four time series `root.vehicle.d1.s1`, `root.vehicle.d1.s2`, `root.vehicle.d2.s1`, `root.vehicle.d2.s2`, two devices `d1` and `d2` under the path `root.vehicle` may belong to the same owner or the same manufacturer, so d1 and d2 are closely related. At this point, the prefix path root.vehicle can be designated as a storage group, which will enable IoTDB to store all devices under it in the same folder. Newly added devices under `root.vehicle` will also belong to this storage group.
 
