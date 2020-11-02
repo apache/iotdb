@@ -554,7 +554,7 @@ public class IoTDBConfig {
   private int mergeWriteThroughputMbPerSec = 16;
 
   /**
-   * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
+   * How many thread will be set up to perform hot compaction, 10 by default. Set to 1 when less
    * than or equal to 0.
    */
   private int hotCompactionThreadNum = 10;
