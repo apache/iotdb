@@ -88,6 +88,7 @@ public class PrimitiveArrayManager {
   }
 
   private PrimitiveArrayManager() {
+    logger.info("BufferedArraySizeThreshold is {}", BUFFERED_ARRAY_SIZE_THRESHOLD);
   }
 
   /**
