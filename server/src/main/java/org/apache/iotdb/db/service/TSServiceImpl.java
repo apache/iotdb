@@ -33,6 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
@@ -45,6 +50,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -141,6 +149,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger auditLogger = LoggerFactory
       .getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
+  private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW-SQL");
+  private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY-FREQUENCY");
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -180,9 +190,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public static final TSProtocolVersion CURRENT_RPC_VERSION = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
 
+  private static final AtomicInteger queryCount = new AtomicInteger(0);
+
+
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+
+    ScheduledExecutorService timedQuerySqlCountThread = Executors
+        .newSingleThreadScheduledExecutor(r -> new Thread(r, "timedQuerySqlCountThread"));
+    timedQuerySqlCountThread.scheduleAtFixedRate(() -> QUERY_FREQUENCY_LOGGER
+            .info("Query count in current 1 minute: " + queryCount.getAndSet(0)),
+        config.getFrequencyIntervalInMinute(), config.getFrequencyIntervalInMinute(),
+        TimeUnit.MINUTES);
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
@@ -598,6 +618,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
+    queryCount.incrementAndGet();
     auditLogger.debug("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
@@ -649,7 +670,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
+          TracingManager.getInstance()
+              .writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
           TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
         }
@@ -711,6 +733,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= config.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: " + costTime + " ms, sql is " + statement);
+      }
+      if (config.isDebugOn()) {
+        SLOW_SQL_LOGGER.info("ChunkCache used memory proportion: " + ChunkCache.getInstance()
+            .getUsedMemoryProportion() + "\nChunkMetadataCache used memory proportion: "
+            + ChunkMetadataCache.getInstance().getUsedMemoryProportion()
+            + "\nTimeSeriesMetadataCache used memory proportion: " + TimeSeriesMetadataCache
+            .getInstance().getUsedMemoryProportion());
+      }
     }
   }
 
@@ -1622,9 +1655,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (createMultiTimeSeriesPlan.getResults().entrySet().size() > 0) {
         isAllSuccessful = false;
-        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults().entrySet()) {
+        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults()
+            .entrySet()) {
           statusList.set(entry.getKey(),
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
+              RpcUtils
+                  .getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
         }
       }
 

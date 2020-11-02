@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
-import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -710,6 +709,21 @@ public class IoTDBConfig {
    * thrift init buffer size, the default is 1KB.
    */
   private int thriftInitBufferSize = 1024;
+
+  /**
+   * time interval in minute for calculating query frequency
+   */
+  private int frequencyIntervalInMinute = 1;
+
+  /**
+   * time cost(ms) threshold for slow query
+   */
+  private long slowQueryThreshold = 5000;
+
+  /**
+   * if the debug_state is true, we will print more details about the process of query
+   */
+  private boolean debugState = false;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1924,5 +1938,29 @@ public class IoTDBConfig {
 
   public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
+  }
+
+  public int getFrequencyIntervalInMinute() {
+    return frequencyIntervalInMinute;
+  }
+
+  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
+    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
+  }
+
+  public long getSlowQueryThreshold() {
+    return slowQueryThreshold;
+  }
+
+  public void setSlowQueryThreshold(long slowQueryThreshold) {
+    this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public boolean isDebugOn() {
+    return debugState;
+  }
+
+  public void setDebugState(boolean debugState) {
+    this.debugState = debugState;
   }
 }
