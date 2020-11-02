@@ -304,13 +304,19 @@ public class TsFileSequenceReader implements AutoCloseable {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
-        deviceMetadataIndexNode, path.getDevice(), MetadataIndexNodeType.INTERNAL_DEVICE);
+        deviceMetadataIndexNode, path.getDevice(), MetadataIndexNodeType.INTERNAL_DEVICE, true);
+    if (metadataIndexPair == null) {
+      return null;
+    }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
-          path.getMeasurement(), MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+          path.getMeasurement(), MetadataIndexNodeType.INTERNAL_MEASUREMENT, false);
+    }
+    if (metadataIndexPair == null) {
+      return null;
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
@@ -328,7 +334,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
-        deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE);
+        deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
     int maxDegreeOfIndexNode = config.getMaxDegreeOfIndexNode();
     if (measurements.size() > maxDegreeOfIndexNode / Math.log(maxDegreeOfIndexNode)) {
@@ -344,7 +350,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         measurementMetadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
-            measurement, MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+            measurement, MetadataIndexNodeType.INTERNAL_MEASUREMENT, false);
       }
       buffer = readData(measurementMetadataIndexPair.left.getOffset(),
           measurementMetadataIndexPair.right);
@@ -568,7 +574,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(String device) throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
-        metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE);
+        metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
     generateMetadataIndex(metadataIndexPair.left, buffer, device,
@@ -594,13 +600,18 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return target MetadataIndexEntry, endOffset pair
    */
   private Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
-      String name, MetadataIndexNodeType type) throws IOException {
-    Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex.getChildIndexEntry(name);
+      String name, MetadataIndexNodeType type, boolean exactSearch) throws IOException {
+    Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex
+        .getChildIndexEntry(name, exactSearch);
+    if (childIndexEntry == null) {
+      return null;
+    }
     if (!metadataIndex.getNodeType().equals(type)) {
       return childIndexEntry;
     }
     ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
-    return getMetadataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), name, type);
+    return getMetadataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), name, type,
+        exactSearch);
   }
 
   /**
