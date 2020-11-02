@@ -466,6 +466,11 @@ public class MManager {
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
       totalSeriesNumber -= mtree.getAllTimeseriesCount(prefixPath);
+      if (allowToCreateNewSeries && 
+          totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+        logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+        allowToCreateNewSeries = false;
+      }
       mNodeCache.clear();
     }
     try {
@@ -550,6 +555,11 @@ public class MManager {
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
     totalSeriesNumber--;
+    if (allowToCreateNewSeries && 
+        totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+      allowToCreateNewSeries = false;
+    }
     return storageGroupPath;
   }
 
@@ -579,6 +589,11 @@ public class MManager {
       for (PartialPath storageGroup : storageGroups) {
         totalSeriesNumber -= mtree.getAllTimeseriesCount(storageGroup);
         // clear cached MNode
+        if (allowToCreateNewSeries && 
+            totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+          logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+          allowToCreateNewSeries = false;
+        }
         mNodeCache.clear();
 
         // try to delete storage group
