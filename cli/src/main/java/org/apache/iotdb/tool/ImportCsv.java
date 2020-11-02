@@ -134,6 +134,7 @@ public class ImportCsv extends AbstractCsvTool {
         cols = line.split(",");
         for(String device: deviceToMeasurementsAndPositions.keySet()) {
           devices.add(device);
+          times.add(Long.parseLong(cols[0]));
           Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.get(device);
           List<String> measurements = new ArrayList<>();
           List<String> values = new ArrayList<>();

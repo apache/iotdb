@@ -41,8 +41,8 @@ import org.apache.iotdb.cli.AbstractCli;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -111,7 +111,12 @@ public class ExportCsv extends AbstractCsvTool {
 
       String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
       String sql;
-
+      session = new Session(host, Integer.parseInt(port), username, password);
+      try {
+        session.open(false);
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
       try {
         setTimeZone();
       } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -246,7 +251,7 @@ public class ExportCsv extends AbstractCsvTool {
         return;
       }
     } catch (IOException e) {
-      System.out.println("Cannot create dump file " + path + "because: " + e.getMessage());
+      System.out.println("Cannot create dump file " + path + " " + "because: " + e.getMessage());
       return;
     }
     System.out.println("Start to export data from sql statement: " + sql);
@@ -322,21 +327,13 @@ public class ExportCsv extends AbstractCsvTool {
       if ("null".equals(fields.get(j).getStringValue())) {
         bw.write(",");
       } else {
-        if(fields.get(j).getDataType() == TSDataType.TEXT) {
-          bw.write("'" + fields.get(j).getBinaryV().toString() + "'" + ",");
-        } else {
-          bw.write(fields.get(j).getStringValue() + ",");
-        }
+        bw.write(fields.get(j).getStringValue() + ",");
       }
     }
     if ("null".equals(fields.get(fields.size() - 1).getStringValue())) {
       bw.write("\n");
     } else {
-      if(fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
-        bw.write("'" + fields.get(fields.size() - 1).getBinaryV().toString() + "'" + "\n");
-      } else {
-        bw.write(fields.get(fields.size() - 1).getStringValue() + "\n");
-      }
+      bw.write(fields.get(fields.size() - 1).getStringValue() + "\n");
     }
   }
 }

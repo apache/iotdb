@@ -335,26 +335,13 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ## 使用 import-csv.sh
 
-### 创建元数据
-
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
 ### 从 csv 文件导入数据的示例
 
 ```
 Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,'hello',200,300,400
-2,500,'world',600,700,800
-3,900,'IoTDB',1000,1100,1200
+1,100,hello,200,300,400
+2,500,world,600,700,800
+3,900,IoTDB,1000,1100,1200
 ```
 
 ### 运行 import shell
@@ -365,10 +352,6 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 # Windows
 > tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
-
-### 错误的数据文件
-
-`csvInsertError.error`
 
 ## 使用 export-csv.sh
 
