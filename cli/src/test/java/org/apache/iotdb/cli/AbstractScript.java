@@ -38,12 +38,14 @@ public abstract class AbstractScript {
     List<String> outputList = new ArrayList<>();
     while (true) {
       line = r.readLine();
+      System.out.println(">>>>>>>>>>> " + line);
       if (line == null) {
+        System.out.println(">>>>>>>> line is null, break");
         break;
       } else {
+        System.out.println(">>>>>>> output list add line, " + line);
         outputList.add(line);
       }
-      System.out.println(">>>>>>>>>>> " + line);
     }
     System.out.println(">>>>>>>>>>>> after while loop");
     r.close();
