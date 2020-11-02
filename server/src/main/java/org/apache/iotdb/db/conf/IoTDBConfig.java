@@ -144,7 +144,7 @@ public class IoTDBConfig {
   /**
    * Ratio of memory allocated for buffered arrays
    */
-  private double bufferedArraysMemoryProportion = 0.8;
+  private double bufferedArraysMemoryProportion = 0.6;
 
   /**
    * Flush proportion for system

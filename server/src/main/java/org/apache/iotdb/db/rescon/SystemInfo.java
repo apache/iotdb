@@ -120,10 +120,6 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
-            processor.getStorageGroupName(),
-            PrimitiveArrayManager.getBufferedArraysSize(),
-            PrimitiveArrayManager.getOOBSize());
         processor.setFlush();
       }
     }
@@ -136,10 +132,6 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        logger.debug("Start flushing TSP in SG {}. Current buffed array size {}, OOB size {}",
-            processor.getStorageGroupName(),
-            PrimitiveArrayManager.getBufferedArraysSize(),
-            PrimitiveArrayManager.getOOBSize());
         if (processor.shouldClose()) {
           processor.startClose();
         } else {
