@@ -43,6 +43,7 @@ public abstract class AbstractScript {
       } else {
         outputList.add(line);
       }
+      System.out.println(">>>>>>>>>>> " + line);
     }
     System.out.println(">>>>>>>>>>>> after while loop");
     r.close();
