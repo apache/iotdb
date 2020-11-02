@@ -22,6 +22,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
