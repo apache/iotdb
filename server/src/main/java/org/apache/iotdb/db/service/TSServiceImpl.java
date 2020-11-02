@@ -525,6 +525,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 req.fetchSize);
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
+        logger.info(String.format("The wrong sql is %s", statement));
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
       }
 
