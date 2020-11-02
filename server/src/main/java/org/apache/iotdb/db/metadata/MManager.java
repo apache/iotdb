@@ -98,7 +98,7 @@ public class MManager {
   private static final String DEBUG_MSG_1 = "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
   private static final String PREVIOUS_CONDITION = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
-  private static final float UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 1.1f;
+  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
@@ -384,17 +384,14 @@ public class MManager {
     try {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
-      /*
-       * get the storage group with auto create schema
-       */
-      PartialPath storageGroupPath;
+
       try {
-        storageGroupPath = mtree.getStorageGroupPath(path);
+        mtree.getStorageGroupPath(path);
       } catch (StorageGroupNotSetException e) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;
         }
-        storageGroupPath =
+        PartialPath storageGroupPath =
             MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
         setStorageGroup(storageGroupPath);
       }
@@ -513,9 +510,7 @@ public class MManager {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(
-                DEBUG_MSG, "Delete"
-                    + TAG_FORMAT,
+            logger.debug(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
@@ -527,9 +522,7 @@ public class MManager {
           }
         } else {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(
-                DEBUG_MSG_1, "Delete"
-                    + PREVIOUS_CONDITION,
+            logger.debug(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
@@ -564,7 +557,7 @@ public class MManager {
   }
 
   /**
-   * Set storage group of the given path to MTree. Check
+   * Set storage group of the given path to MTree.
    *
    * @param storageGroup root.node.(node)*
    */
@@ -620,14 +613,21 @@ public class MManager {
    * @param type data type
    * @param num  1 for creating timeseries and -1 for deleting timeseries
    */
-  private void updateSchemaDataTypeNumMap(TSDataType type, int num) {
+  private synchronized void updateSchemaDataTypeNumMap(TSDataType type, int num) {
+    // add an array of the series type
     schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
+    // add an array of time
     schemaDataTypeNumMap.put(TSDataType.INT64,
         schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
-    int currentDataTypeTotalNum = schemaDataTypeNumMap.values().size();
-    if (num > 0 && currentDataTypeTotalNum >=
-        reportedDataTypeTotalNum * UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap);
+
+    int currentDataTypeTotalNum = 0;
+    for (int typeSize : schemaDataTypeNumMap.values()) {
+      currentDataTypeTotalNum += typeSize;
+    }
+
+    if (num > 0 && currentDataTypeTotalNum - reportedDataTypeTotalNum
+        >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
+      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
