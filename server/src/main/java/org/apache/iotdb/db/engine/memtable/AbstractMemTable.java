@@ -54,18 +54,22 @@ public abstract class AbstractMemTable implements IMemTable {
   private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
       .getAvgSeriesPointNumberThreshold();
 
+  /**
+   * memory size of data points, including TEXT values
+   */
   private long memSize = 0;
+
+  /**
+   * memory usage of all TVLists memory usage regardless of whether these TVLists are full,
+   * including TEXT values
+   */
+  private long tvListRamCost = 0;
 
   /**
    * The initial value is false because we should calculate the text data size when recover
    * memTable!!
    */
   protected boolean enableMemControl = false;
-
-  /**
-   * memory usage of all TVLists memory usage regardless of whether these TVLists are full
-   */
-  private long tvListRamCost = 0;
 
   private int seriesNumber = 0;
 
@@ -181,7 +185,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public int getCurrentPointNum(String deviceId, String measurement) {
+  public int getCurrentChunkPointNum(String deviceId, String measurement) {
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     IWritableMemChunk memChunk = memSeries.get(measurement);
     return memChunk.getTVList().size();
