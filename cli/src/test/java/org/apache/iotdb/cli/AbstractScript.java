@@ -56,11 +56,38 @@ public abstract class AbstractScript {
     }
   }
 
+  protected void testOutput(Process p, String[] output) throws IOException {
+    System.out.println(">>>>>>>>>>>>> into testOutput()");
+//    builder.redirectErrorStream(true);
+    System.out.println(">>>>>>>>>>>>> before build start");
+//    Process p = builder.start();
+    System.out.println(">>>>>>>>>>>>> after build start");
+    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+    String line;
+    List<String> outputList = new ArrayList<>();
+    while ((line = r.readLine()) != null) {
+      System.out.println(">>>>>>> output list add line, " + line);
+      outputList.add(line);
+    }
+    System.out.println(">>>>>>>>>>>> after while loop");
+    r.close();
+    try {
+      p.waitFor();
+    } catch (InterruptedException e) {
+      System.out.println(e);
+    }
+//    p.destroy();
+
+    for (int i = 0; i < output.length; i++) {
+      assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
+    }
+  }
+
   protected String getCliPath() {
     // This is usually always set by the JVM
 
     File userDir = new File(System.getProperty("user.dir"));
-    if(!userDir.exists()) {
+    if (!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
     File target = new File(userDir, "target/maven-archiver/pom.properties");
@@ -70,7 +97,8 @@ public abstract class AbstractScript {
     } catch (IOException e) {
       return "target/iotdb-cli-";
     }
-    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
+    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"),
+        properties.getProperty("version"))).getAbsolutePath();
   }
 
   protected abstract void testOnWindows() throws IOException;
