@@ -21,12 +21,12 @@
 
 # Apache IoTDB
 
-[![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![codecov](https://codecov.io/gh/thulab/incubator-iotdb/branch/master/graph/badge.svg)](https://codecov.io/gh/thulab/incubator-iotdb)
-[![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
+[![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
+[![codecov](https://codecov.io/gh/thulab/iotdb/branch/master/graph/badge.svg)](https://codecov.io/gh/thulab/iotdb)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
-![](https://img.shields.io/github/downloads/apache/incubator-iotdb/total.svg)
+![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
+![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
@@ -51,7 +51,7 @@ You have to install thrift (>=0.13) before using the package.
 
 First, download the package: `pip3 install apache-iotdb`
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/rel/0.10/client-py/src/SessionExample.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/rel/0.10/client-py/src/SessionExample.py)
 
 (you need to add `import iotdb` in the head of the file)
 

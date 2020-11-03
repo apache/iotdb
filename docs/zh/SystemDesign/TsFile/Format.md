@@ -259,7 +259,7 @@ For Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
@@ -308,7 +308,7 @@ Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````

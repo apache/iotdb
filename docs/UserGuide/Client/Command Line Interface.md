@@ -34,7 +34,7 @@ IoTDB provides Cli/shell tools for users to interact with IoTDB server in comman
 
 ## Build cli from source code
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
