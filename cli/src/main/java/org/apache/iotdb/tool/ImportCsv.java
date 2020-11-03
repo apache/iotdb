@@ -140,7 +140,11 @@ public class ImportCsv extends AbstractCsvTool {
           List<String> values = new ArrayList<>();
           for(String measurement : measurementsAndPositions.keySet()) {
             measurements.add(measurement);
-            values.add(cols[measurementsAndPositions.get(measurement)]);
+            if(cols[measurementsAndPositions.get(measurement)].equals("") && cols[measurementsAndPositions.get(measurement)].equals("null")) {
+              values.add(null);
+            } else {
+              values.add(cols[measurementsAndPositions.get(measurement)]);
+            }
           }
           measurementsList.add(measurements);
           valuesList.add(values);

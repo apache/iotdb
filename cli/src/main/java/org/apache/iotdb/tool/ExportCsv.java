@@ -324,13 +324,13 @@ public class ExportCsv extends AbstractCsvTool {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void writeValue(List<Field> fields, BufferedWriter bw) throws IOException {
     for (int j = 0; j < fields.size() - 1; j++) {
-      if ("null".equals(fields.get(j).getStringValue())) {
+      if ("null".equalsIgnoreCase(fields.get(j).getStringValue())) {
         bw.write(",");
       } else {
         bw.write(fields.get(j).getStringValue() + ",");
       }
     }
-    if ("null".equals(fields.get(fields.size() - 1).getStringValue())) {
+    if ("null".equalsIgnoreCase(fields.get(fields.size() - 1).getStringValue())) {
       bw.write("\n");
     } else {
       bw.write(fields.get(fields.size() - 1).getStringValue() + "\n");
