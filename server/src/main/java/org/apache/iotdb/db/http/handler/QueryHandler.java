@@ -154,14 +154,17 @@ public class QueryHandler extends Handler {
       }
     }
 
-    QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOp);
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(1024);
+    QueryPlan plan = (QueryPlan) processor.logicalPlanToPhysicalPlan(queryOp, maxDeduplicatedPathNum);
     if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
       throw new AuthException(
           String.format("%s can't be queried by %s", plan.getPaths(), username));
     }
     JsonArray result = new JsonArray();
+
     QueryDataSet dataSet = executor.processQuery(plan,
-        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
+        new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, maxDeduplicatedPathNum)));
     List<PartialPath> paths = plan.getPaths();
 
     for (PartialPath path : paths) {

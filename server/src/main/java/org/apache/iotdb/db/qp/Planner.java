@@ -83,10 +83,10 @@ public class Planner {
   }
 
 
-  public PhysicalPlan logicalPlanToPhysicalPlan(Operator operator) throws QueryProcessException {
-    operator = logicalOptimize(operator);
+  public PhysicalPlan logicalPlanToPhysicalPlan(Operator operator, int maxDeduplicatedPathNum) throws QueryProcessException {
+    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    return physicalGenerator.transformToPhysicalPlan(operator, maxDeduplicatedPathNum);
   }
   
   /**
