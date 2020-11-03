@@ -25,7 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -289,41 +289,50 @@ public class IoTDBConfig {
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
    * the files to the last level.
+   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
+   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
+   * this threshold and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. When page point number of file reaches
-   * this, use append merge instead of deserialize merge.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
    */
   private int mergePagePointNumberThreshold = 1000;
 
   /**
-   * TsFile manage strategy, define use which hot compaction strategy
+   * LEVEL_COMPACTION, NO_COMPACTION
    */
-  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
-   * file num exceeds this, the files in one level will merge to one.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max seq file num of each level.
+   * When the num of files in one level exceeds this,
+   * the files in this level will merge to one and put to upper level.
    */
-  private int seqFileNumInEachLevel = 10;
+  private int seqFileNumInEachLevel = 6;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max num of seq level.
    */
   private int seqLevelNum = 4;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
-   * file num exceeds this, the files in one level will merge to one.
+   * Works when compaction_strategy is LEVEL_COMPACTION.
+   * The max ujseq file num of each level.
+   * When the num of files in one level exceeds this,
+   * the files in this level will merge to one and put to upper level.
    */
   private int unseqFileNumInEachLevel = 10;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max num of unseq level.
    */
-  private int unseqLevelNum = 2;
+  private int unseqLevelNum = 1;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -528,7 +537,7 @@ public class IoTDBConfig {
   /**
    * How much memory (in byte) can be used by a single merge task.
    */
-  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
+  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
 
   /**
    * How many threads will be set up to perform upgrade tasks.
@@ -541,7 +550,7 @@ public class IoTDBConfig {
   private int mergeThreadNum = 1;
 
   /**
-   * How many threads will be set up to perform merge chunk sub-tasks.
+   * How many threads will be set up to perform unseq merge chunk sub-tasks.
    */
   private int mergeChunkSubThreadNum = 4;
 
@@ -565,34 +574,22 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
+   * When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how
    * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
    * are overflowed.
    */
   private boolean forceFullMerge = false;
 
   /**
-   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
-   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
-   * this threshold and the new chunk will be flushed.
+   * The limit of compaction merge can reach per second
    */
-  private int chunkMergePointThreshold = 20480;
+  private int mergeWriteThroughputMbPerSec = 8;
 
   /**
-   * The limit of hot compaction merge can reach per second
-   */
-  private int mergeWriteThroughputMbPerSec = 16;
-
-  /**
-   * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
+   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less
    * than or equal to 0.
    */
-  private int hotCompactionThreadNum = 30;
-
-  /**
-   * The limit of read throughput merge can reach per second
-   */
-  private int mergeReadThroughputMbPerSec = 16;
+  private int compactionThreadNum = 10;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -1370,20 +1367,12 @@ public class IoTDBConfig {
     this.forceFullMerge = forceFullMerge;
   }
 
-  public int getChunkMergePointThreshold() {
-    return chunkMergePointThreshold;
+  public int getCompactionThreadNum() {
+    return compactionThreadNum;
   }
 
-  public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
-    this.chunkMergePointThreshold = chunkMergePointThreshold;
-  }
-
-  public int getHotCompactionThreadNum() {
-    return hotCompactionThreadNum;
-  }
-
-  public void setHotCompactionThreadNum(int hotCompactionThreadNum) {
-    this.hotCompactionThreadNum = hotCompactionThreadNum;
+  public void setCompactionThreadNum(int compactionThreadNum) {
+    this.compactionThreadNum = compactionThreadNum;
   }
 
   public int getMergeWriteThroughputMbPerSec() {
@@ -1392,14 +1381,6 @@ public class IoTDBConfig {
 
   public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
-  }
-
-  public int getMergeReadThroughputMbPerSec() {
-    return mergeReadThroughputMbPerSec;
-  }
-
-  public void setMergeReadThroughputMbPerSec(int mergeReadThroughputMbPerSec) {
-    this.mergeReadThroughputMbPerSec = mergeReadThroughputMbPerSec;
   }
 
   public boolean isEnableMemControl() {
@@ -1452,13 +1433,13 @@ public class IoTDBConfig {
   }
 
 
-  public TsFileManagementStrategy getTsFileManagementStrategy() {
-    return tsFileManagementStrategy;
+  public CompactionStrategy getCompactionStrategy() {
+    return compactionStrategy;
   }
 
-  public void setTsFileManagementStrategy(
-      TsFileManagementStrategy tsFileManagementStrategy) {
-    this.tsFileManagementStrategy = tsFileManagementStrategy;
+  public void setCompactionStrategy(
+      CompactionStrategy compactionStrategy) {
+    this.compactionStrategy = compactionStrategy;
   }
 
   public int getSeqFileNumInEachLevel() {

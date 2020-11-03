@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement;
+package org.apache.iotdb.db.engine.compaction;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
@@ -43,7 +43,7 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseHotCompactionMergeCallBack;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
@@ -61,10 +61,9 @@ public abstract class TsFileManagement {
    */
   public final ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
   /**
-   * hotCompactionMergeLock is used to wait for TsFile list change in hot compaction merge
-   * processor.
+   * compactionMergeLock is used to wait for TsFile list change in compaction processor.
    */
-  private final ReadWriteLock hotCompactionMergeLock = new ReentrantReadWriteLock();
+  private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
   public volatile boolean isUnseqMerging = false;
   /**
@@ -145,42 +144,42 @@ public abstract class TsFileManagement {
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
   public void readLock() {
-    hotCompactionMergeLock.readLock().lock();
+    compactionMergeLock.readLock().lock();
   }
 
   public void readUnLock() {
-    hotCompactionMergeLock.readLock().unlock();
+    compactionMergeLock.readLock().unlock();
   }
 
   public void writeLock() {
-    hotCompactionMergeLock.writeLock().lock();
+    compactionMergeLock.writeLock().lock();
   }
 
   public void writeUnlock() {
-    hotCompactionMergeLock.writeLock().unlock();
+    compactionMergeLock.writeLock().unlock();
   }
 
   public boolean tryWriteLock() {
-    return hotCompactionMergeLock.writeLock().tryLock();
+    return compactionMergeLock.writeLock().tryLock();
   }
 
   protected abstract void merge(long timePartition);
 
-  public class HotCompactionMergeTask implements Runnable {
+  public class CompactionMergeTask implements Runnable {
 
-    private CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack;
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
 
-    public HotCompactionMergeTask(CloseHotCompactionMergeCallBack closeHotCompactionMergeCallBack,
+    public CompactionMergeTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack,
         long timePartitionId) {
-      this.closeHotCompactionMergeCallBack = closeHotCompactionMergeCallBack;
+      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
     @Override
     public void run() {
       merge(timePartitionId);
-      closeHotCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call();
     }
   }
 
@@ -263,22 +262,22 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * acquire the write locks of the resource , the merge lock and the hot compaction lock
+   * acquire the write locks of the resource , the merge lock and the compaction lock
    */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
     boolean mergeLockGot;
-    boolean hotCompactionLockGot;
+    boolean compactionLockGot;
     while (true) {
       fileLockGot = seqFile.tryWriteLock();
       mergeLockGot = mergeLock.writeLock().tryLock();
-      hotCompactionLockGot = tryWriteLock();
+      compactionLockGot = tryWriteLock();
 
-      if (fileLockGot && mergeLockGot && hotCompactionLockGot) {
+      if (fileLockGot && mergeLockGot && compactionLockGot) {
         break;
       } else {
         // did not get all of them, release the gotten one and retry
-        if (hotCompactionLockGot) {
+        if (compactionLockGot) {
           writeUnlock();
         }
         if (mergeLockGot) {
@@ -292,7 +291,7 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * release the write locks of the resource , the merge lock and the hot compaction lock
+   * release the write locks of the resource , the merge lock and the compaction lock
    */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();

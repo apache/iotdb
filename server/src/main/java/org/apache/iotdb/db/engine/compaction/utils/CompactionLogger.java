@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement.utils;
+package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -27,9 +27,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
-public class HotCompactionLogger {
+public class CompactionLogger {
 
-  public static final String HOT_COMPACTION_LOG_NAME = ".hot_compaction.log";
+  public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
   public static final String TARGET_NAME = "target";
   public static final String SEQUENCE_NAME = "sequence";
@@ -39,10 +39,10 @@ public class HotCompactionLogger {
 
   private BufferedWriter logStream;
 
-  public HotCompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
+  public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
     logStream = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
-            storageGroupName + HOT_COMPACTION_LOG_NAME), true));
+            storageGroupName + COMPACTION_LOG_NAME), true));
   }
 
   public void close() throws IOException {

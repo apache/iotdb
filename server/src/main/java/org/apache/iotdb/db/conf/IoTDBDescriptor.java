@@ -32,7 +32,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -120,7 +120,7 @@ public class IoTDBDescriptor {
       urlString += (File.separatorChar + IoTDBConfig.CONFIG_NAME);
     }
 
-    // If the url doesn't start with "file:" or "classpath:", it's provided as a normal path.
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
     // So we need to add it to make it a real URL.
     if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
@@ -303,9 +303,9 @@ public class IoTDBDescriptor {
           .getProperty("merge_page_point_number",
               Integer.toString(conf.getMergePagePointNumberThreshold()))));
 
-      conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
-          .getProperty("tsfile_manage_strategy",
-              conf.getTsFileManagementStrategy().toString())));
+      conf.setCompactionStrategy(CompactionStrategy.valueOf(properties
+          .getProperty("compaction_strategy",
+              conf.getCompactionStrategy().toString())));
 
       conf.setSeqLevelNum(Integer.parseInt(properties
           .getProperty("seq_level_num",
@@ -388,16 +388,11 @@ public class IoTDBDescriptor {
           Long.toString(conf.getMergeIntervalSec()))));
       conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
           Boolean.toString(conf.isForceFullMerge()))));
-      conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
-          "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
-      conf.setHotCompactionThreadNum(Integer.parseInt(properties.getProperty(
-          "hot_compaction_thread_num", Integer.toString(conf.getHotCompactionThreadNum()))));
+      conf.setCompactionThreadNum(Integer.parseInt(properties.getProperty(
+          "compaction_thread_num", Integer.toString(conf.getCompactionThreadNum()))));
       conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
           "merge_write_throughput_mb_per_sec",
           Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
-      conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
-          "merge_read_throughput_mb_per_sec",
-          Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
