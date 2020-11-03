@@ -56,7 +56,9 @@ public class GetTimeSeriesHandler extends Handler {
       if (!AuthorityChecker.check(username, plan.getPaths(), plan.getOperatorType(), null)) {
         throw new AuthException(String.format("%s can't be gotten by %s", path, username));
       }
-      long queryID = QueryResourceManager.getInstance().assignQueryId(false);
+      int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+          .getMaxDeduplicatedPathNum(1024);
+      long queryID = QueryResourceManager.getInstance().assignQueryId(false, 1024, maxDeduplicatedPathNum);
       QueryDataSet dataSet = executor.processQuery(plan, new QueryContext(queryID));
       while (dataSet.hasNext()) {
         JsonArray row = new JsonArray();
