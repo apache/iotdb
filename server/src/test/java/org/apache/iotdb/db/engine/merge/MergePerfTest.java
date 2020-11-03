@@ -55,7 +55,7 @@ public class MergePerfTest extends MergeTest{
   }
 
   public static void main(String[] args) throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
 
     List<Long> timeConsumptions = new ArrayList<>();
     MergePerfTest perfTest = new MergePerfTest();

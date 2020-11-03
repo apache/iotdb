@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement;
+package org.apache.iotdb.db.engine.compaction;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
@@ -25,24 +25,24 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement.HotCompactionMergeTask;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * HotCompactionMergeTaskPoolManager provides a ThreadPool to queue and run all hot compaction
+ * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction
  * tasks.
  */
-public class HotCompactionMergeTaskPoolManager implements IService {
+public class CompactionMergeTaskPoolManager implements IService {
 
   private static final Logger logger = LoggerFactory
-      .getLogger(HotCompactionMergeTaskPoolManager.class);
-  private static final HotCompactionMergeTaskPoolManager INSTANCE = new HotCompactionMergeTaskPoolManager();
+      .getLogger(CompactionMergeTaskPoolManager.class);
+  private static final CompactionMergeTaskPoolManager INSTANCE = new CompactionMergeTaskPoolManager();
   private ExecutorService pool;
 
-  public static HotCompactionMergeTaskPoolManager getInstance() {
+  public static CompactionMergeTaskPoolManager getInstance() {
     return INSTANCE;
   }
 
@@ -51,10 +51,10 @@ public class HotCompactionMergeTaskPoolManager implements IService {
     if (pool == null) {
       this.pool = IoTDBThreadPoolFactory
           .newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getHotCompactionThreadNum(),
-              ThreadName.HOT_COMPACTION_SERVICE.getName());
+              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+              ThreadName.COMPACTION_SERVICE.getName());
     }
-    logger.info("Hot compaction merge task manager started.");
+    logger.info("Compaction task manager started.");
   }
 
   @Override
@@ -81,11 +81,11 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       // wait
       long time = System.currentTimeMillis() - startTime;
       if (time % 60_000 == 0) {
-        logger.warn("HotCompactionManager has wait for {} seconds to stop", time / 1000);
+        logger.warn("CompactionManager has wait for {} seconds to stop", time / 1000);
       }
     }
     pool = null;
-    logger.info("HotCompactionManager stopped");
+    logger.info("CompactionManager stopped");
   }
 
   private void awaitTermination(ExecutorService service, long millseconds) {
@@ -93,7 +93,7 @@ public class HotCompactionMergeTaskPoolManager implements IService {
       service.shutdown();
       service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      logger.warn("HotCompactionThreadPool can not be closed in {} ms", millseconds);
+      logger.warn("CompactionThreadPool can not be closed in {} ms", millseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();
@@ -101,13 +101,13 @@ public class HotCompactionMergeTaskPoolManager implements IService {
 
   @Override
   public ServiceType getID() {
-    return ServiceType.HOT_COMPACTION_SERVICE;
+    return ServiceType.COMPACTION_SERVICE;
   }
 
-  public void submitTask(HotCompactionMergeTask hotCompactionMergeTask)
+  public void submitTask(CompactionMergeTask compactionMergeTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
-      pool.submit(hotCompactionMergeTask);
+      pool.submit(compactionMergeTask);
     }
   }
 

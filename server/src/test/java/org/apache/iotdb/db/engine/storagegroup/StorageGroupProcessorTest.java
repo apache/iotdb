@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -66,7 +66,7 @@ public class StorageGroupProcessorTest {
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
@@ -81,7 +81,7 @@ public class StorageGroupProcessorTest {
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)

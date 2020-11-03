@@ -17,22 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement;
+package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.engine.tsfilemanagement.level.LevelTsFileManagement;
-import org.apache.iotdb.db.engine.tsfilemanagement.normal.NormalTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.no.NoCompactionTsFileManagement;
 
-public enum TsFileManagementStrategy {
-  LEVEL_STRATEGY,
-  NORMAL_STRATEGY;
+public enum CompactionStrategy {
+  LEVEL_COMPACTION,
+  NO_COMPACTION;
 
   public TsFileManagement getTsFileManagement(String storageGroupName, String storageGroupDir) {
     switch (this) {
-      case LEVEL_STRATEGY:
-        return new LevelTsFileManagement(storageGroupName, storageGroupDir);
-      case NORMAL_STRATEGY:
+      case LEVEL_COMPACTION:
+        return new LevelCompactionTsFileManagement(storageGroupName, storageGroupDir);
+      case NO_COMPACTION:
       default:
-        return new NormalTsFileManagement(storageGroupName, storageGroupDir);
+        return new NoCompactionTsFileManagement(storageGroupName, storageGroupDir);
     }
   }
 }

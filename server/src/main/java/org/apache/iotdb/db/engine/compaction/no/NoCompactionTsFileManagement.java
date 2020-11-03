@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement.normal;
+package org.apache.iotdb.db.engine.compaction.no;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -28,13 +28,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class NormalTsFileManagement extends TsFileManagement {
+public class NoCompactionTsFileManagement extends TsFileManagement {
 
-  private static final Logger logger = LoggerFactory.getLogger(NormalTsFileManagement.class);
+  private static final Logger logger = LoggerFactory.getLogger(NoCompactionTsFileManagement.class);
   // includes sealed and unsealed sequence TsFiles
   private TreeSet<TsFileResource> sequenceFileTreeSet = new TreeSet<>(
       (o1, o2) -> {
@@ -46,7 +46,7 @@ public class NormalTsFileManagement extends TsFileManagement {
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
 
-  public NormalTsFileManagement(String storageGroupName, String storageGroupDir) {
+  public NoCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
   }
 
