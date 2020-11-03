@@ -21,7 +21,6 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
-import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -277,23 +276,23 @@ public class IoTDBConfig {
    * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxFileNumInEachLevel = 10;
+  private int seqFileNumInEachLevel = 10;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
    */
-  private int maxLevelNum = 4;
+  private int seqLevelNum = 4;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
    * file num exceeds this, the files in one level will merge to one.
    */
-  private int maxUnseqFileNumInEachLevel = 10;
+  private int unseqFileNumInEachLevel = 10;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
    */
-  private int maxUnseqLevelNum = 2;
+  private int unseqLevelNum = 2;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -710,6 +709,21 @@ public class IoTDBConfig {
    * thrift init buffer size, the default is 1KB.
    */
   private int thriftInitBufferSize = 1024;
+
+  /**
+   * time interval in minute for calculating query frequency
+   */
+  private int frequencyIntervalInMinute = 1;
+
+  /**
+   * time cost(ms) threshold for slow query
+   */
+  private long slowQueryThreshold = 5000;
+
+  /**
+   * if the debug_state is true, we will print more details about the process of query
+   */
+  private boolean debugState = false;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1376,36 +1390,36 @@ public class IoTDBConfig {
     this.tsFileManagementStrategy = tsFileManagementStrategy;
   }
 
-  public int getMaxFileNumInEachLevel() {
-    return maxFileNumInEachLevel;
+  public int getSeqFileNumInEachLevel() {
+    return seqFileNumInEachLevel;
   }
 
-  public void setMaxFileNumInEachLevel(int maxFileNumInEachLevel) {
-    this.maxFileNumInEachLevel = maxFileNumInEachLevel;
+  public void setSeqFileNumInEachLevel(int seqFileNumInEachLevel) {
+    this.seqFileNumInEachLevel = seqFileNumInEachLevel;
   }
 
-  public int getMaxLevelNum() {
-    return maxLevelNum;
+  public int getSeqLevelNum() {
+    return seqLevelNum;
   }
 
-  public void setMaxLevelNum(int maxLevelNum) {
-    this.maxLevelNum = maxLevelNum;
+  public void setSeqLevelNum(int seqLevelNum) {
+    this.seqLevelNum = seqLevelNum;
   }
 
-  public int getMaxUnseqFileNumInEachLevel() {
-    return maxUnseqFileNumInEachLevel;
+  public int getUnseqFileNumInEachLevel() {
+    return unseqFileNumInEachLevel;
   }
 
-  public void setMaxUnseqFileNumInEachLevel(int maxUnseqFileNumInEachLevel) {
-    this.maxUnseqFileNumInEachLevel = maxUnseqFileNumInEachLevel;
+  public void setUnseqFileNumInEachLevel(int unseqFileNumInEachLevel) {
+    this.unseqFileNumInEachLevel = unseqFileNumInEachLevel;
   }
 
-  public int getMaxUnseqLevelNum() {
-    return maxUnseqLevelNum;
+  public int getUnseqLevelNum() {
+    return unseqLevelNum;
   }
 
-  public void setMaxUnseqLevelNum(int maxUnseqLevelNum) {
-    this.maxUnseqLevelNum = maxUnseqLevelNum;
+  public void setUnseqLevelNum(int unseqLevelNum) {
+    this.unseqLevelNum = unseqLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1924,5 +1938,29 @@ public class IoTDBConfig {
 
   public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
+  }
+
+  public int getFrequencyIntervalInMinute() {
+    return frequencyIntervalInMinute;
+  }
+
+  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
+    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
+  }
+
+  public long getSlowQueryThreshold() {
+    return slowQueryThreshold;
+  }
+
+  public void setSlowQueryThreshold(long slowQueryThreshold) {
+    this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public boolean isDebugOn() {
+    return debugState;
+  }
+
+  public void setDebugState(boolean debugState) {
+    this.debugState = debugState;
   }
 }

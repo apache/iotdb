@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config
       .getAllocateMemoryForChunkCache();
@@ -85,7 +86,8 @@ public class ChunkCache {
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
     if (!CACHE_ENABLE) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(),
+          chunk.getDeleteIntervalList());
     }
 
     cacheRequestNum.incrementAndGet();
@@ -115,8 +117,11 @@ public class ChunkCache {
         lock.writeLock().unlock();
       }
     }
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
 
+    if (config.isDebugOn()) {
+      DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
+    }
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
   }
 
   private void printCacheLog(boolean isHit) {

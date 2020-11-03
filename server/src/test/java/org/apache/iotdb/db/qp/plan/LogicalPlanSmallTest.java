@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.plan;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -185,7 +184,7 @@ public class LogicalPlanSmallTest {
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator, 1000);
     IoTDB.metaManager.clear();
-    // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
+    // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.
   }
 
   @Test

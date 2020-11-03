@@ -57,49 +57,23 @@ PARAMETERS="$@"
 
 # sh version
 case "$PARAMETERS" in
-*"-h "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="$PARAMETERS -h 127.0.0.1" ;;
-esac
-case "$PARAMETERS" in
-*"-p "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="$PARAMETERS -p 6667" ;;
+*"-pw "*) PARAMETERS=$PARAMETERS ;;
+*            ) PARAMETERS="-pw root $PARAMETERS" ;;
 esac
 case "$PARAMETERS" in
 *"-u "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="$PARAMETERS -u root" ;;
+*            ) PARAMETERS="-u root $PARAMETERS" ;;
 esac
 case "$PARAMETERS" in
-*"-pw "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="$PARAMETERS -pw root" ;;
+*"-p "*) PARAMETERS=$PARAMETERS ;;
+*            ) PARAMETERS="-p 6667 $PARAMETERS" ;;
+esac
+case "$PARAMETERS" in
+*"-h "*) PARAMETERS=$PARAMETERS ;;
+*            ) PARAMETERS="-h 127.0.0.1 $PARAMETERS" ;;
 esac
 
-# bash version
-#if [[ $PARAMETERS =~ "-h " ]]
-#then
-#  PARAMETERS=$PARAMETERS
-#else
-#  PARAMETERS="$PARAMETERS -h 127.0.0.1"
-#fi
-# if [[ $PARAMETERS =~ "-p " ]]
-# then
-#   PARAMETERS=$PARAMETERS
-# else
-#   PARAMETERS="$PARAMETERS -p 6667"
-# fi
-# if [[ $PARAMETERS =~ "-u " ]]
-# then
-#   PARAMETERS=$PARAMETERS
-# else
-#   PARAMETERS="$PARAMETERS -u root"
-# fi
-# if [[ $PARAMETERS =~ "-pw " ]]
-# then
-#   PARAMETERS=$PARAMETERS
-# else
-#   PARAMETERS="$PARAMETERS -pw root"
-# fi
-
-#echo $PARAMETERS
+# echo $PARAMETERS
 
 exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 

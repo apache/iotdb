@@ -36,7 +36,9 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -58,17 +60,17 @@ public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
-  private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
+  private static final int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
-  private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   private static IoTDB daemon;
 
@@ -137,7 +139,9 @@ public class EnvironmentUtils {
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
+      ChunkCache.getInstance().clear();
       ChunkMetadataCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata
     IoTDB.metaManager.clear();
