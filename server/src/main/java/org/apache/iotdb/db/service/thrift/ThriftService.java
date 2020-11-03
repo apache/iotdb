@@ -81,7 +81,8 @@ public abstract class ThriftService implements IService {
     JMXService.deregisterMBean(mbeanName);
   }
 
-  public abstract void initTProcessor() throws ClassNotFoundException,IllegalAccessException,InstantiationException;
+  public abstract void initTProcessor() 
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException;
   public abstract void initThriftServiceThread()
       throws IllegalAccessException, InstantiationException, ClassNotFoundException;
   public abstract String getBindIP();

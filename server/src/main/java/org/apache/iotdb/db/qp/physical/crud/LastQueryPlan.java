@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class LastQueryPlan extends RawDataQueryPlan {
 
@@ -30,9 +34,22 @@ public class LastQueryPlan extends RawDataQueryPlan {
     setOperatorType(Operator.OperatorType.LAST);
   }
 
-  public void setExpression(IExpression expression) {
-    if (expression instanceof GlobalTimeExpression) {
+  public void setExpression(IExpression expression) throws QueryProcessException {
+    if (isValidExpression(expression)) {
       super.setExpression(expression);
+    } else {
+      throw new QueryProcessException("Only \'>\' and \'>=\' are supported in LAST query");
     }
+  }
+
+  // Only > and >= are supported in time filter
+  private boolean isValidExpression(IExpression expression) {
+    if (expression instanceof GlobalTimeExpression) {
+      Filter filter = ((GlobalTimeExpression) expression).getFilter();
+      if (filter instanceof TimeGtEq || filter instanceof TimeGt) {
+        return true;
+      }
+    }
+    return false;
   }
 }

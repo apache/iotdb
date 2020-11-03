@@ -398,7 +398,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 which means: Query and return the last data points of timeseries prefixPath.path.
 
-Only time filter is supported in \<WhereClause\>. Any value filters given in the \<WhereClause\> take no effects.
+Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
 The result will be returned in a three column table format.
 
@@ -417,10 +417,10 @@ Example 1: get the last point of root.ln.wf01.wt01.speed:
 ```
 
 Example 2: get the last speed, status and temperature points of root.ln.wf01.wt01,
-whose timestamp in range [5, 10).
+whose timestamp larger or equal to 5.
 
 ```
-> select last speed, status, temperature from root.ln.wf01.wt01 where time >= 5 and time < 10
+> select last speed, status, temperature from root.ln.wf01.wt01 where time >= 5
 
 | Time | Path                         | Value |
 | ---  | ---------------------------- | ----- |
