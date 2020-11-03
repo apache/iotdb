@@ -30,7 +30,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   public PrimitiveMemTable(boolean enableMemControl) {
-    this.enableMemControl = enableMemControl;
+    this.disableMemControl = !enableMemControl;
   }
   public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
     super(memTableMap);

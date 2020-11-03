@@ -22,7 +22,6 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -54,7 +53,7 @@ public class PrimitiveArrayManager {
    */
   private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
-  private static int currentDataTypeTotalNum = 0;
+  private static long currentDataTypeTotalNum = 0L;
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
@@ -286,7 +285,7 @@ public class PrimitiveArrayManager {
    * @param total current DataType Total Num (twice of number of time series)
    */
   public static void updateSchemaDataTypeNum(Map<TSDataType, Integer> schemaDataTypeNumMap,
-      int total) {
+      long total) {
     for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
       TSDataType dataType = entry.getKey();
       bufferedArraysNumRatio.put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);

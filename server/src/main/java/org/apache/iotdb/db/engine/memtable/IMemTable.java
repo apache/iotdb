@@ -19,11 +19,9 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -135,6 +133,7 @@ public interface IMemTable {
   void release();
 
   /**
+   * must guarantee the device exists in the work memtable
    * only used when mem control enabled
    */
   boolean checkIfChunkDoesNotExist(String deviceId, String measurement);

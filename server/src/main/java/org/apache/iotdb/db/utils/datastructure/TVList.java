@@ -244,6 +244,10 @@ public abstract class TVList {
 
   abstract void clearValue();
 
+  /**
+   * The arrays for sorting are not including in write memory now, 
+   * the memory usage is considered as temporary memory.
+   */
   abstract void clearSortedValue();
 
   protected void checkExpansion() {

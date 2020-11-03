@@ -66,10 +66,10 @@ public abstract class AbstractMemTable implements IMemTable {
   private long tvListRamCost = 0;
 
   /**
-   * The initial value is false because we should calculate the text data size when recover
+   * The initial value is true because we want calculate the text data size when recover
    * memTable!!
    */
-  protected boolean enableMemControl = false;
+  protected boolean disableMemControl = true;
 
   private int seriesNumber = 0;
 
@@ -130,7 +130,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
       Object value = insertRowPlan.getValues()[i];
       memSize += MemUtils.getRecordSize(insertRowPlan.getMeasurementMNodes()[i].getSchema().getType(), value,
-          !enableMemControl);
+          disableMemControl);
 
       write(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getMeasurements()[i],
           insertRowPlan.getMeasurementMNodes()[i].getSchema(), insertRowPlan.getTime(), value);
@@ -145,7 +145,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
-      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, !enableMemControl);
+      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan.getFailedMeasurementNumber())
         * (end - start);
     } catch (RuntimeException e) {

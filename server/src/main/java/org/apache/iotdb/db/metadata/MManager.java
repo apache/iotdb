@@ -43,6 +43,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -125,7 +127,7 @@ public class MManager {
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
   // reported total series number
   private long reportedDataTypeTotalNum;
-  private long totalSeriesNumber = 0L;
+  private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -214,7 +216,7 @@ public class MManager {
       List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
       for (PartialPath sg : storageGroups) {
         MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber += node.getLeafCount();
+        totalSeriesNumber.addAndGet(node.getLeafCount());
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
@@ -283,7 +285,7 @@ public class MManager {
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
-      this.totalSeriesNumber = 0;
+      this.totalSeriesNumber.set(0);
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -412,8 +414,8 @@ public class MManager {
       }
 
       // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber++;
-      if (totalSeriesNumber * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+      totalSeriesNumber.addAndGet(1);
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
       }
@@ -462,12 +464,6 @@ public class MManager {
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
-      totalSeriesNumber -= mtree.getAllTimeseriesCount(prefixPath);
-      if (!allowToCreateNewSeries && 
-          totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
-        logger.info("Current series number {} come back to normal level", totalSeriesNumber);
-        allowToCreateNewSeries = true;
-      }
       mNodeCache.clear();
     }
     try {
@@ -547,9 +543,9 @@ public class MManager {
 
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
-    totalSeriesNumber--;
+    totalSeriesNumber.addAndGet(-1);
     if (!allowToCreateNewSeries && 
-        totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+        totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
     }
@@ -580,10 +576,10 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber -= mtree.getAllTimeseriesCount(storageGroup);
+        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
         if (!allowToCreateNewSeries && 
-            totalSeriesNumber * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+            totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
           logger.info("Current series number {} come back to normal level", totalSeriesNumber);
           allowToCreateNewSeries = true;
         }
@@ -620,10 +616,9 @@ public class MManager {
     schemaDataTypeNumMap.put(TSDataType.INT64,
         schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
 
-    int currentDataTypeTotalNum = 0;
-    for (int typeSize : schemaDataTypeNumMap.values()) {
-      currentDataTypeTotalNum += typeSize;
-    }
+    // total current DataType Total Num (twice of number of time series)
+    // used in primitive array manager
+    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
 
     if (num > 0 && currentDataTypeTotalNum - reportedDataTypeTotalNum
         >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
