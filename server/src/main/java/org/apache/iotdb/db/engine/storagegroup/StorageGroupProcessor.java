@@ -338,6 +338,7 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
+      tsFileManagement.recover();
 
       updateLastestFlushedTime();
     } catch (IOException | MetadataException e) {
@@ -549,6 +550,9 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
+      if (TsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
+        continue;
+      }
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 

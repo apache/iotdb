@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.tsfilemanagement;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -141,6 +143,13 @@ public abstract class TsFileManagement {
    * fork current TsFile list (call this before merge)
    */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
+
+  public static int getMergeLevel(File file) {
+    String mergeLevelStr = file.getPath()
+        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
+        .replaceAll(TSFILE_SUFFIX, "");
+    return Integer.parseInt(mergeLevelStr);
+  }
 
   public void readLock() {
     hotCompactionMergeLock.readLock().lock();

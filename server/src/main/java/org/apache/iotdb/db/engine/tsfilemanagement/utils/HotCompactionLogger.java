@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.tsfilemanagement.utils;
 
+import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -35,8 +37,6 @@ public class HotCompactionLogger {
   public static final String FULL_MERGE = "full merge";
   public static final String MERGE_FINISHED = "merge finished";
 
-  private static final String FORMAT_DEVICE_OFFSET = "%s %s";
-
   private BufferedWriter logStream;
 
   public HotCompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
@@ -50,7 +50,7 @@ public class HotCompactionLogger {
   }
 
   public void logDevice(String device, long offset) throws IOException {
-    logStream.write(String.format(FORMAT_DEVICE_OFFSET, device, offset));
+    logStream.write(device + STR_DEVICE_OFFSET_SEPERATOR + offset);
     logStream.newLine();
     logStream.flush();
   }
