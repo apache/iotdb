@@ -164,12 +164,12 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting this time to check system again
    */
-  private int waitingTimeWhenInsertBlocked = 10;
+  private int waitingTimeWhenInsertBlockedInMs = 10;
 
   /**
-   * When inserting rejected exceeds this, throw a exception
+   * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlocked = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
   /**
    * Is the write ahead log enable.
    */
@@ -1997,18 +1997,18 @@ public class IoTDBConfig {
   }
 
   public int getWaitingTimeWhenInsertBlocked() {
-    return waitingTimeWhenInsertBlocked;
+    return waitingTimeWhenInsertBlockedInMs;
   }
 
   public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
-    this.waitingTimeWhenInsertBlocked = waitingTimeWhenInsertBlocked;
+    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
   }
 
   public int getMaxWaitingTimeWhenInsertBlocked() {
-    return maxWaitingTimeWhenInsertBlocked;
+    return maxWaitingTimeWhenInsertBlockedInMs;
   }
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
-    this.maxWaitingTimeWhenInsertBlocked = maxWaitingTimeWhenInsertBlocked;
+    this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 }

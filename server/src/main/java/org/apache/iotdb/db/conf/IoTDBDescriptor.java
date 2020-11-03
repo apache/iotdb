@@ -283,6 +283,14 @@ public class IoTDBDescriptor {
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
+      conf.setWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
+          .getProperty("waiting_time_when_insert_blocked",
+              Integer.toString(conf.getWaitingTimeWhenInsertBlocked()))));
+
+      conf.setMaxWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
+          .getProperty("max_waiting_time_when_insert_blocked",
+              Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
+
       conf.setEstimatedSeriesSize(Integer.parseInt(properties
           .getProperty("estimated_series_size",
               Integer.toString(conf.getEstimatedSeriesSize()))));
