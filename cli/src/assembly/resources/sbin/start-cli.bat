@@ -51,10 +51,10 @@ set p_parameter=-p 6667
 set h_parameter=-h 127.0.0.1
 
 @REM Added parameters when default parameters are missing
-echo %PARAMETERS% | find "-pw">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%pw_parameter% %PARAMETERS%)
-echo %PARAMETERS% | find "-u">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%u_parameter% %PARAMETERS%)
-echo %PARAMETERS% | find "-p">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%p_parameter% %PARAMETERS%)
-echo %PARAMETERS% | find "-h">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%h_parameter% %PARAMETERS%)
+echo %PARAMETERS% | findstr /c:"-pw">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%pw_parameter% %PARAMETERS%)
+echo %PARAMETERS% | findstr /c:"-u">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%u_parameter% %PARAMETERS%)
+echo %PARAMETERS% | findstr /c:"-p">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%p_parameter% %PARAMETERS%)
+echo %PARAMETERS% | findstr /c:"-h">nul && (set PARAMETERS=%PARAMETERS%) || (set PARAMETERS=%h_parameter% %PARAMETERS%)
 
 echo %PARAMETERS%
 
