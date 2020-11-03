@@ -368,9 +368,6 @@ public class IoTDBDescriptor {
       conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
           "merge_write_throughput_mb_per_sec",
           Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
-      conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
-          "merge_read_throughput_mb_per_sec",
-          Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",

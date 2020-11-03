@@ -558,11 +558,6 @@ public class IoTDBConfig {
    */
   private int hotCompactionThreadNum = 30;
 
-  /**
-   * The limit of read throughput merge can reach per second
-   */
-  private int mergeReadThroughputMbPerSec = 16;
-
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /**
@@ -1329,14 +1324,6 @@ public class IoTDBConfig {
 
   public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
-  }
-
-  public int getMergeReadThroughputMbPerSec() {
-    return mergeReadThroughputMbPerSec;
-  }
-
-  public void setMergeReadThroughputMbPerSec(int mergeReadThroughputMbPerSec) {
-    this.mergeReadThroughputMbPerSec = mergeReadThroughputMbPerSec;
   }
 
   public long getMemtableSizeThreshold() {
