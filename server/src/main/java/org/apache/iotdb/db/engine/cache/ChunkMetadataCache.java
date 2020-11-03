@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 public class ChunkMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkMetadataCache.class);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
@@ -144,6 +145,11 @@ public class ChunkMetadataCache {
       } finally {
         lock.writeLock().unlock();
       }
+    }
+    if (config.isDebugOn()) {
+      DEBUG_LOGGER.info(
+          "Chunk meta data list size: " + chunkMetadataList.size() + " key is: " + key.getString());
+      chunkMetadataList.forEach(c -> DEBUG_LOGGER.info(c.toString()));
     }
     return new ArrayList<>(chunkMetadataList);
   }
