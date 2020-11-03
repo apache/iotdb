@@ -18,6 +18,7 @@
 
 import sys
 import struct
+import time
 
 # sys.path.append("../target")
 sys.path.append("../../thrift/target/generated-sources-python")
@@ -39,7 +40,7 @@ class Session(object):
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = 'root'
     DEFAULT_PASSWORD = 'root'
-    DEFAULT_ZONE_ID = 'UTC'
+    DEFAULT_ZONE_ID = time.strftime('%z')
 
     def __init__(self, host, port, user=DEFAULT_USER, password=DEFAULT_PASSWORD, fetch_size=DEFAULT_FETCH_SIZE, zone_id=DEFAULT_ZONE_ID):
         self.__host = host
