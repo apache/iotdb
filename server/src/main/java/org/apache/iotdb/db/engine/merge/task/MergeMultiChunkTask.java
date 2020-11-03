@@ -62,7 +62,7 @@ public class MergeMultiChunkTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeMultiChunkTask.class);
   private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
-      .getChunkMergePointThreshold();
+      .getMergeChunkPointNumberThreshold();
 
   private MergeLogger mergeLogger;
   private List<PartialPath> unmergedSeries;
@@ -303,7 +303,6 @@ public class MergeMultiChunkTask {
 
     return mergedChunkNum.get() > 0;
   }
-
 
 
   /**

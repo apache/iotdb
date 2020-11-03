@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement.utils;
+package org.apache.iotdb.db.engine.compaction.utils;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
@@ -52,13 +52,13 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HotCompactionUtils {
+public class CompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(HotCompactionUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(CompactionUtils.class);
   private static final int MERGE_PAGE_POINT_NUM = IoTDBDescriptor.getInstance().getConfig()
       .getMergePagePointNumberThreshold();
 
-  private HotCompactionUtils() {
+  private CompactionUtils() {
     throw new IllegalStateException("Utility class");
   }
 
@@ -175,13 +175,13 @@ public class HotCompactionUtils {
    * @param targetResource the target resource to be merged to
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
-   * @param hotCompactionLogger the logger
+   * @param compactionLogger the logger
    * @param devices the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(TsFileResource targetResource,
       List<TsFileResource> tsFileResources, String storageGroup,
-      HotCompactionLogger hotCompactionLogger,
+      CompactionLogger compactionLogger,
       Set<String> devices, boolean sequence) throws IOException {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
@@ -247,13 +247,13 @@ public class HotCompactionUtils {
             }
           }
           if (isPageEnoughLarge) {
-            logger.info("{} [Hot Compaction] page enough large, use append merge", storageGroup);
+            logger.info("{} [Compaction] page enough large, use append merge", storageGroup);
             // append page in chunks, so we do not have to deserialize a chunk
             maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
             logger
-                .info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
+                .info("{} [Compaction] page enough large, use deserialize merge", storageGroup);
             // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
                 entry, targetResource, writer);
@@ -262,8 +262,8 @@ public class HotCompactionUtils {
         writer.endChunkGroup();
         writer.writeVersion(maxVersion);
       }
-      if (hotCompactionLogger != null) {
-        hotCompactionLogger.logDevice(device, writer.getPos());
+      if (compactionLogger != null) {
+        compactionLogger.logDevice(device, writer.getPos());
       }
     }
 

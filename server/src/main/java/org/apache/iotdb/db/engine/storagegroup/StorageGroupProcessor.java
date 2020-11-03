@@ -56,8 +56,8 @@ import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchInsertionException;
@@ -159,9 +159,9 @@ public class StorageGroupProcessor {
    */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
   /**
-   * hotCompactionMergeWorking is used to wait for last hot compaction to be done.
+   * compactionMergeWorking is used to wait for last compaction to be done.
    */
-  private volatile boolean hotCompactionMergeWorking = false;
+  private volatile boolean compactionMergeWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -262,7 +262,7 @@ public class StorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed",
           storageGroupSysDir.getPath());
     }
-    this.tsFileManagement = IoTDBDescriptor.getInstance().getConfig().getTsFileManagementStrategy()
+    this.tsFileManagement = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
         .getTsFileManagement(storageGroupName, storageGroupSysDir.getAbsolutePath());
 
     recover();
@@ -1209,11 +1209,11 @@ public class StorageGroupProcessor {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-        while (hotCompactionMergeWorking) {
+        while (compactionMergeWorking) {
           closeStorageGroupCondition.wait(100);
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger
-                .warn("{} has spent {}s to wait for closing hot compaction.", this.storageGroupName,
+                .warn("{} has spent {}s to wait for closing compaction.", this.storageGroupName,
                     (System.currentTimeMillis() - startTime) / 1000);
           }
         }
@@ -1601,23 +1601,23 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
-    if (!hotCompactionMergeWorking && !HotCompactionMergeTaskPoolManager.getInstance()
+    if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
         .isTerminated()) {
-      hotCompactionMergeWorking = true;
-      logger.info("{} submit a hot compaction merge task", storageGroupName);
+      compactionMergeWorking = true;
+      logger.info("{} submit a compaction merge task", storageGroupName);
       try {
-        // fork and filter current tsfile, then commit then to hot compaction merge
+        // fork and filter current tsfile, then commit then to compaction merge
         tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
-        HotCompactionMergeTaskPoolManager.getInstance()
+        CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
-                tsFileManagement.new HotCompactionMergeTask(this::closeHotCompactionMergeCallBack,
+                tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
       } catch (IOException | RejectedExecutionException e) {
-        this.closeHotCompactionMergeCallBack();
-        logger.error("{} hot compaction submit task failed", storageGroupName);
+        this.closeCompactionMergeCallBack();
+        logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
-      logger.info("{} last hot compaction merge task is working, skip current merge",
+      logger.info("{} last compaction merge task is working, skip current merge",
           storageGroupName);
     }
     synchronized (closeStorageGroupCondition) {
@@ -1627,10 +1627,10 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * close hot compaction merge callback, to release some locks
+   * close compaction merge callback, to release some locks
    */
-  private void closeHotCompactionMergeCallBack() {
-    this.hotCompactionMergeWorking = false;
+  private void closeCompactionMergeCallBack() {
+    this.compactionMergeWorking = false;
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
@@ -2409,7 +2409,7 @@ public class StorageGroupProcessor {
   }
 
   @FunctionalInterface
-  public interface CloseHotCompactionMergeCallBack {
+  public interface CloseCompactionMergeCallBack {
 
     void call();
   }

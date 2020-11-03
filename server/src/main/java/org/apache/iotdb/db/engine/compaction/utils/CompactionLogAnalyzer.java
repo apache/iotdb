@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.tsfilemanagement.utils;
+package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.FULL_MERGE;
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.MERGE_FINISHED;
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogger.UNSEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.MERGE_FINISHED;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -35,7 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class HotCompactionLogAnalyzer {
+public class CompactionLogAnalyzer {
 
   static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
 
@@ -48,7 +48,7 @@ public class HotCompactionLogAnalyzer {
   private boolean isSeq = false;
   private boolean fullMerge = false;
 
-  public HotCompactionLogAnalyzer(File logFile) {
+  public CompactionLogAnalyzer(File logFile) {
     this.logFile = logFile;
   }
 
