@@ -361,11 +361,9 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
-      //args = Arrays.copyOfRange(args, 0, index);
       // remove "-e" and it's parameter
-      String[] newArgs = ArrayUtils.remove(args, index);
-      newArgs = ArrayUtils.remove(newArgs, index);
-      return newArgs;
+      args = Arrays.copyOfRange(args, 0, index);
+      return args;
     }
   }
 
