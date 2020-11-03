@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.http.handler;
 
+import com.google.gson.JsonObject;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -49,5 +51,11 @@ abstract class Handler {
     if (username == null) {
       throw new AuthException("didn't log in iotdb");
     }
+  }
+
+  public static JsonObject getSuccessfulObject() {
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
+    return jsonObject;
   }
 }

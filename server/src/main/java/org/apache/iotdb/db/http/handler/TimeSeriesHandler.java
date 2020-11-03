@@ -78,9 +78,7 @@ public class TimeSeriesHandler extends Handler {
           throw new QueryProcessException(String.format("%s can't be created successfully", path));
         }
       }
-      JsonObject result = new JsonObject();
-      result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-      return result;
+      return getSuccessfulObject();
     } else {
       throw new UnsupportedHttpMethodException(httpMethod.toString());
     }

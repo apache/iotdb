@@ -53,8 +53,6 @@ public class DeleteStorageGroupsHandler extends Handler {
       throw new QueryProcessException(
           String.format("%s can't be deleted successfully", storageGroups));
     }
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-    return jsonObject;
+    return getSuccessfulObject();
   }
 }

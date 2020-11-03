@@ -57,8 +57,6 @@ public class DeleteTimeSeriesHandler extends Handler {
       throw new QueryProcessException(
           String.format("%s can't be created successfully", timeSeries));
     }
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-    return jsonObject;
+    return getSuccessfulObject();
   }
 }

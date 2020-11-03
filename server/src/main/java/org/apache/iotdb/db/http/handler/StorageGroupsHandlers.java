@@ -74,9 +74,7 @@ public class StorageGroupsHandlers extends Handler {
               String.format("%s can't be set successfully", storageGroup));
         }
       }
-      JsonObject jsonObject = new JsonObject();
-      jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-      return jsonObject;
+      return getSuccessfulObject();
     } else {
       throw new UnsupportedHttpMethodException(httpMethod.toString());
     }

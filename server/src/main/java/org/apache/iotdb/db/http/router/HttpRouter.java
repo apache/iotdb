@@ -70,17 +70,13 @@ public class HttpRouter {
         return timeSeriesHandler.handle(method, json);
       case HttpConstant.ROUTING_USER_LOGIN:
         if (UsersHandler.userLogin(decoder.parameters())) {
-          JsonObject result = new JsonObject();
-          result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-          return result;
+          return UsersHandler.getSuccessfulObject();
         } else {
           throw new AuthException(String.format("%s can't log in", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_USER_LOGOUT:
         if (UsersHandler.userLogout(decoder.parameters())) {
-          JsonObject result = new JsonObject();
-          result.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-          return result;
+          return UsersHandler.getSuccessfulObject();
         } else {
           throw new AuthException(String.format("%s can't log out", UsersHandler.getUsername()));
         }

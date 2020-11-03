@@ -50,9 +50,7 @@ public class InsertHandler extends Handler {
             String.format("%s can't be inserted successfully", deviceID));
       }
     }
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.addProperty(HttpConstant.RESULT, HttpConstant.SUCCESSFUL_OPERATION);
-    return jsonObject;
+    return getSuccessfulObject();
   }
 
   private boolean insertByRow(String deviceId, long time, List<String> measurements,
