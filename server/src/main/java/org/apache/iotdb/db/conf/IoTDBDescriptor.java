@@ -277,7 +277,7 @@ public class IoTDBDescriptor {
               Integer.toString(conf.getMergePagePointNumberThreshold()))));
 
       conf.setTsFileManagementStrategy(TsFileManagementStrategy.valueOf(properties
-          .getProperty("tsfile_manage_strategy",
+          .getProperty("compaction_strategy",
               conf.getTsFileManagementStrategy().toString())));
 
       conf.setSeqLevelNum(Integer.parseInt(properties
