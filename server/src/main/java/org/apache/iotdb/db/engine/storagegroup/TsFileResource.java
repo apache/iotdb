@@ -336,15 +336,6 @@ public class TsFileResource {
         long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
       }
-
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        File modF = new File(file.getParentFile(), modFileName);
-        modFile = new ModificationFile(modF.getPath());
-      }
     }
   }
 
