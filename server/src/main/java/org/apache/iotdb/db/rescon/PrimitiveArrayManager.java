@@ -301,8 +301,12 @@ public class PrimitiveArrayManager {
    * @return true if the buffered array ratio exceeds the recommend ratio
    */
   private static boolean isCurrentDataTypeExceeded(TSDataType dataType) {
-    return currentDataTypeTotalNum != 0 &&
-        ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / currentDataTypeTotalNum >
+    int total = 0;
+    for (int num : bufferedArraysNumMap.values()) {
+      total += num;
+    }
+    return total != 0 &&
+        ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total >
             bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
   }
 

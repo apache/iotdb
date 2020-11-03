@@ -376,7 +376,7 @@ public class TsFileProcessor {
       try {
         TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
         if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over {}ms", maxWaitingTimeWhenInsertBlocked);
+          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
