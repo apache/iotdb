@@ -53,7 +53,6 @@ public class PrimitiveArrayManager {
    */
   private static final Map<TSDataType, Double> bufferedArraysNumRatio = new EnumMap<>(
       TSDataType.class);
-  private static long currentDataTypeTotalNum = 0L;
 
   private static final Logger logger = LoggerFactory.getLogger(PrimitiveArrayManager.class);
 
@@ -290,7 +289,6 @@ public class PrimitiveArrayManager {
       TSDataType dataType = entry.getKey();
       bufferedArraysNumRatio.put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
     }
-    currentDataTypeTotalNum = total;
   }
 
   /**
