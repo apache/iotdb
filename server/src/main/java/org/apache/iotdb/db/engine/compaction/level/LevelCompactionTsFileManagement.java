@@ -500,13 +500,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return new File(prefixPath + level + TSFILE_SUFFIX);
   }
 
-  private static int getMergeLevel(File file) {
-    String mergeLevelStr = file.getPath()
-        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
-        .replaceAll(TSFILE_SUFFIX, "");
-    return Integer.parseInt(mergeLevelStr);
-  }
-
   private List<TreeSet<TsFileResource>> newSequenceTsFileResources(Long k) {
     List<TreeSet<TsFileResource>> newSequenceTsFileResources = new CopyOnWriteArrayList<>();
     for (int i = 0; i < seqLevelNum; i++) {
@@ -528,5 +521,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       newUnSequenceTsFileResources.add(new CopyOnWriteArrayList<>());
     }
     return newUnSequenceTsFileResources;
+  }
+
+  public static int getMergeLevel(File file) {
+    String mergeLevelStr = file.getPath()
+        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
+        .replaceAll(TSFILE_SUFFIX, "");
+    return Integer.parseInt(mergeLevelStr);
   }
 }

@@ -37,7 +37,7 @@ import java.util.Set;
 
 public class CompactionLogAnalyzer {
 
-  static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
+  public static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
 
   private File logFile;
   private boolean isMergeFinished = false;
@@ -59,8 +59,7 @@ public class CompactionLogAnalyzer {
   public void analyze() throws IOException {
     String currLine;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(logFile))) {
-      currLine = bufferedReader.readLine();
-      while (currLine != null) {
+      while ((currLine = bufferedReader.readLine()) != null) {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
@@ -83,9 +82,11 @@ public class CompactionLogAnalyzer {
             isSeq = false;
             break;
           default:
-            String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
-            deviceSet.add(resultList[0]);
-            offset = Long.parseLong(resultList[1]);
+            if (currLine.contains(STR_DEVICE_OFFSET_SEPERATOR)) {
+              String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
+              deviceSet.add(resultList[0]);
+              offset = Long.parseLong(resultList[1]);
+            }
             break;
         }
       }

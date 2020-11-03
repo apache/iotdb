@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +71,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
@@ -652,7 +652,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
+        // the actual row number of aggregation query is 1
+        fetchSize = 1;
       } // else default ignoreTimeStamp is false
+
+      if (plan instanceof GroupByTimePlan) {
+        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) plan;
+        // the actual row number of group by query should be calculated from startTime, endTime and interval.
+        fetchSize = Math.min(
+            (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
+                .getInterval()), fetchSize);
+      }
+
       resp.setOperationType(plan.getOperatorType().toString());
 
       // get deduplicated path num
@@ -660,13 +671,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof AlignByDevicePlan) {
         deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
       } else if (plan instanceof LastQueryPlan) {
-        deduplicatedPathNum = 0;
+        // dataset of last query consists of three column: time column + value column = 1 deduplicatedPathNum
+        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
+        deduplicatedPathNum = 2;
+        // last query's actual row number should be the minimum between the number of series and fetchSize
+        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
       } else if (plan instanceof RawDataQueryPlan) {
         deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
       }
 
       // generate the queryId for the operation
-
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
@@ -765,8 +779,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.TTL_RESP;
       case FLUSH_TASK_INFO:
         return StaticResps.FLUSH_INFO_RESP;
-      case DYNAMIC_PARAMETER:
-        return StaticResps.DYNAMIC_PARAMETER_RESP;
       case VERSION:
         return StaticResps.SHOW_VERSION_RESP;
       case TIMESERIES:

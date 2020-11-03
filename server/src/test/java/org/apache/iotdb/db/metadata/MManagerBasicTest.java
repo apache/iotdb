@@ -48,19 +48,15 @@ import org.junit.Test;
 public class MManagerBasicTest {
 
   private CompressionType compressionType;
-  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
 
   @Before
   public void setUp() throws Exception {
-    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(canAdjust);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -335,28 +331,6 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.laptop"));
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.vehicle"));
-    manager.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 
   @Test

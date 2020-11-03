@@ -32,7 +32,6 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -44,6 +43,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -67,8 +68,6 @@ public class EnvironmentUtils {
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
-
-  private static final int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -151,15 +150,16 @@ public class EnvironmentUtils {
       TracingManager.getInstance().close();
     }
 
+    // close array manager
+    PrimitiveArrayManager.close();
+
+    // clear system info
+    SystemInfo.getInstance().close();
+
     // delete all directory
     cleanAllDir();
-
-    config.setMaxMemtableNumber(oldMaxMemTableNumber);
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
-    IoTDBConfigDynamicAdapter.getInstance().reset();
-
-    logger.warn("EnvironmentUtil cleanEnv done.");
   }
 
   public static void cleanAllDir() throws IOException {
@@ -213,9 +213,6 @@ public class EnvironmentUtils {
     } catch (Exception e) {
       fail(e.getMessage());
     }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();
     // disable the system monitor

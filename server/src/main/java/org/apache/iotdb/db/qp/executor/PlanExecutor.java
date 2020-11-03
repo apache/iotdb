@@ -26,7 +26,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -58,8 +57,6 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -386,8 +383,6 @@ public class PlanExecutor implements IPlanExecutor {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
-      case DYNAMIC_PARAMETER:
-        return processShowDynamicParameterQuery();
       case FLUSH_TASK_INFO:
         return processShowFlushTaskInfo();
       case VERSION:
@@ -636,52 +631,6 @@ public class PlanExecutor implements IPlanExecutor {
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);
     return singleDataSet;
-  }
-
-  private QueryDataSet processShowDynamicParameterQuery() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(new PartialPath(COLUMN_PARAMETER, false),
-                new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
-
-    int timestamp = 0;
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable number",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "tsfile size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "compression ratio",
-        Double.toString(CompressionRatio.getInstance().getRatio()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "storage group number",
-        Integer.toString(IoTDB.metaManager.getAllStorageGroupPaths().size()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "timeseries number",
-        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp,
-        "maximal timeseries number among storage groups",
-        Long.toString(IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()));
-    return listDataSet;
   }
 
   private QueryDataSet processShowFlushTaskInfo() {

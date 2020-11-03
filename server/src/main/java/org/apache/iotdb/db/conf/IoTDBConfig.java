@@ -120,14 +120,19 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * Memory allocated for the read process
-   */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
-
-  /**
    * Memory allocated for the write process
    */
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+
+  /**
+   * Memory allocated for the read process
+   */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
+
+  /**
+   * Memory allocated for the mtree
+   */
+  private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /**
    * Memory allocated for the read process besides cache
@@ -137,10 +142,34 @@ public class IoTDBConfig {
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
   /**
-   * Is dynamic parameter adapter enable.
+   * Ratio of memory allocated for buffered arrays
    */
-  private boolean enableParameterAdapter = true;
+  private double bufferedArraysMemoryProportion = 0.6;
 
+  /**
+   * Flush proportion for system
+   */
+  private double flushProportion = 0.3;
+
+  /**
+   * Reject proportion for system
+   */
+  private double rejectProportion = 0.8;
+
+  /**
+   * If storage group increased more than this threshold, report to system.
+   */
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+
+  /**
+   * When inserting rejected, waiting this time to check system again
+   */
+  private int waitingTimeWhenInsertBlockedInMs = 10;
+
+  /**
+   * When inserting rejected exceeds this, throw an exception
+   */
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
   /**
    * Is the write ahead log enable.
    */
@@ -172,6 +201,8 @@ public class IoTDBConfig {
    * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
+
+  private int estimatedSeriesSize = 300;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -221,11 +252,6 @@ public class IoTDBConfig {
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /**
-   * Maximum MemTable number in MemTable pool.
-   */
-  private int maxMemtableNumber = 20;
-
-  /**
    * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
@@ -239,6 +265,11 @@ public class IoTDBConfig {
    * How many threads can concurrently query. When <= 0, use CPU core number.
    */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Is the write mem control for writing enable.
+   */
+  private boolean enableMemControl = true;
 
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
@@ -1016,14 +1047,6 @@ public class IoTDBConfig {
     this.batchSize = batchSize;
   }
 
-  public int getMaxMemtableNumber() {
-    return maxMemtableNumber;
-  }
-
-  public void setMaxMemtableNumber(int maxMemtableNumber) {
-    this.maxMemtableNumber = maxMemtableNumber;
-  }
-
   public int getConcurrentFlushThread() {
     return concurrentFlushThread;
   }
@@ -1168,6 +1191,14 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getEstimatedSeriesSize() {
+    return estimatedSeriesSize;
+  }
+
+  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
+    this.estimatedSeriesSize = estimatedSeriesSize;
+  }
+  
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }
@@ -1208,12 +1239,36 @@ public class IoTDBConfig {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
-  public boolean isEnableParameterAdapter() {
-    return enableParameterAdapter;
+  public double getBufferedArraysMemoryProportion() {
+    return bufferedArraysMemoryProportion;
   }
 
-  public void setEnableParameterAdapter(boolean enableParameterAdapter) {
-    this.enableParameterAdapter = enableParameterAdapter;
+  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
+    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
+  }
+
+  public double getFlushProportion() {
+    return flushProportion;
+  }
+
+  public void setFlushProportion(double flushProportion) {
+    this.flushProportion = flushProportion;
+  }
+
+  public double getRejectProportion() {
+    return rejectProportion;
+  }
+
+  public void setRejectProportion(double rejectProportion) {
+    this.rejectProportion = rejectProportion;
+  }
+
+  public long getStorageGroupSizeReportThreshold() {
+    return storageGroupSizeReportThreshold;
+  }
+
+  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
+    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
   public long getAllocateMemoryForWrite() {
@@ -1222,6 +1277,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
     this.allocateMemoryForWrite = allocateMemoryForWrite;
+  }
+
+  public long getAllocateMemoryForSchema() {
+    return allocateMemoryForSchema;
+  }
+
+  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+    this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
   long getAllocateMemoryForRead() {
@@ -1318,6 +1381,14 @@ public class IoTDBConfig {
 
   public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  }
+
+  public boolean isEnableMemControl() {
+    return enableMemControl;
+  }
+
+  public void setEnableMemControl(boolean enableMemControl) {
+    this.enableMemControl = enableMemControl;
   }
 
   public long getMemtableSizeThreshold() {
@@ -1919,6 +1990,22 @@ public class IoTDBConfig {
 
   public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
+  }
+
+  public int getWaitingTimeWhenInsertBlocked() {
+    return waitingTimeWhenInsertBlockedInMs;
+  }
+
+  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
+    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
+  }
+
+  public int getMaxWaitingTimeWhenInsertBlocked() {
+    return maxWaitingTimeWhenInsertBlockedInMs;
+  }
+
+  public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
   }
 
   public int getFrequencyIntervalInMinute() {
