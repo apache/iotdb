@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY-DEBUG");
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config
       .getAllocateMemoryForChunkCache();

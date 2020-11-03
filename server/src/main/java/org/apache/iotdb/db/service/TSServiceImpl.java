@@ -149,8 +149,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger auditLogger = LoggerFactory
       .getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
-  private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW-SQL");
-  private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY-FREQUENCY");
+  private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");
+  private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY_FREQUENCY");
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
