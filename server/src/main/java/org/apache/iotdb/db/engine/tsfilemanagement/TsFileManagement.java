@@ -144,13 +144,6 @@ public abstract class TsFileManagement {
    */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  public static int getMergeLevel(File file) {
-    String mergeLevelStr = file.getPath()
-        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
-        .replaceAll(TSFILE_SUFFIX, "");
-    return Integer.parseInt(mergeLevelStr);
-  }
-
   public void readLock() {
     hotCompactionMergeLock.readLock().lock();
   }

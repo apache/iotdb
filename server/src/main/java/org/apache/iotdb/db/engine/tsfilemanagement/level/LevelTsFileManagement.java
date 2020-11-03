@@ -526,4 +526,11 @@ public class LevelTsFileManagement extends TsFileManagement {
     }
     return newUnSequenceTsFileResources;
   }
+
+  public static int getMergeLevel(File file) {
+    String mergeLevelStr = file.getPath()
+        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
+        .replaceAll(TSFILE_SUFFIX, "");
+    return Integer.parseInt(mergeLevelStr);
+  }
 }
