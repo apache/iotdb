@@ -679,7 +679,6 @@ public class TsFileProcessor {
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
       }
-      memTable = null;
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
                 + "flushing memtable list size: {}", storageGroupName,
