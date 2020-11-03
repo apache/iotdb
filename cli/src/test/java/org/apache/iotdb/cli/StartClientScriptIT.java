@@ -53,21 +53,30 @@ public class StartClientScriptIT extends AbstractScript {
     String dir = getCliPath();
     final String[] output = {
         "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
-        "-h",
-        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+    Process process = Runtime.getRuntime()
+        .exec(dir + File.separator + "sbin" + File.separator + "start-cli.bat " +
+            "-h 127.0.0.1 " +
+            "-p 6668 " +
+            "-u root " +
+            "-pw root ");
+//    ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
+//        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+//        "-h",
+//        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
     System.out.println(">>>>>>>>>>>> before testOutput(builder, output)");
-    testOutput(builder, output);
+    testOutput(process, output);
     System.out.println(">>>>>>>>>>>> after testOutput(builder, output)");
 
     final String[] output2 = {
         "Msg: The statement is executed successfully."};
-    ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
-        "-e", "\"flush\"");
+    Process process2 = Runtime.getRuntime()
+        .exec(dir + File.separator + "sbin" + File.separator + "start-cli.bat " +
+            "-e \"flush\"");
+//    ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
+//        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+//        "-e", "\"flush\"");
     System.out.println(">>>>>>>>>>>> before testOutput(builder2, output2)");
-    testOutput(builder2, output2);
+    testOutput(process2, output2);
     System.out.println(">>>>>>>>>>>> after testOutput(builder2, output2)");
   }
 
