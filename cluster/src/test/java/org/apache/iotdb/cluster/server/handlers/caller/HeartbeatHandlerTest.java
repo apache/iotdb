@@ -23,6 +23,8 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
+import java.io.IOException;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -58,8 +60,10 @@ public class HeartbeatHandlerTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     metaGroupMember.closeLogManager();
+    metaGroupMember.stop();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test

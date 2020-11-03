@@ -23,7 +23,9 @@ import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -46,8 +48,10 @@ public class LogCatchUpHandlerTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     member.closeLogManager();
+    member.stop();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test

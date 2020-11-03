@@ -143,12 +143,12 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
     dataLogManager = null;
     metaGroupMember.closeLogManager();
     metaGroupMember = null;
-    super.tearDown();
     File dir = new File(SyncLogDequeSerializer.getLogDir(2));
     for (File file : dir.listFiles()) {
       file.delete();
     }
     dir.delete();
+    super.tearDown();
   }
 
   @Override

@@ -25,7 +25,6 @@ import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SEN
 import static org.apache.iotdb.cluster.partition.slot.SlotManager.SlotStatus.SENT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -69,7 +68,8 @@ public class SlotManagerTest {
       }
     }).start();
     slotManager.waitSlot(0);
-    ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(prevEnableLogPersistence);
+    ClusterDescriptor.getInstance().getConfig()
+        .setEnableRaftLogPersistence(prevEnableLogPersistence);
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
   }
 
@@ -141,4 +141,9 @@ public class SlotManagerTest {
     }
 
   }
+//
+//  @After
+//  public void tearDown() throws Exception {
+//    EnvironmentUtils.cleanAllDir();
+//  }
 }

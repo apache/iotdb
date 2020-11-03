@@ -21,14 +21,17 @@ package org.apache.iotdb.cluster.log;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.After;
 import org.junit.Test;
 
 public class CommitLogCallbackTest {
 
   @Test
-  public void test() throws InterruptedException {
+  public void test() throws InterruptedException, IOException {
     RaftMember raftMember = new TestMetaGroupMember();
     CommitLogCallback commitLogCallback = new CommitLogCallback(raftMember);
     synchronized (raftMember.getSyncLock()) {
@@ -38,5 +41,11 @@ public class CommitLogCallbackTest {
       raftMember.getSyncLock().wait();
     }
     assertTrue(true);
+    raftMember.stop();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanAllDir();
   }
 }
