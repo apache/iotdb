@@ -52,7 +52,7 @@ class Session(object):
         self.protocol_version = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
         self.__session_id = None
         self.__statement_id = None
-        self.__zone_id = None
+        self.__zone_id = 'UTC'
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
@@ -72,7 +72,8 @@ class Session(object):
 
         open_req = TSOpenSessionReq(client_protocol=self.protocol_version,
                                     username=self.__user,
-                                    password=self.__password)
+                                    password=self.__password,
+                                    zoneId=self.__zone_id)
 
         try:
             open_resp = self.__client.openSession(open_req)
