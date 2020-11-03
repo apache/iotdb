@@ -336,6 +336,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
+    if (metadataIndexPair == null) {
+      return new ArrayList<>();
+    }
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
     List<String> measurementList = new ArrayList<>(measurements);
     Set<String> measurementsHadFound = new HashSet<>();
@@ -351,6 +354,9 @@ public class TsFileSequenceReader implements AutoCloseable {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         measurementMetadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
             measurementList.get(i), MetadataIndexNodeType.INTERNAL_MEASUREMENT, false);
+      }
+      if (measurementMetadataIndexPair == null) {
+        return new ArrayList<>();
       }
       buffer = readData(measurementMetadataIndexPair.left.getOffset(),
           measurementMetadataIndexPair.right);
@@ -595,6 +601,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
+    if (metadataIndexPair == null) {
+      return new ArrayList<>();
+    }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
     generateMetadataIndex(metadataIndexPair.left, buffer, device,
@@ -617,6 +626,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    *                      return when it is not INTERNAL_MEASUREMENT. This works for the situation
    *                      when the index tree does NOT have the device level and ONLY has the
    *                      measurement level.
+   * @param exactSearch   if is in exact search mode, return null when there is no entry with name;
+   *                      or else return the nearest MetadataIndexEntry before it (for deeper
+   *                      search)
    * @return target MetadataIndexEntry, endOffset pair
    */
   private Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
