@@ -337,8 +337,10 @@ public class TsFileResource {
         historicalVersions = Collections.singleton(version);
       }
 
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      if (inputStream.available() > 0) {
+        maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+        minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      }
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
