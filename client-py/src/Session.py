@@ -39,8 +39,9 @@ class Session(object):
     DEFAULT_FETCH_SIZE = 10000
     DEFAULT_USER = 'root'
     DEFAULT_PASSWORD = 'root'
+    DEFAULT_ZONE_ID = 'UTC'
 
-    def __init__(self, host, port, user=DEFAULT_USER, password=DEFAULT_PASSWORD, fetch_size=DEFAULT_FETCH_SIZE):
+    def __init__(self, host, port, user=DEFAULT_USER, password=DEFAULT_PASSWORD, fetch_size=DEFAULT_FETCH_SIZE, zone_id=DEFAULT_ZONE_ID):
         self.__host = host
         self.__port = port
         self.__user = user
@@ -52,7 +53,7 @@ class Session(object):
         self.protocol_version = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
         self.__session_id = None
         self.__statement_id = None
-        self.__zone_id = 'UTC'
+        self.__zone_id = zone_id
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
