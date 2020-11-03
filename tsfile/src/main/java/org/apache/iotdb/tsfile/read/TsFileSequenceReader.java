@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -337,7 +339,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
     if (metadataIndexPair == null) {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
     List<String> measurementList = new ArrayList<>(measurements);
@@ -356,7 +358,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             measurementList.get(i), MetadataIndexNodeType.INTERNAL_MEASUREMENT, false);
       }
       if (measurementMetadataIndexPair == null) {
-        return new ArrayList<>();
+        return Collections.emptyList();
       }
       buffer = readData(measurementMetadataIndexPair.left.getOffset(),
           measurementMetadataIndexPair.right);
@@ -602,7 +604,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
     if (metadataIndexPair == null) {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
@@ -1013,7 +1015,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
     if (timeseriesMetaData == null) {
-      return new ArrayList<>();
+      return Collections.emptyList();
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
     chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
