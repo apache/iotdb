@@ -164,7 +164,7 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting this time to check system again
    */
-  private int waitingTimeWhenInsertBlocked = 100;
+  private int waitingTimeWhenInsertBlocked = 10;
 
   /**
    * When inserting rejected exceeds this, throw a exception
