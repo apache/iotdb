@@ -688,9 +688,11 @@ public class PhysicalGenerator {
 
     if (queryPlan instanceof GroupByTimePlan) {
       GroupByTimePlan plan = (GroupByTimePlan) queryPlan;
+      // the actual row number of group by query should be calculated from startTime, endTime and interval.
       fetchSize = Math
           .min((int) ((plan.getEndTime() - plan.getStartTime()) / plan.getInterval()), fetchSize);
     } else if (queryPlan instanceof AggregationPlan) {
+      // the actual row number of aggregation query is 1
       fetchSize = 1;
     }
 

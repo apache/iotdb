@@ -652,11 +652,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
+        // the actual row number of aggregation query is 1
         fetchSize = 1;
       } // else default ignoreTimeStamp is false
 
       if (plan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) plan;
+        // the actual row number of group by query should be calculated from startTime, endTime and interval.
         fetchSize = Math.min(
             (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
                 .getInterval()), fetchSize);
@@ -669,13 +671,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof AlignByDevicePlan) {
         deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
       } else if (plan instanceof LastQueryPlan) {
-        deduplicatedPathNum = 0;
+        // dataset of last query consists of three column: time column + value column = 1 deduplicatedPathNum
+        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
+        deduplicatedPathNum = 2;
+        // last query's actual row number should be the minimum between the number of series and fetchSize
+        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
       } else if (plan instanceof RawDataQueryPlan) {
         deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
       }
 
       // generate the queryId for the operation
-
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
