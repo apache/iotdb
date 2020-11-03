@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.query.BaseQueryTest;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -42,7 +43,8 @@ import org.junit.Test;
 public class ClusterTimeGeneratorTest extends BaseQueryTest {
 
   @Test
-  public void test() throws StorageEngineException, IOException, IllegalPathException {
+  public void test()
+      throws StorageEngineException, IOException, IllegalPathException, QueryProcessException {
     RawDataQueryPlan dataQueryPlan = new RawDataQueryPlan();
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
