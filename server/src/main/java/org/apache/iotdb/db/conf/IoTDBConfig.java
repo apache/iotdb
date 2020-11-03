@@ -741,6 +741,21 @@ public class IoTDBConfig {
    */
   private int thriftInitBufferSize = 1024;
 
+  /**
+   * time interval in minute for calculating query frequency
+   */
+  private int frequencyIntervalInMinute = 1;
+
+  /**
+   * time cost(ms) threshold for slow query
+   */
+  private long slowQueryThreshold = 5000;
+
+  /**
+   * if the debug_state is true, we will print more details about the process of query
+   */
+  private boolean debugState = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2010,5 +2025,29 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
+  }
+
+  public int getFrequencyIntervalInMinute() {
+    return frequencyIntervalInMinute;
+  }
+
+  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
+    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
+  }
+
+  public long getSlowQueryThreshold() {
+    return slowQueryThreshold;
+  }
+
+  public void setSlowQueryThreshold(long slowQueryThreshold) {
+    this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public boolean isDebugOn() {
+    return debugState;
+  }
+
+  public void setDebugState(boolean debugState) {
+    this.debugState = debugState;
   }
 }

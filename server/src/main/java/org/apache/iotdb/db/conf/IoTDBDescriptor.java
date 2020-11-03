@@ -393,9 +393,11 @@ public class IoTDBDescriptor {
       conf.setHotCompactionThreadNum(Integer.parseInt(properties.getProperty(
           "hot_compaction_thread_num", Integer.toString(conf.getHotCompactionThreadNum()))));
       conf.setMergeWriteThroughputMbPerSec(Integer.parseInt(properties.getProperty(
-          "merge_write_throughput_mb_per_sec", Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+          "merge_write_throughput_mb_per_sec",
+          Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
       conf.setMergeReadThroughputMbPerSec(Integer.parseInt(properties.getProperty(
-          "merge_read_throughput_mb_per_sec", Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
+          "merge_read_throughput_mb_per_sec",
+          Integer.toString(conf.getMergeReadThroughputMbPerSec()))));
 
       conf.setEnablePartialInsert(
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
@@ -503,6 +505,15 @@ public class IoTDBDescriptor {
       conf.setThriftInitBufferSize(Integer.parseInt(properties
           .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
 
+      conf.setFrequencyIntervalInMinute(Integer.parseInt(properties
+          .getProperty("frequency_interval_in_minute",
+              String.valueOf(conf.getFrequencyIntervalInMinute()))));
+
+      conf.setSlowQueryThreshold(Long.parseLong(properties
+          .getProperty("slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
+
+      conf.setDebugState(Boolean.parseBoolean(properties
+          .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -728,6 +739,16 @@ public class IoTDBDescriptor {
       conf.setMaxQueryDeduplicatedPathNum(
           Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
 
+      // update frequency_interval_in_minute
+      conf.setFrequencyIntervalInMinute(
+          Integer.parseInt(properties.getProperty("frequency_interval_in_minute")));
+
+      // update slow_query_threshold
+      conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
+
+      // update debug_state
+      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
+
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
@@ -815,6 +836,7 @@ public class IoTDBDescriptor {
 
   /**
    * Get default encode algorithm by data type
+   *
    * @param dataType
    * @return
    */

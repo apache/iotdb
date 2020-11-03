@@ -73,7 +73,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
 
-```console
+```shell
 hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.11.0-SNAPSHOT-jar-with-dependencies.jar;
 
 Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.11.0-SNAPSHOT-jar-with-dependencies.jar] to class path

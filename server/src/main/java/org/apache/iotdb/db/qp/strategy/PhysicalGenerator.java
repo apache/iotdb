@@ -743,7 +743,9 @@ public class PhysicalGenerator {
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+      throw new QueryProcessException(String.format(
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
+          seriesOffset, size));
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {
