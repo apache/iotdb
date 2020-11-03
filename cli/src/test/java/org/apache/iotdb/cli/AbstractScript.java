@@ -35,7 +35,6 @@ public abstract class AbstractScript {
     List<String> outputList = new ArrayList<>();
     while (true) {
       line = r.readLine();
-      //System.out.println(line);
       if (line == null) {
         break;
       } else {
