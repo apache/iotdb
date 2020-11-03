@@ -284,14 +284,6 @@ public class TsFileResource {
           ReadWriteIOUtils.write(historicalVersion, outputStream);
         }
       }
-
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
-      if (modFile != null && modFile.exists()) {
-        String modFileName = new File(modFile.getFilePath()).getName();
-        ReadWriteIOUtils.write(modFileName, outputStream);
-      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
