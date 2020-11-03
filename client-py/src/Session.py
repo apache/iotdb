@@ -20,8 +20,7 @@ import sys
 import struct
 import time
 
-# sys.path.append("../target")
-sys.path.append("../../thrift/target/generated-sources-python")
+#sys.path.append("../../thrift/target/generated-sources-python")
 sys.path.append("./utils")
 
 from IoTDBConstants import *
