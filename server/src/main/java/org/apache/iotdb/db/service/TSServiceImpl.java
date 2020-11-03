@@ -889,9 +889,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case QUERY:
       case FILL:
         for (PartialPath path : paths) {
-          String column = path.getTsAlias();
-          if (column == null) {
-            column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias()
+          String column;
+          if (path.isTsAliasExists()) {
+            column = path.getTsAlias();
+          } else {
+            column = path.isMeasurementAliasExists() ? path.getFullPathWithAlias()
                 : path.getFullPath();
           }
           respColumns.add(column);
@@ -909,9 +911,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         for (int i = 0; i < paths.size(); i++) {
           PartialPath path = paths.get(i);
-          String column = path.getTsAlias();
-          if (column == null) {
-            column = path.getMeasurementAlias() != null
+          String column;
+          if (path.isTsAliasExists()) {
+            column = path.getTsAlias();
+          } else {
+            column = path.isMeasurementAliasExists()
                 ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
                 : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
           }
@@ -1747,7 +1751,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (QueryProcessException e) {
       logger.error("meet error while processing non-query. ", e);
       Throwable cause = e;
-      while (cause.getCause() != null){
+      while (cause.getCause() != null) {
         cause = cause.getCause();
       }
       return RpcUtils.getStatus(e.getErrorCode(), cause.getMessage());
