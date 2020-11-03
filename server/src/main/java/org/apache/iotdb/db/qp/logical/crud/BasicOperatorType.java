@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
+
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -28,7 +30,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 
 /**
  * all basic operator in filter.

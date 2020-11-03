@@ -36,7 +36,9 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -58,17 +60,17 @@ public class EnvironmentUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static DirectoryManager directoryManager = DirectoryManager.getInstance();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
 
-  private static int oldMaxMemTableNumber = config.getMaxMemtableNumber();
+  private static final int oldMaxMemTableNumber = config.getMaxMemtableNumber();
 
-  private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   private static IoTDB daemon;
 
@@ -77,6 +79,7 @@ public class EnvironmentUtils {
   public static void setIsEnableHttpService(boolean isEnableHttpService) {
     EnvironmentUtils.isEnableHttpService = isEnableHttpService;
   }
+  public static boolean examinePorts = false;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     logger.warn("EnvironmentUtil cleanEnv...");
@@ -88,44 +91,47 @@ public class EnvironmentUtils {
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
-    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
-    if (!transport.isOpen()) {
-      try {
-        transport.open();
-        logger.error("stop daemon failed. 6667 can be connected now.");
-        transport.close();
-      } catch (TTransportException e) {
+    if (examinePorts) {
+      // TODO: this is just too slow, especially on Windows, consider a better way
+      TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+      if (!transport.isOpen()) {
+        try {
+          transport.open();
+          logger.error("stop daemon failed. 6667 can be connected now.");
+          transport.close();
+        } catch (TTransportException e) {
+        }
       }
-    }
-    //try sync service
-    transport = new TSocket("127.0.0.1", 5555, 100);
-    if (!transport.isOpen()) {
-      try {
-        transport.open();
-        logger.error("stop Sync daemon failed. 5555 can be connected now.");
-        transport.close();
-      } catch (TTransportException e) {
+      //try sync service
+      transport = new TSocket("127.0.0.1", 5555, 100);
+      if (!transport.isOpen()) {
+        try {
+          transport.open();
+          logger.error("stop Sync daemon failed. 5555 can be connected now.");
+          transport.close();
+        } catch (TTransportException e) {
+        }
       }
-    }
-    //try jmx connection
-    try {
-    JMXServiceURL url =
-        new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
-      logger.error("stop JMX failed. 31999 can be connected now.");
-    jmxConnector.close();
-    } catch (IOException e) {
-      //do nothing
-    }
-    //try MetricService
-    Socket socket = new Socket();
-    try {
-      socket.connect(new InetSocketAddress("127.0.0.1", 8181));
-      logger.error("stop MetricService failed. 8181 can be connected now.");
-    } catch (Exception e) {
-      //do nothing
-    } finally {
-      socket.close();
+      //try jmx connection
+      try {
+        JMXServiceURL url =
+            new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+        JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+        logger.error("stop JMX failed. 31999 can be connected now.");
+        jmxConnector.close();
+      } catch (IOException e) {
+        //do nothing
+      }
+      //try MetricService
+      Socket socket = new Socket();
+      try {
+        socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
+        logger.error("stop MetricService failed. 8181 can be connected now.");
+      } catch (Exception e) {
+        //do nothing
+      } finally {
+        socket.close();
+      }
     }
 
     // clean storage group manager
@@ -136,16 +142,19 @@ public class EnvironmentUtils {
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
 
-
     // clean cache
     if (config.isMetaDataCacheEnable()) {
+      ChunkCache.getInstance().clear();
       ChunkMetadataCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata
     IoTDB.metaManager.clear();
 
     // close tracing
-    TracingManager.getInstance().close();
+    if (config.isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
 
     // delete all directory
     cleanAllDir();
@@ -154,6 +163,8 @@ public class EnvironmentUtils {
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
     IoTDBConfigDynamicAdapter.getInstance().reset();
+
+    logger.warn("EnvironmentUtil cleanEnv done.");
   }
 
   public static void cleanAllDir() throws IOException {
@@ -171,6 +182,8 @@ public class EnvironmentUtils {
     cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
+    // delete tracing
+    cleanDir(config.getTracingDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -213,12 +226,12 @@ public class EnvironmentUtils {
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
   public static void stopDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.stop();
     }
   }
@@ -230,7 +243,7 @@ public class EnvironmentUtils {
   }
 
   public static void activeDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.active();
     }
   }

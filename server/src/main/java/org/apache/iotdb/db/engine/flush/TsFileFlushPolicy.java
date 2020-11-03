@@ -33,7 +33,7 @@ public interface TsFileFlushPolicy {
 
   void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor, boolean isSeq);
 
-  class DirectFlushPolicy implements TsFileFlushPolicy{
+  class DirectFlushPolicy implements TsFileFlushPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(DirectFlushPolicy.class);
 

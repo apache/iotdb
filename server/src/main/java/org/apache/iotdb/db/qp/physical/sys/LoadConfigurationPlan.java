@@ -23,6 +23,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -90,6 +91,8 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -108,11 +111,12 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+    this.index = buffer.getLong();
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

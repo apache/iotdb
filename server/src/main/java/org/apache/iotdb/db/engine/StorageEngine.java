@@ -41,6 +41,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.flush.CloseFileListener;
+import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -75,6 +77,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +110,7 @@ public class StorageEngine implements IService {
   }
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
+
   private ExecutorService recoverAllSgThreadPool;
 
   static class InstanceHolder {
@@ -124,6 +128,10 @@ public class StorageEngine implements IService {
 
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+
+  // add customized listeners here for flush and close events
+  private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
+  private List<FlushListener> customFlushListeners = new ArrayList<>();
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -180,6 +188,8 @@ public class StorageEngine implements IService {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
           processor.setDataTTL(storageGroup.getDataTTL());
+          processor.setCustomCloseFileListeners(customCloseFileListeners);
+          processor.setCustomFlushListeners(customFlushListeners);
           processorMap.put(storageGroup.getPartialPath(), processor);
           logger.info("Storage Group Processor {} is recovered successfully",
               storageGroup.getFullPath());
@@ -311,6 +321,8 @@ public class StorageEngine implements IService {
               processor = new StorageGroupProcessor(systemDir, storageGroupPath.getFullPath(),
                   fileFlushPolicy);
               processor.setDataTTL(storageGroupMNode.getDataTTL());
+              processor.setCustomFlushListeners(customFlushListeners);
+              processor.setCustomCloseFileListeners(customCloseFileListeners);
               processorMap.put(storageGroupPath, processor);
             }
           }
@@ -355,6 +367,8 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
+   *
+   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -381,39 +395,61 @@ public class StorageEngine implements IService {
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
-    logger.info("Start closing all storage group processor");
+    logger.info("Start force closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, boolean isSeq) {
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
-    if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}", storageGroupPath,
+    if (processor == null) {
+      return;
+    }
+
+    if (logger.isInfoEnabled()) {
+      logger.info("{} closing sg processor is called for closing {}, seq = {}",
+          isSync ? "sync" : "async", storageGroupPath,
           isSeq);
-      processor.writeLock();
-      try {
-        if (isSeq) {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkSequenceTsFileProcessors())) {
+    }
+
+    processor.writeLock();
+    try {
+      if (isSeq) {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkSequenceTsFileProcessors())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(true, tsfileProcessor);
+          } else {
             processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
           }
-        } else {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkUnsequenceTsFileProcessor())) {
+        }
+      } else {
+        // to avoid concurrent modification problem, we need a new array list
+        for (TsFileProcessor tsfileProcessor : new ArrayList<>(
+            processor.getWorkUnsequenceTsFileProcessor())) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
+          } else {
             processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
           }
         }
-      } finally {
-        processor.writeUnlock();
       }
+    } finally {
+      processor.writeUnlock();
     }
   }
 
-  public void asyncCloseProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq)
+  /**
+   * @param storageGroupPath the storage group name
+   * @param partitionId      the partition id
+   * @param isSeq            is sequence tsfile or unsequence tsfile
+   * @param isSync           close tsfile synchronously or asynchronously
+   * @throws StorageGroupNotSetException
+   */
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
+      boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor != null) {
@@ -427,7 +463,11 @@ public class StorageEngine implements IService {
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            if (isSync) {
+              processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            } else {
+              processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            }
             break;
           }
         }
@@ -447,15 +487,16 @@ public class StorageEngine implements IService {
     // TODO
   }
 
-  /**
-   * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
-   */
-  public void delete(PartialPath deviceId, String measurementId, long startTime, long endTime)
-      throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+          throws StorageEngineException {
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
-    } catch (IOException e) {
+      List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
+      for (PartialPath storageGroupPath : sgPaths) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, startTime, endTime, planIndex);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
@@ -463,12 +504,15 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}"
    */
-  public void deleteTimeseries(PartialPath deviceId, String measurementId)
+  public void deleteTimeseries(PartialPath path, long planIndex)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, Long.MIN_VALUE, Long.MAX_VALUE);
-    } catch (IOException e) {
+      for (PartialPath storageGroupPath : IoTDB.metaManager.searchAllRelatedStorageGroups(path)) {
+        StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroupPath);
+        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
+        storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
+      }
+    } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
     }
   }
@@ -683,8 +727,60 @@ public class StorageEngine implements IService {
     getProcessor(storageGroupPath).removePartitions(filter);
   }
 
+  public Map<PartialPath, StorageGroupProcessor> getProcessorMap() {
+    return processorMap;
+  }
+
+  /**
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated partitionId and whether
+   * it is sequence or not.
+   * @return storage group -> a list of partitionId-isSequence pairs
+   */
+  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
+    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
+    for (Entry<PartialPath, StorageGroupProcessor> entry : processorMap.entrySet()) {
+      List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
+      StorageGroupProcessor processor = entry.getValue();
+      for (TsFileProcessor tsFileProcessor : processor.getWorkSequenceTsFileProcessors()) {
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
+        partitionIdList.add(tmpPair);
+      }
+
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
+        partitionIdList.add(tmpPair);
+      }
+
+      res.put(entry.getKey().getFullPath(), partitionIdList);
+    }
+    return res;
+  }
+
   @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
     StorageEngine.enablePartition = enablePartition;
+  }
+
+  @TestOnly
+  public static boolean isEnablePartition() {
+    return enablePartition;
+  }
+
+  /**
+   * Add a listener to listen flush start/end events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerFlushListener(FlushListener listener) {
+    customFlushListeners.add(listener);
+  }
+
+  /**
+   * Add a listener to listen file close events. Notice that this addition only applies to
+   * TsFileProcessors created afterwards.
+   * @param listener
+   */
+  public void registerCloseFileListener(CloseFileListener listener) {
+    customCloseFileListeners.add(listener);
   }
 }

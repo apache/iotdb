@@ -53,10 +53,10 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(long time, Object value) {
-    if (time < startTime || time > endTime)
+    if (time < startTime || time >= endTime)
       return false;
     else
-      return (time - startTime) % slidingStep <= interval;
+      return (time - startTime) % slidingStep < interval;
   }
 
   @Override
@@ -65,7 +65,7 @@ public class GroupByFilter implements Filter, Serializable {
       return false;
     else if (startTime <= this.startTime)
       return true;
-    else if (startTime > this.endTime)
+    else if (startTime >= this.endTime)
       return false;
     else {
       long minTime = startTime - this.startTime;

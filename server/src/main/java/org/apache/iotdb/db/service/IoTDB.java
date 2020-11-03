@@ -66,6 +66,10 @@ public class IoTDB implements IoTDBMBean {
     daemon.active();
   }
 
+  public static void setMetaManager(MManager metaManager) {
+    IoTDB.metaManager = metaManager;
+  }
+
   public void active() {
     StartupChecks checks = new StartupChecks().withDefaultTest();
     try {

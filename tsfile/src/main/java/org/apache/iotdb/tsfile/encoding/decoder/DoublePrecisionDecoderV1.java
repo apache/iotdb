@@ -31,44 +31,48 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * Decoder for value value using gorilla.
  */
-public class SinglePrecisionDecoder extends GorillaDecoder {
+public class DoublePrecisionDecoderV1 extends GorillaDecoderV1 {
 
-  private static final Logger logger = LoggerFactory.getLogger(SinglePrecisionDecoder.class);
-  private int preValue;
+  private static final Logger logger = LoggerFactory.getLogger(DoublePrecisionDecoderV1.class);
+  private long preValue;
 
-  public SinglePrecisionDecoder() {
+  public DoublePrecisionDecoderV1() {
     // do nothing
   }
 
   @Override
-  public float readFloat(ByteBuffer buffer) {
+  public double readDouble(ByteBuffer buffer) {
     if (!flag) {
       flag = true;
       try {
-        int ch1 = ReadWriteIOUtils.read(buffer);
-        int ch2 = ReadWriteIOUtils.read(buffer);
-        int ch3 = ReadWriteIOUtils.read(buffer);
-        int ch4 = ReadWriteIOUtils.read(buffer);
-        preValue = ch1 + (ch2 << 8) + (ch3 << 16) + (ch4 << 24);
-        leadingZeroNum = Integer.numberOfLeadingZeros(preValue);
-        tailingZeroNum = Integer.numberOfTrailingZeros(preValue);
-        float tmp = Float.intBitsToFloat(preValue);
+        int[] buf = new int[8];
+        for (int i = 0; i < 8; i++) {
+          buf[i] = ReadWriteIOUtils.read(buffer);
+        }
+        long res = 0L;
+        for (int i = 0; i < 8; i++) {
+          res += ((long) buf[i] << (i * 8));
+        }
+        preValue = res;
+        double tmp = Double.longBitsToDouble(preValue);
+        leadingZeroNum = Long.numberOfLeadingZeros(preValue);
+        tailingZeroNum = Long.numberOfTrailingZeros(preValue);
         fillBuffer(buffer);
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        logger.error("SinglePrecisionDecoder cannot read first float number", e);
+        logger.error("DoublePrecisionDecoderV1 cannot read first double number", e);
       }
     } else {
       try {
-        float tmp = Float.intBitsToFloat(preValue);
+        double tmp = Double.longBitsToDouble(preValue);
         getNextValue(buffer);
         return tmp;
       } catch (IOException e) {
-        logger.error("SinglePrecisionDecoder cannot read following float number", e);
+        logger.error("DoublePrecisionDecoderV1 cannot read following double number", e);
       }
     }
-    return Float.NaN;
+    return Double.NaN;
   }
 
   /**
@@ -87,27 +91,28 @@ public class SinglePrecisionDecoder extends GorillaDecoder {
 
     if (!nextFlag2) {
       // case: '10'
-      int tmp = 0;
-      for (int i = 0; i < TSFileConfig.FLOAT_LENGTH - leadingZeroNum - tailingZeroNum; i++) {
-        int bit = readBit(buffer) ? 1 : 0;
-        tmp |= bit << (TSFileConfig.FLOAT_LENGTH - 1 - leadingZeroNum - i);
+      long tmp = 0;
+      for (int i = 0; i < TSFileConfig.VALUE_BITS_LENGTH_64BIT - leadingZeroNum - tailingZeroNum;
+          i++) {
+        long bit = readBit(buffer) ? 1 : 0;
+        tmp |= (bit << (TSFileConfig.VALUE_BITS_LENGTH_64BIT - 1 - leadingZeroNum - i));
       }
       tmp ^= preValue;
       preValue = tmp;
     } else {
       // case: '11'
-      int leadingZeroNumTmp = readIntFromStream(buffer, TSFileConfig.FLAOT_LEADING_ZERO_LENGTH);
-      int lenTmp = readIntFromStream(buffer, TSFileConfig.FLOAT_VALUE_LENGTH);
-      int tmp = readIntFromStream(buffer, lenTmp);
-      tmp <<= (TSFileConfig.FLOAT_LENGTH - leadingZeroNumTmp - lenTmp);
+      int leadingZeroNumTmp = readIntFromStream(buffer,
+          TSFileConfig.LEADING_ZERO_BITS_LENGTH_64BIT);
+      int lenTmp = readIntFromStream(buffer, TSFileConfig.DOUBLE_VALUE_LENGTH);
+      long tmp = readLongFromStream(buffer, lenTmp);
+      tmp <<= (TSFileConfig.VALUE_BITS_LENGTH_64BIT - leadingZeroNumTmp - lenTmp);
       tmp ^= preValue;
       preValue = tmp;
     }
-    leadingZeroNum = Integer.numberOfLeadingZeros(preValue);
-    tailingZeroNum = Integer.numberOfTrailingZeros(preValue);
-    if (Float.isNaN(Float.intBitsToFloat(preValue))) {
+    leadingZeroNum = Long.numberOfLeadingZeros(preValue);
+    tailingZeroNum = Long.numberOfTrailingZeros(preValue);
+    if (Double.isNaN(Double.longBitsToDouble(preValue))) {
       isEnd = true;
     }
   }
-
 }

@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class Decoder {
 
+  private static final String ERROR_MSG = "Decoder not found: %s , DataType is : %s";
+
   private TSEncoding type;
 
   public Decoder(TSEncoding type) {
@@ -45,104 +47,104 @@ public abstract class Decoder {
     return type;
   }
 
-  /**
-   * get Decoder object by type.
-   *
-   * @param type TSEncoding type
-   * @param dataType TSDataType
-   * @return Decoder object
-   */
-  public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType) {
-    // PLA and DFT encoding are not supported in current version
-    if (type == TSEncoding.PLAIN) {
-      return new PlainDecoder(EndianType.BIG_ENDIAN);
-    } else if (type == TSEncoding.RLE) {
-      switch (dataType) {
-        case BOOLEAN:
-        case INT32:
-          return new IntRleDecoder(EndianType.BIG_ENDIAN);
-        case INT64:
-          return new LongRleDecoder(EndianType.BIG_ENDIAN);
-        case FLOAT:
-        case DOUBLE:
-          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
-        default:
-          throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
-      }
-    } else if (type == TSEncoding.TS_2DIFF) {
-      switch (dataType) {
-        case INT32:
-          return new DeltaBinaryDecoder.IntDeltaDecoder();
-        case INT64:
-          return new DeltaBinaryDecoder.LongDeltaDecoder();
-        case FLOAT:
-        case DOUBLE:
-          return new FloatDecoder(TSEncoding.valueOf(type.toString()), dataType);
-        default:
-          throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
-      }
-    } else if (type == TSEncoding.GORILLA) {
-      switch (dataType) {
-        case FLOAT:
-          return new SinglePrecisionDecoder();
-        case DOUBLE:
-          return new DoublePrecisionDecoder();
-        default:
-          throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
-      }
-    } else if (type == TSEncoding.REGULAR) {
-      switch (dataType) {
-        case INT32:
-          return new RegularDataDecoder.IntRegularDecoder();
-        case INT64:
-          return new RegularDataDecoder.LongRegularDecoder();
-        default:
-          throw new TsFileDecodingException(
-              "Decoder not found:" + type + " , DataType is :" + dataType);
-      }
-    } else {
-      throw new TsFileDecodingException(
-          "Decoder not found:" + type + " , DataType is :" + dataType);
+  public static Decoder getDecoderByType(TSEncoding encoding, TSDataType dataType) {
+    switch (encoding) {
+      case PLAIN:
+        return new PlainDecoder(EndianType.BIG_ENDIAN);
+      case RLE:
+        switch (dataType) {
+          case BOOLEAN:
+          case INT32:
+            return new IntRleDecoder(EndianType.BIG_ENDIAN);
+          case INT64:
+            return new LongRleDecoder(EndianType.BIG_ENDIAN);
+          case FLOAT:
+          case DOUBLE:
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case TS_2DIFF:
+        switch (dataType) {
+          case INT32:
+            return new DeltaBinaryDecoder.IntDeltaDecoder();
+          case INT64:
+            return new DeltaBinaryDecoder.LongDeltaDecoder();
+          case FLOAT:
+          case DOUBLE:
+            return new FloatDecoder(TSEncoding.valueOf(encoding.toString()), dataType);
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case GORILLA_V1:
+        switch (dataType) {
+          case FLOAT:
+            return new SinglePrecisionDecoderV1();
+          case DOUBLE:
+            return new DoublePrecisionDecoderV1();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case REGULAR:
+        switch (dataType) {
+          case INT32:
+            return new RegularDataDecoder.IntRegularDecoder();
+          case INT64:
+            return new RegularDataDecoder.LongRegularDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      case GORILLA:
+        switch (dataType) {
+          case FLOAT:
+            return new SinglePrecisionDecoderV2();
+          case DOUBLE:
+            return new DoublePrecisionDecoderV2();
+          case INT32:
+            return new IntGorillaDecoder();
+          case INT64:
+            return new LongGorillaDecoder();
+          default:
+            throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
+        }
+      default:
+        throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }
   }
 
   public int readInt(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readInt is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readInt is not supported by Decoder");
   }
 
   public boolean readBoolean(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBoolean is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readBoolean is not supported by Decoder");
   }
 
   public short readShort(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readShort is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readShort is not supported by Decoder");
   }
 
   public long readLong(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readLong is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readLong is not supported by Decoder");
   }
 
   public float readFloat(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readFloat is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readFloat is not supported by Decoder");
   }
 
   public double readDouble(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readDouble is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readDouble is not supported by Decoder");
   }
 
   public Binary readBinary(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBinary is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readBinary is not supported by Decoder");
   }
 
   public BigDecimal readBigDecimal(ByteBuffer buffer) {
-    throw new TsFileDecodingException("Method readBigDecimal is not supproted by Decoder");
+    throw new TsFileDecodingException("Method readBigDecimal is not supported by Decoder");
   }
 
   public abstract boolean hasNext(ByteBuffer buffer) throws IOException;
 
   public abstract void reset();
-
 }

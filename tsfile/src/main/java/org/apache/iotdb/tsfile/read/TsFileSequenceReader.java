@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -330,13 +331,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE);
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
-    int maxDegreeOfIndexNode = config.getMaxDegreeOfIndexNode();
-    if (measurements.size() > maxDegreeOfIndexNode / Math.log(maxDegreeOfIndexNode)) {
-      traverseAndReadTimeseriesMetadataInOneDevice(resultTimeseriesMetadataList,
-          MetadataIndexNodeType.INTERNAL_MEASUREMENT, metadataIndexPair, measurements);
-      return resultTimeseriesMetadataList;
-    }
-    for (String measurement : measurements) {
+    List<String> measurementList = new ArrayList<>(measurements);
+    Set<String> measurementsHadFound = new HashSet<>();
+    for (int i = 0; i < measurementList.size(); i++) {
+      if (measurementsHadFound.contains(measurementList.get(i))) {
+        continue;
+      }
       ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
@@ -344,22 +344,41 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         measurementMetadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
-            measurement, MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+            measurementList.get(i), MetadataIndexNodeType.INTERNAL_MEASUREMENT);
       }
       buffer = readData(measurementMetadataIndexPair.left.getOffset(),
           measurementMetadataIndexPair.right);
       while (buffer.hasRemaining()) {
         timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer));
       }
-      int searchResult = binarySearchInTimeseriesMetadataList(timeseriesMetadataList,
-          measurement);
-      if (searchResult >= 0) {
-        resultTimeseriesMetadataList.add(timeseriesMetadataList.get(searchResult));
+      for (int j = i; j < measurementList.size(); j++) {
+        String current = measurementList.get(j);
+        if (!measurementsHadFound.contains(current)) {
+          int searchResult = binarySearchInTimeseriesMetadataList(timeseriesMetadataList, current);
+          if (searchResult >= 0) {
+            resultTimeseriesMetadataList.add(timeseriesMetadataList.get(searchResult));
+            measurementsHadFound.add(current);
+          }
+        }
+        if (measurementsHadFound.size() == measurements.size()) {
+          return resultTimeseriesMetadataList;
+        }
       }
     }
     return resultTimeseriesMetadataList;
   }
 
+  /**
+   * Traverse and read TimeseriesMetadata of specific measurements in one device. This method need
+   * to deserialize all TimeseriesMetadata and then judge, in order to avoid frequent I/O when the
+   * number of queried measurements is too large. Attention: This method is not used currently
+   *
+   * @param timeseriesMetadataList TimeseriesMetadata list, to store the result
+   * @param type                   MetadataIndexNode type
+   * @param metadataIndexPair      <MetadataIndexEntry, offset> pair
+   * @param measurements           measurements to be queried
+   * @throws IOException io error
+   */
   private void traverseAndReadTimeseriesMetadataInOneDevice(
       List<TimeseriesMetadata> timeseriesMetadataList, MetadataIndexNodeType type,
       Pair<MetadataIndexEntry, Long> metadataIndexPair, Set<String> measurements)
@@ -683,6 +702,34 @@ public class TsFileSequenceReader implements AutoCloseable {
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeleteIntervalList());
+  }
+
+  /**
+   * read all Chunks of given device.
+   * <p>
+   * note that this method loads all the chunks into memory, so it needs to be invoked carefully.
+   *
+   * @param device name
+   * @return measurement -> chunks list
+   */
+  public Map<String, List<Chunk>> readChunksInDevice(String device) throws IOException {
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    Map<String, List<ChunkMetadata>> chunkMetadataInDevice = readChunkMetadataInDevice(device);
+    for (List<ChunkMetadata> chunkMetadataListInDevice : chunkMetadataInDevice.values()) {
+      chunkMetadataList.addAll(chunkMetadataListInDevice);
+    }
+
+    Map<String, List<Chunk>> chunksInDevice = new HashMap<>();
+    chunkMetadataList.sort(Comparator.comparing(ChunkMetadata::getOffsetOfChunkHeader));
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      Chunk chunk = readMemChunk(chunkMetadata);
+      String measurement = chunk.getHeader().getMeasurementID();
+      if (!chunksInDevice.containsKey(measurement)) {
+        chunksInDevice.put(measurement, new ArrayList<>());
+      }
+      chunksInDevice.get(measurement).add(chunk);
+    }
+    return chunksInDevice;
   }
 
   /**

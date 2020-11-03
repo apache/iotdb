@@ -49,11 +49,13 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA 
 - **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
+  - 7: LZ4
 - **预聚合信息**
   - 0: min_value
   - 1: max_value
@@ -258,7 +260,7 @@ For Linux or MacOs:
 
 ```
 D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-​````````````````````````
+````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
 output save path:IoTDB_data_dir_overview.txt
@@ -307,7 +309,7 @@ Linux or MacOs:
 
 ```
 D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
@@ -340,9 +342,9 @@ Linux or MacOs:
 
 在mac系统中的示例:
 
-```console
+```shell
 /iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-​````````````````````````
+````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
 TsFile path:test.tsfile

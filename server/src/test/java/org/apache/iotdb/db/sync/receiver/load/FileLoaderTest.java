@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -128,6 +129,7 @@ public class FileLoaderTest {
         TsFileResource tsFileResource = new TsFileResource(syncFile);
         tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
         tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
         tsFileResource.serialize();
       }
     }
@@ -225,6 +227,7 @@ public class FileLoaderTest {
         TsFileResource tsFileResource = new TsFileResource(syncFile);
         tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
         tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
         tsFileResource.serialize();
       }
     }

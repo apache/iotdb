@@ -67,7 +67,7 @@ public class IoTDBResultMetadataTest {
     List<String> columnInfoList = new ArrayList<>();
     columnInfoList.add("root.a.b.c");
     metadata = new IoTDBResultMetadata(columnInfoList, null, false);
-    assertEquals(metadata.getColumnCount(), 1);
+    assertEquals(1, metadata.getColumnCount());
   }
 
   @Test
@@ -159,7 +159,7 @@ public class IoTDBResultMetadataTest {
     }
     assertTrue(flag);
 
-    assertEquals(metadata.getColumnType(1), Types.TIMESTAMP);
+    assertEquals(Types.TIMESTAMP, metadata.getColumnType(1));
     for (int i = 1; i <= types.length; i++) {
       assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
     }

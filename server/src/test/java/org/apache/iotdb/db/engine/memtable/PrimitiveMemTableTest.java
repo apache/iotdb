@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -66,7 +67,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void simpleTest() throws IOException, QueryProcessException {
+  public void simpleTest() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
@@ -96,7 +97,7 @@ public class PrimitiveMemTableTest {
   }
 
   private void write(IMemTable memTable, String deviceId, String sensorId, TSDataType dataType,
-      TSEncoding encoding, int size) throws IOException, QueryProcessException {
+      TSEncoding encoding, int size) throws IOException, QueryProcessException, MetadataException {
     TimeValuePair[] ret = genTimeValuePair(size, dataType);
 
     for (TimeValuePair aRet : ret) {
@@ -134,7 +135,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testFloatType() throws IOException, QueryProcessException {
+  public void testFloatType() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable();
     String deviceId = "d1";
     int size = 100;
@@ -142,7 +143,7 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
-  public void testAllType() throws IOException, QueryProcessException {
+  public void testAllType() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
     String deviceId = "d1";
