@@ -171,10 +171,10 @@ script:
     - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
     - java -version
     - mvn -version
-    - mvn clean package -pl server -am
+    - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test -pl server -Dtest=org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessorTest
+    - mvn -B clean test integration-test
     # Killing background sleep loop
     - kill %1
 
