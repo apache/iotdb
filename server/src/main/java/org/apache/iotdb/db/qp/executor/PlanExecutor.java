@@ -324,7 +324,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  public static void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
+  public static void flushSpecifiedStorageGroups(FlushPlan plan)
+      throws StorageGroupNotSetException {
     Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan
         .getStorageGroupPartitionIds();
     for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
@@ -970,8 +971,26 @@ public class PlanExecutor implements IPlanExecutor {
       getSeriesSchemas(insertTabletPlan);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException(
-            INSERT_MEASUREMENTS_FAILED_MESSAGE + insertTabletPlan.getFailedMeasurements());
+        // check if all path not exist exceptions
+        List<String> failedPaths = insertTabletPlan.getFailedMeasurements();
+        List<Exception> exceptions = insertTabletPlan.getFailedExceptions();
+        boolean isPathNotExistException = true;
+        for (Exception e : exceptions) {
+          Throwable curException = e;
+          while (curException.getCause() != null) {
+            curException = curException.getCause();
+          }
+          if (!(curException instanceof PathNotExistException)) {
+            isPathNotExistException = false;
+            break;
+          }
+        }
+        if (isPathNotExistException) {
+          throw new PathNotExistException(failedPaths);
+        } else {
+          throw new StorageEngineException(
+              INSERT_MEASUREMENTS_FAILED_MESSAGE + insertTabletPlan.getFailedMeasurements());
+        }
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
