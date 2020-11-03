@@ -101,7 +101,7 @@ public class PrimitiveArrayManager {
     if (bufferedArraysRamSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
         > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       // return an out of buffer array
-      outOfBufferArraysRamSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+      outOfBufferArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
       return createPrimitiveArray(dataType);
     }
 
@@ -113,7 +113,7 @@ public class PrimitiveArrayManager {
       }
       // no buffered array, create one
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
-      bufferedArraysRamSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     }
 
     return createPrimitiveArray(dataType);
@@ -267,7 +267,7 @@ public class PrimitiveArrayManager {
       bufferedArraysMap.get(dataType).add(dataArray);
       bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     }
-    bufferedArraysRamSize.addAndGet(-ARRAY_SIZE * dataType.getDataTypeSize());
+    bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * dataType.getDataTypeSize());
   }
 
   /**
@@ -277,7 +277,7 @@ public class PrimitiveArrayManager {
    * @param size     capacity
    */
   private static void bringBackOOBArray(TSDataType dataType, int size) {
-    outOfBufferArraysRamSize.addAndGet(-size * dataType.getDataTypeSize());
+    outOfBufferArraysRamSize.addAndGet((long) -size * dataType.getDataTypeSize());
   }
 
   /**

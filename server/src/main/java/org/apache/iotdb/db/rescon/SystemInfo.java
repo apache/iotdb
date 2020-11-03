@@ -149,7 +149,8 @@ public class SystemInfo {
     }
     List<TsFileProcessor> processors = new ArrayList<>();
     long memCost = 0;
-    while (totalSgMemCost - memCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+    while (totalSgMemCost - memCost > config.getAllocateMemoryForWrite() *
+        FLUSH_PROPORTION / 2) {
       if (tsps.isEmpty() || tsps.peek().getWorkMemTableRamCost() == 0) {
         return processors;
       }
