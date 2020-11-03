@@ -285,14 +285,6 @@ public class TsFileResource {
           ReadWriteIOUtils.write(historicalVersion, outputStream);
         }
       }
-
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
-      if (modFile != null && modFile.exists()) {
-        String modFileName = new File(modFile.getFilePath()).getName();
-        ReadWriteIOUtils.write(modFileName, outputStream);
-      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
@@ -336,15 +328,6 @@ public class TsFileResource {
         // use the version in file name as the historical version for files of old versions
         long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
-      }
-
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        File modF = new File(file.getParentFile(), modFileName);
-        modFile = new ModificationFile(modF.getPath());
       }
     }
   }
