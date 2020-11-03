@@ -94,7 +94,7 @@
                         </goals>
                         <configuration>
                             <encoding>utf-8</encoding>
-                            <outputDirectory>${project.build.directory}/pypi//iotdb_session/</outputDirectory>
+                            <outputDirectory>${project.build.directory}/pypi/iotdb_session</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/src/</directory>
