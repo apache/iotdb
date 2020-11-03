@@ -587,7 +587,7 @@ public class StorageGroupProcessor {
             TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
             tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
             this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-            tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+            tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
                 .getTsFileResource().calculateRamSize());
           }
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
@@ -600,7 +600,7 @@ public class StorageGroupProcessor {
             TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
             tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
             this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-            tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+            tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
                 .getTsFileResource().calculateRamSize());
           }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
@@ -611,14 +611,15 @@ public class StorageGroupProcessor {
         writer.makeMetadataVisible();
         if (enableMemControl) {
           // get chunkMetadata size
+          long chunkMetadataSize = 0;
           for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
             for (List<ChunkMetadata> metadatas : metaMap.values()) {
               for (ChunkMetadata chunkMetadata: metadatas) {
-                tsFileProcessor.getTsFileProcessorInfo().addChunkMetadataMemCost(
-                    chunkMetadata.calculateRamSize());
+                chunkMetadataSize += chunkMetadata.calculateRamSize();
               }
             }
           }
+          tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
         }
       }
       tsFileManagement.add(tsFileResource, isSeq);
@@ -1005,7 +1006,7 @@ public class StorageGroupProcessor {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
         this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
             .getTsFileResource().calculateRamSize());
       }
     } else {
@@ -1017,7 +1018,7 @@ public class StorageGroupProcessor {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
         this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addUnsealedResourceMemCost(tsFileProcessor
+        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
             .getTsFileResource().calculateRamSize());
       }
     }

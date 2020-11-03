@@ -73,6 +73,15 @@ public class MemUtils {
         .sizeOf(value.getValues());
   }
 
+  public static long getBinaryColumnSize(Binary[] column, int start, int end) {
+    long memSize = 0;
+    memSize += (end-start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    for (int i = start; i < end; i++) {
+      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+    }
+    return memSize;
+  }
+
   /**
    * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
