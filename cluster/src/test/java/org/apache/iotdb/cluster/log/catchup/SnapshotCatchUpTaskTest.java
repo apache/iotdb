@@ -135,6 +135,7 @@ public class SnapshotCatchUpTaskTest {
   @After
   public void tearDown() throws Exception {
     sender.stop();
+    sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }

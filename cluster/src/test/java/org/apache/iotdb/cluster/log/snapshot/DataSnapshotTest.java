@@ -40,8 +40,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.FileUtils;
-import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -67,7 +65,7 @@ public abstract class DataSnapshotTest {
           public void readFile(String filePath, long offset, int length,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
             new Thread(() -> {
-              if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
+              if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                 // insert 1 failure in every 10 requests
                 resultHandler.onError(new Exception("Faked network failure"));
                 return;
@@ -83,13 +81,13 @@ public abstract class DataSnapshotTest {
           @Override
           public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler)
               throws TException {
-           new Thread(() -> {
+            new Thread(() -> {
               try {
                 Files.deleteIfExists(new File(hardLinkPath).toPath());
               } catch (IOException e) {
                 // ignore
               }
-           }).start();
+            }).start();
           }
         };
       }
@@ -124,7 +122,7 @@ public abstract class DataSnapshotTest {
         })) {
           @Override
           public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
-            if (addNetFailure && (failureCnt ++) % failureFrequency == 0) {
+            if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
               // simulate failures
               throw new TException("Faked network failure");
             }
@@ -156,6 +154,10 @@ public abstract class DataSnapshotTest {
 
   @After
   public void tearDown() throws Exception {
+    metaGroupMember.closeLogManager();
+    dataGroupMember.closeLogManager();
+    metaGroupMember.stop();
+    dataGroupMember.stop();
     EnvironmentUtils.cleanEnv();
   }
 }

@@ -72,8 +72,9 @@ public class CatchUpTask implements Runnable {
     long lo = 0;
     long hi = 0;
     logger.debug("Checking the match index of {}", node);
+    long localFirstIndex = 0;
     try {
-      long localFirstIndex = raftMember.getLogManager().getFirstIndex();
+      localFirstIndex = raftMember.getLogManager().getFirstIndex();
       lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
       hi = raftMember.getLogManager().getLastLogIndex() + 1;
       logs = raftMember.getLogManager().getEntries(lo, hi);
@@ -96,7 +97,20 @@ public class CatchUpTask implements Runnable {
 
     int index = findLastMatchIndex(logs);
     if (index == -1) {
-      logger.info("Cannot find matched of {} within [{}, {}]", node, lo, hi);
+      logger.info("Cannot find matched of {} within [{}, {}] in memory", node, lo, hi);
+      if (judgeUseLogsInDiskToCatchUp()) {
+        long startIndex = peer.getMatchIndex() + 1;
+        long endIndex = raftMember.getLogManager().getCommitLogIndex();
+        List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
+        if (!logsInDisk.isEmpty()) {
+          logger.info(
+              "{}, found {} logs in disk to catch up, startIndex={}, endIndex={}, memoryFirstIndex={}, getFirstLogIndex={}",
+              raftMember.getName(), logsInDisk.size(), startIndex, endIndex, localFirstIndex,
+              logsInDisk.get(0).getCurrLogIndex());
+          logs = logsInDisk;
+          return true;
+        }
+      }
       return false;
     }
 
@@ -112,6 +126,27 @@ public class CatchUpTask implements Runnable {
       }
     }
     return true;
+  }
+
+  //TODO use log in disk to snapshot first, if the log not found on disk, then use snapshot.
+  private boolean judgeUseLogsInDiskToCatchUp() {
+    if (!ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+      return false;
+    }
+    if (!ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
+      return false;
+    }
+
+    // TODO judge the cost of snapshot and logs in disk
+    return true;
+  }
+
+  private List<Log> getLogsInStableEntryManager(long startIndex, long endIndex) {
+    List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
+        .getLogs(startIndex, endIndex);
+    logger.debug("{}, found {} logs in disk to catchup, startIndex={}, endIndex={}",
+        raftMember.getName(), logsInDisk.size(), startIndex, endIndex);
+    return logsInDisk;
   }
 
   public int findLastMatchIndex(List<Log> logs)

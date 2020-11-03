@@ -69,6 +69,7 @@ public class MetaLogApplierTest extends IoTDBTest {
   @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
   }
@@ -103,14 +104,16 @@ public class MetaLogApplierTest extends IoTDBTest {
   public void testApplyMetadataCreation()
       throws QueryProcessException, MetadataException, StorageEngineException {
     PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
-    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new PartialPath("root.applyMeta"));
+    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
+        new PartialPath("root.applyMeta"));
     physicalPlanLog.setPlan(setStorageGroupPlan);
 
     applier.apply(physicalPlanLog);
     assertTrue(IoTDB.metaManager.isPathExist(new PartialPath("root.applyMeta")));
 
-    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new PartialPath("root.applyMeta"
-        + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
+    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
+        new PartialPath("root.applyMeta"
+            + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
         Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);

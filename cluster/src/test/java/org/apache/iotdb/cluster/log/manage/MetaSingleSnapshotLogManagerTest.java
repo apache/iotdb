@@ -64,23 +64,28 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
   @Test
   public void testTakeSnapshot() throws Exception {
-    List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    logManager.append(testLogs);
-    logManager.commitTo(4);
-    logManager.setMaxHaveAppliedCommitIndex(logManager.getCommitLogIndex());
+    try {
+      List<Log> testLogs = TestUtils.prepareTestLogs(10);
+      logManager.append(testLogs);
+      logManager.commitTo(4);
+      logManager.setMaxHaveAppliedCommitIndex(logManager.getCommitLogIndex());
 
-    logManager.takeSnapshot();
-    MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
-    Map<PartialPath, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
-    PartialPath[] storageGroups = storageGroupTTLMap.keySet()
-        .toArray(new PartialPath[0]);
-    Arrays.sort(storageGroups);
+      logManager.takeSnapshot();
+      MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
+      Map<PartialPath, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
+      PartialPath[] storageGroups = storageGroupTTLMap.keySet()
+          .toArray(new PartialPath[0]);
+      Arrays.sort(storageGroups);
 
-    assertEquals(10, storageGroups.length);
-    for (int i = 0; i < 10; i++) {
-      assertEquals(new PartialPath(TestUtils.getTestSg(i)), storageGroups[i]);
+      assertEquals(10, storageGroups.length);
+      for (int i = 0; i < 10; i++) {
+        assertEquals(new PartialPath(TestUtils.getTestSg(i)), storageGroups[i]);
+      }
+      assertEquals(4, snapshot.getLastLogIndex());
+      assertEquals(4, snapshot.getLastLogTerm());
+    } finally {
+      logManager.close();
     }
-    assertEquals(4, snapshot.getLastLogIndex());
-    assertEquals(4, snapshot.getLastLogTerm());
+
   }
 }

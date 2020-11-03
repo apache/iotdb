@@ -58,6 +58,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -136,7 +137,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
       @Override
       public PullSnapshotResp getSnapshot(PullSnapshotRequest request) throws IOException {
         if (requiredRetries > 0) {
-          requiredRetries --;
+          requiredRetries--;
           throw new IOException("Faked pull snapshot exception");
         }
 
@@ -206,7 +207,8 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
       testNormal(false);
     } finally {
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
-      ClusterDescriptor.getInstance().getConfig().setPullSnapshotRetryIntervalMs(pullSnapshotRetryIntervalMs);
+      ClusterDescriptor.getInstance().getConfig()
+          .setPullSnapshotRetryIntervalMs(pullSnapshotRetryIntervalMs);
     }
   }
 
@@ -248,5 +250,16 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     }
 
     assertFalse(task.getSnapshotSave().exists());
+  }
+
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    sourceMember.closeLogManager();
+    targetMember.closeLogManager();
+    sourceMember.stop();
+    targetMember.stop();
+    super.tearDown();
   }
 }

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSyncClient;
@@ -45,6 +46,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -242,5 +244,12 @@ public class LogDispatcherTest {
       }
     }
     return true;
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    raftMember.stop();
+    raftMember.closeLogManager();
+    EnvironmentUtils.cleanAllDir();
   }
 }

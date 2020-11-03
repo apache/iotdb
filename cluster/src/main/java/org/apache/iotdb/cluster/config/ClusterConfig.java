@@ -54,11 +54,6 @@ public class ClusterConfig {
   private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = 20 * 1000;
-  /**
-   * This parameter controls when to actually delete snapshot logs because we can't remove snapshot
-   * logs directly from disk now
-   */
-  private long maxUnsnapshotLogSize = 1024 * 1024 * 128L;
 
   private int readOperationTimeoutMS = 30_1000;
 
@@ -105,7 +100,7 @@ public class ClusterConfig {
 
   private int flushRaftLogThreshold = 10000;
 
-  private int forceRaftLogPeriodInMS = 10;
+  private int forceRaftLogPeriodInMS = 1000;
 
   /**
    * Size of log buffer. If raft log persistence is enabled and the size of a insert plan is smaller
@@ -127,6 +122,39 @@ public class ClusterConfig {
 
   private int pullSnapshotRetryIntervalMs = 5 * 1000;
 
+  /**
+   * The maximum value of the raft log index stored in the memory per raft group, These indexes are
+   * used to index the location of the log on the disk
+   */
+  private int maxRaftLogIndexSizeInMemory = 10000;
+
+  /**
+   * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The
+   * default size is 1GB
+   */
+  private int maxRaftLogPersistDataSizePerFile = 1073741824;
+
+  /**
+   * The maximum number of persistent raft log files on disk per raft group, So each raft group's
+   * log takes up disk space approximately equals max_raft_log_persist_data_size_per_file *
+   * max_number_of_persist_raft_log_files
+   */
+  private int maxNumberOfPersistRaftLogFiles = 5;
+
+  /**
+   * The maximum number of logs saved on the disk
+   */
+  private int maxPersistRaftLogNumberOnDisk = 1_000_000;
+
+
+  private boolean enableUsePersistLogOnDiskToCatchUp = false;
+
+  /**
+   * The number of logs read on the disk at one time, which is mainly used to control the memory
+   * usage.This value multiplied by the log size is about the amount of memory used to read logs
+   * from the disk at one time.
+   */
+  private int maxNumberOfLogsPerFetchOnDisk = 1000;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -150,14 +178,6 @@ public class ClusterConfig {
 
   public void setUseBatchInLogCatchUp(boolean useBatchInLogCatchUp) {
     this.useBatchInLogCatchUp = useBatchInLogCatchUp;
-  }
-
-  public long getMaxUnsnapshotLogSize() {
-    return maxUnsnapshotLogSize;
-  }
-
-  void setMaxUnsnapshotLogSize(long maxUnsnapshotLogSize) {
-    this.maxUnsnapshotLogSize = maxUnsnapshotLogSize;
   }
 
   public String getClusterRpcIp() {
@@ -366,5 +386,53 @@ public class ClusterConfig {
 
   public void setPullSnapshotRetryIntervalMs(int pullSnapshotRetryIntervalMs) {
     this.pullSnapshotRetryIntervalMs = pullSnapshotRetryIntervalMs;
+  }
+
+  public int getMaxRaftLogIndexSizeInMemory() {
+    return maxRaftLogIndexSizeInMemory;
+  }
+
+  public void setMaxRaftLogIndexSizeInMemory(int maxRaftLogIndexSizeInMemory) {
+    this.maxRaftLogIndexSizeInMemory = maxRaftLogIndexSizeInMemory;
+  }
+
+  public int getMaxRaftLogPersistDataSizePerFile() {
+    return maxRaftLogPersistDataSizePerFile;
+  }
+
+  public void setMaxRaftLogPersistDataSizePerFile(int maxRaftLogPersistDataSizePerFile) {
+    this.maxRaftLogPersistDataSizePerFile = maxRaftLogPersistDataSizePerFile;
+  }
+
+  public int getMaxNumberOfPersistRaftLogFiles() {
+    return maxNumberOfPersistRaftLogFiles;
+  }
+
+  public void setMaxNumberOfPersistRaftLogFiles(int maxNumberOfPersistRaftLogFiles) {
+    this.maxNumberOfPersistRaftLogFiles = maxNumberOfPersistRaftLogFiles;
+  }
+
+  public int getMaxPersistRaftLogNumberOnDisk() {
+    return maxPersistRaftLogNumberOnDisk;
+  }
+
+  public void setMaxPersistRaftLogNumberOnDisk(int maxPersistRaftLogNumberOnDisk) {
+    this.maxPersistRaftLogNumberOnDisk = maxPersistRaftLogNumberOnDisk;
+  }
+
+  public boolean isEnableUsePersistLogOnDiskToCatchUp() {
+    return enableUsePersistLogOnDiskToCatchUp;
+  }
+
+  public void setEnableUsePersistLogOnDiskToCatchUp(boolean enableUsePersistLogOnDiskToCatchUp) {
+    this.enableUsePersistLogOnDiskToCatchUp = enableUsePersistLogOnDiskToCatchUp;
+  }
+
+  public int getMaxNumberOfLogsPerFetchOnDisk() {
+    return maxNumberOfLogsPerFetchOnDisk;
+  }
+
+  public void setMaxNumberOfLogsPerFetchOnDisk(int maxNumberOfLogsPerFetchOnDisk) {
+    this.maxNumberOfLogsPerFetchOnDisk = maxNumberOfLogsPerFetchOnDisk;
   }
 }

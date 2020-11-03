@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.utils.nodetool.function;
 
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
+import java.io.File;
 import java.util.List;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
@@ -42,7 +43,7 @@ public class LogView implements Runnable {
   public void run() {
     SyncLogDequeSerializer logDequeSerializer = new SyncLogDequeSerializer(path);
 
-    List<Log> logs = logDequeSerializer.getAllEntries();
+    List<Log> logs = logDequeSerializer.getAllEntriesAfterAppliedIndex();
     HardState state = logDequeSerializer.getHardState();
     LogManagerMeta managerMeta = logDequeSerializer.getMeta();
 
@@ -52,6 +53,19 @@ public class LogView implements Runnable {
     Printer.msgPrintln("-------------------NODE STATE-------------------------");
     Printer.msgPrintln(state.toString());
     Printer.msgPrintln("-------------------NODE STATE-------------------------");
+
+    Printer.msgPrintln("-------------------LOG DATA FILES-------------------------");
+    List<File> dataFileList = logDequeSerializer.getLogDataFileList();
+    List<File> indexFileList = logDequeSerializer.getLogIndexFileList();
+    for (int i = 0; i < dataFileList.size(); i++) {
+      Printer.msgPrintln(
+          "name=" + dataFileList.get(i).getName() + ",length=" + dataFileList.get(i).length());
+      Printer.msgPrintln(
+          "name=" + indexFileList.get(i).getName() + ",length=" + indexFileList.get(i).length());
+    }
+
+    Printer.msgPrintln("-------------------LOG DATA FILES-------------------------");
+
     int count = 0;
 
     for (Log log : logs) {
@@ -61,8 +75,7 @@ public class LogView implements Runnable {
         Printer.msgPrintln(log.toString());
       } else {
         Printer.msgPrintln(
-            log.getClass().getSimpleName() + " Size: " +
-                logDequeSerializer.getLogSizeDeque().removeFirst());
+            log.getClass().getSimpleName());
       }
     }
   }

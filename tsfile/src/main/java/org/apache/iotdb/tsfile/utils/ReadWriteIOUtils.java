@@ -942,7 +942,7 @@ public class ReadWriteIOUtils {
 
   public static ByteBuffer clone(ByteBuffer original) {
     ByteBuffer clone = ByteBuffer.allocate(original.remaining());
-    while(original.hasRemaining()) {
+    while (original.hasRemaining()) {
       clone.put(original.get());
     }
 

@@ -130,7 +130,7 @@ public abstract class RaftLogManager {
     this.setCommittedEntryManager(new CommittedEntryManager(maxNumOfLogsInMem));
     this.setStableEntryManager(stableEntryManager);
     try {
-      this.getCommittedEntryManager().append(stableEntryManager.getAllEntries());
+      this.getCommittedEntryManager().append(stableEntryManager.getAllEntriesAfterAppliedIndex());
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
@@ -296,15 +296,28 @@ public abstract class RaftLogManager {
   public long getTerm(long index) throws EntryCompactedException {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
+      // search in disk
+      if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
+        List<Log> logsInDisk = getStableEntryManager().getLogs(index, index);
+        if (logsInDisk.isEmpty()) {
+          return -1;
+        } else {
+          return logsInDisk.get(0).getCurrLogTerm();
+        }
+      }
       return -1;
     }
+
     long lastIndex = getLastLogIndex();
     if (index > lastIndex) {
       return -1;
     }
+
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
       return getUnCommittedEntryManager().maybeTerm(index);
     }
+
+    // search in memory
     return getCommittedEntryManager().maybeTerm(index);
   }
 
@@ -583,7 +596,7 @@ public abstract class RaftLogManager {
       startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
       getCommittedEntryManager().append(entries);
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-        getStableEntryManager().append(entries);
+        getStableEntryManager().append(entries, maxHaveAppliedCommitIndex);
       }
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
@@ -782,7 +795,7 @@ public abstract class RaftLogManager {
     this.committedEntryManager = committedEntryManager;
   }
 
-  private StableEntryManager getStableEntryManager() {
+  public StableEntryManager getStableEntryManager() {
     return stableEntryManager;
   }
 

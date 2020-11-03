@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.heartbeat;
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -39,6 +40,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -136,17 +138,17 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   @After
-  public void tearDown() throws InterruptedException {
+  public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     dataLogManager.close();
     dataLogManager = null;
     metaGroupMember.closeLogManager();
     metaGroupMember = null;
-    super.tearDown();
     File dir = new File(SyncLogDequeSerializer.getLogDir(2));
     for (File file : dir.listFiles()) {
       file.delete();
     }
     dir.delete();
+    super.tearDown();
   }
 
   @Override

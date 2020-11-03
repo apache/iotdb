@@ -24,9 +24,9 @@ import java.util.List;
 
 public interface StableEntryManager {
 
-  List<Log> getAllEntries();
+  List<Log> getAllEntriesAfterAppliedIndex();
 
-  void append(List<Log> entries) throws IOException;
+  void append(List<Log> entries, long maxHaveAppliedCommitIndex) throws IOException;
 
   void flushLogBuffer();
 
@@ -37,6 +37,13 @@ public interface StableEntryManager {
   void setHardStateAndFlush(HardState state);
 
   HardState getHardState();
+
+  /**
+   * @param startIndex (inclusive) the log start index
+   * @param endIndex   (inclusive) the log end index
+   * @return the raft log which index between [startIndex, endIndex] or empty if not found
+   */
+  List<Log> getLogs(long startIndex, long endIndex);
 
   void close();
 }

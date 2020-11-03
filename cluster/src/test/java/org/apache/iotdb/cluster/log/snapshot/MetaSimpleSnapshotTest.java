@@ -67,8 +67,9 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
   @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    super.tearDown();
     metaGroupMember.stop();
+    metaGroupMember.closeLogManager();
+    super.tearDown();
   }
 
   @Test

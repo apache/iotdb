@@ -23,8 +23,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -32,8 +34,8 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -53,9 +55,11 @@ public class AppendGroupEntryHandlerTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException, StorageEngineException {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
+    member.stop();
     member.closeLogManager();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test

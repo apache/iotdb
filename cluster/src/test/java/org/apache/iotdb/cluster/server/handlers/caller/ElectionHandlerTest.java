@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.junit.After;
 import org.junit.Before;
@@ -43,8 +46,10 @@ public class ElectionHandlerTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException {
     member.closeLogManager();
+    member.stop();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test
