@@ -37,18 +37,6 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
-  void putLongs(long[] t, long[] v);
-
-  void putInts(long[] t, int[] v);
-
-  void putFloats(long[] t, float[] v);
-
-  void putDoubles(long[] t, double[] v);
-
-  void putBinaries(long[] t, Binary[] v);
-
-  void putBooleans(long[] t, boolean[] v);
-
   void putLongs(long[] t, long[] v, int start, int end);
 
   void putInts(long[] t, int[] v, int start, int end);
@@ -94,4 +82,5 @@ public interface IWritableMemChunk {
    * @return how many points are deleted
    */
   int delete(long lowerBound, long upperBound);
+
 }

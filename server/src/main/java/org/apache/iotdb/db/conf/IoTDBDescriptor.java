@@ -198,9 +198,19 @@ public class IoTDBDescriptor {
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 
-      conf.setEnableParameterAdapter(
-          Boolean.parseBoolean(properties.getProperty("enable_parameter_adapter",
-              Boolean.toString(conf.isEnableParameterAdapter()))));
+      conf.setBufferedArraysMemoryProportion(
+          Double.parseDouble(properties.getProperty("buffered_arrays_memory_proportion",
+              Double.toString(conf.getBufferedArraysMemoryProportion()))));
+
+      conf.setFlushProportion(Double.parseDouble(properties.getProperty("flush_proportion",
+          Double.toString(conf.getFlushProportion()))));
+
+      conf.setRejectProportion(Double.parseDouble(properties.getProperty("reject_proportion",
+          Double.toString(conf.getRejectProportion()))));
+
+      conf.setStorageGroupSizeReportThreshold(
+          Long.parseLong(properties.getProperty("storage_group_report_threshold",
+              Long.toString(conf.getStorageGroupSizeReportThreshold()))));
 
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(properties.getProperty("meta_data_cache_enable",
@@ -250,6 +260,11 @@ public class IoTDBDescriptor {
       conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
           Integer.toString(conf.getBatchSize()))));
 
+      conf.setEnableMemControl((Boolean
+          .parseBoolean(properties.getProperty("enable_mem_control",
+              Boolean.toString(conf.isEnableMemControl())))));
+      logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
+
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
@@ -267,6 +282,18 @@ public class IoTDBDescriptor {
       conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+      conf.setWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
+          .getProperty("waiting_time_when_insert_blocked",
+              Integer.toString(conf.getWaitingTimeWhenInsertBlocked()))));
+
+      conf.setMaxWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
+          .getProperty("max_waiting_time_when_insert_blocked",
+              Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
+
+      conf.setEstimatedSeriesSize(Integer.parseInt(properties
+          .getProperty("estimated_series_size",
+              Integer.toString(conf.getEstimatedSeriesSize()))));
 
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",
@@ -688,18 +715,17 @@ public class IoTDBDescriptor {
       // update WAL conf
       loadWALProps(properties);
 
-      // dynamic parameters
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold >= 0 && !conf.isEnableParameterAdapter()) {
+      if (tsfileSizeThreshold >= 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
       long memTableSizeThreshold = Long.parseLong(properties
           .getProperty("memtable_size_threshold",
               Long.toString(conf.getMemtableSizeThreshold())).trim());
-      if (memTableSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+      if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
@@ -749,7 +775,7 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_free_memory_proportion");
+    String memoryAllocateProportion = properties.getProperty("write_read_schema_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -762,11 +788,14 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForRead(
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+        conf.setAllocateMemoryForSchema(
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       }
     }
 
-    logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
-    logger.info("allocateMemoryForWrite = " + conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForRead = {}", conf.getAllocateMemoryForRead());
+    logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
+    logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
     if (!conf.isMetaDataCacheEnable()) {
       return;

@@ -43,6 +43,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -84,6 +85,7 @@ import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -127,6 +129,8 @@ public class StorageGroupProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * indicating the file to be loaded already exists locally.
    */
@@ -236,6 +240,8 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
+
   public boolean isReady() {
     return isReady;
   }
@@ -339,7 +345,7 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
 
-      updateLastestFlushedTime();
+      updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -374,7 +380,7 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice and timePartitionIdVersionControllerMap
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void updateLastestFlushedTime() throws IOException {
+  private void updateLatestFlushedTime() throws IOException {
 
     VersionController versionController = new SimpleFileVersionController(
         storageGroupSysDir.getPath());
@@ -573,22 +579,48 @@ public class StorageGroupProcessor {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor;
         if (isSeq) {
-          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+          tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
               getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               true, writer);
+          if (enableMemControl) {
+            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+                .getTsFileResource().calculateRamSize());
+          }
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         } else {
-          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+          tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
               getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer);
+          if (enableMemControl) {
+            TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+            tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+            this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+            tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+                .getTsFileResource().calculateRamSize());
+          }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         }
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
+        if (enableMemControl) {
+          // get chunkMetadata size
+          long chunkMetadataSize = 0;
+          for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
+            for (List<ChunkMetadata> metadatas : metaMap.values()) {
+              for (ChunkMetadata chunkMetadata: metadatas) {
+                chunkMetadataSize += chunkMetadata.calculateRamSize();
+              }
+            }
+          }
+          tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
+        }
       }
       tsFileManagement.add(tsFileResource, isSeq);
     }
@@ -967,14 +999,28 @@ public class StorageGroupProcessor {
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath),
+          fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
+      if (enableMemControl) {
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+            .getTsFileResource().calculateRamSize());
+      }
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath),
+          fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
+      if (enableMemControl) {
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+            .getTsFileResource().calculateRamSize());
+      }
     }
     tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
     tsFileProcessor.addFlushListeners(customFlushListeners);
@@ -2272,7 +2318,7 @@ public class StorageGroupProcessor {
   }
 
 
-  public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessor() {
+  public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessors() {
     return workUnsequenceTsFileProcessors.values();
   }
 
@@ -2291,6 +2337,10 @@ public class StorageGroupProcessor {
 
   public String getStorageGroupName() {
     return storageGroupName;
+  }
+
+  public StorageGroupInfo getStorageGroupInfo() {
+    return storageGroupInfo;
   }
 
   /**
@@ -2316,7 +2366,7 @@ public class StorageGroupProcessor {
         return false;
       }
     }
-    for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessors()) {
       long workingFileVersion = workUnsequenceTsFileProcessor.getTsFileResource().getMaxVersion();
       if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
         return false;
