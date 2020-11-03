@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.tsfilemanagement.utils.HotCompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
 
 import java.io.BufferedWriter;
 import java.io.File;

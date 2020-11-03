@@ -48,6 +48,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -556,7 +557,7 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
-      if (LevelTsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
+      if (LevelCompactionTsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
         continue;
       }
       TsFileResource tsFileResource = tsFiles.get(i);
