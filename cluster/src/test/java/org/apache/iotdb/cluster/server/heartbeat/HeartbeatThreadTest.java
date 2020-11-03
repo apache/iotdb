@@ -165,6 +165,7 @@ public class HeartbeatThreadTest {
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     logManager.close();
     member.closeLogManager();
+    member.stop();
     logManager = null;
     member = null;
     testThread.interrupt();
@@ -175,6 +176,7 @@ public class HeartbeatThreadTest {
     }
     dir.delete();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test
