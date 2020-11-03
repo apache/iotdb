@@ -30,6 +30,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -124,9 +125,9 @@ public class HttpServerTest extends HttpPrepData {
         .request(MediaType.APPLICATION_JSON)
         .post(Entity.entity(jsonArray.toString(), MediaType.APPLICATION_JSON));
     Assert.assertEquals(SUCCESSFUL_RESPONSE, response.readEntity(String.class));
-    List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
-    Assert.assertEquals("root.sg.d1.s1", paths.get(0).getFullPath());
-    Assert.assertEquals("root.sg.d1.s2", paths.get(1).getFullPath());
+    Pair<List<PartialPath>, Integer> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"), 100, 0);
+    Assert.assertEquals("root.sg.d1.s1", paths.left.get(0).getFullPath());
+    Assert.assertEquals("root.sg.d1.s2", paths.left.get(1).getFullPath());
   }
 
   @Test

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.HttpRouter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -86,9 +87,9 @@ public class HttpRouterTest extends HttpPrepData {
         router.route(HttpMethod.GET, LOGIN_URI, null).toString());
     Assert.assertEquals(SUCCESSFUL_RESPONSE,
         router.route(HttpMethod.POST, HttpConstant.ROUTING_TIME_SERIES, jsonArray).toString());
-    List<PartialPath> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"));
-    Assert.assertEquals("root.sg.d1.s1", paths.get(0).getFullPath());
-    Assert.assertEquals("root.sg.d1.s2", paths.get(1).getFullPath());
+    Pair<List<PartialPath>, Integer> paths = mmanager.getAllTimeseriesPathWithAlias(new PartialPath("root.sg.*"), 100, 0);
+    Assert.assertEquals("root.sg.d1.s1", paths.left.get(0).getFullPath());
+    Assert.assertEquals("root.sg.d1.s2", paths.left.get(1).getFullPath());
   }
 
   @Test
