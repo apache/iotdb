@@ -42,17 +42,17 @@ public class TsFileProcessorInfo {
   /**
    * called in each insert
    */
-  public void addUnsealedResourceMemCost(long cost) {
+  public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
   }
 
   /**
-   * called in each insert
+   * called when meet exception
    */
-  public void addChunkMetadataMemCost(long cost) {
-    memCost += cost;
-    storageGroupInfo.addStorageGroupMemCost(cost);
+  public void releaseTSPMemCost(long cost) {
+    storageGroupInfo.releaseStorageGroupMemCost(cost);
+    memCost -= cost;
   }
 
   /**
@@ -61,21 +61,5 @@ public class TsFileProcessorInfo {
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0;
-  }
-
-  /**
-   * called when meet exception
-   */
-  public void decreaseUnsealedResourceMemCost(long cost) {
-    storageGroupInfo.releaseStorageGroupMemCost(cost);
-    memCost -= cost;
-  }
-
-  /**
-   * called when meet exception
-   */
-  public void decreaseChunkMetadataMemCost(long cost) {
-    storageGroupInfo.releaseStorageGroupMemCost(cost);
-    memCost -= cost;
   }
 }

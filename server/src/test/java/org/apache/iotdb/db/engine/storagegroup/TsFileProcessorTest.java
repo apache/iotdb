@@ -92,7 +92,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+    tsFileProcessorInfo.addTSPMemCost(processor
         .getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
@@ -149,7 +149,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+    tsFileProcessorInfo.addTSPMemCost(processor
         .getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
@@ -232,7 +232,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+    tsFileProcessorInfo.addTSPMemCost(processor
         .getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
@@ -273,7 +273,7 @@ public class TsFileProcessorTest {
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
     this.sgInfo.initTsFileProcessorInfo(processor);
-    tsFileProcessorInfo.addUnsealedResourceMemCost(processor
+    tsFileProcessorInfo.addTSPMemCost(processor
         .getTsFileResource().calculateRamSize());
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
