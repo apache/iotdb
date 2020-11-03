@@ -909,26 +909,30 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private MNode getSeriesSchemas(InsertPlan insertPlan)
-      throws MetadataException {
-    return IoTDB.metaManager
-        .getSeriesSchemasAndReadLockDevice(insertPlan);
+  private MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
+
+      // check insert plan
+      if (insertRowPlan.getMeasurements() == null) {
+        throw new QueryProcessException(
+            "The measurements of InsertRowPlan is null, deviceId:" + insertRowPlan.getDeviceId()
+                + ", time:" + insertRowPlan.getTime());
+      }
+      if (insertRowPlan.getValues().length == 0) {
+        throw new QueryProcessException(
+            "The size of values in this InsertRowPlan is 0, deviceId:" + insertRowPlan.getDeviceId()
+                + ", time:" + insertRowPlan.getTime());
+      }
+
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
-
-      //check insert plan
-      if (insertRowPlan.getValues().length == 0) {
-        logger.warn("Can't insert row with only time/timestamp");
-        return;
-      }
-
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         // check if all path not exist exceptions
