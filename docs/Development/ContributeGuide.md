@@ -118,6 +118,8 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
 It is due to some network problems (especially in China), you can:
 
 * Download the file from the URL manually;
+  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
+  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
 * Put the file to thrift/target/tools/
 * Re-run maven command like `mvn compile`
 
