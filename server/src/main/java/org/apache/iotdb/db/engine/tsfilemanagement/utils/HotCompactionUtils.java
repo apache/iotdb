@@ -262,14 +262,14 @@ public class HotCompactionUtils {
             }
           }
           if (isPageEnoughLarge) {
-            logger.info("{} [Hot Compaction] page enough large, use append merge", storageGroup);
+            logger.debug("{} [Hot Compaction] page enough large, use append merge", storageGroup);
             // append page in chunks, so we do not have to deserialize a chunk
             maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
                 compactionReadRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
-            logger
-                .info("{} [Hot Compaction] page enough large, use deserialize merge", storageGroup);
+            logger.debug("{} [Hot Compaction] page enough large, use deserialize merge",
+                storageGroup);
             // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
                 compactionReadRateLimiter,
