@@ -59,6 +59,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagement;
+import org.apache.iotdb.db.engine.tsfilemanagement.level.LevelTsFileManagement;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchInsertionException;
@@ -344,6 +345,7 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
+      tsFileManagement.recover();
 
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
@@ -555,6 +557,9 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
+      if (LevelTsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
+        continue;
+      }
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 
