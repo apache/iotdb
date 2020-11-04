@@ -423,7 +423,7 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 其含义是：查询时间序列prefixPath.path中最近时间戳的数据
 
-\<WhereClause\>中当前只支持时间过滤条件，任何非时间过滤都将不会起任何作用。
+\<WhereClause\>中当前只支持含有'>'或'>='的时间过滤条件，任何其他过滤条件都将会返回异常。
 
 结果集为三列的结构
 
@@ -441,10 +441,10 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 |  5   | root.ln.wf01.wt01.speed | 100   |
 ```
 
-示例 2：查询 root.ln.wf01.wt01 下 speed，status，temperature 的在时间区间[5, 10)之内的最新数据点
+示例 2：查询 root.ln.wf01.wt01 下 speed，status，temperature 时间戳大于等于5的最新数据点。
 
 ```
-> select last speed, status, temperature from root.ln.wf01  where time >= 5 and time < 10
+> select last speed, status, temperature from root.ln.wf01  where time >= 5
 
 | Time | Path                         | Value |
 | ---  | ---------------------------- | ----- |

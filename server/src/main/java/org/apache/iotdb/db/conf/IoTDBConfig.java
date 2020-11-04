@@ -21,12 +21,11 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
-import java.time.ZoneId;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -121,14 +120,19 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * Memory allocated for the read process
-   */
-  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
-
-  /**
    * Memory allocated for the write process
    */
+  private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 4 / 10;
+
+  /**
+   * Memory allocated for the read process
+   */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
+
+  /**
+   * Memory allocated for the mtree
+   */
+  private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /**
    * Memory allocated for the read process besides cache
@@ -138,10 +142,34 @@ public class IoTDBConfig {
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
   /**
-   * Is dynamic parameter adapter enable.
+   * Ratio of memory allocated for buffered arrays
    */
-  private boolean enableParameterAdapter = true;
+  private double bufferedArraysMemoryProportion = 0.6;
 
+  /**
+   * Flush proportion for system
+   */
+  private double flushProportion = 0.3;
+
+  /**
+   * Reject proportion for system
+   */
+  private double rejectProportion = 0.8;
+
+  /**
+   * If storage group increased more than this threshold, report to system.
+   */
+  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+
+  /**
+   * When inserting rejected, waiting this time to check system again
+   */
+  private int waitingTimeWhenInsertBlockedInMs = 10;
+
+  /**
+   * When inserting rejected exceeds this, throw an exception
+   */
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
   /**
    * Is the write ahead log enable.
    */
@@ -173,6 +201,8 @@ public class IoTDBConfig {
    * is smaller than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
+
+  private int estimatedSeriesSize = 300;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -222,11 +252,6 @@ public class IoTDBConfig {
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /**
-   * Maximum MemTable number in MemTable pool.
-   */
-  private int maxMemtableNumber = 20;
-
-  /**
    * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
@@ -240,6 +265,11 @@ public class IoTDBConfig {
    * How many threads can concurrently query. When <= 0, use CPU core number.
    */
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Is the write mem control for writing enable.
+   */
+  private boolean enableMemControl = true;
 
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
@@ -259,41 +289,50 @@ public class IoTDBConfig {
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
    * the files to the last level.
+   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
+   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
+   * this threshold and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. When page point number of file reaches
-   * this, use append merge instead of deserialize merge.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
    */
   private int mergePagePointNumberThreshold = 1000;
 
   /**
-   * TsFile manage strategy, define use which hot compaction strategy
+   * LEVEL_COMPACTION, NO_COMPACTION
    */
-  private TsFileManagementStrategy tsFileManagementStrategy = TsFileManagementStrategy.NORMAL_STRATEGY;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max seq file num of each level. When
-   * file num exceeds this, the files in one level will merge to one.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max seq file num of each level.
+   * When the num of files in one level exceeds this,
+   * the files in this level will merge to one and put to upper level.
    */
-  private int maxFileNumInEachLevel = 10;
+  private int seqFileNumInEachLevel = 6;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max num of seq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max num of seq level.
    */
-  private int maxLevelNum = 4;
+  private int seqLevelNum = 4;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max unseq file num of each level. When
-   * file num exceeds this, the files in one level will merge to one.
+   * Works when compaction_strategy is LEVEL_COMPACTION.
+   * The max ujseq file num of each level.
+   * When the num of files in one level exceeds this,
+   * the files in this level will merge to one and put to upper level.
    */
-  private int maxUnseqFileNumInEachLevel = 10;
+  private int unseqFileNumInEachLevel = 10;
 
   /**
-   * Work when tsfile_manage_strategy is level_strategy. The max num of unseq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * The max num of unseq level.
    */
-  private int maxUnseqLevelNum = 2;
+  private int unseqLevelNum = 1;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -498,7 +537,7 @@ public class IoTDBConfig {
   /**
    * How much memory (in byte) can be used by a single merge task.
    */
-  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.2);
+  private long mergeMemoryBudget = (long) (Runtime.getRuntime().maxMemory() * 0.1);
 
   /**
    * How many threads will be set up to perform upgrade tasks.
@@ -511,7 +550,7 @@ public class IoTDBConfig {
   private int mergeThreadNum = 1;
 
   /**
-   * How many threads will be set up to perform merge chunk sub-tasks.
+   * How many threads will be set up to perform unseq merge chunk sub-tasks.
    */
   private int mergeChunkSubThreadNum = 4;
 
@@ -535,34 +574,22 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all merges becomes full merge (the whole SeqFiles are re-written despite how
+   * When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how
    * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
    * are overflowed.
    */
   private boolean forceFullMerge = false;
 
   /**
-   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
-   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
-   * this threshold and the new chunk will be flushed.
+   * The limit of compaction merge can reach per second
    */
-  private int chunkMergePointThreshold = 20480;
+  private int mergeWriteThroughputMbPerSec = 8;
 
   /**
-   * The limit of hot compaction merge can reach per second
-   */
-  private int mergeWriteThroughputMbPerSec = 16;
-
-  /**
-   * How many thread will be set up to perform hot compaction, 30 by default. Set to 1 when less
+   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less
    * than or equal to 0.
    */
-  private int hotCompactionThreadNum = 30;
-
-  /**
-   * The limit of read throughput merge can reach per second
-   */
-  private int mergeReadThroughputMbPerSec = 16;
+  private int compactionThreadNum = 10;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -710,6 +737,21 @@ public class IoTDBConfig {
    * thrift init buffer size, the default is 1KB.
    */
   private int thriftInitBufferSize = 1024;
+
+  /**
+   * time interval in minute for calculating query frequency
+   */
+  private int frequencyIntervalInMinute = 1;
+
+  /**
+   * time cost(ms) threshold for slow query
+   */
+  private long slowQueryThreshold = 5000;
+
+  /**
+   * if the debug_state is true, we will print more details about the process of query
+   */
+  private boolean debugState = false;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1005,14 +1047,6 @@ public class IoTDBConfig {
     this.batchSize = batchSize;
   }
 
-  public int getMaxMemtableNumber() {
-    return maxMemtableNumber;
-  }
-
-  public void setMaxMemtableNumber(int maxMemtableNumber) {
-    this.maxMemtableNumber = maxMemtableNumber;
-  }
-
   public int getConcurrentFlushThread() {
     return concurrentFlushThread;
   }
@@ -1157,6 +1191,14 @@ public class IoTDBConfig {
     this.walBufferSize = walBufferSize;
   }
 
+  public int getEstimatedSeriesSize() {
+    return estimatedSeriesSize;
+  }
+
+  public void setEstimatedSeriesSize(int estimatedSeriesSize) {
+    this.estimatedSeriesSize = estimatedSeriesSize;
+  }
+  
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }
@@ -1197,12 +1239,36 @@ public class IoTDBConfig {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
-  public boolean isEnableParameterAdapter() {
-    return enableParameterAdapter;
+  public double getBufferedArraysMemoryProportion() {
+    return bufferedArraysMemoryProportion;
   }
 
-  public void setEnableParameterAdapter(boolean enableParameterAdapter) {
-    this.enableParameterAdapter = enableParameterAdapter;
+  public void setBufferedArraysMemoryProportion(double bufferedArraysMemoryProportion) {
+    this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
+  }
+
+  public double getFlushProportion() {
+    return flushProportion;
+  }
+
+  public void setFlushProportion(double flushProportion) {
+    this.flushProportion = flushProportion;
+  }
+
+  public double getRejectProportion() {
+    return rejectProportion;
+  }
+
+  public void setRejectProportion(double rejectProportion) {
+    this.rejectProportion = rejectProportion;
+  }
+
+  public long getStorageGroupSizeReportThreshold() {
+    return storageGroupSizeReportThreshold;
+  }
+
+  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
+    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
   public long getAllocateMemoryForWrite() {
@@ -1211,6 +1277,14 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForWrite(long allocateMemoryForWrite) {
     this.allocateMemoryForWrite = allocateMemoryForWrite;
+  }
+
+  public long getAllocateMemoryForSchema() {
+    return allocateMemoryForSchema;
+  }
+
+  void setAllocateMemoryForSchema(long allocateMemoryForSchema) {
+    this.allocateMemoryForSchema = allocateMemoryForSchema;
   }
 
   long getAllocateMemoryForRead() {
@@ -1293,20 +1367,12 @@ public class IoTDBConfig {
     this.forceFullMerge = forceFullMerge;
   }
 
-  public int getChunkMergePointThreshold() {
-    return chunkMergePointThreshold;
+  public int getCompactionThreadNum() {
+    return compactionThreadNum;
   }
 
-  public void setChunkMergePointThreshold(int chunkMergePointThreshold) {
-    this.chunkMergePointThreshold = chunkMergePointThreshold;
-  }
-
-  public int getHotCompactionThreadNum() {
-    return hotCompactionThreadNum;
-  }
-
-  public void setHotCompactionThreadNum(int hotCompactionThreadNum) {
-    this.hotCompactionThreadNum = hotCompactionThreadNum;
+  public void setCompactionThreadNum(int compactionThreadNum) {
+    this.compactionThreadNum = compactionThreadNum;
   }
 
   public int getMergeWriteThroughputMbPerSec() {
@@ -1317,12 +1383,12 @@ public class IoTDBConfig {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
   }
 
-  public int getMergeReadThroughputMbPerSec() {
-    return mergeReadThroughputMbPerSec;
+  public boolean isEnableMemControl() {
+    return enableMemControl;
   }
 
-  public void setMergeReadThroughputMbPerSec(int mergeReadThroughputMbPerSec) {
-    this.mergeReadThroughputMbPerSec = mergeReadThroughputMbPerSec;
+  public void setEnableMemControl(boolean enableMemControl) {
+    this.enableMemControl = enableMemControl;
   }
 
   public long getMemtableSizeThreshold() {
@@ -1367,45 +1433,45 @@ public class IoTDBConfig {
   }
 
 
-  public TsFileManagementStrategy getTsFileManagementStrategy() {
-    return tsFileManagementStrategy;
+  public CompactionStrategy getCompactionStrategy() {
+    return compactionStrategy;
   }
 
-  public void setTsFileManagementStrategy(
-      TsFileManagementStrategy tsFileManagementStrategy) {
-    this.tsFileManagementStrategy = tsFileManagementStrategy;
+  public void setCompactionStrategy(
+      CompactionStrategy compactionStrategy) {
+    this.compactionStrategy = compactionStrategy;
   }
 
-  public int getMaxFileNumInEachLevel() {
-    return maxFileNumInEachLevel;
+  public int getSeqFileNumInEachLevel() {
+    return seqFileNumInEachLevel;
   }
 
-  public void setMaxFileNumInEachLevel(int maxFileNumInEachLevel) {
-    this.maxFileNumInEachLevel = maxFileNumInEachLevel;
+  public void setSeqFileNumInEachLevel(int seqFileNumInEachLevel) {
+    this.seqFileNumInEachLevel = seqFileNumInEachLevel;
   }
 
-  public int getMaxLevelNum() {
-    return maxLevelNum;
+  public int getSeqLevelNum() {
+    return seqLevelNum;
   }
 
-  public void setMaxLevelNum(int maxLevelNum) {
-    this.maxLevelNum = maxLevelNum;
+  public void setSeqLevelNum(int seqLevelNum) {
+    this.seqLevelNum = seqLevelNum;
   }
 
-  public int getMaxUnseqFileNumInEachLevel() {
-    return maxUnseqFileNumInEachLevel;
+  public int getUnseqFileNumInEachLevel() {
+    return unseqFileNumInEachLevel;
   }
 
-  public void setMaxUnseqFileNumInEachLevel(int maxUnseqFileNumInEachLevel) {
-    this.maxUnseqFileNumInEachLevel = maxUnseqFileNumInEachLevel;
+  public void setUnseqFileNumInEachLevel(int unseqFileNumInEachLevel) {
+    this.unseqFileNumInEachLevel = unseqFileNumInEachLevel;
   }
 
-  public int getMaxUnseqLevelNum() {
-    return maxUnseqLevelNum;
+  public int getUnseqLevelNum() {
+    return unseqLevelNum;
   }
 
-  public void setMaxUnseqLevelNum(int maxUnseqLevelNum) {
-    this.maxUnseqLevelNum = maxUnseqLevelNum;
+  public void setUnseqLevelNum(int unseqLevelNum) {
+    this.unseqLevelNum = unseqLevelNum;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1924,5 +1990,45 @@ public class IoTDBConfig {
 
   public void setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
+  }
+
+  public int getWaitingTimeWhenInsertBlocked() {
+    return waitingTimeWhenInsertBlockedInMs;
+  }
+
+  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
+    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
+  }
+
+  public int getMaxWaitingTimeWhenInsertBlocked() {
+    return maxWaitingTimeWhenInsertBlockedInMs;
+  }
+
+  public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
+    this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
+  }
+
+  public int getFrequencyIntervalInMinute() {
+    return frequencyIntervalInMinute;
+  }
+
+  public void setFrequencyIntervalInMinute(int frequencyIntervalInMinute) {
+    this.frequencyIntervalInMinute = frequencyIntervalInMinute;
+  }
+
+  public long getSlowQueryThreshold() {
+    return slowQueryThreshold;
+  }
+
+  public void setSlowQueryThreshold(long slowQueryThreshold) {
+    this.slowQueryThreshold = slowQueryThreshold;
+  }
+
+  public boolean isDebugOn() {
+    return debugState;
+  }
+
+  public void setDebugState(boolean debugState) {
+    this.debugState = debugState;
   }
 }

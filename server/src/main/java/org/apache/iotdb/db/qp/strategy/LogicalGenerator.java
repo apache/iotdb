@@ -201,7 +201,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private UpdateOperator updateOp;
   private QueryOperator queryOp;
   private DeleteDataOperator deleteDataOp;
-  private static final String DELETE_RANGE_ERROR_MSG = 
+  private static final String DELETE_RANGE_ERROR_MSG =
     "For delete statement, where clause can only contain atomic expressions like : " +
       "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
@@ -391,12 +391,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowVersion(ShowVersionContext ctx) {
     super.enterShowVersion(ctx);
     initializedOperator = new ShowOperator(SQLConstant.TOK_VERSION);
-  }
-
-  @Override
-  public void enterShowDynamicParameter(SqlBaseParser.ShowDynamicParameterContext ctx) {
-    super.enterShowDynamicParameter(ctx);
-    initializedOperator = new ShowOperator(SQLConstant.TOK_DYNAMIC_PARAMETER);
   }
 
   @Override

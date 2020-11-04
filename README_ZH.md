@@ -370,3 +370,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 ```
 select * from root.fit.d1
 ```
+
+
+# 常见编译错误
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

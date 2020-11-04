@@ -103,12 +103,16 @@ public class MetadataIndexNode {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType =  MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
+    MetadataIndexNodeType nodeType = MetadataIndexNodeType
+        .deserialize(ReadWriteIOUtils.readByte(buffer));
     return new MetadataIndexNode(children, offset, nodeType);
   }
 
-  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key) {
-    int index = binarySearchInChildren(key);
+  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {
+    int index = binarySearchInChildren(key, exactSearch);
+    if (index == -1) {
+      return null;
+    }
     long childEndOffset;
     if (index != children.size() - 1) {
       childEndOffset = children.get(index + 1).getOffset();
@@ -118,7 +122,7 @@ public class MetadataIndexNode {
     return new Pair<>(children.get(index), childEndOffset);
   }
 
-  int binarySearchInChildren(String key) {
+  int binarySearchInChildren(String key, boolean exactSearch) {
     int low = 0;
     int high = children.size() - 1;
 
@@ -135,6 +139,12 @@ public class MetadataIndexNode {
         return mid; // key found
       }
     }
-    return low == 0 ? low : low - 1;  // key not found
+
+    // key not found
+    if (exactSearch) {
+      return -1;
+    } else {
+      return low == 0 ? low : low - 1;
+    }
   }
 }

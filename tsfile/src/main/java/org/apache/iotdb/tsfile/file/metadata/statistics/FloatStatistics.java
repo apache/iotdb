@@ -38,7 +38,7 @@ public class FloatStatistics extends Statistics<Float> {
   private float lastValue;
   private double sumValue;
 
-  private static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
+  static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
 
 
   @Override

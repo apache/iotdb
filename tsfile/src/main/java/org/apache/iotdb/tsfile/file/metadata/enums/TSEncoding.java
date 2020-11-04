@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR;
+  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR, GORILLA;
 
   /**
    * judge the encoding deserialize type.
@@ -33,14 +33,14 @@ public enum TSEncoding {
   }
 
   public static byte deserializeToByte(short encoding) {
-    if (encoding >= 8 || encoding < 0) {
+    if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
     return (byte) encoding;
   }
 
   private static TSEncoding getTsEncoding(short encoding) {
-    if (encoding >= 8 || encoding < 0) {
+    if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
     switch (encoding) {
@@ -55,9 +55,11 @@ public enum TSEncoding {
       case 5:
         return BITMAP;
       case 6:
-        return GORILLA;
+        return GORILLA_V1;
       case 7:
         return REGULAR;
+      case 8:
+        return GORILLA;
       default:
         return PLAIN;
     }
@@ -101,10 +103,12 @@ public enum TSEncoding {
         return 4;
       case BITMAP:
         return 5;
-      case GORILLA:
+      case GORILLA_V1:
         return 6;
       case REGULAR:
         return 7;
+      case GORILLA:
+        return 8;
       default:
         return 0;
     }

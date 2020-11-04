@@ -86,7 +86,7 @@ public class LastQueryExecutor {
       lastTimeValuePair = calculateLastPairForOneSeries(
               selectedSeries.get(i), dataTypes.get(i), context,
               lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
-      if (lastTimeValuePair.getValue() != null) {
+      if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
         if (selectedSeries.get(i).getTsAlias() != null) {
@@ -125,7 +125,7 @@ public class LastQueryExecutor {
    * get last result for one series
    *
    * @param context query context
-   * @return TimeValuePair
+   * @return TimeValuePair, result can be null
    */
   public static TimeValuePair calculateLastPairForOneSeriesLocally(
       PartialPath seriesPath, TSDataType tsDataType, QueryContext context,
@@ -145,6 +145,8 @@ public class LastQueryExecutor {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(seriesPath);
         if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
+        } else if (timeValuePair != null) {
+          return null;
         }
       }
 
@@ -152,6 +154,8 @@ public class LastQueryExecutor {
         TimeValuePair timeValuePair =  node.getCachedLast();
         if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
           return timeValuePair;
+        } else if (timeValuePair != null) {
+          return null;
         }
       }
     }
@@ -173,7 +177,7 @@ public class LastQueryExecutor {
     TimeValuePair resultPair = lastReader.readLastPoint();
 
     // Update cached last value with low priority unless "FROM" expression exists
-    if (lastCacheEnabled && filter == null) {
+    if (lastCacheEnabled) {
       IoTDB.metaManager.updateLastCache(
           seriesPath, resultPair, false, Long.MIN_VALUE, node);
     }
