@@ -33,6 +33,7 @@ import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.IInsertSession;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.async.AsyncThreadPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -106,7 +107,6 @@ public class SessionPool implements IInsertSession {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
-    this.asyncHandler = new AsyncSession();
     this.zoneId = zoneId;
   }
 
@@ -319,6 +319,11 @@ public class SessionPool implements IInsertSession {
    */
   public CompletableFuture<Integer> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
                                                       BiConsumer<Tablet, Throwable> callback) {
+
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertTablet(tablet, sorted, timeout, this, callback);
   }
 
@@ -364,8 +369,13 @@ public class SessionPool implements IInsertSession {
    * @param timeout  asynchronous call timeout in millisecond
    * @param callback user provided callback if failed, set to null if user does not specify.
    */
-  public CompletableFuture<Integer> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
-                                                       long timeout, BiConsumer<Map<String, Tablet>, Throwable> callback) {
+  public CompletableFuture<Integer> asyncInsertTablets(
+      Map<String, Tablet> tablets, boolean sorted, long timeout,
+      BiConsumer<Map<String, Tablet>, Throwable> callback) {
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertTablets(tablets, sorted, timeout, this, callback);
   }
 
@@ -410,6 +420,10 @@ public class SessionPool implements IInsertSession {
       List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,
       List<List<TSDataType>> typesList, List<List<Object>> valuesList, long timeout,
       SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>, List<List<Object>>, Throwable> callback) {
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertRecords(deviceIds, times, measurementsList,
         typesList, valuesList, timeout, this, callback);
   }
@@ -455,6 +469,10 @@ public class SessionPool implements IInsertSession {
       List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,
       List<List<String>> valuesList, long timeout,
       FiveInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<String>>, Throwable> callback) {
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertRecords(deviceIds, times, measurementsList,
         valuesList, timeout, this, callback);
   }
@@ -498,6 +516,10 @@ public class SessionPool implements IInsertSession {
       String deviceId, long time, List<String> measurements, List<TSDataType> types,
       List<Object> values, long timeout,
       SixInputConsumer<String, Long, List<String>, List<TSDataType>, List<Object>, Throwable> callback) {
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertRecord(deviceId, time, measurements, types,
         values, timeout, this, callback);
   }
@@ -540,6 +562,10 @@ public class SessionPool implements IInsertSession {
   public CompletableFuture<Integer> asyncInsertRecord(
       String deviceId, long time, List<String> measurements, List<String> values, long timeout,
       FiveInputConsumer<String, Long, List<String>, List<String>, Throwable> callback) {
+    if (this.asyncHandler == null) {
+      AsyncThreadPool threadPool = new AsyncThreadPool();
+      asyncHandler.setThreadPool(threadPool.getThreadPool());
+    }
     return asyncHandler.doAsyncInsertRecord(deviceId, time, measurements, values,
         timeout, this, callback);
   }

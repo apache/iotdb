@@ -57,7 +57,7 @@ public class AsyncThreadPool {
     return pool.submit(task);
   }
 
-  public Executor getThreadPool() {
+  public ExecutorService getThreadPool() {
     return pool;
   }
 
@@ -68,7 +68,7 @@ public class AsyncThreadPool {
     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
       try {
         synchronized (r) {
-          r.wait(Config.DEFAULT_THREAD_WAIT_TIME);
+          r.wait(Config.DEFAULT_THREAD_WAIT_TIME_MS);
         }
       } catch (InterruptedException e) {
         logger.error("Interrupted while insertion thread is waiting:", e);

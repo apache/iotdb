@@ -182,8 +182,16 @@ public class SessionExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      session.asyncInsertRecord(deviceId, time, measurements, types, values, 1000, null);
+      session.asyncInsertRecord(deviceId, time, measurements, types, values,
+          1000, SessionExample::insertRecordAsyncCallback);
     }
+  }
+
+  private static void insertRecordAsyncCallback(
+      String deviceId, long time, List<String> measurements, List<TSDataType> types,
+      List<Object> values, Throwable e) {
+    System.out.println("InsertRecord() failed, deviceId " + deviceId + " with " +
+        measurements.size() + " measurements, time " + time + ":" + e.getMessage());
   }
 
   private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException,
@@ -295,7 +303,13 @@ public class SessionExample {
     }
 
     session.asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList,
-        valuesList, 1000, null);
+        valuesList, 1000, SessionExample::insertRecordsAsyncCallback);
+  }
+
+  private static void insertRecordsAsyncCallback(
+      List<String> deviceIds, List<Long> times, List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList, List<List<Object>> valuesList, Throwable e) {
+    System.out.println("InsertRecords() failed when inserting " + times.size() + " records:" + e.getMessage());
   }
 
   /**

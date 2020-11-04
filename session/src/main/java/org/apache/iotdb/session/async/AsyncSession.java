@@ -21,6 +21,8 @@ package org.apache.iotdb.session.async;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -41,10 +43,18 @@ import org.slf4j.LoggerFactory;
 
 public class AsyncSession {
   private static final Logger logger = LoggerFactory.getLogger(AsyncSession.class);
-  private final AsyncThreadPool threadPool;
+  private ExecutorService threadPool;
 
-  public AsyncSession() {
-    threadPool = new AsyncThreadPool();
+  public AsyncSession(ExecutorService executor) {
+    threadPool = executor;
+  }
+
+  public Executor getThreadPool() {
+    return threadPool;
+  }
+
+  public void setThreadPool(ExecutorService executor) {
+    this.threadPool = executor;
   }
 
   /**
@@ -58,16 +68,16 @@ public class AsyncSession {
    */
   public CompletableFuture<Integer> doAsyncInsertRecord(String deviceId, long time,
       List<String> measurements, List<TSDataType> types, List<Object> values, long timeout,
-      IInsertSession insertSession,
+      IInsertSession session,
       SixInputConsumer<String, Long, List<String>, List<TSDataType>, List<Object>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertRecord(deviceId, time, measurements, types, values);
+        session.insertRecord(deviceId, time, measurements, types, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         throw new RuntimeException(e);
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
@@ -92,16 +102,16 @@ public class AsyncSession {
    * @see Session#insertTablet(Tablet)
    */
   public CompletableFuture<Integer> doAsyncInsertRecord(String deviceId, long time,
-      List<String> measurements, List<String> values, long timeout, IInsertSession insertSession,
+      List<String> measurements, List<String> values, long timeout, IInsertSession session,
       FiveInputConsumer<String, Long, List<String>, List<String>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertRecord(deviceId, time, measurements, values);
+        session.insertRecord(deviceId, time, measurements, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         throw new RuntimeException(e);
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
@@ -129,16 +139,16 @@ public class AsyncSession {
    */
   public CompletableFuture<Integer> doAsyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, long timeout, IInsertSession insertSession,
+      List<List<Object>> valuesList, long timeout, IInsertSession session,
       SixInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<TSDataType>>, List<List<Object>>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+        session.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
       } catch (StatementExecutionException | IoTDBConnectionException e) {
         e.printStackTrace();
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler).
@@ -168,15 +178,15 @@ public class AsyncSession {
    */
   public CompletableFuture<Integer> doAsyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList, long timeout,
-      IInsertSession insertSession, FiveInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<String>>, Throwable> callback) {
+      IInsertSession session, FiveInputConsumer<List<String>, List<Long>, List<List<String>>, List<List<String>>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertRecords(deviceIds, times, measurementsList, valuesList);
+        session.insertRecords(deviceIds, times, measurementsList, valuesList);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         throw new RuntimeException(e);
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
@@ -202,15 +212,15 @@ public class AsyncSession {
    * @return async CompletableFuture
    */
   public CompletableFuture<Integer> doAsyncInsertTablet(Tablet tablet, boolean sorted,
-      long timeout, IInsertSession insertSession, BiConsumer<Tablet, Throwable> callback) {
+      long timeout, IInsertSession session, BiConsumer<Tablet, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertTablet(tablet, sorted);
+        session.insertTablet(tablet, sorted);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         throw new RuntimeException(e);
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
@@ -236,15 +246,15 @@ public class AsyncSession {
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Integer> doAsyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
-      long timeout, IInsertSession insertSession, BiConsumer<Map<String, Tablet>, Throwable> callback) {
+      long timeout, IInsertSession session, BiConsumer<Map<String, Tablet>, Throwable> callback) {
     CompletableFuture<Integer> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertSession.insertTablets(tablets, sorted);
+        session.insertTablets(tablets, sorted);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         throw new RuntimeException(e);
       }
       return 0;
-    }, threadPool.getThreadPool());
+    }, threadPool);
 
     return asyncRun
         .applyToEitherAsync(orTimeout(timeout, TimeUnit.MILLISECONDS), this::successHandler)
