@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import jline.console.ConsoleReader;
 import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.cli.CommandLine;
@@ -123,46 +124,42 @@ public class ImportCsv extends AbstractCsvTool {
       List<Long> times = new ArrayList<>();
       List<List<String>> measurementsList = new ArrayList<>();
       List<List<String>> valuesList = new ArrayList<>();
-      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions = new HashMap<>();
+      Map<String, Map<String, Integer>> devicesToMeasurementsAndPositions = new HashMap<>();
 
       for(int i = 1; i < cols.length; i++) {
-        splitColToDeviceAndMeasurement(cols[i], deviceToMeasurementsAndPositions, i);
+        splitColToDeviceAndMeasurement(cols[i], devicesToMeasurementsAndPositions, i);
       }
 
       String line;
       while((line = br.readLine()) != null) {
         cols = line.split(",");
-        for(String device: deviceToMeasurementsAndPositions.keySet()) {
-          devices.add(device);
+        for(Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions: devicesToMeasurementsAndPositions.entrySet()) {
+          devices.add(deviceToMeasurementsAndPositions.getKey());
           times.add(Long.parseLong(cols[0]));
-          Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.get(device);
+          Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.getValue();
           List<String> measurements = new ArrayList<>();
           List<String> values = new ArrayList<>();
-          for(String measurement : measurementsAndPositions.keySet()) {
-            measurements.add(measurement);
-            if(cols[measurementsAndPositions.get(measurement)].equals("") && cols[measurementsAndPositions.get(measurement)].equals("null")) {
+          for(Entry<String, Integer> measurementAndPosition : measurementsAndPositions.entrySet()) {
+            measurements.add(measurementAndPosition.getKey());
+            if(cols[measurementAndPosition.getValue()].equals("") && cols[measurementAndPosition.getValue()].equals("null")) {
               values.add(null);
             } else {
-              values.add(cols[measurementsAndPositions.get(measurement)]);
+              values.add(cols[measurementAndPosition.getValue()]);
             }
           }
           measurementsList.add(measurements);
           valuesList.add(values);
         }
       }
-
-      try {
-        session.insertRecords(devices, times, measurementsList, valuesList);
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        System.out.println("Meet error when insert csv because " + e.getMessage());
-        return;
-      }
+      session.insertRecords(devices, times, measurementsList, valuesList);
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
     } catch (FileNotFoundException e) {
       System.out.println("Cannot find " + file.getName() + " because: "+e.getMessage());
     } catch (IOException e) {
       System.out.println("CSV file read exception because: " + e.getMessage());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      System.out.println("Meet error when insert csv because " + e.getMessage());
     } finally {
       try {
         if (session != null) {
