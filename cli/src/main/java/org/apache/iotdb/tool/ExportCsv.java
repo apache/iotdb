@@ -112,13 +112,8 @@ public class ExportCsv extends AbstractCsvTool {
       String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
       String sql;
       session = new Session(host, Integer.parseInt(port), username, password);
-      try {
-        session.open(false);
-        setTimeZone();
-      } catch (IoTDBConnectionException | StatementExecutionException e) {
-        System.out.println("Connect failed because " + e.getMessage());
-        return;
-      }
+      session.open(false);
+      setTimeZone();
 
       if (sqlFile == null) {
         sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
@@ -133,6 +128,8 @@ public class ExportCsv extends AbstractCsvTool {
       System.out.println("Failed to operate on file, because " + e.getMessage());
     } catch (ArgsErrorException e) {
       System.out.println("Invalid args: " + e.getMessage());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      System.out.println("Connect failed because " + e.getMessage());
     } finally {
       reader.close();
       if (session != null) {
@@ -297,12 +294,12 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static void writeTime(Long time, BufferedWriter bw) throws IOException {
     ZonedDateTime dateTime;
-    String TIMESTAMP_PRECISION = "ms";
+    String timestampPrecision = "ms";
     switch (timeFormat) {
       case "default":
         String str = AbstractCli
             .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId,
-                TIMESTAMP_PRECISION);
+                timestampPrecision);
         bw.write(str + ",");
         break;
       case "timestamp":
