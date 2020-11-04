@@ -40,11 +40,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -121,7 +121,7 @@ public class MManager {
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, MNode> mNodeCache;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
+  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
   // data type -> number
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
@@ -430,8 +430,8 @@ public class MManager {
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
 
@@ -1188,8 +1188,8 @@ public class MManager {
       // update inverted Index map
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
       return;
@@ -1234,8 +1234,8 @@ public class MManager {
         // if the key doesn't exist or the value is not equal to the new one
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
     }
@@ -1304,8 +1304,8 @@ public class MManager {
       leafMNode.setOffset(offset);
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
-        tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
       }
       return;
     }
@@ -1327,8 +1327,8 @@ public class MManager {
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
     // update tag inverted map
-    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-        .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode));
+    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
   }
 
   /**
@@ -1467,8 +1467,8 @@ public class MManager {
               tagIndex.containsKey(key)));
         }
       }
-      tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-          .computeIfAbsent(currentValue, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     }
   }
 
@@ -1529,8 +1529,8 @@ public class MManager {
               tagIndex.containsKey(oldKey)));
         }
       }
-      tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
-          .computeIfAbsent(value, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     } else if (pair.right.containsKey(oldKey)) {
       // check attribute map
       pair.right.put(newKey, pair.right.remove(oldKey));
