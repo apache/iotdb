@@ -38,6 +38,11 @@ public abstract class AbstractScript {
       if (line == null) {
         break;
       } else {
+        // remove redundant "connection refused", only for test
+        if(line.contains("(Connection refused)")) {
+          line = line.replace("(Connection refused)", "");
+          line = line.trim();
+        }
         outputList.add(line);
       }
     }

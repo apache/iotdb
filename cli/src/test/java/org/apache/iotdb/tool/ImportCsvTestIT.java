@@ -51,7 +51,7 @@ public class ImportCsvTestIT extends AbstractScript {
         "Starting IoTDB Client Import Script",
         "````````````````````````````````````````````````",
         "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
-            + "java.net.ConnectException: Connection refused (Connection refused)"};
+            + "java.net.ConnectException: Connection refused"};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "tools" + File.separator + "import-csv.bat",
@@ -65,7 +65,7 @@ public class ImportCsvTestIT extends AbstractScript {
         "Starting IoTDB Client Import Script",
         "------------------------------------------",
         "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
-            + "java.net.ConnectException: Connection refused (Connection refused)"};
+            + "java.net.ConnectException: Connection refused"};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "tools" + File.separator + "import-csv.sh",
