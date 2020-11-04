@@ -318,7 +318,7 @@ public class IoTDBConfig {
    * Works when the compaction_strategy is LEVEL_COMPACTION.
    * The max num of seq level.
    */
-  private int seqLevelNum = 4;
+  private int seqLevelNum = 3;
 
   /**
    * Works when compaction_strategy is LEVEL_COMPACTION.
