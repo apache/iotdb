@@ -373,11 +373,6 @@ public class PhysicalGenerator {
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       ((FillQueryPlan) queryPlan).setQueryTime(time);
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.hasAggregation()) {
-      queryPlan = new AggregationPlan();
-      ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-      ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
