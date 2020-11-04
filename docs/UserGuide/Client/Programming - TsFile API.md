@@ -363,18 +363,17 @@ We create one or more filter expressions and may use binary filter operators to 
         IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter);
         ```
         Use the following relationships to get a `TimeFilter` object (value is a long int variable).
-        <center>
-        <table style="text-align:center">
-            <tr><th>Relationship</th><th>Description</th></tr>
-            <tr><td>TimeFilter.eq(value)</td><td>Choose the time equal to the value</td></tr>
-            <tr><td>TimeFilter.lt(value)</td><td>Choose the time less than the value</td></tr>
-            <tr><td>TimeFilter.gt(value)</td><td>Choose the time greater than the value</td></tr>
-            <tr><td>TimeFilter.ltEq(value)</td><td>Choose the time less than or equal to the value</td></tr>
-            <tr><td>TimeFilter.gtEq(value)</td><td>Choose the time greater than or equal to the value</td></tr>
-            <tr><td>TimeFilter.notEq(value)</td><td>Choose the time not equal to the value</td></tr>
-            <tr><td>TimeFilter.not(TimeFilter)</td><td>Choose the time not satisfy another TimeFilter</td></tr>
-        </table>
-        </center>
+        
+          |Relationship|Description|
+          |---|---|
+          |TimeFilter.eq(value)|Choose the time equal to the value|
+          |TimeFilter.lt(value)|Choose the time less than the value|
+          |TimeFilter.gt(value)|Choose the time greater than the value|
+          |TimeFilter.ltEq(value)|Choose the time less than or equal to the value|
+          |TimeFilter.gtEq(value)|Choose the time greater than or equal to the value|
+          |TimeFilter.notEq(value)|Choose the time not equal to the value|
+          |TimeFilter.not(TimeFilter)|Choose the time not satisfy another TimeFilter|
+       
         
      * ValueFilter: A filter for `value` in time-series data.
        

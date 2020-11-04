@@ -24,7 +24,7 @@
 The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
-| ------------- | ------------- | ------------ |------------ |
+| :-------------: | :-------------: | :------------: |:------------: |
 | `2.4.3`        | `2.11`        | `1.8`        | `0.10.0`|
 
 
@@ -76,14 +76,11 @@ df.show()
 
 Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+|Name|Type|Encode|
+|---|---|---|
+|status|Boolean|PLAIN|
+|temperature|Float|RLE|
+|hardware|Text|PLAIN|
 
 The existing data in the TsFile is as follows:
 

@@ -29,33 +29,13 @@ This tool calculates the minimum memory for writing to meet specific workload th
 
 When using this tool, the parameters needed to be input are as follows:
 
-<table>
-   <tr>
-      <td>Parameter</td>
-      <td>Parameter Description</td>
-      <td>Example</td>
-      <td>Necessary</td>
-   </tr>
-   <tr>
-      <td>-sg | --storagegroup &lt;storage group number&gt;</td>
-      <td>storage group number</td>
-      <td>-sg 20</td>
-      <td>true</td>
-   </tr>
-   <tr>
-      <td>-ts | --timeseries &lt;total timeseries number&gt;</td>
-      <td>total timeseries number</td>
-      <td>-ts 10000</td>
-      <td>true</td>
-   </tr>
-   <tr>
-      <td>-mts | --maxtimeseries &lt;max timeseries&gt;</td>
-      <td>maximum number of timeseries among storage groups.If the time series are evenly distributed in the storage group, this parameter may not be set.</td>
-      <td>-mts 10000</td>
-      <td>false</td>
-   </tr>
 
-</table>
+|Parameter|Parameter Description|Example|Necessary
+|--- |---|---|---|
+|-sg or --storagegroup \<storage group number>|storage group number|-sg 20|true|
+|-ts or --timeseries \<total timeseries number>|total timeseries number|ts 10000|true|
+|-mts or --maxtimeseries \<max timeseries>|maximum number of timeseries among storage groups.If the time series are evenly distributed in the storage group, this parameter may not be set.|-mts 10000|false|
+
 
 In memory estimation, if the calculation takes a long time, the tool will show the running progress below, which is convenient for users to master the progress.
 
