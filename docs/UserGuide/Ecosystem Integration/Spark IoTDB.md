@@ -84,18 +84,7 @@ Take the following TsFile structure as an example: There are three Measurements 
 
 The existing data in the TsFile is as follows:
 
-
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
-
+<img width="849" alt="SI" src="https://user-images.githubusercontent.com/69114052/98134291-8f9c3080-1ef9-11eb-8b52-8cd81368c166.png">
 
 The wide(default) table form is as follows:
 

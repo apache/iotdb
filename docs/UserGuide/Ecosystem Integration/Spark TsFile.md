@@ -90,19 +90,9 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 |temperature|Float|RLE|
 |hardware|Text|PLAIN|
 
+The existing data in the TsFile are:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
-
-
+<img width="848" alt="SP 1" src="https://user-images.githubusercontent.com/69114052/98133329-6cbd4c80-1ef8-11eb-8d0c-a608d954dd7f.png">
 
 The corresponding SparkSQL table is:
 
@@ -246,18 +236,10 @@ The way to display TsFile is related to TsFile Schema. Take the following TsFile
 
 The existing data in the file are:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
-</table>
-<span>A set of time-series data</span>
-</center>
+<img width="885" alt="SP 2" src="https://user-images.githubusercontent.com/69114052/98133860-13095200-1ef9-11eb-97b2-5fbc9bf73204.png">
+
+A set of time-series data
+
 There are two ways to show a set of time-series data:
 
 #### the default way
