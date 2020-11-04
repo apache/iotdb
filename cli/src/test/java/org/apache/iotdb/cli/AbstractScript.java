@@ -39,7 +39,6 @@ public abstract class AbstractScript {
         break;
       } else {
         outputList.add(line);
-        System.out.println(line);
       }
     }
     r.close();
