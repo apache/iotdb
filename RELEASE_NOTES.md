@@ -19,7 +19,7 @@
 
 -->
 
-# Apache IoTDB (incubating) 0.11.0
+# Apache IoTDB 0.11.0
 
 ## New Features
 
