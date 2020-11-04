@@ -37,7 +37,9 @@ public class RandomOnDiskUsableSpaceStrategy extends DirectoryStrategy {
       throw new DiskSpaceInsufficientException(folders);
     }
 
-    long randomV = Math.abs(random.nextLong()) % spaceSum;
+    // The reason that avoid using Math.abs() is that, according to the doc of Math.abs(),
+    // if the argument is equal to the value of Long.MIN_VALUE, the result is that same value, which is negative.
+    long randomV = (random.nextLong() & Long.MAX_VALUE) % spaceSum;
     int index = 0;
     /* In fact, index will never equals spaceList.size(),
     for that randomV is less than sum of spaceList. */

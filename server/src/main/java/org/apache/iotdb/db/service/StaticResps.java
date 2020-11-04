@@ -27,7 +27,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -41,6 +40,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -64,10 +64,6 @@ class StaticResps {
 
   static final TSExecuteStatementResp FLUSH_INFO_RESP = getNoTimeExecuteResp(
       Arrays.asList(COLUMN_ITEM, COLUMN_VALUE),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
-
-  static final TSExecuteStatementResp DYNAMIC_PARAMETER_RESP = getNoTimeExecuteResp(
-      Arrays.asList(COLUMN_PARAMETER, COLUMN_VALUE),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
   static final TSExecuteStatementResp SHOW_VERSION_RESP = getNoTimeExecuteResp(
@@ -102,6 +98,14 @@ class StaticResps {
   static final TSExecuteStatementResp COUNT_NODE_TIMESERIES = getNoTimeExecuteResp(
       Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
+  static final TSExecuteStatementResp COUNT_STORAGE_GROUP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
 
   static final TSExecuteStatementResp COUNT_NODES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),

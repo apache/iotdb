@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read.common;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiPredicate;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -53,23 +54,22 @@ public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
   private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
-  private int capacity = 16;
+  protected int capacity = 16;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   // outer list index for read
-  private int readCurListIndex;
+  protected int readCurListIndex;
   // inner array index for read
-  private int readCurArrayIndex;
+  protected int readCurArrayIndex;
 
   // outer list index for write
-  private int writeCurListIndex;
+  protected int writeCurListIndex;
   // inner array index for write
-  private int writeCurArrayIndex;
+  protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
   private int count;
-
 
   private List<long[]> timeRet;
   private List<boolean[]> booleanRet;
@@ -423,7 +423,7 @@ public class BatchData implements Serializable {
     return this.booleanRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setBoolean(int idx, boolean v) {
+  public void setBoolean(boolean v) {
     this.booleanRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -431,7 +431,7 @@ public class BatchData implements Serializable {
     return this.intRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setInt(int idx, int v) {
+  public void setInt(int v) {
     this.intRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -439,7 +439,7 @@ public class BatchData implements Serializable {
     return this.longRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setLong(int idx, long v) {
+  public void setLong(long v) {
     this.longRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -447,7 +447,7 @@ public class BatchData implements Serializable {
     return this.floatRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setFloat(int idx, float v) {
+  public void setFloat(float v) {
     this.floatRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -455,7 +455,7 @@ public class BatchData implements Serializable {
     return this.doubleRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setDouble(int idx, double v) {
+  public void setDouble(double v) {
     this.doubleRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -463,11 +463,11 @@ public class BatchData implements Serializable {
     return this.binaryRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
-  public void setBinary(int idx, Binary v) {
+  public void setBinary(Binary v) {
     this.binaryRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
-  public void setTime(int idx, long v) {
+  public void setTime(long v) {
     this.timeRet.get(readCurListIndex)[readCurArrayIndex] = v;
   }
 
@@ -564,8 +564,8 @@ public class BatchData implements Serializable {
     return getTimeByIndex(length() - 1);
   }
 
-  public TimeColumn getTimeColumn() {
-    return new TimeColumn(timeRet, count, capacity);
+  public long getMinTimestamp() {
+    return getTimeByIndex(0);
   }
 
   public BatchDataIterator getBatchDataIterator() {
@@ -592,5 +592,13 @@ public class BatchData implements Serializable {
 
   public int getReadCurArrayIndex() {
     return readCurArrayIndex;
+  }
+
+  /**
+   * When put data, the writeIndex increases while the readIndex remains 0. For ascending read, we
+   * could read from 0 to writeIndex. So no need to flip.
+   */
+  public BatchData flip() {
+    return this;
   }
 }

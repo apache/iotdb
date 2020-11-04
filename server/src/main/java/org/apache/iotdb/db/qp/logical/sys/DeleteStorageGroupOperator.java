@@ -19,24 +19,23 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
-
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeleteStorageGroupOperator extends RootOperator {
 
-  private List<Path> deletePathList;
+  private List<PartialPath> deletePathList;
   
   public DeleteStorageGroupOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_STORAGE_GROUP;
   }
   
-  public List<Path> getDeletePathList() {
+  public List<PartialPath> getDeletePathList() {
     return deletePathList;
   }
 
-  public void setDeletePathList(List<Path> deletePathList) {
+  public void setDeletePathList(List<PartialPath> deletePathList) {
     this.deletePathList = deletePathList;
   }
 

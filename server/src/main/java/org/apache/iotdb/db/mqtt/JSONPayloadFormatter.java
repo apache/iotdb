@@ -17,12 +17,13 @@
  */
 package org.apache.iotdb.db.mqtt;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
 import io.netty.buffer.ByteBuf;
-
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +51,7 @@ public class JSONPayloadFormatter implements PayloadFormatter {
     private static final String JSON_KEY_TIMESTAMPS = "timestamps";
     private static final String JSON_KEY_MEASUREMENTS = "measurements";
     private static final String JSON_KEY_VALUES = "values";
+    private static final Gson GSON = new GsonBuilder().create();
 
     @Override
     public List<Message> format(ByteBuf payload) {
@@ -57,27 +59,27 @@ public class JSONPayloadFormatter implements PayloadFormatter {
             return null;
         }
         String txt = payload.toString(StandardCharsets.UTF_8);
-        JSONObject jsonObject = JSON.parseObject(txt);
 
+        JsonObject jsonObject = GSON.fromJson(txt, JsonObject.class);
         Object timestamp = jsonObject.get(JSON_KEY_TIMESTAMP);
         if (timestamp != null) {
-            return Lists.newArrayList(JSON.parseObject(txt, Message.class));
+            return Lists.newArrayList(GSON.fromJson(txt, Message.class));
         }
 
-        String device = jsonObject.getString(JSON_KEY_DEVICE);
-        JSONArray timestamps = jsonObject.getJSONArray(JSON_KEY_TIMESTAMPS);
-        JSONArray measurements = jsonObject.getJSONArray(JSON_KEY_MEASUREMENTS);
-        JSONArray values = jsonObject.getJSONArray(JSON_KEY_VALUES);
+        String device = jsonObject.get(JSON_KEY_DEVICE).getAsString();
+        JsonArray timestamps = jsonObject.getAsJsonArray(JSON_KEY_TIMESTAMPS);
+        JsonArray measurements = jsonObject.getAsJsonArray(JSON_KEY_MEASUREMENTS);
+        JsonArray values = jsonObject.getAsJsonArray(JSON_KEY_VALUES);
 
         List<Message> ret = new ArrayList<>();
         for (int i = 0; i < timestamps.size(); i++) {
-            Long ts = timestamps.getLong(i);
+            Long ts = timestamps.get(i).getAsLong();
 
             Message message = new Message();
             message.setDevice(device);
             message.setTimestamp(ts);
-            message.setMeasurements(measurements.toJavaList(String.class));
-            message.setValues(((JSONArray)values.get(i)).toJavaList(String.class));
+            message.setMeasurements(GSON.fromJson(measurements, new TypeToken<List<String>>() {}.getType()));
+            message.setValues(GSON.fromJson(values.get(i), new TypeToken<List<String>>() {}.getType()));
             ret.add(message);
         }
         return ret;

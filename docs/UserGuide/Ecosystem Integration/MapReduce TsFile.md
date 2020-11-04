@@ -49,7 +49,7 @@ With this connector, you can
 |-------------  | ------------ |------------ |
 | `2.7.3`       | `1.8`        | `0.10.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## Data Type Correspondence
 
@@ -66,7 +66,7 @@ With this connector, you can
 
 TSFInputFormat extract data from tsfile and format them into records of `MapWritable`.
 
-Supposing that we want to extract data of the device named `d1` which has three sensors named `s1`, `s2`, `s3`.
+Suppose that we want to extract data of the device named `d1` which has three sensors named `s1`, `s2`, `s3`.
 
 `s1`'s type is `BOOLEAN`, `s2`'s type is `DOUBLE`, `s3`'s type is `TEXT`.
 
@@ -84,7 +84,7 @@ The `MapWritable` struct will be like:
 In the Map job of Hadoop, you can get any value you want by key as following:
 
 `mapwritable.get(new Text("s1"))`
-> Note: All the keys in `MapWritable` have type of `Text`.
+> Note: All keys in `MapWritable` are `Text` type.
 
 ## Examples
 
@@ -149,7 +149,7 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
   }
 ```
 
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSFMRReadExample.java
 
 
 ### Write Example: write the average into Tsfile
@@ -209,4 +209,4 @@ Then, the `mapper` and `reducer` class is how you deal with the `MapWritable` pr
         }
     }
 ```
-> Note: For the complete code, please see the following link: https://github.com/apache/incubator-iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java
+> Note: For the complete code, please see the following link: https://github.com/apache/iotdb/blob/master/example/hadoop/src/main/java/org/apache/iotdb//hadoop/tsfile/TSMRWriteExample.java

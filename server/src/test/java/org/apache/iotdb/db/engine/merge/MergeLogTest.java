@@ -59,7 +59,7 @@ public class MergeLogTest extends MergeTest {
 
   @Test
   public void testMergeLog() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
             tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
@@ -70,8 +70,7 @@ public class MergeLogTest extends MergeTest {
       File mergeLog) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
-      String line;
-      while ((line = bufferedReader.readLine()) != null) {
+      while (bufferedReader.readLine() != null) {
         lineCnt ++;
       }
     } catch (IOException e) {

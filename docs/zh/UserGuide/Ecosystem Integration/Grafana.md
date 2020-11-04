@@ -37,7 +37,7 @@
 
 <!-- /TOC -->
 
-Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
+Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
 
 ## Grafana的安装与部署
 
@@ -74,27 +74,28 @@ Shell > sudo service grafana-server start
 ```
 Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /usr/local/share/grafana cfg:default.paths.logs=/usr/local/var/log/grafana cfg:default.paths.data=/usr/local/var/lib/grafana cfg:default.paths.plugins=/usr/local/var/lib/grafana/plugins
 ```
+更多安装详情，请点[这里](https://grafana.com/docs/grafana/latest/installation/)
 
 ## IoTDB安装
 
-参见[https://github.com/apache/incubator-iotdb](https://github.com/apache/incubator-iotdb)
+参见[https://github.com/apache/iotdb](https://github.com/apache/iotdb)
 
 ## IoTDB-Grafana连接器安装
 
 ```shell
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
 ### 启动IoTDB-Grafana
 
 #### 方案一（适合开发者）
 
-导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
+导入整个项目，maven依赖安装完后，直接运行`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
 
 #### 方案二（适合使用者）
 
 ```shell
-cd incubator-iotdb
+cd iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana/target
 java -jar iotdb-grafana-{version}.war

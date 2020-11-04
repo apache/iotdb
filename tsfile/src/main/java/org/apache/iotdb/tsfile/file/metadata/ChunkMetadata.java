@@ -65,13 +65,16 @@ public class ChunkMetadata implements Accountable {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
-  
+
   private boolean isFromOldTsFile = false;
 
   private long ramSize;
 
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
 
+
+  // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
+  private boolean isSeq = true;
 
   private ChunkMetadata() {
   }
@@ -80,9 +83,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType     time series data type
-   * @param fileOffset     file offset
-   * @param statistics     value statistics
+   * @param tsDataType time series data type
+   * @param fileOffset file offset
+   * @param statistics value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -225,8 +228,7 @@ public class ChunkMetadata implements Accountable {
         version == that.version &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
-        ((deleteIntervalList == null && that.deleteIntervalList == null) || deleteIntervalList
-            .equals(that.deleteIntervalList)) &&
+        Objects.equals(deleteIntervalList, that.deleteIntervalList) &&
         Objects.equals(statistics, that.statistics);
   }
 
@@ -257,12 +259,33 @@ public class ChunkMetadata implements Accountable {
         .calculateRamSize();
   }
 
+  public static long calculateRamSize(String measurementId, TSDataType dataType) {
+    return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementId) + Statistics
+        .getSizeByType(dataType);
+  }
+
   public void setRamSize(long size) {
     this.ramSize = size;
   }
 
+  /**
+   * must use calculate ram size first
+   */
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+
+  public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
+    this.statistics.mergeStatistics(chunkMetadata.getStatistics());
+    this.ramSize = calculateRamSize();
+  }
+
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
   }
 }

@@ -23,12 +23,12 @@
 
 ## Known Time Series Database
 
-As the time series data is more and more important, 
-several open sourced time series databases are intorduced in the world.
+As the time series data becomes more and more important, 
+several open sourced time series databases are introduced to the world.
 However, few of them are developed for IoT or IIoT (Industrial IoT) scenario in particular. 
 
 
-We choose 3 kinds of TSDBs here.
+3 kinds of TSDBs are compared here.
 
 * InfluxDB - Native Time series database
 
@@ -48,12 +48,12 @@ We choose 3 kinds of TSDBs here.
   Interface: SQL
 
 Prometheus and Druid are also famous for time series data management. 
-However, Prometheus focuses on how to collect data, how to visualize data and how to alert warnings.
-Druid focuses on how to analyze data with OLAP workload. We omit them here.
+However, Prometheus focuses data collection, data visualization and alert warnings.
+Druid focuses on data analysis with OLAP workload. We omit them here.
  
 
 ## Comparison 
-We compare the above time series database from two aspects: the feature comparison and the performance
+The above time series databases are compared from two aspects: the feature comparison and the performance
 comparison.
 
 
@@ -92,7 +92,7 @@ Legend:
 
 * OpenSource:  
  
-  * IoTDB uses Apache License 2.0 and it is in Apache incubator. 
+  * IoTDB uses Apache License 2.0. 
   * InfluxDB uses MIT license. However, **the cluster version is not open sourced**.
   * OpenTSDB uses LGPL2.1, which **is not compatible with Apache License**.
   * KairosDB uses Apache License 2.0.
@@ -100,14 +100,14 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB supports SQL like language. Besides, The integration of IoTDB and Calcite is alomost done (a PR has been submitted), which means IoTDB will support Standard SQL.
-  * OpenTSDB and KairosDB only support Rest API. Besides, IoTDB also supports Rest API (a PR has been submitted).
-  * TimescaleDB uses the SQL the same with PG.
+  * IoTDB and InfluxDB support SQL like language. In addition, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
+  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
+  * TimescaleDB uses the SQL the same as PG.
   
 * Schema:
 
   * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/Concept/Data%20Model%20and%20Terminology.html). 
-   It is quite different with other TSDBs. However, the kind of schema has the following advantages:
+   It is quite different from other TSDBs. However, the kind of schema has the following advantages:
     
     * In many industrial scenarios, the management of devices are hierarchical, rather than flat.
     That is why we think a tree based schema is better than tag-value based schema.
@@ -116,9 +116,9 @@ Legend:
     always identify their wind turbines by which country it locates, the farm name it belongs to, and its ID in the farm.
     So, a 4-depth tree ("root.the-country-name.the-farm-name.the-id") is fine. 
     You do not need to repeat to tell IoTDB the 2nd level of the tree is for country name, 
-    the 3rd level is for farm id, etc..
+    the 3rd level is for farm id, etc.
     
-    * A path based time series ID definition also supports flexible queries, like "root.\*.a.b.\*", wehre \* is wildcard character.
+    * A path based time series ID definition also supports flexible queries, like "root.\*.a.b.\*", where \* is wildcard character.
   
   * InfluxDB, KairosDB, OpenTSDB are tag-value based, which is more popular currently.
   
@@ -126,14 +126,14 @@ Legend:
 
 * Order by time:
   
-  Order by time seems quite trivil for time series database. But... if we consider another feature, called align by time,
+  Order by time seems quite trivial for time series database. But... if we consider another feature, called align by time,
   something becomes interesting.  And, that is why we mark OpenTSDB and KairosDB unsupported.
   
   Actually, in each time series, all these TSDBs support order data by timestamps.
   
-  However, OpenTSDB and KairosDB do not support order the data from different timeseries in the time order.
+  However, OpenTSDB and KairosDB do not support order data from different timeseries in the time order.
   
-  Ok, considering a new case: I have two time series, one is for the wind speed in wind farm1, 
+  Ok, consider a new case: I have two time series, one is for the wind speed in wind farm1, 
   another is for the generated energy of wind turbine1 in farm1. If we want to analyze the relation between the 
   wind speed and the generated energy, we have to know the values of both at the same time.
   That is to say, we have to align the two time series in the time dimension.
@@ -156,7 +156,7 @@ Legend:
     |    2      | generated energy  |    13.3    |
     |    3      | generated energy  |    13.1    |      
   
- Though the second table format does not align data by the time dimension, but it is easy to be implemented in the client-side,
+ Though the second table format does not align data by the time dimension, it is easy to be implemented in the client-side,
  by just scanning data row by row.
  
  IoTDB supports the first table format (called align by time), InfluxDB supports the second table format.
@@ -165,7 +165,7 @@ Legend:
 
   Downsampling is for changing the granularity of timeseries, e.g., from 10Hz to 1Hz, or 1 point per day.
   
-  Different with other systems, IoTDB downsamples data in real time, while others serialized downsampled data on disk.      
+  Different from other systems, IoTDB downsamples data in real time, while others serialized downsampled data on disk.      
   That is to say,
   
   * IoTDB supports **adhoc** downsampling data in **arbitrary time**. 
@@ -242,15 +242,15 @@ I listed some interesting features that these systems may differ.
 
 * Running on Edge-side Device:
   
-  Nowdays, edge computing is more and more popular, which means the edge device has more powerful compution resources. 
+  Nowdays, edge computing is more and more popular, which means the edge device has more powerful computational resources. 
   Deploying a TSDB on the edge side is useful for managing data on the edge side and serve for edge computing. 
-  As OpenTSDB and KairosDB rely another DB, the architecture is a little heavy. Especially, it is hard to run Hadoop on the edge side.
+  As OpenTSDB and KairosDB rely another DB, the architecture is heavy. Especially, it is hard to run Hadoop on the edge side.
 
 * Multi-instance Sync:
   
   Ok, now we have many TSDB instances on the edge-side. Then, how to upload their data to the data center, to form a ... data lake (or ocean, river,..., whatever).
-  One choice is read data from these instances and write the data point by point to the data center instance.
-  IoTDB provides another choice, just uploading the data file into the data center incrementally, then the data center can support service on the data. 
+  One solution is to read data from these instances and write the data point by point to the data center instance.
+  IoTDB provides another choice, which is just uploading the data file into the data center incrementally, then the data center can support service on the data. 
   
 * JDBC driver:
 
@@ -258,18 +258,18 @@ I listed some interesting features that these systems may differ.
 
 * Standard SQL:
 
-  As mentioned, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
+  As mentioned before, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 
-  It is very very important that letting big data analysis software to access the data in database for more complex data analysis.
+  It is very important that letting big data analysis software to access the data in database for more complex data analysis.
   IoTDB supports Hive-connector and Spark connector for better integration. 
 
 *  Writing data to NFS (HDFS):
   Sharing nothing architecture is good, but sometimes you have to add new servers even your CPU and memory is idle but the disk is full...
   Besides, if we can save the data file directly to HDFS, it will be more easy to use Spark and other softwares to analyze data, without ETL.
   
-  * IoTDB supports write data locally or on HDFS directly. IoTDB also allows user extend to store data on other NFS.
+  * IoTDB supports writing data locally or on HDFS directly. IoTDB also allows user to extend to store data on other NFS.
   * InfluxDB, KairosDB have to write data locally.
   * OpenTSDB has to write data on HDFS.
     
@@ -279,7 +279,7 @@ I listed some interesting features that these systems may differ.
 
 ### Performance Comparison
 
-Ok... If you say, "well, I just want to use the basic features. If so, IoTDB has little difference with others.".
+Ok... If you say, "well, I just want the basic features. IoTDB has little difference from others.".
 It is somehow right. But, if you consider the performance, you may change your mind.
 
 #### quick review
@@ -325,10 +325,9 @@ We can see that IoTDB outperforms others.
 
 We provide a benchmarking tool, called IoTDB-benchamrk (https://github.com/thulab/iotdb-benchmark, you may have to use the dev branch to compile it),
 it supports IoTDB, InfluxDB, KairosDB, TimescaleDB, OpenTSDB. We have a [article](https://arxiv.org/abs/1901.08304) for comparing these systems using the benchmark tool.
-When we publishing the article, IoTDB just entered Apache incubator, so we deleted the performance of IoTDB in that article. But we really did the comparison, and I will 
-disclose some results here.
+When we publish the article, IoTDB just entered Apache incubator, so we deleted the performance of IoTDB in that article. But after comparison, some results are presented here.
 
-- **IoTDB: 0.8.0**. (notice: **IoTDB v0.9 outperforms than v0.8**, we will update the result once we finish the experiments on v0.9)
+- **IoTDB: 0.8.0**. (notice: **IoTDB v0.9 outperforms than v0.8**, the result will be updated once experiments on v0.9 are finished)
 - InfluxDB: 1.5.1.
 - OpenTSDB: 2.3.1 (HBase 1.2.8)
 - KairosDB: 1.2.1 (Cassandra 3.11.3)
@@ -380,7 +379,7 @@ But using IoTDB v0.9, the write throughput can reach to 40 million data points p
 
 ## Conclusion
 
-If you are considering to find a TSDB for your IIoT application, then Apache IoTDB, a new time series, is your best choice.
+If you are considering a TSDB for your IIoT application, Apache IoTDB, a new time series, is your best choice.
 
 We will update this page once we release new version and finish the experiments.
 We also welcome more contributors correct this article and contribute IoTDB and reproduce experiments.

@@ -38,7 +38,7 @@ public class MinValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
@@ -48,13 +48,16 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
+      throws IOException {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       updateResult((Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
@@ -77,7 +80,7 @@ public class MinValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 
@@ -101,7 +104,7 @@ public class MinValueAggrResult extends AggregateResult {
     if (minVal == null) {
       return;
     }
-    if (!hasResult() || minVal.compareTo(getValue()) < 0) {
+    if (!hasCandidateResult() || minVal.compareTo(getValue()) < 0) {
       setValue(minVal);
     }
   }

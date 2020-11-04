@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowDevicesPlan extends ShowPlan{
-  private Path path;
+  private PartialPath path;
 
-  public ShowDevicesPlan(ShowContentType showContentType, Path path) {
+  public ShowDevicesPlan(ShowContentType showContentType, PartialPath path) {
     super(showContentType);
     this.path = path;
   }
 
-  public Path getPath() {
+  public PartialPath getPath() {
     return this.path;
   }
 }

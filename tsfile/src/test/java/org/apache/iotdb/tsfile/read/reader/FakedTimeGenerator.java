@@ -39,12 +39,12 @@ public class FakedTimeGenerator extends TimeGenerator {
     IExpression expression =
         BinaryExpression.or(
             BinaryExpression.and(
-                new SingleSeriesExpression(new Path("d1.s1"),
+                new SingleSeriesExpression(new Path("d1", "s1"),
                     FilterFactory.and(TimeFilter.gtEq(1L), TimeFilter.ltEq(5L))),
-                new SingleSeriesExpression(new Path("d2.s2"),
+                new SingleSeriesExpression(new Path("d2", "s2"),
                     FilterFactory.and(TimeFilter.gtEq(1L), TimeFilter.ltEq(10L)))
             ),
-            new SingleSeriesExpression(new Path("d2.s2"),
+            new SingleSeriesExpression(new Path("d2", "s2"),
                 FilterFactory.and(TimeFilter.gtEq(11L), TimeFilter.ltEq(15L)))
         );
 
@@ -56,11 +56,15 @@ public class FakedTimeGenerator extends TimeGenerator {
     return new FakedMultiBatchReader(10, 10, expression.getFilter());
   }
 
+  @Override
+  protected boolean isAscending() {
+    return true;
+  }
 
   @Test
   public void testTimeGenerator() throws IOException {
     FakedTimeGenerator fakedTimeGenerator = new FakedTimeGenerator();
-    Path path = new Path("d1.s1");
+    Path path = new Path("d1", "s1");
     long count = 0;
     while (fakedTimeGenerator.hasNext()) {
       long time = fakedTimeGenerator.next();

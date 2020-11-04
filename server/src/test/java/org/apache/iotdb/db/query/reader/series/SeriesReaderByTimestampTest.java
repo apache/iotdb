@@ -22,11 +22,12 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -38,8 +39,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class SeriesReaderByTimestampTest {
 
@@ -61,17 +60,17 @@ public class SeriesReaderByTimestampTest {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, IllegalPathException {
     QueryDataSource dataSource = new QueryDataSource(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
-      seqResources, unseqResources);
+        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+        seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
 
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
-      TSDataType.INT32, new QueryContext(), dataSource, null);
+        new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"), allSensors,
+        TSDataType.INT32, new QueryContext(), dataSource, null, true);
 
     for (int time = 0; time < 500; time++) {
       Integer value = (Integer) seriesReader.getValueInTimestamp(time);

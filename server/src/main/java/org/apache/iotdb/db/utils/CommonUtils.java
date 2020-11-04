@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
+import java.util.stream.Stream;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -30,6 +30,13 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class CommonUtils {
+
+  private static final int CPUS = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * Default executor pool maximum size.
+   */
+  public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
   private CommonUtils() {
   }
@@ -64,8 +71,10 @@ public class CommonUtils {
 
   public static long getOccupiedSpace(String folderPath) throws IOException {
     Path folder = Paths.get(folderPath);
-    return Files.walk(folder).filter(p -> p.toFile().isFile())
-        .mapToLong(p -> p.toFile().length()).sum();
+    try (Stream<Path> s = Files.walk(folder)) {
+      return s.filter(p -> p.toFile().isFile())
+              .mapToLong(p -> p.toFile().length()).sum();
+    }
   }
 
   public static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
@@ -135,5 +144,13 @@ public class CommonUtils {
       return true;
     }
     throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+  }
+
+  public static int getCpuCores() {
+    return CPUS;
+  }
+
+  public static int getMaxExecutorPoolSize() {
+    return MAX_EXECUTOR_POOL_SIZE;
   }
 }

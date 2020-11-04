@@ -240,7 +240,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
               if (field.name == QueryConstant.RESERVED_TIME) {
                 rowBuffer(index) = curRecord.getTimestamp
               } else {
-                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name))
+                val pos = paths.indexOf(new org.apache.iotdb.tsfile.read.common.Path(field.name, true))
                 var curField: Field = null
                 if (pos != -1) {
                   curField = fields.get(pos)

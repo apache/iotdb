@@ -30,21 +30,6 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
-## Keywords
-
-Do not use the following keywords as identifiers. You can open an [issue](https://issues.apache.org/jira/projects/IOTDB/issues) to provide new requirements or suggestions. 
-
-```
-CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
-CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
-METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL, ADD,
-UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
-ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
-REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALUE,
-SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE,
-SNAPSHOT, FOR, SCHEMA, TRACING, OFF
-```
-
 ## Show Version
 
 ```sql
@@ -77,7 +62,8 @@ Note: FullPath can not include `*`
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: FullPath can not include `*`
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * Create Timeseries Statement
@@ -208,6 +194,16 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Specific Storage Group Statement
+
+```
+SHOW STORAGE GROUP <PrefixPath>
+Eg: IoTDB > SHOW STORAGE GROUP root.*
+Eg: IoTDB > SHOW STORAGE GROUP root.ln
+Note: The path can be prefix path or star path.
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * Show Merge Status Statement
 
 ```
@@ -243,6 +239,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 COUNT NODES <Path> LEVEL=<INTEGER>
 Eg: IoTDB > COUNT NODES root LEVEL=2
 Eg: IoTDB > COUNT NODES root.ln LEVEL=2
+Eg: IoTDB > COUNT NODES root.ln.* LEVEL=3
 Eg: IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 Note: The path can be prefix path or timeseries path.
 Note: This statement can be used in IoTDB Client and JDBC.
@@ -303,20 +300,6 @@ Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp, status, temperature) VALUES (1509466680000, false, 20.060787);
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 Note: The order of Sensor and PointValue need one-to-one correspondence
-```
-
-* Update Record Statement
-
-```
-UPDATE <UpdateClause> SET <SetClause> WHERE <WhereClause>
-UpdateClause: <prefixPath>
-SetClause: <SetExpression> 
-SetExpression: <Path> EQUAL <PointValue>
-WhereClause : <Condition> [(AND | OR) <Condition>]*
-Condition  : <Expression> [(AND | OR) <Expression>]*
-Expression : [NOT | !]? TIME PrecedenceEqualOperator <TimeValue>
-Eg: IoTDB > UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW() and time > 2017-11-1T00:15:00+08:00
-Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
 * Delete Record Statement
@@ -447,6 +430,19 @@ Eg: SELECT last_value(temperature), last_value(power) FROM root.ln.wf01.wt01 GRO
 Note: In group by fill, sliding step is not supported in group by clause
 Note: Now, only last_value aggregation function is supported in group by fill.
 Note: Linear fill is not supported in group by fill.
+```
+
+* Order by time Statement
+
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)? orderByTimeClause?
+orderByTimeClause: order by time (asc | desc)?
+
+Eg: SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([20, 100), 5m) FILL (float[PREVIOUS]) order by time desc
+Eg: SELECT * from root order by time desc
+Eg: SELECT * from root order by time desc align by device 
+Eg: SELECT * from root order by time desc disable align
+Eg: SELECT last * from root order by time desc
 ```
 
 * Limit Statement
@@ -607,15 +603,21 @@ The LAST function returns the last time-value pair of the given timeseries. Curr
 SELECT LAST <SelectClause> FROM <FromClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : <TimeExpr> [(AND | OR) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 
 Eg. SELECT LAST s1 FROM root.sg.d1
 Eg. SELECT LAST s1, s2 FROM root.sg.d1
 Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
+Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 Rules:
 1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 
-2. The result set of last query will always be displayed in a fixed three column table format.
+2. SELECT LAST only supports time filter that contains '>' or '>=' currently.
+
+3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
 | Time | Path         | Value |
@@ -625,7 +627,54 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 |  4   | root.sg.d2.s1| 250   |
 |  9   | root.sg.d2.s2| 600   |
 
-3. It is not supported to use "diable align" in LAST query. 
+4. It is not supported to use "diable align" in LAST query. 
+
+```
+
+* As Statement
+
+As statement assigns an alias to time seires queried in SELECT statement
+
+```
+You can use as statement in all queries, but some rules are restricted about wildcard.
+
+1. Raw data query
+select s1 as speed, s2 as temperature from root.sg.d1
+
+The result set will be like：
+| Time | speed | temperature |
+|  ... |  ...  |     ....    |
+
+2. Aggregation query
+select count(s1) as s1_num, max_value(s2) as s2_max from root.sg.d1
+
+3. Down-frequence query
+select count(s1) as s1_num from root.sg.d1 group by ([100,500), 80ms)
+
+4. Align by device query
+select s1 as speed, s2 as temperature from root.sg.d1 align by device
+
+select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device
+
+5. Last Record query
+select last s1 as speed, s2 from root.sg.d1
+
+Rules：
+1. In addition to Align by device query，each AS statement has to corresponding to one time series exactly.
+
+E.g. select s1 as temperature from root.sg.*
+
+At this time if `root.sg.*` includes more than one device，then an exception will be thrown。
+
+2. In align by device query，the prefix path that each AS statement corresponding to can includes multiple device, but the suffix path can only be single sensor.
+
+E.g. select s1 as temperature from root.sg.*
+
+In this situation, it will be show correctly even if multiple devices are selected.
+
+E.g. select * as temperature from root.sg.d1
+
+In this situation, it will throws an exception if * corresponds to multiple sensors.
 
 ```
 
@@ -719,7 +768,7 @@ Eg: IoTDB > REVOKE ROLE temprole PRIVILEGES 'DELETE_TIMESERIES' ON root.ln;
 REVOKE <roleName> FROM <userName>;
 roleName:=identifier
 userName:=identifier
-Eg: IoTDB > REVOKE temproleFROM tempuser;
+Eg: IoTDB > REVOKE temprole FROM tempuser;
 ```
 
 * List Users
@@ -742,7 +791,7 @@ Eg: IoTDB > LIST ROLE
 LIST PRIVILEGES USER  <username> ON <path>;    
 username:=identifier    
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
 * List Privileges of Roles(On Specific Path)
@@ -751,7 +800,7 @@ Eg: IoTDB > LIST PRIVIEGES USER sgcc_wirte_user ON root.sgcc;
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
-Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
+Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 ```
 
 * List Privileges of Users
@@ -759,7 +808,7 @@ Eg: IoTDB > LIST PRIVIEGES ROLE wirte_role ON root.sgcc;
 ```
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
-Eg: IoTDB > LIST USER PRIVIEGES tempuser;
+Eg: IoTDB > LIST USER PRIVILEGES tempuser;
 ```
 
 * List Privileges of Roles
@@ -767,7 +816,7 @@ Eg: IoTDB > LIST USER PRIVIEGES tempuser;
 ```
 LIST ROLE PRIVILEGES <roleName>
 roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVIEGES actor;
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * List Roles of Users
@@ -883,8 +932,7 @@ The NOW function returns the current timestamp. This function can be used in the
 
 ```
 NOW()
-Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false) 
-Eg. UPDATE root.ln.wf01.wt01 SET temperature = 23 WHERE time < NOW()
+Eg. INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg. DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
 Eg. SELECT * FROM root WHERE time < NOW()
 Eg. SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE time < NOW()
@@ -969,7 +1017,7 @@ TRACING OFF   // Close performance tracing
 
 ```
 Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
+ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, USER, USING, VALUE, VALUES, WHERE, WITH
 
 Keywords with special meanings (case insensitive):
 * Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 

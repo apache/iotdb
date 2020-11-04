@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
@@ -74,6 +75,25 @@ public abstract class Statistics<T> {
         return new DoubleStatistics();
       case FLOAT:
         return new FloatStatistics();
+      default:
+        throw new UnknownColumnTypeException(type.toString());
+    }
+  }
+
+  public static int getSizeByType(TSDataType type) {
+    switch (type) {
+      case INT32:
+        return IntegerStatistics.INTEGER_STATISTICS_FIXED_RAM_SIZE;
+      case INT64:
+        return LongStatistics.LONG_STATISTICS_FIXED_RAM_SIZE;
+      case TEXT:
+        return BinaryStatistics.BINARY_STATISTICS_FIXED_RAM_SIZE;
+      case BOOLEAN:
+        return BooleanStatistics.BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
+      case DOUBLE:
+        return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
+      case FLOAT:
+        return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
       default:
         throw new UnknownColumnTypeException(type.toString());
     }
@@ -426,4 +446,8 @@ public abstract class Statistics<T> {
     return o != null && getClass() == o.getClass();
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), count, startTime, endTime);
+  }
 }

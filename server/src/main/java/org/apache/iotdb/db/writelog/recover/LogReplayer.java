@@ -19,14 +19,23 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -38,15 +47,8 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
@@ -62,22 +64,22 @@ public class LogReplayer {
   private TsFileResource currentTsFileResource;
   private IMemTable recoverMemTable;
 
-  // unsequence file tolerates duplicated data
-  private boolean acceptDuplication;
+  // only unsequence file tolerates duplicated data
+  private boolean sequence;
 
   private Map<String, Long> tempStartTimeMap = new HashMap<>();
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
       VersionController versionController, TsFileResource currentTsFileResource,
-      IMemTable memTable, boolean acceptDuplication) {
+      IMemTable memTable, boolean sequence) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
     this.recoverMemTable = memTable;
-    this.acceptDuplication = acceptDuplication;
+    this.sequence = sequence;
   }
 
   /**
@@ -118,12 +120,14 @@ public class LogReplayer {
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
-  private void replayDelete(DeletePlan deletePlan) throws IOException {
-    List<Path> paths = deletePlan.getPaths();
-    for (Path path : paths) {
-      recoverMemTable
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime());
+  private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
+    List<PartialPath> paths = deletePlan.getPaths();
+    for (PartialPath path : paths) {
+      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+        recoverMemTable
+            .delete(path, device, deletePlan.getDeleteStartTime(),
+                deletePlan.getDeleteEndTime());
+      }
       modFile
           .write(
               new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
@@ -131,6 +135,7 @@ public class LogReplayer {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void replayInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;
@@ -142,35 +147,34 @@ public class LogReplayer {
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId());
+      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime &&
-          !acceptDuplication) {
+          sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId());
+      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId(), minTime);
+        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId());
+      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId(), maxTime);
+        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
       }
     }
-    MeasurementSchema[] schemas;
+    MeasurementMNode[] mNodes;
     try {
-      schemas = IoTDB.metaManager.getSchemas(plan.getDeviceId(), plan
-          .getMeasurements());
+      mNodes = IoTDB.metaManager.getMNodes(plan.getDeviceId(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
+    //set measurementMNodes, WAL already serializes the real data type, so no need to infer type
+    plan.setMeasurementMNodes(mNodes);
+    //mark failed plan manually
+    checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      tPlan.setSchemasAndTransferType(schemas);
-      recoverMemTable.insert(tPlan);
+      recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      InsertTabletPlan tPlan = (InsertTabletPlan) plan;
-      tPlan.setSchemas(schemas);
-      recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
+      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 
@@ -178,5 +182,19 @@ public class LogReplayer {
   private void replayUpdate(UpdatePlan updatePlan) {
     // TODO: support update
     throw new UnsupportedOperationException("Update not supported");
+  }
+
+  private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
+    for (int i = 0; i < mNodes.length; i++) {
+      if (mNodes[i] == null) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new PathNotExistException(tPlan.getDeviceId().getFullPath() +
+                IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new DataTypeMismatchException(mNodes[i].getName(), tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getType()));
+      }
+    }
   }
 }

@@ -50,11 +50,13 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
+  - 7: LZ4
 - **TsDigest Statistics Type Hardcode**
   - 0: min_value
   - 1: max_value
@@ -66,9 +68,9 @@
 
 Here is a graph about the TsFile structure.
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
-This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total, d1 is blue, d2 is purple. Each timeseries contains 2 Chunks.
+This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
 There are three parts of metadata
 
@@ -124,6 +126,19 @@ PageHeader Structure
 | compressedSize |       int        | Data size after compressing(if use SNAPPY) |
 |   statistics    |       Statistics        | Statistics values |
 
+Here is the detailed information for `statistics`:
+
+ |             Member               | Description | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | number of time-value points | long | long | long | long | long | long | 
+ | startTime | start time | long | long | long | long | long | long | 
+ | endTime | end time | long | long | long | long | long | long | 
+ | minValue | min value | double | float | int | long | - | - |
+ | maxValue | max value | double | float | int | long | - | - |
+ | firstValue | first value | double | float | int | long | Binary | boolean|
+ | lastValue | last value | double | float | int | long | Binary | boolean|
+ | sumValue | sum value | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |             Member             |  Type  | Description |
@@ -145,8 +160,6 @@ The first part of metadata is `ChunkMetadata`
 |                tsDataType                |  TSDataType   | Data type |
 |   statistics    |       Statistics        | Statistic values |
 
-As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of Binary and Boolean type only has two values: first and last.
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 The second part of metadata is `TimeseriesMetadata`.
@@ -158,8 +171,6 @@ The second part of metadata is `TimeseriesMetadata`.
 | startOffsetOfChunkMetadataList |  long  | Start offset of ChunkMetadata list |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata list size |
 |   statistics    |       Statistics        | Statistic values |
-
-As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata` of Binary and Boolean type only has two values: first and last.
 
 ##### 1.2.3.3 TsFileMetaData
 
@@ -203,7 +214,7 @@ The max degree of the metadata index tree (that is, the max number of each node'
 
 1 device with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935182-cd8f5a80-9622-11ea-8e41-661a5219974b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95592841-c0fd1a00-0a7b-11eb-9b46-dfe8b2f73bfb.png">
 
 150 device with 1 measurement each: The number of devices exceeds `max_degree_of_index_node`, so the device index level and measurement index level of the tree are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of device index level, which are `LEAF_DEVICE` type. Other nodes and root node of index tree are not leaf nodes of device index level, so they are `INTERNAL_DEVICE` type.
 
@@ -248,8 +259,8 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
 output save path:IoTDB_data_dir_overview.txt
@@ -299,8 +310,8 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
@@ -333,11 +344,11 @@ For Linux or MacOs:
 
 An example on macOS:
 
-```$xslt
-/incubator-iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-​````````````````````````
+```shell
+/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+````````````````````````
 Starting Printing the TsFile Sketch
-​````````````````````````
+````````````````````````
 TsFile path:test.tsfile
 Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
@@ -549,7 +560,6 @@ file length: 33436
 
 ---------------------------------- TsFile Sketch End ----------------------------------
 
-
 ````````````````````````
 
 #### 1.3.4 TsFileSequenceRead
@@ -568,4 +578,4 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 #### v0.10 / 000002
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">

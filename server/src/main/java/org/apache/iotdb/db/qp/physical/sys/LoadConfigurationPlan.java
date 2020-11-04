@@ -23,13 +23,14 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class LoadConfigurationPlan extends PhysicalPlan {
 
@@ -90,6 +91,8 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -108,11 +111,12 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         }
       }
     }
+    this.index = buffer.getLong();
   }
 
   @Override
-  public List<Path> getPaths() {
-    return null;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override

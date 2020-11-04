@@ -24,12 +24,12 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) in [Client/Shell tools](../Client/Command%20Line%20Interface.md), or using [Java JDBC](../Client/Programming%20-%20JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md).
 
-This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) for real-time data import in the scenario.
+This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) for real-time data import in the scenario.
 
 #### Use of INSERT Statements
-The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.html) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.html)).
+The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.md) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
 
@@ -55,7 +55,7 @@ After inserting the data, we can simply query the inserted data using the SELECT
 IoTDB > select * from root.ln.wf02 where time < 3
 ```
 
-The result is shown below. From the query results, it can be seen that the insertion statements of single column and multi column data are performed correctly.
+The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
 
@@ -86,7 +86,7 @@ error: The TEXT data type should be covered by " or '
 
 ### Time Slice Query
 
-This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.html). You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.html) standard interface to execute related queries.
+This chapter mainly introduces the relevant examples of time slice query using IoTDB SELECT statements. Detailed SQL syntax and usage specifications can be found in [SQL Documentation](../Operation%20Manual/SQL%20Reference.md). You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.md) standard interface to execute related queries.
 
 #### Select a Column of Data Based on a Time Interval
 
@@ -146,6 +146,15 @@ The selected timeseries are "the power supply status of ln group wf01 plant wt01
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+
+#### Order By Time Query
+IoTDB supports the 'order by time' statement since 0.11, it's used to display results in descending order by time.
+For example, the SQL statement is:
+
+```sql
+select * from root.ln where time > 1 order by time desc limit 10;
+```
+
 ### Aggregate Query
 This section mainly introduces the related examples of aggregate query.
 
@@ -189,10 +198,10 @@ select count(status) from root.ln.wf01.wt01 group by level=2;
 ### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
-using the [GROUP BY clause](../Operation%20Manual/SQL%20Reference.html), 
+using the [GROUP BY clause](../Operation%20Manual/SQL%20Reference.md), 
 which is used to partition the result set according to the user's given partitioning conditions and aggregate the partitioned result set. 
 IoTDB supports partitioning result sets according to time interval and customized sliding step which should not be smaller than the time interval and defaults to equal the time interval if not set. And by default results are sorted by time in ascending order. 
-You can also use the [Java JDBC](../Client/Programming%20-%20Native%20API.html) standard interface to execute related queries.
+You can also use the [Java JDBC](../Client/Programming%20-%20Native%20API.md) standard interface to execute related queries.
 
 The GROUP BY statement provides users with three types of specified parameters:
 
@@ -202,7 +211,7 @@ The GROUP BY statement provides users with three types of specified parameters:
 
 The actual meanings of the three types of parameters are shown in Figure 5.2 below. 
 Among them, the parameter 3 is optional. 
-Next we will give three typical examples of frequency reduction aggregation: 
+There are three typical examples of frequency reduction aggregation: 
 parameter 3 not specified, 
 parameter 3 specified, 
 and value filtering conditions specified.
@@ -221,7 +230,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2
 ```
 which means:
 
-Since the user does not specify the sliding step length, the GROUP BY statement will by default set the sliding step same as the time interval which is `1d`.
+Since the sliding step length is not specified, the GROUP BY statement by default set the sliding step the same as the time interval which is `1d`.
 
 The fist parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
@@ -363,6 +372,7 @@ The SQL statement is:
 
 ```
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST, 3m])
 ```
 which means:
 
@@ -383,10 +393,12 @@ The Last point query is to return the most recent data point of the given timese
 The SQL statement is defined as:
 
 ```
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
 which means: Query and return the last data points of timeseries prefixPath.path.
+
+Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
 The result will be returned in a three column table format.
 
@@ -404,10 +416,11 @@ Example 1: get the last point of root.ln.wf01.wt01.speed:
 |  5   | root.ln.wf01.wt01.speed | 100   |
 ```
 
-Example 2: get the last speed, status and temperature points of root.ln.wf01.wt01
+Example 2: get the last speed, status and temperature points of root.ln.wf01.wt01,
+whose timestamp larger or equal to 5.
 
 ```
-> select last speed, status, temperature from root.ln.wf01.wt01
+> select last speed, status, temperature from root.ln.wf01.wt01 where time >= 5
 
 | Time | Path                         | Value |
 | ---  | ---------------------------- | ----- |
@@ -534,18 +547,18 @@ When the fill method is not specified, each data type bears its own default fill
 
 ### Row and Column Control over Query Results
 
-IoTDB provides [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.html) clause and [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.html) 
+IoTDB provides [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.md) clause and [OFFSET/SOFFSET](../Operation%20Manual/SQL%20Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
 and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
 
 Note that the LIMIT and OFFSET are not supported in group by query.
 
-This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.html) standard interface to execute queries.
+This chapter mainly introduces related examples of row and column control of query results. You can also use the [Java JDBC](../Client/Programming%20-%20JDBC.md) standard interface to execute queries.
 
 #### Row Control over Query Results
 
-By using LIMIT and OFFSET clauses, users can control the query results in a row-related manner. We will demonstrate how to use LIMIT and OFFSET clauses through the following examples.
+By using LIMIT and OFFSET clauses, users control the query results in a row-related manner. We demonstrate how to use LIMIT and OFFSET clauses through the following examples.
 
 * Example 1: basic LIMIT clause
 
@@ -556,7 +569,7 @@ select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 rows of the query result be returned.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires the first 10 rows of the query result.
 
 The result is shown below:
 
@@ -586,7 +599,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be returned (with the first row numbered as row 0).
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires rows 3 to 4 of  the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" (with the first row numbered as row 0).
 
 The result is shown below:
 
@@ -704,16 +717,32 @@ The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577879-64984680-1ef6-11e9-9d7b-57dd60fab60e.jpg"></center>
 
+### Use Alias
+
+Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
+
+For example：
+
+```
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```
+
+The result set is：
+
+| Time | temperature | speed |
+| ---- | ----------- | ----- |
+| ...  | ...         | ...   |
+
 #### Other ResultSet Format
 
-In addition, IoTDB supports two another resultset format: 'align by device' and 'disable align'.
+In addition, IoTDB supports two other result set format: 'align by device' and 'disable align'.
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
 The SQL statement is:
 
 ```
-select s1,s2 from root.sg1.* GROUP BY DEVICE
+select s1,s2 from root.sg1.* ALIGN BY DEVICE
 ```
 
 For more syntax description, please read SQL REFERENCE.
@@ -722,7 +751,7 @@ The 'disable align' indicaes that there are 3 columns for each time series in th
 
 ####  Error Handling
 
-When the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB will return all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
+If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
@@ -731,7 +760,7 @@ The result is shown below:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578187-ad9cca80-1ef7-11e9-897a-83e66a0f3d94.jpg"></center>
 
-When the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system will prompt errors. For example, executing the following SQL statement:
+If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
@@ -740,7 +769,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61517469-e696a180-aa39-11e9-8ca5-42ea991d520e.png"></center>
 
-When the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system will prompt errors. For example, executing the following SQL statement:
+If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
@@ -750,7 +779,7 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/61518094-68d39580-aa3b-11e9-993c-fc73c27540f7.png"></center>
 
-When the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
+If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
 
 ```
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
@@ -758,7 +787,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 The result is shown below:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578227-c60ce500-1ef7-11e9-98eb-175beb8d4086.jpg"></center>
 
-When the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system will prompt errors. For example, executing the following SQL statement:
+If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
 
 ```
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
@@ -770,9 +799,9 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 
 ## DELETE
 
-Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Operation%20Manual/SQL%20Reference.html). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
+Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Operation%20Manual/SQL%20Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
 
-In a JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.html) to execute single or batch UPDATE statements.
+In a JAVA programming environment, you can use the [Java JDBC](../Client/Programming%20-%20JDBC.md) to execute single or batch UPDATE statements.
 
 ### Delete Single Timeseries
 Taking ln Group as an example, there exists such a usage scenario:
@@ -810,7 +839,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 
 ### Delete Multiple Timeseries
-When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.html) can be used to delete the data. The SQL statement for this operation is:
+If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
@@ -839,5 +868,4 @@ data folders or convert a timestamp manually to an id using `timestamp / partiti
 ` (flooring), and the `partitionInterval` should be in your config (if time-partitioning is
 supported in your version).
 
-Please notice that this function is experimental and mainly for development, please use it with
-extreme care.
+Please notice that this function is experimental and mainly for development, please use it with care.

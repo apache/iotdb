@@ -23,9 +23,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -33,11 +36,11 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -53,6 +56,12 @@ public abstract class PhysicalPlan {
 
   //for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
+
+  //login username, corresponding to cli/session login user info
+  private String loginUserName;
+
+  // a bridge from a cluster raft log to a physical plan
+  protected long index;
 
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
@@ -74,7 +83,11 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<Path> getPaths();
+  public abstract List<PartialPath> getPaths();
+
+  public void setPaths(List<PartialPath> paths) {
+
+  }
 
   public boolean isQuery() {
     return isQuery;
@@ -122,7 +135,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -150,13 +163,21 @@ public abstract class PhysicalPlan {
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
   }
 
+  public String getLoginUserName() {
+    return loginUserName;
+  }
+
+  public void setLoginUserName(String loginUserName) {
+    this.loginUserName = loginUserName;
+  }
+
   public static class Factory {
 
     private Factory() {
       // hidden initializer
     }
 
-    public static PhysicalPlan create(ByteBuffer buffer) throws IOException {
+    public static PhysicalPlan create(ByteBuffer buffer) throws IOException, IllegalPathException {
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
@@ -257,6 +278,14 @@ public abstract class PhysicalPlan {
           plan = new LoadConfigurationPlan();
           plan.deserialize(buffer);
           break;
+        case ALTER_TIMESERIES:
+          plan = new AlterTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
+        case FLUSH:
+          plan = new FlushPlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -265,10 +294,18 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
-    CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
-    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING,
+    REVOKE_WATERMARK_EMBEDDING, CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE,
+    REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
+    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, MULTI_CREATE_TIMESERIES,
+    ALTER_TIMESERIES, FLUSH
   }
 
+  public long getIndex() {
+    return index;
+  }
 
+  public void setIndex(long index) {
+    this.index = index;
+  }
 }

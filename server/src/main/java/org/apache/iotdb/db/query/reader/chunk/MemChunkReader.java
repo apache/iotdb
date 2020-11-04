@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -27,28 +29,24 @@ import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-
 /**
  * To read chunk data in memory
  */
 public class MemChunkReader implements IChunkReader, IPointReader {
 
-  private ReadOnlyMemChunk readOnlyMemChunk;
   private IPointReader timeValuePairIterator;
   private Filter filter;
   private boolean hasCachedTimeValuePair;
   private TimeValuePair cachedTimeValuePair;
+  private List<IPageReader> pageReaderList;
 
-  private TSDataType dataType;
 
   public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
-    this.readOnlyMemChunk = readableChunk;
     timeValuePairIterator = readableChunk.getPointReader();
     this.filter = filter;
-    this.dataType = readableChunk.getDataType();
+    // we treat one ReadOnlyMemChunk as one Page
+    this.pageReaderList = Collections.singletonList(
+        new MemPageReader(timeValuePairIterator, readableChunk.getChunkMetaData(), filter));
   }
 
   @Override
@@ -94,20 +92,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public BatchData nextPageData() throws IOException {
-    BatchData batchData = new BatchData(dataType);
-    if (hasCachedTimeValuePair) {
-      hasCachedTimeValuePair = false;
-      batchData.putAnObject(cachedTimeValuePair.getTimestamp(),
-          cachedTimeValuePair.getValue().getValue());
-    }
-    while (timeValuePairIterator.hasNextTimeValuePair()) {
-      TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (filter == null || filter
-          .satisfy(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
-      }
-    }
-    return batchData;
+    return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
   @Override
@@ -117,8 +102,6 @@ public class MemChunkReader implements IChunkReader, IPointReader {
 
   @Override
   public List<IPageReader> loadPageReaderList() throws IOException {
-    // we treat one ReadOnlyMemChunk as one Page
-    return Collections.singletonList(
-        new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
+    return this.pageReaderList;
   }
 }

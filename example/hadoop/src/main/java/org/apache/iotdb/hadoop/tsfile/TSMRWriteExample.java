@@ -39,8 +39,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 /**
  * One example for writing TsFile with MapReduce.
@@ -77,7 +76,6 @@ public class TSMRWriteExample {
     }
     TSFOutputFormat.setSchema(schema);
 
-    String HDFSURL = args[0];
     Path inputPath = new Path(args[1]);
     Path outputPath = new Path(args[2]);
 
@@ -127,7 +125,8 @@ public class TSMRWriteExample {
     try {
       isSuccess = job.waitForCompletion(true);
     } catch (InterruptedException e) {
-      e.printStackTrace();
+      Thread.currentThread().interrupt();
+      throw new IOException(e.getMessage());
     }
     if (isSuccess) {
       System.out.println("Execute successfully");
@@ -137,8 +136,6 @@ public class TSMRWriteExample {
   }
 
   public static class TSMapper extends Mapper<NullWritable, MapWritable, Text, MapWritable> {
-
-    private static final Logger logger = LoggerFactory.getLogger(TSMapper.class);
 
     @Override
     protected void map(NullWritable key, MapWritable value,

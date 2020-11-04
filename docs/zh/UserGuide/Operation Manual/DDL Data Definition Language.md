@@ -36,19 +36,31 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ## 查看存储组
 
-在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.html)语句来查看所有的存储组，SQL语句如下所示：
+在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句和[SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md)来查看存储组，SQL语句如下所示：
 
 ```
 IoTDB> show storage group
+IoTDB> show storage group root.ln
 ```
 
 执行结果为：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577338-84c70600-1ef4-11e9-9dab-605b32c02836.jpg"></center>
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/67779101/92545299-6c029400-f282-11ea-80ea-b672a57f4b13.png"></center>
+
+## 删除存储组
+
+用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+
+```
+IoTDB > DELETE STORAGE GROUP root.ln
+IoTDB > DELETE STORAGE GROUP root.sgcc
+// 删除所有数据，时间序列以及存储组
+IoTDB > DELETE STORAGE GROUP root.*
+```
 
 ## 创建时间序列
 
@@ -69,7 +81,7 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.html)。
+详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
 
 ### 标签点管理
 
@@ -82,9 +94,11 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 括号里的`temprature`是`s1`这个传感器的别名。
 我们可以在任何用到`s1`的地方，将其用`temprature`代替，这两者是等价的。
 
-> 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
+> IoTDB 同时支持在查询语句中[使用AS函数](../Operation%20Manual/DML%20Data%20Manipulation%20Language.md)设置别名。二者的区别在于：AS 函数设置的别名用于替代整条时间序列名，且是临时的，不与时间序列绑定；而上文中的别名只作为传感器的别名，与其绑定且可与原传感器名等价使用。
 
 标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
+
+> 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
 ## 标签点属性更新
 创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
@@ -235,7 +249,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 ## 统计节点数
 
-IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+IoTDB支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
 ```
 IoTDB > COUNT NODES root LEVEL=2
@@ -247,6 +261,7 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
+其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
 ## 删除时间序列
 
@@ -292,6 +307,19 @@ IoTDB> unset ttl to root.ln
 ```
 
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
+
+## 显示 TTL
+
+显示TTL的SQL语句如下所示：
+
+```
+IoTDB> SHOW ALL TTL
+IoTDB> SHOW TTL ON StorageGroupNames
+```
+
+SHOW ALL TTL这个例子会给出所有存储组的TTL。
+SHOW TTL ON root.group1,root.group2,root.group3这个例子会显示指定的三个存储组的TTL。
+注意: 没有设置TTL的存储组的TTL将显示为null。
 
 ## FLUSH
 

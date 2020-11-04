@@ -25,6 +25,22 @@ struct TSStatus {
   3: optional list<TSStatus> subStatus
 }
 
+struct TSQueryDataSet{
+    // ByteBuffer for time column
+    1: required binary time
+    // ByteBuffer for each column values
+    2: required list<binary> valueList
+    // Bitmap for each column to indicate whether it is a null value
+    3: required list<binary> bitmapList
+}
+
+struct TSQueryNonAlignDataSet{
+    // ByteBuffer for each time column
+	  1: required list<binary> timeList
+	  // ByteBuffer for each column values
+    2: required list<binary> valueList
+}
+
 struct TSExecuteStatementResp {
 	1: required TSStatus status
 	2: optional i64 queryId
@@ -63,9 +79,10 @@ struct TSOpenSessionResp {
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
-  2: optional string username
-  3: optional string password
-  4: optional map<string, string> configuration
+  2: required string zoneId
+  3: optional string username
+  4: optional string password
+  5: optional map<string, string> configuration
 }
 
 // CloseSession()
@@ -234,6 +251,15 @@ struct TSCreateTimeseriesReq {
   9: optional string measurementAlias
 }
 
+struct TSRawDataQueryReq {
+    1: required i64 sessionId
+    2: required list<string> paths
+    3: optional i32 fetchSize
+    4: required i64 startTime
+    5: required i64 endTime
+    6: required i64 statementId
+}
+
 struct TSCreateMultiTimeseriesReq {
   1: required i64 sessionId
   2: required list<string> paths
@@ -250,22 +276,6 @@ struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
 	3: required string timestampPrecision;
-}
-
-struct TSQueryDataSet{
-    // ByteBuffer for time column
-    1: required binary time
-    // ByteBuffer for each column values
-    2: required list<binary> valueList
-    // Bitmap for each column to indicate whether it is a null value
-    3: required list<binary> bitmapList
-}
-
-struct TSQueryNonAlignDataSet{
-    // ByteBuffer for each time column
-	  1: required list<binary> timeList
-	  // ByteBuffer for each column values
-    2: required list<binary> valueList
 }
 
 service TSIService {
@@ -330,6 +340,8 @@ service TSIService {
   TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
+
+	TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
 	i64 requestStatementId(1:i64 sessionId);
 }

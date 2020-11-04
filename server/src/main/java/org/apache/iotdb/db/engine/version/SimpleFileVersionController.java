@@ -109,12 +109,15 @@ public class SimpleFileVersionController implements VersionController {
   private void persist() throws IOException {
     File oldFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + prevVersion);
     File newFile = SystemFileFactory.INSTANCE.getFile(directoryPath, FILE_PREFIX + currVersion);
-    FileUtils.moveFile(oldFile, newFile);
+    if (oldFile.exists()) {
+      FileUtils.moveFile(oldFile, newFile);
+    }
     logger.info("Version file updated, previous: {}, current: {}",
         oldFile.getAbsolutePath(), newFile.getAbsolutePath());
     prevVersion = currVersion;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void restore() throws IOException {
     File directory = SystemFileFactory.INSTANCE.getFile(directoryPath);
     if(!directory.exists()){

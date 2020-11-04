@@ -71,7 +71,7 @@ matrix:
         # - choco install openjdk11 --version=11.0.2.01 -y
         # can get the download links from https://jdk.java.net/archive/
         - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
-        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+        - wget --no-check-certificate https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
         - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
         - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
         - mkdir C:\hadoop\bin
@@ -128,31 +128,31 @@ matrix:
         - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
       after_success:
         - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
-    - os: linux
-      name: linux-website checker
-      dist: xenial
-      jdk: openjdk8
-      script:
-        - mvn -P site clean package -pl site
-    - os: windows
-      name: windows-website checker
-      language: c
-      before_install:
-        # - choco install openjdk11 --version=11.0.2.01 -y
-        # can get the download links from https://jdk.java.net/archive/
-        - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
-        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
-        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
-        - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
-      before_script:
-        - export "JAVA_HOME=/c/java/jdk-11.0.2"
-        - export "PATH=$JAVA_HOME/bin:$PATH"
-        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
-        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
-        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
-        - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
-      script:
-        - mvn -P site clean package -pl site
+    # - os: linux
+    #   name: linux-website checker
+    #   dist: xenial
+    #   jdk: openjdk8
+    #   script:
+    #     - mvn -P site clean package -pl site
+    # - os: windows
+    #   name: windows-website checker
+    #   language: c
+    #   before_install:
+    #     # - choco install openjdk11 --version=11.0.2.01 -y
+    #     # can get the download links from https://jdk.java.net/archive/
+    #     - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
+    #     - wget --no-check-certificate https://archive.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+    #     - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
+    #     - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
+    #   before_script:
+    #     - export "JAVA_HOME=/c/java/jdk-11.0.2"
+    #     - export "PATH=$JAVA_HOME/bin:$PATH"
+    #     - export "PATH=$JAVA_HOME/jre/bin:$PATH"
+    #     - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
+    #     - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
+    #     - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
+    #   script:
+    #     - mvn -P site clean package -pl site
 cache:
   directories:
     - '$HOME/.m2/repository'

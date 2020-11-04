@@ -274,7 +274,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   private long calculateLooseMemoryCost(TsFileResource tmpSelectedUnseqFile,
       Collection<Integer> tmpSelectedSeqFiles, long startTime, long timeLimit) throws IOException {
     return calculateMemoryCost(tmpSelectedUnseqFile, tmpSelectedSeqFiles,
-        TsFileResource::getFileSize, this::calculateMetadataSize, startTime, timeLimit);
+        TsFileResource::getTsFileSize, this::calculateMetadataSize, startTime, timeLimit);
   }
 
   private long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
@@ -322,9 +322,9 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion among all series to get a maximum estimation
   private long calculateTightUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
+    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
-    long maxCost = unseqFile.getFileSize();
+    long maxCost = unseqFile.getTsFileSize();
     return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }
 

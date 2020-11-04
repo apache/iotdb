@@ -21,35 +21,36 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-abstract public class InsertPlan extends PhysicalPlan {
+public abstract class InsertPlan extends PhysicalPlan {
 
-  protected String deviceId;
+  protected PartialPath deviceId;
   protected String[] measurements;
+  // get from client
   protected TSDataType[] dataTypes;
-  protected MeasurementSchema[] schemas;
+  // get from MManager
+  protected MeasurementMNode[] measurementMNodes;
 
-  // for updating last cache
-  private MNode deviceMNode;
-
-  // record the failed measurements
-  protected List<String> failedMeasurements;
+  // record the failed measurements, their reasons, and positions in "measurements"
+  List<String> failedMeasurements;
+  private List<Exception> failedExceptions;
+  private List<Integer> failedIndices;
 
   public InsertPlan(Operator.OperatorType operatorType) {
     super(false, operatorType);
     super.canBeSplit = false;
   }
 
-  public String getDeviceId() {
+  public PartialPath getDeviceId() {
     return deviceId;
   }
 
-  public void setDeviceId(String deviceId) {
+  public void setDeviceId(PartialPath deviceId) {
     this.deviceId = deviceId;
   }
 
@@ -69,40 +70,75 @@ abstract public class InsertPlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
   }
 
-  public MeasurementSchema[] getSchemas() {
-    return schemas;
+  public MeasurementMNode[] getMeasurementMNodes() {
+    return measurementMNodes;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) {
-    this.schemas = schemas;
+  public void setMeasurementMNodes(MeasurementMNode[] mNodes) {
+    this.measurementMNodes = mNodes;
   }
 
   public List<String> getFailedMeasurements() {
     return failedMeasurements;
   }
 
+  public List<Exception> getFailedExceptions() {
+    return failedExceptions;
+  }
+
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
-  public MNode getDeviceMNode() {
-    return deviceMNode;
-  }
-
-  public void setDeviceMNode(MNode deviceMNode) {
-    this.deviceMNode = deviceMNode;
-  }
+  public abstract long getMinTime();
 
   /**
    * @param index failed measurement index
    */
-  public void markFailedMeasurementInsertion(int index) {
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
     if (failedMeasurements == null) {
       failedMeasurements = new ArrayList<>();
+      failedExceptions = new ArrayList<>();
+      failedIndices = new ArrayList<>();
     }
     failedMeasurements.add(measurements[index]);
+    failedExceptions.add(e);
+    failedIndices.add(index);
     measurements[index] = null;
     dataTypes[index] = null;
+  }
+
+  /**
+   * Reconstruct this plan with the failed measurements.
+   * @return the plan itself, with measurements replaced with the previously failed ones.
+   */
+  public InsertPlan getPlanFromFailed() {
+    if (failedMeasurements == null) {
+      return null;
+    }
+    measurements = failedMeasurements.toArray(new String[0]);
+    failedMeasurements = null;
+    if (dataTypes != null) {
+      TSDataType[] temp = dataTypes.clone();
+      dataTypes = new TSDataType[failedIndices.size()];
+      for (int i = 0; i < failedIndices.size(); i++) {
+        dataTypes[i] = temp[failedIndices.get(i)];
+      }
+    }
+    if (measurementMNodes != null) {
+      MeasurementMNode[] temp = measurementMNodes.clone();
+      measurementMNodes = new MeasurementMNode[failedIndices.size()];
+      for (int i = 0; i < failedIndices.size(); i++) {
+        measurementMNodes[i] = temp[failedIndices.get(i)];
+      }
+    }
+
+    failedIndices = null;
+    failedExceptions = null;
+    return this;
   }
 
 }

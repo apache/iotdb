@@ -19,7 +19,7 @@
 
 -->
 
-# Python connection
+# Python Client
 ## Introduction
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things 
 are almost the same on Windows or Linux, but pay attention to the difference like path separator.
@@ -45,6 +45,17 @@ Optionally, if you know the basic usage of thrift, you can only download the thr
 `thrift\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
 to generate the python library.
 
-## Example
-We provided an example of how to use the thrift library to connect to IoTDB in `client-py/src
-/client_example.py`, please read it carefully before you write your own code.
+## Session Client & Example
+We packed up the Thrift interface in `client-py/src/Session.py` (similar with its Java counterpart), also provided 
+an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
+
+## How to Debug
+
+To debug the python API module, run `mvn generate-sources -pl thrift,client-py`
+
+Then, go to target/pypi to get the complete projects.
+
+But !BE CAUTIOUS!
+All your modifications in target/pypi must be copied manually to src/ folder.
+Otherwise once you run `mvn clean`, you will lose all your effort.
+

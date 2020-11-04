@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.LinkedList;
+import java.util.List;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -27,13 +33,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * TimeValuePairUtils to convert between thrift format and TsFile format.
@@ -57,6 +56,7 @@ public class QueryDataSetUtils {
     return convertQueryDataSetByFetchSize(queryDataSet, fetchSize, null);
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TSQueryDataSet convertQueryDataSetByFetchSize(QueryDataSet queryDataSet,
       int fetchSize, WatermarkEncoder watermarkEncoder) throws IOException {
     List<TSDataType> dataTypes = queryDataSet.getDataTypes();
@@ -198,6 +198,7 @@ public class QueryDataSetUtils {
    * @param columns column number
    * @param size    value count in each column
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Object[] readValuesFromBuffer(ByteBuffer buffer, TSDataType[] types,
       int columns, int size) {
     Object[] values = new Object[columns];

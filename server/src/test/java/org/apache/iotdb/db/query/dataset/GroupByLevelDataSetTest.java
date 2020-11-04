@@ -187,5 +187,12 @@ public class GroupByLevelDataSetTest {
     assertTrue(dataSet.hasNext());
     assertEquals("0\t6228.0\t3021.0", dataSet.next().toString());
 
+    // not count
+    try {
+      queryPlan = (QueryPlan) processor
+        .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
+    } catch (Exception e) {
+      fail();
+    }
   }
 }

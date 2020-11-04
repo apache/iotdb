@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public class LastValueAggrResult extends AggregateResult {
 
   //timestamp of current value
-  private long timestamp = Long.MIN_VALUE;
+  protected long timestamp = Long.MIN_VALUE;
 
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
@@ -48,7 +48,7 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
@@ -60,14 +60,16 @@ public class LastValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    updateResultFromPageData(dataInThisPage, Long.MAX_VALUE);
+    updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long bound) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (dataInThisPage.hasCurrent() && dataInThisPage.currentTime() < bound) {
+    while (dataInThisPage.hasCurrent()
+        && dataInThisPage.currentTime() < maxBound
+        && dataInThisPage.currentTime() >= minBound) {
       time = dataInThisPage.currentTime();
       lastVal = dataInThisPage.currentValue();
       dataInThisPage.next();
@@ -82,7 +84,6 @@ public class LastValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-
     long time = Long.MIN_VALUE;
     Object lastVal = null;
     for (int i = 0; i < length; i++) {
@@ -99,15 +100,15 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
+  public boolean hasFinalResult() {
     return false;
   }
 
   @Override
   public void merge(AggregateResult another) {
     LastValueAggrResult anotherLast = (LastValueAggrResult) another;
-    if(this.getValue() == null || this.timestamp < anotherLast.timestamp){
-      this.setValue( anotherLast.getValue() );
+    if (this.getValue() == null || this.timestamp < anotherLast.timestamp) {
+      this.setValue(anotherLast.getValue());
       this.timestamp = anotherLast.timestamp;
     }
   }

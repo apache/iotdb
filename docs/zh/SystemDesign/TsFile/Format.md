@@ -49,11 +49,13 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA 
 - **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
+  - 7: LZ4
 - **预聚合信息**
   - 0: min_value
   - 1: max_value
@@ -65,9 +67,9 @@
 
 下图是关于TsFile的结构图。
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
-此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列，d1为蓝色，d2为紫色。每个时间序列包含两个 Chunk。
+此文件包括两个设备 d1、d2，每个设备包含两个测点 s1、s2，共 4 个时间序列。每个时间序列包含两个 Chunk。
 
 元数据分为三部分
 
@@ -123,6 +125,19 @@ PageHeader 结构
 | compressedSize |       int        | SNAPPY压缩后数据大小 |
 |   statistics    |       Statistics        | 统计量 |
 
+这里是`statistics`的详细信息：
+
+ |             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+ | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+ | count  | 数据点个数 | long | long | long | long | long | long | 
+ | startTime | 开始时间 | long | long | long | long | long | long | 
+ | endTime | 结束时间 | long | long | long | long | long | long | 
+ | minValue | 最小值 | double | float | int | long | - | - |
+ | maxValue | 最大值 | double | float | int | long | - | - |
+ | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
+ | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
+ | sumValue | 和 | double | double | double | double | - | - |
+ 
 ##### ChunkGroupFooter
 
 |                成员                |  类型  | 解释 |
@@ -144,8 +159,6 @@ PageHeader 结构
 |                tsDataType                |  TSDataType   | 数据类型 |
 |   statistics    |       Statistics        | 统计量 |
 
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `ChunkMetadata` 只有 first 和 last 两个值。
-
 ##### 1.2.3.2 TimeseriesMetadata
 
 第二部分的元数据是 `TimeseriesMetadata`。
@@ -157,8 +170,6 @@ PageHeader 结构
 | startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
 |  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
 |   statistics    |       Statistics        | 统计量 |
-
-其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `TimeseriesMetadata` 只有 first 和 last 两个值。
 
 ##### 1.2.3.3 TsFileMetaData
 
@@ -203,7 +214,7 @@ PageHeader 结构
 
 在1个设备，设备中有150个传感器的情况下，传感器个数超过了 `max_degree_of_index_node`，元数据索引树有默认的传感器层级。在这个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点和根节点不是传感器索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935182-cd8f5a80-9622-11ea-8e41-661a5219974b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95592841-c0fd1a00-0a7b-11eb-9b46-dfe8b2f73bfb.png">
 
 在150个设备，每个设备中有1个传感器的情况下，设备个数超过了 `max_degree_of_index_node`，形成元数据索引树的传感器层级和设备索引层级。在这两个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata` 的节点类型为 `LEAF_MEASUREMENT`，传感器索引层级的根节点同时作为设备索引层级的叶子节点，其节点类型为 `LEAF_DEVICE`；而后续产生的中间节点和根节点不是设备索引层级的叶子节点，因此节点类型为 `INTERNAL_DEVICE`。
 
@@ -248,8 +259,8 @@ For Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
 output save path:IoTDB_data_dir_overview.txt
@@ -297,8 +308,8 @@ Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
@@ -331,9 +342,9 @@ Linux or MacOs:
 
 在mac系统中的示例:
 
-```$xslt
-/incubator-iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-​````````````````````````
+```shell
+/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
 TsFile path:test.tsfile
@@ -564,4 +575,4 @@ file length: 33436
 
 #### v0.10 / 000002
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">

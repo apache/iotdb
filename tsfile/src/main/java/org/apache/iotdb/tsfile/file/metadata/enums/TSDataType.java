@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
   BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
@@ -28,14 +29,19 @@ public enum TSDataType {
   /**
    * give an integer to return a data type.
    *
-   * @param i -param to judge enum type
+   * @param type -param to judge enum type
    * @return -enum type
    */
-  public static TSDataType deserialize(short i) {
-    if (i >= 6) {
-      throw new IllegalArgumentException("Invalid input: " + i);
+  public static TSDataType deserialize(short type) {
+    return getTsDataType(type);
+  }
+
+
+  private static TSDataType getTsDataType(short type) {
+    if (type >= 6 || type < 0) {
+      throw new IllegalArgumentException("Invalid input: " + type);
     }
-    switch (i) {
+    switch (type) {
       case 0:
         return BOOLEAN;
       case 1:
@@ -46,11 +52,26 @@ public enum TSDataType {
         return FLOAT;
       case 4:
         return DOUBLE;
-      case 5:
-        return TEXT;
       default:
         return TEXT;
     }
+  }
+
+  public static byte deserializeToByte(short type) {
+    if (type >= 6 || type < 0) {
+      throw new IllegalArgumentException("Invalid input: " + type);
+    }
+    return (byte) type;
+  }
+
+  /**
+   * give an byte to return a data type.
+   *
+   * @param type byte number
+   * @return data type
+   */
+  public static TSDataType byteToEnum(byte type) {
+    return getTsDataType(type);
   }
 
   public static TSDataType deserializeFrom(ByteBuffer buffer) {
@@ -75,6 +96,30 @@ public enum TSDataType {
    * @return -enum type
    */
   public short serialize() {
+    return enumToByte();
+  }
+
+  public int getDataTypeSize() {
+    switch (this) {
+      case BOOLEAN:
+        return 1;
+      case INT32:
+      case FLOAT:
+        return 4;
+        // For text: return the size of reference here
+      case TEXT:
+      case INT64:
+      case DOUBLE:
+        return 8;
+      default:
+        throw new UnSupportedDataTypeException(this.toString());
+    }
+  }
+
+  /**
+   * @return byte number
+   */
+  public byte enumToByte() {
     switch (this) {
       case BOOLEAN:
         return 0;

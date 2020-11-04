@@ -36,7 +36,7 @@ It should be noted that, in the following query documents, we tend to use `seq f
 
 ## General query process
 
-The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.html). 
+The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.md). 
 For each timeseries, we always follow the query routine across 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
 
 The file access utility methods are in `org.apache.iotdb.db.utils.FileLoaderUtils`

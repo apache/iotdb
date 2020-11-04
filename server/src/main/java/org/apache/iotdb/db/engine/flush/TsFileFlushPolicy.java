@@ -33,7 +33,7 @@ public interface TsFileFlushPolicy {
 
   void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor, boolean isSeq);
 
-  class DirectFlushPolicy implements TsFileFlushPolicy{
+  class DirectFlushPolicy implements TsFileFlushPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(DirectFlushPolicy.class);
 
@@ -43,11 +43,11 @@ public interface TsFileFlushPolicy {
       if (tsFileProcessor.shouldClose()) {
         storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
         logger.info("Async close tsfile: {}",
-            tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       } else {
         tsFileProcessor.asyncFlush();
         logger.info("Async flush a memtable to tsfile: {}",
-            tsFileProcessor.getTsFileResource().getFile().getAbsolutePath());
+            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
     }
   }

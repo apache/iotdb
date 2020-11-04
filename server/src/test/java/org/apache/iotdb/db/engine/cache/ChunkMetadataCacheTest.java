@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -31,10 +30,9 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -62,14 +60,14 @@ public class ChunkMetadataCacheTest {
   private String measurementId5 = "s5";
   private StorageGroupProcessor storageGroupProcessor;
   private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
-          .concat(File.separator).concat("info");
+      .concat(File.separator).concat("info");
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
+    storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup,
+        new DirectFlushPolicy());
     insertData();
   }
 
@@ -81,7 +79,8 @@ public class ChunkMetadataCacheTest {
     EnvironmentUtils.cleanDir(systemDir);
   }
 
-  private void insertOneRecord(long time, int num) throws WriteProcessException {
+  private void insertOneRecord(long time, int num)
+      throws WriteProcessException, IllegalPathException {
     TSRecord record = new TSRecord(time, storageGroup);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId0, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT64, measurementId1, String.valueOf(num)));
@@ -89,21 +88,15 @@ public class ChunkMetadataCacheTest {
     record.addTuple(DataPoint.getDataPoint(TSDataType.DOUBLE, measurementId3, String.valueOf(num)));
     record.addTuple(DataPoint.getDataPoint(TSDataType.BOOLEAN, measurementId4, "True"));
     InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    MNode mNode = new MNode(null, storageGroup);
-    mNode.addChild(measurementId0, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId1, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId2, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId3, new MeasurementMNode(null, null, null, null));
-    mNode.addChild(measurementId4, new MeasurementMNode(null, null, null, null));
-    insertRowPlan.setDeviceMNode(mNode);
     storageGroupProcessor.insert(insertRowPlan);
   }
 
-  protected void insertData() throws IOException, WriteProcessException {
+  protected void insertData() throws IOException, WriteProcessException, IllegalPathException {
     for (int j = 1; j <= 100; j++) {
       insertOneRecord(j, j);
     }
-    for(TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()){
+    for (TsFileProcessor tsFileProcessor : storageGroupProcessor
+        .getWorkSequenceTsFileProcessors()) {
       tsFileProcessor.syncFlush();
     }
 
@@ -113,7 +106,7 @@ public class ChunkMetadataCacheTest {
     for (int j = 11; j <= 20; j++) {
       insertOneRecord(j, j);
     }
-    storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 21; j <= 30; j += 2) {
       insertOneRecord(j, 0); // will be covered when read
@@ -129,46 +122,44 @@ public class ChunkMetadataCacheTest {
   }
 
   @Test
-  public void test1() throws IOException, QueryProcessException {
+  public void test1() throws IOException, QueryProcessException, IllegalPathException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(false);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(new PartialPath(storageGroup), measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
   }
 
   @Test
-  public void test2() throws IOException, QueryProcessException {
+  public void test2() throws IOException, QueryProcessException, IllegalPathException {
     IoTDBDescriptor.getInstance().getConfig().setMetaDataCacheEnable(true);
     QueryDataSource queryDataSource = storageGroupProcessor
-        .query(storageGroup, measurementId5, context, null, null);
+        .query(new PartialPath(storageGroup), measurementId5, context, null, null);
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
 
     Assert.assertEquals(1, seqResources.size());
-    Assert.assertEquals(4, unseqResources.size());
+    Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(0).isClosed());
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
-    Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
   }
 

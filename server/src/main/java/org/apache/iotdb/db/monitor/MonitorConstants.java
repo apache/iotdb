@@ -30,7 +30,8 @@ public class MonitorConstants {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   public static final String DATA_TYPE_INT64 = "INT64";
-  public static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
+  static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
+  private static final String[] STAT_STORAGE_GROUP_PREFIX_ARRAY = {"root", "stats"};
   static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
   private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
   static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
@@ -40,12 +41,12 @@ public class MonitorConstants {
   public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
       + MONITOR_PATH_SEPARATOR + FILE_SIZE;
   // statistic for insert module
-  static final String FILE_NODE_MANAGER_PATH = "write.global";
+  private static final String FILE_NODE_MANAGER_PATH = "write.global";
   public static final String FILE_NODE_PATH = "write";
   /**
    * Stat information.
    */
-  public static final String STAT_STORAGE_DELTA_NAME = STAT_STORAGE_GROUP_PREFIX
+  static final String STAT_STORAGE_DELTA_NAME = STAT_STORAGE_GROUP_PREFIX
       + MONITOR_PATH_SEPARATOR + FILE_NODE_MANAGER_PATH;
 
   /**
@@ -80,6 +81,10 @@ public class MonitorConstants {
 
   public enum FileNodeManagerStatConstants {
     TOTAL_POINTS, TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
+  }
+
+  public static String[] getStatStorageGroupPrefixArray() {
+    return STAT_STORAGE_GROUP_PREFIX_ARRAY;
   }
 
   public enum FileNodeProcessorStatConstants {

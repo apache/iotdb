@@ -25,31 +25,32 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateTimeSeriesPlan extends PhysicalPlan {
 
-  private Path path;
+  private PartialPath path;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
   private String alias;
-  private Map<String, String> props;
-  private Map<String, String> tags;
-  private Map<String, String> attributes;
+  private Map<String, String> props = null;
+  private Map<String, String> tags = null;
+  private Map<String, String> attributes = null;
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     canBeSplit = false;
   }
 
-  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
+  public CreateTimeSeriesPlan(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props, Map<String, String> tags,
       Map<String, String> attributes, String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
@@ -63,15 +64,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.alias = alias;
     canBeSplit = false;
   }
-  
-  public Path getPath() {
+
+  public PartialPath getPath() {
     return path;
   }
 
-  public void setPath(Path path) {
+  public void setPath(PartialPath path) {
     this.path = path;
   }
-  
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -95,7 +96,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   public void setEncoding(TSEncoding encoding) {
     this.encoding = encoding;
   }
-  
+
   public Map<String, String> getAttributes() {
     return attributes;
   }
@@ -133,9 +134,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
         dataType, encoding, compressor);
   }
-  
+
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     return Collections.singletonList(path);
   }
 
@@ -180,14 +181,16 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes);
-    path = new Path(new String(bytes));
+    path = new PartialPath(new String(bytes));
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
     compressor = CompressionType.values()[buffer.get()];
@@ -211,6 +214,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     if (buffer.get() == 1) {
       attributes = ReadWriteIOUtils.readMap(buffer);
     }
+
+    this.index = buffer.getLong();
   }
 
   @Override

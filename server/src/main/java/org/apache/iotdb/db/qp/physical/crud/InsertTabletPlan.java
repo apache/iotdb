@@ -22,14 +22,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -50,35 +52,48 @@ public class InsertTabletPlan extends InsertPlan {
   private Object[] columns;
   private ByteBuffer valueBuffer;
   private int rowCount = 0;
+  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission without data loss in cluster version
+  boolean isExecuting = false;
   // cached values
   private Long maxTime = null;
   private Long minTime = null;
-  private List<Path> paths;
+  private List<PartialPath> paths;
   private int start;
   private int end;
+  // when this plan is sub-plan split from another InsertTabletPlan, this indicates the original positions of values in
+  // this plan. For example, if the plan contains 5 timestamps, and range = [1,4,10,12], then it means that the first 3
+  // timestamps in this plan are from range[1,4) of the parent plan, and the last 2 timestamps are from range[10,12)
+  // of the parent plan.
+  // this is usually used to back-propagate exceptions to the parent plan without losing their proper positions.
+  private List<Integer> range;
+
+  private List<Object> failedColumns;
 
 
   public InsertTabletPlan() {
     super(OperatorType.BATCHINSERT);
   }
 
-  public InsertTabletPlan(String deviceId, List<String> measurements) {
+  public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements.toArray(new String[0]);
+    this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(String deviceId, String[] measurements) {
+  public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
+    this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
     super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
+    this.canBeSplit = true;
   }
 
   public int getStart() {
@@ -86,6 +101,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void setStart(int start) {
+    this.isExecuting = true;
     this.start = start;
   }
 
@@ -94,17 +110,27 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void setEnd(int end) {
+    this.isExecuting = true;
     this.end = end;
   }
 
+  public List<Integer> getRange() {
+    return range;
+  }
+
+  public void setRange(List<Integer> range) {
+    this.range = range;
+  }
+
   @Override
-  public List<Path> getPaths() {
+  public List<PartialPath> getPaths() {
     if (paths != null) {
       return paths;
     }
-    List<Path> ret = new ArrayList<>();
+    List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
+      PartialPath fullPath = deviceId.concatNode(m);
+      ret.add(fullPath);
     }
     paths = ret;
     return ret;
@@ -115,8 +141,14 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
 
-    putString(stream, deviceId);
+    putString(stream, deviceId.getFullPath());
+    writeMeasurements(stream);
+    writeDataTypes(stream);
+    writeTimes(stream);
+    writeValues(stream);
+  }
 
+  private void writeMeasurements(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
@@ -125,31 +157,49 @@ public class InsertTabletPlan extends InsertPlan {
       }
       putString(stream, m);
     }
+  }
 
+  private void writeDataTypes(DataOutputStream stream) throws IOException {
     for (TSDataType dataType : dataTypes) {
       if (dataType == null) {
         continue;
       }
       stream.writeShort(dataType.serialize());
     }
+  }
 
-    stream.writeInt(end - start);
+  private void writeTimes(DataOutputStream stream) throws IOException {
+    if (isExecuting) {
+      stream.writeInt(end - start);
+    } else {
+      stream.writeInt(rowCount);
+    }
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        stream.writeLong(times[i]);
+      if (isExecuting) {
+        for (int i = start; i < end; i++) {
+          stream.writeLong(times[i]);
+        }
+      } else {
+        for (long time : times) {
+          stream.writeLong(time);
+        }
       }
     } else {
       stream.write(timeBuffer.array());
       timeBuffer = null;
     }
+  }
 
+  private void writeValues(DataOutputStream stream) throws IOException {
     if (valueBuffer == null) {
       serializeValues(stream);
     } else {
       stream.write(valueBuffer.array());
       valueBuffer = null;
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -157,8 +207,14 @@ public class InsertTabletPlan extends InsertPlan {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId);
+    putString(buffer, deviceId.getFullPath());
+    writeMeasurements(buffer);
+    writeDataTypes(buffer);
+    writeTimes(buffer);
+    writeValues(buffer);
+  }
 
+  private void writeMeasurements(ByteBuffer buffer) {
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
@@ -166,34 +222,55 @@ public class InsertTabletPlan extends InsertPlan {
         putString(buffer, m);
       }
     }
+  }
 
+  private void writeDataTypes(ByteBuffer buffer) {
     for (TSDataType dataType : dataTypes) {
       if (dataType != null) {
         dataType.serializeTo(buffer);
       }
     }
+  }
 
-    buffer.putInt(end - start);
+  private void writeTimes(ByteBuffer buffer) {
+    if (isExecuting) {
+      buffer.putInt(end - start);
+    } else {
+      buffer.putInt(rowCount);
+    }
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        buffer.putLong(times[i]);
+      if (isExecuting) {
+        for (int i = start; i < end; i++) {
+          buffer.putLong(times[i]);
+        }
+      } else {
+        for (long time : times) {
+          buffer.putLong(time);
+        }
       }
     } else {
       buffer.put(timeBuffer.array());
       timeBuffer = null;
     }
+  }
 
+  private void writeValues(ByteBuffer buffer) {
     if (valueBuffer == null) {
       serializeValues(buffer);
     } else {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
     }
+
+    buffer.putLong(index);
   }
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
@@ -209,40 +286,42 @@ public class InsertTabletPlan extends InsertPlan {
 
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer,
       int start, int end) {
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putInt(binaryValues[j].getLength());
           buffer.put(binaryValues[j].getValues());
         }
@@ -255,40 +334,42 @@ public class InsertTabletPlan extends InsertPlan {
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream outputStream,
       int start, int end) throws IOException {
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeInt(binaryValues[j].getLength());
           outputStream.write(binaryValues[j].getValues());
         }
@@ -310,8 +391,8 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) {
-    this.deviceId = readString(buffer);
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    this.deviceId = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];
@@ -330,6 +411,7 @@ public class InsertTabletPlan extends InsertPlan {
     times = QueryDataSetUtils.readTimesFromBuffer(buffer, rows);
 
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
+    this.index = buffer.getLong();
   }
 
   public void setDataTypes(List<Integer> dataTypes) {
@@ -431,9 +513,65 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void markFailedMeasurementInsertion(int index) {
-    super.markFailedMeasurementInsertion(index);
+  public String toString() {
+    return "InsertTabletPlan {" +
+        "deviceId:" + deviceId +
+        ", timesRange[" + times[0] + "," + times[times.length - 1] + "]" +
+        '}';
+  }
+
+  @Override
+  public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
+    super.markFailedMeasurementInsertion(index, e);
+    if (failedColumns == null) {
+      failedColumns = new ArrayList<>();
+    }
+    failedColumns.add(columns[index]);
     columns[index] = null;
+  }
+
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
+      return null;
+    }
+    // TODO anything else?
+    columns = failedColumns.toArray(new Object[0]);
+    failedColumns = null;
+    return this;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    InsertTabletPlan that = (InsertTabletPlan) o;
+
+    return rowCount == that.rowCount &&
+        Arrays.equals(times, that.times) &&
+        Objects.equals(timeBuffer, that.timeBuffer) &&
+        Objects.equals(valueBuffer, that.valueBuffer) &&
+        Objects.equals(maxTime, that.maxTime) &&
+        Objects.equals(minTime, that.minTime) &&
+        Objects.equals(paths, that.paths) &&
+        Objects.equals(range, that.range);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects
+        .hash(timeBuffer, valueBuffer, rowCount, maxTime, minTime, paths,
+            range);
+    result = 31 * result + Arrays.hashCode(times);
+    return result;
   }
 
 }

@@ -19,6 +19,103 @@
 
 -->
 
+# Apache IoTDB 0.11.0
+
+## New Features
+
+* IOTDB-627 Support range deletion for timeseries
+* IOTDB-670 Add raw data query interface in Session
+* IOTDB-716 add lz4 compression
+* IOTDB-736 Add query performance tracing
+* IOTDB-776 New memory control strategy
+* IOTDB-813 Show storage group under given path prefix
+* IOTDB-848 Support order by time asc/desc
+* IOTDB-863 add a switch to drop ouf-of-order data
+* IOTDB-873 Add count devices DDL
+* IOTDB-876 Add count storage group DDL
+* IOTDB-926 Support reconnection of Session
+* IOTDB-941 Support 'delete storage group <prefixPath>'
+* IOTDB-968 Support time predicate in select last, e.g., select last * from root where time >= T
+* Show alias if it is used in query
+* Add level compaction strategy
+* Add partialInsert
+
+## Incompatible changes
+
+* IOTDB-778 Support double/single quotation in Path
+* IOTDB-870 change tags and attributes output to two columns with json values
+
+## Miscellaneous changes
+
+* IOTDB-784 Update rpc protocol to V3
+* IOTDB-790 change base_dir to system_dir
+* IOTDB-829 Accelerate delete multiple timeseries
+* IOTDB-839 Make Tablet api more friendly
+* IOTDB-902 Optimize max_time aggregation
+* IOTDB-916 Add a config entry to make Last cache configurable
+* IOTDB-928 Make ENCODING optional in create time series sentence
+* IOTDB-938 Re-implement Gorilla encoding algorithm
+* IOTDB-942 Optimization of query with long time unsequence page
+* IOTDB-943 Fix cpu usage too high
+* Add query load log
+* Add merge rate limiting
+
+## Bug Fixes
+
+* IOTDB-749 Avoid select * from root OOM
+* IOTDB-774 Fix "show timeseries" OOM problem
+* IOTDB-832 Fix sessionPool logic when reconnection failed
+* IOTDB-833 Fix JMX cannot connect IoTDB in docker
+* IOTDB-835 Delete timeseries and change data type then write failed
+* IOTDB-836 Statistics classes mismatched when endFile （delete timeseries then recreate）
+* IOTDB-837 ArrayIndexOutOfBoundsException if the measurementId size is not consistent with the value size
+* IOTDB-847 Fix bug that 'List user privileges' cannot apply to 'root'
+* IOTDB-850 a user could list others privilege bug
+* IOTDB-851 Enhance failure tolerance when recover WAL (enable partial insertion)
+* IOTDB-855 Can not release Session in SessionPool if RuntimeException occurs
+* IOTDB-868 Can not redo mlogs with special characters like comma
+* IOTDB-872 Enable setting timezone at client
+* IOTDB-877 fix prefix bug on show storage group and show devices
+* IOTDB-904 fix update last cache NullPointerException
+* IOTDB-920 Disable insert row thats only contains time/timestamp column
+* IOTDB-921 When execute two query simultaneously in one statement, got error
+* IOTDB-922 Int and Long can convert to each other in ResultSet
+* IOTDB-947 Fix error when counting node with wildcard
+* IOTDB-949 Align by device doesn't support 'T*' in path.
+* IOTDB-956 Filter will be missed in group by time align by device
+* IOTDB-963 Redo deleteStorageGroupPlan failed when recovering
+* IOTDB-967 Fix xxx does not have the child node xxx Bug in count timeseries
+* IOTDB-970 Restrict log file number and size
+* IOTDB-971 More precise error messages of slimit and soffset 
+* IOTDB-975 when series does not exist in TsFile, reading wrong ChunkMetadataList
+
+# Apache IoTDB (incubating) 0.10.1
+
+* [IOTDB-797] InsertTablet deserialization from WAL error
+* [IOTDB-788] Can not upgrade all storage groups
+* [IOTDB-792] deadlock when insert while show latest timeseries
+* [IOTDB-794] Rename file or delete file Error in start check in Windows
+* [IOTDB-795] BufferUnderflowException in Hive-connector
+* [IOTDB-766] Do not release unclosed file reader, a small memory leak
+* [IOTDB-796] Concurrent Query throughput is low
+* Query result is not correct when some unsequence data exists
+* Change the default fetch size to 10000 in session
+* [IOTDB-798] fix a set rowLimit and rowOffset bug
+* [IOTDB-800] Add a new config type for those parameters which could not be modified any more after the first start 
+* [IOTDB-802] Improve "group by" query performance
+* [IOTDB-799] remove log visualizer tool from v0.10 
+* fix license-binary  
+* [IOTDB-805] Fix BufferUnderflowException when querying TsFile stored in HDFS 
+* python session client ver-0.10.0
+* [IOTDB-808] fix bug in selfCheck() truncate 
+* fix doc of MeasurementSchema in Tablet 
+* [IOTDB-811] fix upgrading mlog many times when upgrading system.properties crashed
+* Improve IoTDB restart process
+* remove jol-core dependency which is introduced by hive-serde 2.8.4
+* remove org.json dependency because of license compatibility
+* [ISSUE-1551] fix set historical version when loading additional tsfile
+
+
 # Apache IoTDB (incubating) 0.10.0
 
 ## New Features

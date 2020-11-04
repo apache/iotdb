@@ -25,7 +25,7 @@
 
 IoTDB 官网：https://iotdb.apache.org/
 
-代码库：https://github.com/apache/incubator-iotdb/tree/master
+代码库：https://github.com/apache/iotdb/tree/master
 
 快速上手：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
 
@@ -126,4 +126,19 @@ import -> Maven -> Existing Maven Projects
 
 * 存储引擎 org.apache.iotdb.db.engine.StorageEngine
 * 查询引擎 org.apache.iotdb.db.qp.Planner
+
+
+
+## 常见编译错误
+
+1. 无法下载 thrift-* 等文件, 例如 `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+
+这一般是网络问题，这时候需要手动下载上述文件：
+
+* 根据以下网址手动下载上述文件;
+  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
+  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
+* 将该文件拷贝到thrift/target/tools/目录下
+* 重新执行maven的编译命令
 

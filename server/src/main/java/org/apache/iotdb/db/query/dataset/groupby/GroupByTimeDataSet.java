@@ -19,7 +19,13 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.StorageEngineException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -29,9 +35,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.*;
 
 public class GroupByTimeDataSet extends QueryDataSet {
 
@@ -46,9 +49,9 @@ public class GroupByTimeDataSet extends QueryDataSet {
   private QueryContext context;
 
   public GroupByTimeDataSet(QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-    throws QueryProcessException, StorageEngineException, IOException {
+    throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
-    this.paths = plan.getDeduplicatedPaths();
+    this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
     this.groupByTimePlan = plan;
     this.context = context;

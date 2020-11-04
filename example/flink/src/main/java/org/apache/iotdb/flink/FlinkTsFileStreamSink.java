@@ -105,7 +105,7 @@ public class FlinkTsFileStreamSink {
 
 		List<Path> paths = Arrays.stream(filedNames)
 			.filter(s -> !s.equals(QueryConstant.RESERVED_TIME))
-			.map(Path::new)
+			.map(s -> new Path(s, true))
 			.collect(Collectors.toList());
 		String[] result = TsFileUtils.readTsFile(path, paths);
 		for (String row : result) {

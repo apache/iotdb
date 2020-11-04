@@ -22,8 +22,10 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -31,7 +33,6 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -43,9 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class SeriesAggregateReaderTest {
 
@@ -70,14 +69,15 @@ public class SeriesAggregateReaderTest {
   @Test
   public void aggregateTest() {
     try {
-      Path path = new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0");
+      PartialPath path = new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
-      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors, TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null, null);
+      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors,
+          TSDataType.INT32,
+          new QueryContext(), queryDataSource, null, null, null, true);
       AggregateResult aggregateResult = AggregateResultFactory
-          .getAggrResultByName("count", TSDataType.INT32);
+          .getAggrResultByName("count", TSDataType.INT32, true);
       int loopTime = 0;
       while (seriesReader.hasNextFile()) {
         if (seriesReader.canUseCurrentFileStatistics()) {
@@ -114,14 +114,14 @@ public class SeriesAggregateReaderTest {
               BatchData nextOverlappedPageData = seriesReader.nextPage();
               aggregateResult.updateResultFromPageData(nextOverlappedPageData);
               nextOverlappedPageData.resetBatchData();
-              assertEquals(true, nextOverlappedPageData.hasCurrent());
+              assertTrue(nextOverlappedPageData.hasCurrent());
             }
             loopTime++;
           }
         }
       }
       assertEquals(500L, aggregateResult.getResult());
-    } catch (IOException | QueryProcessException e) {
+    } catch (IOException | QueryProcessException | IllegalPathException e) {
       e.printStackTrace();
       fail();
     }

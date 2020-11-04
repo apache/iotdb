@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -29,14 +36,6 @@ import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
 import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForV1;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * FileReaderManager is a singleton, which is used to manage
@@ -195,9 +194,9 @@ public class FileReaderManager implements IService {
     tsFile.readLock();
     synchronized (this) {
       if (!isClosed) {
-        unclosedReferenceMap.computeIfAbsent(tsFile.getPath(), k -> new AtomicInteger()).getAndIncrement();
+        unclosedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
       } else {
-        closedReferenceMap.computeIfAbsent(tsFile.getPath(), k -> new AtomicInteger()).getAndIncrement();
+        closedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
       }
     }
   }
@@ -208,10 +207,10 @@ public class FileReaderManager implements IService {
    */
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
-      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getPath())) {
-        unclosedReferenceMap.get(tsFile.getPath()).decrementAndGet();
-      } else if (closedReferenceMap.containsKey(tsFile.getPath())){
-        closedReferenceMap.get(tsFile.getPath()).decrementAndGet();
+      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
+        unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+      } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())){
+        closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
       }
     }
     tsFile.readUnlock();
@@ -248,8 +247,8 @@ public class FileReaderManager implements IService {
    * This method is only for unit tests.
    */
   public synchronized boolean contains(TsFileResource tsFile, boolean isClosed) {
-    return (isClosed && closedFileReaderMap.containsKey(tsFile.getPath()))
-        || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getPath()));
+    return (isClosed && closedFileReaderMap.containsKey(tsFile.getTsFilePath()))
+        || (!isClosed && unclosedFileReaderMap.containsKey(tsFile.getTsFilePath()));
   }
 
   @Override

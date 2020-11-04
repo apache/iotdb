@@ -1,7 +1,0 @@
-#
-#Tue Sep 03 09:20:46 CST 2019
-legends=FlushingMemTables
-name=flushSubmits
-content_pattern=storage group (.*) begin to submit a flush thread, flushing memtable size: (.*)
-tag_positions=1
-measurement_positions=2

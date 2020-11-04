@@ -25,12 +25,12 @@ Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中.
 
 1. 您可以使用下面的命令构建 docker image: 
 ```
-$ docker build -t iotdb:base git://github.com/apache/incubator-iotdb#master:docker
+$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker
 ```
 或者:
-```
-$ git clone https://github.com/apache/incubator-iotdb
-$ cd incubator-iotdb
+```shell
+$ git clone https://github.com/apache/iotdb
+$ cd iotdb
 $ cd docker
 $ docker build -t iotdb:base .
 ```
@@ -84,6 +84,6 @@ $ start-cli.sh -h localhost -p 6667 -u root -pw root
             <version>0.10.0</version>
         </dependency>
 ```
-这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例: https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
+这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
 
 6. 现在已经大功告成了

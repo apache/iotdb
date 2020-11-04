@@ -94,23 +94,6 @@ public class CompressionRatio {
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info("Compression ratio is {}", compressionRatio.get());
     }
-    if (CONFIG.isEnableParameterAdapter()) {
-      if (LOGGER.isInfoEnabled()) {
-        LOGGER.info(
-            "After updating compression ratio, trying to adjust parameters, the original parameters: "
-                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
-            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
-            CONFIG.getMaxMemtableNumber());
-      }
-      IoTDBConfigDynamicAdapter.getInstance().tryToAdaptParameters();
-      if(LOGGER.isInfoEnabled()) {
-        LOGGER.info(
-            "After updating compression ratio, trying to adjust parameters, the modified parameters: "
-                + "MemTableSize threshold is {}B, TsfileSize threshold is {}B, MemTableNumber is {}",
-            CONFIG.getMemtableSizeThreshold(), CONFIG.getTsFileSizeThreshold(),
-            CONFIG.getMaxMemtableNumber());
-      }
-    }
   }
 
   /**
@@ -162,7 +145,9 @@ public class CompressionRatio {
       }
       calcTimes = maxTimes;
       compressionRatioSum = maxCompressionRatioSum;
-      compressionRatio.set(compressionRatioSum / calcTimes);
+      if (calcTimes != 0) {
+        compressionRatio.set(compressionRatioSum / calcTimes);
+      }
       LOGGER.debug(
           "After restoring from compression ratio file, compressionRatioSum = {}, calcTimes = {}",
           compressionRatioSum, calcTimes);
