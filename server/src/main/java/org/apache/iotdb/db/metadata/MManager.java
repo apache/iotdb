@@ -821,6 +821,9 @@ public class MManager {
     List<MeasurementMNode> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (tagValue.contains(plan.getValue())) {
           allMatchedNodes.addAll(entry.getValue());
@@ -828,6 +831,9 @@ public class MManager {
       }
     } else {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (plan.getValue().equals(tagValue)) {
           allMatchedNodes.addAll(entry.getValue());
