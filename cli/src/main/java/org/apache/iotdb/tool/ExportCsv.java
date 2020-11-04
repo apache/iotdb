@@ -114,13 +114,10 @@ public class ExportCsv extends AbstractCsvTool {
       session = new Session(host, Integer.parseInt(port), username, password);
       try {
         session.open(false);
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      }
-      try {
         setTimeZone();
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        e.printStackTrace();
+        System.out.println("Connect failed because " + e.getMessage());
+        return;
       }
 
       if (sqlFile == null) {
