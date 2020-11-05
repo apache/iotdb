@@ -299,7 +299,7 @@ public class IoTDBConfig {
    * Works when the compaction_strategy is LEVEL_COMPACTION.
    * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
    */
-  private int mergePagePointNumberThreshold = 1000;
+  private int mergePagePointNumberThreshold = 100;
 
   /**
    * LEVEL_COMPACTION, NO_COMPACTION
