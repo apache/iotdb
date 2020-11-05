@@ -972,7 +972,7 @@ public class TsFileProcessor {
     return sequence;
   }
 
-  public void startFlush() {
+  public void checkAndMayFlush() {
     storageGroupInfo.getStorageGroupProcessor().flushATsFileProcessor(this);
   }
 

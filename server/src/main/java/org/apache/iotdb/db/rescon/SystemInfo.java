@@ -148,7 +148,7 @@ public class SystemInfo {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        processor.startFlush();
+        processor.checkAndMayFlush();
       }
     }
   }
