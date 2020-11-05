@@ -277,7 +277,7 @@
 - Fix batch insert once an illegal sql occurs all the sqls after that will not succeed
 - Fix concurrent modification exception when iterator TsFileResourceList 
 - Fix some HDFS config issues 
-- Fix runtime exception not catched and sync schema pos was nullpointer bug in DataTransferManager
+- Fix runtime exception not be catched and sync schema pos was nullpointer bug in DataTransferManager
 - Fix python rpc grammar mistakes
 - Fix upgrade ConcurrentModificationException
 
