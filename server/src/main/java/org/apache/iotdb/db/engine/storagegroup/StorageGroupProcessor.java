@@ -913,6 +913,18 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void flushATsFileProcessor(TsFileProcessor tsFileProcessor) {
+    writeLock();
+    try {
+      // check memtable size and may async try to flush the work memtable
+      if (tsFileProcessor.shouldFlush()) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
     try {
