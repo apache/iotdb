@@ -47,7 +47,7 @@ public interface SerializableList {
     protected static final int NOT_SERIALIZED = -1;
 
     protected final long queryId;
-    protected final String dataId; // path.toString() for TVList, tablet name for RowRecordList
+    protected final String dataId;
     protected final int index;
 
     protected boolean isSerialized;

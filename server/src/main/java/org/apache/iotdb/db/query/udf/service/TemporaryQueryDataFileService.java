@@ -38,7 +38,7 @@ public class TemporaryQueryDataFileService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileService.class);
 
-  private static final String temporaryFileDir =
+  private static final String TEMPORARY_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getQueryDir()
           + File.separator + "udf" + File.separator + "tmp" + File.separator;
 
@@ -90,11 +90,11 @@ public class TemporaryQueryDataFileService implements IService {
   }
 
   private String getDirName(long queryId) {
-    return temporaryFileDir + File.separator + queryId + File.separator;
+    return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator;
   }
 
   private String getDirName(long queryId, String dataId) {
-    return temporaryFileDir + File.separator + queryId + File.separator + dataId + File.separator;
+    return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator + dataId + File.separator;
   }
 
   private String getFileName(String dir, int index) {
@@ -104,7 +104,7 @@ public class TemporaryQueryDataFileService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      makeDirIfNecessary(temporaryFileDir);
+      makeDirIfNecessary(TEMPORARY_FILE_DIR);
     } catch (IOException e) {
       throw new StartupException(e);
     }
