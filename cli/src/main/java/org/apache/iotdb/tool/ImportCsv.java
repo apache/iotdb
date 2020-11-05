@@ -114,7 +114,7 @@ public class ImportCsv extends AbstractCsvTool {
         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();
-      String[] cols = header.split(",");
+      String[] cols = splitCsvLine(header);
       if (cols.length <= 1) {
         System.out.println("The CSV file "+ file.getName() +" illegal, please check first line");
         return;
@@ -132,7 +132,7 @@ public class ImportCsv extends AbstractCsvTool {
 
       String line;
       while((line = br.readLine()) != null) {
-        cols = line.split(",");
+        cols = splitCsvLine(line);
         for(Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions: devicesToMeasurementsAndPositions.entrySet()) {
           devices.add(deviceToMeasurementsAndPositions.getKey());
           times.add(Long.parseLong(cols[0]));
@@ -325,5 +325,46 @@ public class ImportCsv extends AbstractCsvTool {
     } else {
       deviceToMeasurementsAndPositions.get(device).put(measurement, position);
     }
+  }
+
+  public static String[] splitCsvLine(String path) {
+    List<String> nodes = new ArrayList<>();
+    int startIndex = 0;
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == ',') {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        int endIndex = path.indexOf('"', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('"', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
+          nodes.add(path.substring(startIndex + 1, endIndex));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalArgumentException("Illegal csv line: " + path);
+        }
+      } else if (path.charAt(i) == '\'') {
+        int endIndex = path.indexOf('\'', i + 1);
+        // if a double quotes with escape character
+        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+          endIndex = path.indexOf('\'', endIndex + 1);
+        }
+        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
+          nodes.add(path.substring(startIndex + 1, endIndex));
+          i = endIndex + 1;
+          startIndex = endIndex + 2;
+        } else {
+          throw new IllegalArgumentException("Illegal csv line: " + path);
+        }
+      }
+    }
+    if (startIndex <= path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
+    return nodes.toArray(new String[0]);
   }
 }

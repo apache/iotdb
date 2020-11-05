@@ -43,6 +43,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
@@ -136,7 +137,8 @@ public class ExportCsv extends AbstractCsvTool {
         try {
           session.close();
         } catch (IoTDBConnectionException e) {
-          System.out.println("Encounter an error when closing session, error is: " + e.getMessage());
+          System.out
+              .println("Encounter an error when closing session, error is: " + e.getMessage());
         }
       }
     }
@@ -232,7 +234,7 @@ public class ExportCsv extends AbstractCsvTool {
   /**
    * Dump files from database to CSV file.
    *
-   * @param sql export the result of executing the sql
+   * @param sql   export the result of executing the sql
    * @param index use to create dump file name
    */
   private static void dumpResult(String sql, int index) {
@@ -255,7 +257,6 @@ public class ExportCsv extends AbstractCsvTool {
       // write data in csv file
       writeMetadata(bw, sessionDataSet.getColumnNames());
 
-
       int line = writeResultSet(sessionDataSet, bw);
       System.out
           .printf("Statement [%s] has dumped to file %s successfully! It costs "
@@ -266,7 +267,8 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void writeMetadata(BufferedWriter bw, List<String> columnNames) throws IOException {
+  private static void writeMetadata(BufferedWriter bw, List<String> columnNames)
+      throws IOException {
     for (int i = 0; i < columnNames.size() - 1; i++) {
       bw.write(columnNames.get(i) + ",");
     }
@@ -318,16 +320,32 @@ public class ExportCsv extends AbstractCsvTool {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static void writeValue(List<Field> fields, BufferedWriter bw) throws IOException {
     for (int j = 0; j < fields.size() - 1; j++) {
-      if ("null".equalsIgnoreCase(fields.get(j).getStringValue())) {
+      String value = fields.get(j).getStringValue();
+      if ("null".equalsIgnoreCase(value)) {
         bw.write(",");
       } else {
-        bw.write(fields.get(j).getStringValue() + ",");
+        if (fields.get(j).getDataType() == TSDataType.TEXT) {
+          if (fields.get(j).getStringValue().contains(",")) {
+            bw.write("\"" + value + "\",");
+          }
+        } else {
+          bw.write(value + ",");
+        }
       }
     }
-    if ("null".equalsIgnoreCase(fields.get(fields.size() - 1).getStringValue())) {
+    String lastValue = fields.get(fields.size() - 1).getStringValue();
+    if ("null".equalsIgnoreCase(lastValue)) {
       bw.write("\n");
     } else {
-      bw.write(fields.get(fields.size() - 1).getStringValue() + "\n");
+      if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
+        if (fields.get(fields.size() - 1).getStringValue().contains(",")) {
+          bw.write("\"" + lastValue + "\"\n");
+        } else {
+          bw.write(lastValue + "\n");
+        }
+      } else {
+        bw.write(lastValue + "\n");
+      }
     }
   }
 }
