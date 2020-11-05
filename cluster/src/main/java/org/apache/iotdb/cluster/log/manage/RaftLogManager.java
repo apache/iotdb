@@ -194,7 +194,7 @@ public abstract class RaftLogManager {
 
   public Snapshot getSnapshot() {
     return getSnapshot(-1);
-  };
+  }
 
   public abstract Snapshot getSnapshot(long minLogIndex);
 
