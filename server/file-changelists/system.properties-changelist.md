@@ -18,3 +18,21 @@
     under the License.
 
 -->
+# 0.10.x -> 0.11.x
+
+Last updated on 2020-11-5 by Haonan Hou
+## Delete
+| Latest Changes                     |
+| ---------------------------------- |
+| None           |
+
+## Add
+
+| Latest Changes                     |
+| ---------------------------------- |
+| None           |
+
+## Update：
+| Latest Changes                     |
+| ---------------------------------- |
+| Change iotdb_version=0.10.x to 0.11.x           |
