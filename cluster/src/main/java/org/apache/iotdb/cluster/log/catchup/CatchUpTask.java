@@ -133,12 +133,9 @@ public class CatchUpTask implements Runnable {
     if (!ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
       return false;
     }
-    if (!ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp()) {
-      return false;
-    }
+    return ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp();
 
     // TODO judge the cost of snapshot and logs in disk
-    return true;
   }
 
   private List<Log> getLogsInStableEntryManager(long startIndex, long endIndex) {
@@ -209,7 +206,7 @@ public class CatchUpTask implements Runnable {
    */
   private boolean checkLogIsMatch(long logIndex, long logTerm)
       throws TException, InterruptedException {
-    boolean matched = false;
+    boolean matched;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       RaftService.AsyncClient client = raftMember.getAsyncClient(node);
       if (client == null) {

@@ -13,16 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient.FactorySync;
 import org.apache.iotdb.cluster.common.TestSyncClient;
 import org.apache.iotdb.cluster.common.TestSyncClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Test;
 import org.mockito.Mock;
 
