@@ -913,6 +913,15 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
+    writeLock();
+    try {
+      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+    } finally {
+      writeUnlock();
+    }
+  }
+
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
     try {
