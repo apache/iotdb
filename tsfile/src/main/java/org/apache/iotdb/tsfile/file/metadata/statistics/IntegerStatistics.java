@@ -38,7 +38,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   private int lastValue;
   private double sumValue;
 
-  private static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
+  static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
 
 
   @Override

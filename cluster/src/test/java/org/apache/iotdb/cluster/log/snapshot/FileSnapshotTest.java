@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -268,7 +269,14 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (int i = 0; i < 5; i++) {
       StorageGroupProcessor processor = StorageEngine.getInstance()
           .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-      processor.loadNewTsFile(tsFileResources.get(i));
+      TsFileResource resource = tsFileResources.get(i);
+      String pathWithoutHardlinkSuffix = resource.getTsFilePath().substring(0,
+          resource.getTsFilePath().lastIndexOf('.'));
+      File fileWithoutHardlinkSuffix = new File(pathWithoutHardlinkSuffix);
+      resource.getTsFile().renameTo(fileWithoutHardlinkSuffix);
+      resource.setFile(fileWithoutHardlinkSuffix);
+      resource.serialize();
+      processor.loadNewTsFile(resource);
     }
     snapshot.setTimeseriesSchemas(timeseriesSchemas);
 

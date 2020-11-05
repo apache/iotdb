@@ -68,6 +68,11 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   @Override
+  public void close() {
+    consumerPool.shutdownNow();
+  }
+
+  @Override
   // synchronized: when a log is draining consumers, avoid other threads adding more logs so that
   // the consumers will never be drained
   public synchronized void apply(Log log) {

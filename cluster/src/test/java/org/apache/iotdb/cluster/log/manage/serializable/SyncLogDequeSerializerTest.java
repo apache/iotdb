@@ -394,6 +394,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecoveryForNotCloseAndLoseData() {
+    // TODO-Cluster: do it more elegantly
     Properties pop = System.getProperties();
     String osName = pop.getProperty("os.name");
     // for window os, skip the test because windows do not support reopen a file which is already opened.

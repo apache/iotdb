@@ -31,4 +31,8 @@ public interface LogApplier {
    * @param log
    */
   void apply(Log log);
+
+  default void close() {
+
+  }
 }

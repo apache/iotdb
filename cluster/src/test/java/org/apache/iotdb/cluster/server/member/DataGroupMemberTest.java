@@ -237,7 +237,6 @@ public class DataGroupMemberTest extends MemberTest {
       }
     };
     PartitionedSnapshotLogManager logManager = getLogManager(nodes, dataGroupMember);
-    logManager.setLogApplierExecutor(Executors.newCachedThreadPool());
     dataGroupMember.setLogManager(logManager);
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
@@ -547,7 +546,6 @@ public class DataGroupMemberTest extends MemberTest {
     testMetaMember.setPartitionTable(partitionTable);
     dataGroupMember.setLogManager(
         getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), dataGroupMember));
-    dataGroupMember.getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
     assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();

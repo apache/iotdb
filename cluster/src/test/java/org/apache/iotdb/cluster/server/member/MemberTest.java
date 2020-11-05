@@ -207,8 +207,6 @@ public class MemberTest {
     newMember
         .setLogManager(
             getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
-    newMember
-        .getLogManager().setLogApplierExecutor(Executors.newSingleThreadExecutor());
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;

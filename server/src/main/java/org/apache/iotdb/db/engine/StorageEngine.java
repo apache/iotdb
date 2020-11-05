@@ -450,7 +450,7 @@ public class StorageEngine implements IService {
       } else {
         // to avoid concurrent modification problem, we need a new array list
         for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-            processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.getWorkUnsequenceTsFileProcessors())) {
           if (isSync) {
             processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
           } else {
@@ -485,7 +485,7 @@ public class StorageEngine implements IService {
     // to avoid concurrent modification problem, we need a new array list
     List<TsFileProcessor> processors = isSeq ?
         new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-        new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
+        new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
     try {
       for (TsFileProcessor tsfileProcessor : processors) {
         if (tsfileProcessor.getTimeRangeId() == partitionId) {
@@ -770,7 +770,7 @@ public class StorageEngine implements IService {
         partitionIdList.add(tmpPair);
       }
 
-      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
         Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
         partitionIdList.add(tmpPair);
       }

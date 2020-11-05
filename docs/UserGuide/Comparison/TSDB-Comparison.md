@@ -92,7 +92,7 @@ Legend:
 
 * OpenSource:  
  
-  * IoTDB uses Apache License 2.0 and it is in Apache incubator. 
+  * IoTDB uses Apache License 2.0. 
   * InfluxDB uses MIT license. However, **the cluster version is not open sourced**.
   * OpenTSDB uses LGPL2.1, which **is not compatible with Apache License**.
   * KairosDB uses Apache License 2.0.

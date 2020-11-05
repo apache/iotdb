@@ -68,15 +68,12 @@ public class LogDispatcherTest {
           public void appendEntry(AppendEntryRequest request,
               AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {
-              if (downNode.contains(node)) {
-                while (true) {
-                  // keep down
+              if (!downNode.contains(node)) {
+                try {
+                  resultHandler.onComplete(mockedAppendEntry(request));
+                } catch (UnknownLogTypeException e) {
+                  resultHandler.onError(e);
                 }
-              }
-              try {
-                resultHandler.onComplete(mockedAppendEntry(request));
-              } catch (UnknownLogTypeException e) {
-                resultHandler.onError(e);
               }
             }).start();
           }
@@ -85,15 +82,12 @@ public class LogDispatcherTest {
           public void appendEntries(AppendEntriesRequest request,
               AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {
-              if (downNode.contains(node)) {
-                while (true) {
-                  // keep down
+              if (!downNode.contains(node)) {
+                try {
+                  resultHandler.onComplete(mockedAppendEntries(request));
+                } catch (UnknownLogTypeException e) {
+                  resultHandler.onError(e);
                 }
-              }
-              try {
-                resultHandler.onComplete(mockedAppendEntries(request));
-              } catch (UnknownLogTypeException e) {
-                resultHandler.onError(e);
               }
             }).start();
           }

@@ -50,7 +50,7 @@ Note:
 
 * \<spark-shell-path> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
+* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 
 ### Distributed Mode
@@ -65,7 +65,7 @@ Note:
 
 * \<spark-shell-path> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/incubator-iotdb/tree/master/tsfile for how to get TsFile.
+* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 ## 4. Data Type Correspondence
 

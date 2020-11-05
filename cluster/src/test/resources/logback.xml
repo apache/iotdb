@@ -41,4 +41,5 @@
     <root level="warn">
         <appender-ref ref="stdout"/>
     </root>
+    <!--    <logger level="info" name="org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer"/>-->
 </configuration>
