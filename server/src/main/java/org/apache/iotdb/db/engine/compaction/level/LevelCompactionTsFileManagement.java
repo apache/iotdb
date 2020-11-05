@@ -57,7 +57,8 @@ import org.slf4j.LoggerFactory;
  */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
 
-  private static final Logger logger = LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(LevelCompactionTsFileManagement.class);
 
   private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
   private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
@@ -390,17 +391,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-        seqLevelNum);
+        seqLevelNum, seqFileNumInEachLevel);
+    // we have to copy all unseq file
     forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
-        unseqLevelNum);
+        unseqLevelNum + 1, unseqFileNumInEachLevel);
   }
 
   private void forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
-      List rawTsFileResources, int currMaxLevel) {
+      List rawTsFileResources, int currMaxLevel, int currFileNumInEachLevel) {
     forkedTsFileResources.clear();
     for (int i = 0; i < currMaxLevel - 1; i++) {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
@@ -409,6 +411,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       for (TsFileResource tsFileResource : levelRawTsFileResources) {
         if (tsFileResource.isClosed()) {
           forkedLevelTsFileResources.add(tsFileResource);
+          if (forkedLevelTsFileResources.size() > currFileNumInEachLevel) {
+            break;
+          }
         }
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
