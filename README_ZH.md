@@ -335,6 +335,20 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ## 使用 import-csv.sh
 
+### 创建元数据（可选）
+
+```
+SET STORAGE GROUP TO root.fit.d1;
+SET STORAGE GROUP TO root.fit.d2;
+SET STORAGE GROUP TO root.fit.p;
+CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
+CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+```
+> 如果您没有在另一台计算机的IoTDB中创建元数据，IoTDB将自己推断数据类型，这可能会导致时间序列具有不同的数据类型和许多其他意想不到的东西。
+
 ### 从 csv 文件导入数据的示例
 
 ```

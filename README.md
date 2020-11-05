@@ -335,6 +335,21 @@ After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-
 
 ## Usage of import-csv.sh
 
+### Create metadata (optional)
+
+```
+SET STORAGE GROUP TO root.fit.d1;
+SET STORAGE GROUP TO root.fit.d2;
+SET STORAGE GROUP TO root.fit.p;
+CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
+CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
+CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
+```
+
+> if you didn't create metadata in the IoTDB in another computer, IoTDB will infer datatype by itself and this probably caused time series has different datatype and many other unexpected things.
+
 ### An example of import csv file
 
 ```
