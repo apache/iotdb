@@ -77,6 +77,11 @@ public class Planner {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
     int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
         .getMaxDeduplicatedPathNum(fetchSize);
+    if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we set it to Integer.MAX_VALUE - 1
+      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    }
     operator = logicalOptimize(operator, maxDeduplicatedPathNum);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
@@ -126,7 +131,13 @@ public class Planner {
 
     int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
         .getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
+    if (queryOp.isLastQuery()) {
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we set it to Integer.MAX_VALUE - 1
+      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    }
     SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
   }

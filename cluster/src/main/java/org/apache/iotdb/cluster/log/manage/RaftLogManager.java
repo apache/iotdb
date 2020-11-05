@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.RunnableScheduledFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -122,8 +121,6 @@ public abstract class RaftLogManager {
 
   private List<Log> blockedUnappliedLogList;
 
-  private ExecutorService logApplierExecutor;
-
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
     this.name = name;
@@ -172,8 +169,6 @@ public abstract class RaftLogManager {
             TimeUnit.SECONDS);
 
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
-
-    this.logApplierExecutor = Executors.newSingleThreadExecutor();
 
     /**
      * flush log to file periodically
@@ -711,7 +706,6 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
-    this.logApplierExecutor = Executors.newSingleThreadExecutor();
     this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
             .build());
@@ -732,11 +726,6 @@ public abstract class RaftLogManager {
       Thread.currentThread().interrupt();
     }
     this.maxHaveAppliedCommitIndex = maxHaveAppliedCommitIndex;
-  }
-
-  @TestOnly
-  public void setLogApplierExecutor(ExecutorService logApplierExecutor) {
-    this.logApplierExecutor = logApplierExecutor;
   }
 
   public void close() {
@@ -768,12 +757,17 @@ public abstract class RaftLogManager {
     if (flushLogExecutorService != null) {
       flushLogExecutorService.shutdownNow();
       flushLogFuture.cancel(true);
+      try {
+        flushLogExecutorService.awaitTermination(5, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Close flush log thread interrupted");
+      }
       flushLogExecutorService = null;
     }
-    if (logApplierExecutor != null) {
-      logApplierExecutor.shutdown();
-      // do not wait for logApplierExecutor, because it may be triggering this close
-      logApplierExecutor = null;
+
+    if (logApplier != null) {
+      logApplier.close();
     }
   }
 

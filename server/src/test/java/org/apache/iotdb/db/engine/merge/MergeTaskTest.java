@@ -111,7 +111,7 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testChunkNumThreshold() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l) -> {

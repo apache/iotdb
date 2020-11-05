@@ -28,7 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -41,17 +41,17 @@ public class IoTDBMergeTest {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
   private long prevPartitionInterval;
-  private TsFileManagementStrategy prevTsFileManagementStrategy;
+  private CompactionStrategy prevTsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     prevTsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
-        .getTsFileManagementStrategy();
+        .getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -61,7 +61,7 @@ public class IoTDBMergeTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(prevTsFileManagementStrategy);
+        .setCompactionStrategy(prevTsFileManagementStrategy);
   }
 
   @Test

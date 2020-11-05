@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -152,6 +153,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * the lock uses when change the log data files or log index files
    */
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+  private volatile boolean isClosed = false;
 
   private void initCommonProperties() {
     this.logDataFileList = new ArrayList<>();
@@ -301,44 +304,51 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private void closeCurrentFile(long commitIndex) throws IOException {
     if (currentLogDataOutputStream != null) {
       currentLogDataOutputStream.close();
+      logger.info("{}: Closed a log data file {}", this, getCurrentLogDataFile());
       currentLogDataOutputStream = null;
+
+      File currentLogDataFile = getCurrentLogDataFile();
+      String newDataFileName = currentLogDataFile.getName()
+          .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(commitIndex));
+      File newCurrentLogDatFile = SystemFileFactory.INSTANCE
+          .getFile(currentLogDataFile.getParent() + File.separator + newDataFileName);
+      if (!currentLogDataFile.renameTo(newCurrentLogDatFile)) {
+        logger.error("rename log data file={} to {} failed", currentLogDataFile.getAbsoluteFile(),
+            newCurrentLogDatFile);
+      }
+      logDataFileList.set(logDataFileList.size() - 1, newCurrentLogDatFile);
+
+      logger.debug("rename data file={} to file={}", currentLogDataFile.getAbsoluteFile(),
+          newCurrentLogDatFile.getAbsoluteFile());
     }
 
     if (currentLogIndexOutputStream != null) {
       currentLogIndexOutputStream.close();
+      logger.info("{}: Closed a log index file {}", this, getCurrentLogIndexFile());
       currentLogIndexOutputStream = null;
-    }
-    File currentLogDataFile = getCurrentLogDataFile();
-    String newDataFileName = currentLogDataFile.getName()
-        .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(commitIndex));
-    File newCurrentLogDatFile = SystemFileFactory.INSTANCE
-        .getFile(currentLogDataFile.getParent() + File.separator + newDataFileName);
-    if (!currentLogDataFile.renameTo(newCurrentLogDatFile)) {
-      logger.error("rename log data file={} failed", currentLogDataFile.getAbsoluteFile());
-    }
-    logDataFileList.set(logDataFileList.size() - 1, newCurrentLogDatFile);
 
-    logger.debug("rename data file={} to file={}", currentLogDataFile.getAbsoluteFile(),
-        newCurrentLogDatFile.getAbsoluteFile());
+      File currentLogIndexFile = getCurrentLogIndexFile();
+      String newIndexFileName = currentLogIndexFile.getName()
+          .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(commitIndex));
+      File newCurrentLogIndexFile = SystemFileFactory.INSTANCE
+          .getFile(currentLogIndexFile.getParent() + File.separator + newIndexFileName);
+      if (!currentLogIndexFile.renameTo(newCurrentLogIndexFile)) {
+        logger.error("rename log index file={} failed", currentLogIndexFile.getAbsoluteFile());
+      }
+      logger.debug("rename index file={} to file={}", currentLogIndexFile.getAbsoluteFile(),
+          newCurrentLogIndexFile.getAbsoluteFile());
 
-    File currentLogIndexFile = getCurrentLogIndexFile();
-    String newIndexFileName = currentLogIndexFile.getName()
-        .replaceAll(String.valueOf(Long.MAX_VALUE), String.valueOf(commitIndex));
-    File newCurrentLogIndexFile = SystemFileFactory.INSTANCE
-        .getFile(currentLogIndexFile.getParent() + File.separator + newIndexFileName);
-    if (!currentLogIndexFile.renameTo(newCurrentLogIndexFile)) {
-      logger.error("rename log index file={} failed", currentLogIndexFile.getAbsoluteFile());
+      logIndexFileList.set(logIndexFileList.size() - 1,newCurrentLogIndexFile);
     }
-    logger.debug("rename index file={} to file={}", currentLogIndexFile.getAbsoluteFile(),
-        newCurrentLogIndexFile.getAbsoluteFile());
-
-    logIndexFileList.set(logIndexFileList.size() - 1,newCurrentLogIndexFile);
 
     offsetOfTheCurrentLogDataOutputStream = 0;
   }
 
   @Override
   public void flushLogBuffer() {
+    if (isClosed || logDataBuffer.position() == 0) {
+      return;
+    }
     lock.writeLock().lock();
     try {
       // write into disk
@@ -369,6 +379,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void forceFlushLogBuffer() {
+    if (isClosed) {
+      return;
+    }
     lock.writeLock().lock();
     flushLogBuffer();
     serializeMeta(meta);
@@ -380,6 +393,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       if (currentLogIndexOutputStream != null) {
         currentLogIndexOutputStream.getChannel().force(true);
       }
+    } catch (ClosedByInterruptException e) {
+      // ignore
     } catch (IOException e) {
       logger.error("Error when force flushing logs serialization: ", e);
     } finally {
@@ -679,10 +694,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private void checkStream() throws FileNotFoundException {
     if (currentLogDataOutputStream == null) {
       currentLogDataOutputStream = new FileOutputStream(getCurrentLogDataFile(), true);
+      logger.info("{}: Opened a new log data file: {}", this, getCurrentLogDataFile());
     }
 
     if (currentLogIndexOutputStream == null) {
       currentLogIndexOutputStream = new FileOutputStream(getCurrentLogIndexFile(), true);
+      logger.info("{}: Opened a new index data file: {}", this, getCurrentLogIndexFile());
     }
   }
 
@@ -792,6 +809,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
+    logger.info("{} is closing", this);
     lock.writeLock().lock();
     forceFlushLogBuffer();
     try {
@@ -811,6 +829,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
     } finally {
+      logger.info("{} is closed", this);
+      isClosed = true;
       lock.writeLock().unlock();
     }
   }

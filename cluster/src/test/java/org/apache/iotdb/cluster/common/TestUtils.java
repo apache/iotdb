@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -346,9 +347,9 @@ public class TestUtils {
       int ptNum, boolean asHardLink) throws IOException, WriteProcessException {
     List<TsFileResource> ret = new ArrayList<>();
     for (int i = 0; i < fileNum; i++) {
-      String fileName = "target" + File.separator + String
+      String fileName = "target" + File.separator + "data" + File.separator + String
           .format(TestUtils.getTestSg(sgNum) + File.separator + 0 +
-              File.separator + "0-%d-0.tsFile", i);
+              File.separator + "0-%d-0" + TsFileConstant.TSFILE_SUFFIX, i);
       if (asHardLink) {
         fileName = fileName + ".0_0";
       }

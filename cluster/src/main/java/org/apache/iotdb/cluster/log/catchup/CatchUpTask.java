@@ -114,7 +114,7 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
-    peer.setMatchIndex(logs.get(index).getCurrLogIndex());
+    peer.setMatchIndex(logs.get(index).getCurrLogIndex() - 1);
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
     logs.subList(0, index).clear();
     if (logger.isDebugEnabled()) {

@@ -59,7 +59,6 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -122,7 +121,6 @@ public class DataLogApplierTest extends IoTDBTest {
   @Before
   public void setUp()
       throws org.apache.iotdb.db.exception.StartupException, QueryProcessException, IllegalPathException {
-    HotCompactionMergeTaskPoolManager.getInstance().stop();
     IoTDB.setMetaManager(CMManager.getInstance());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();

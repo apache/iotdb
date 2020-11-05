@@ -33,7 +33,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean firstValue;
   private boolean lastValue;
 
-  private static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 48;
+  static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 48;
 
 
   @Override

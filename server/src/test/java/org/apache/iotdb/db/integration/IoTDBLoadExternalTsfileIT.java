@@ -37,7 +37,7 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -126,7 +126,7 @@ public class IoTDBLoadExternalTsfileIT {
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -137,7 +137,7 @@ public class IoTDBLoadExternalTsfileIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test

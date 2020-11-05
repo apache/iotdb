@@ -82,28 +82,32 @@ public class AsyncDataLogApplierTest {
       }
     };
     AsyncDataLogApplier asyncDataLogApplier = new AsyncDataLogApplier(dummyApplier, "test");
-    for (int i = 0; i < 10; i++) {
-      PhysicalPlan plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(i)), i,
-          new String[0],
-          new String[0]);
-      PhysicalPlanLog log = new PhysicalPlanLog(plan);
-      log.setCurrLogIndex(i);
-      logsToApply.add(log);
-    }
-    Log finalLog = new EmptyContentLog();
-    finalLog.setCurrLogIndex(10);
-    logsToApply.add(finalLog);
-
-    for (Log log : logsToApply) {
-      asyncDataLogApplier.apply(log);
-    }
-
-    synchronized (finalLog) {
-      while (!finalLog.isApplied()) {
-        finalLog.wait();
+    try {
+      for (int i = 0; i < 10; i++) {
+        PhysicalPlan plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(i)), i,
+            new String[0],
+            new String[0]);
+        PhysicalPlanLog log = new PhysicalPlanLog(plan);
+        log.setCurrLogIndex(i);
+        logsToApply.add(log);
       }
+      Log finalLog = new EmptyContentLog();
+      finalLog.setCurrLogIndex(10);
+      logsToApply.add(finalLog);
+
+      for (Log log : logsToApply) {
+        asyncDataLogApplier.apply(log);
+      }
+
+      synchronized (finalLog) {
+        while (!finalLog.isApplied()) {
+          finalLog.wait();
+        }
+      }
+      assertEquals(11, appliedLogs.size());
+    } finally {
+      asyncDataLogApplier.close();
     }
-    assertEquals(11, appliedLogs.size());
   }
 
   @Test
@@ -124,35 +128,39 @@ public class AsyncDataLogApplierTest {
 
     AsyncDataLogApplier asyncDataLogApplier = new AsyncDataLogApplier(dummyApplier, "test");
 
-    for (int i = 0; i < 10; i++) {
-      int finalI = i;
-      new Thread(() -> {
-        List<Log> threadLogsToApply = new ArrayList<>();
-        for (int j = 0; j < 10; j++) {
-          PhysicalPlan plan = null;
-          try {
-            plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(finalI)), j, new String[0],
-                new String[0]);
-          } catch (IllegalPathException e) {
-            // ignore
+    try {
+      for (int i = 0; i < 10; i++) {
+        int finalI = i;
+        new Thread(() -> {
+          List<Log> threadLogsToApply = new ArrayList<>();
+          for (int j = 0; j < 10; j++) {
+            PhysicalPlan plan = null;
+            try {
+              plan = new InsertRowPlan(new PartialPath(TestUtils.getTestSg(finalI)), j, new String[0],
+                  new String[0]);
+            } catch (IllegalPathException e) {
+              // ignore
+            }
+            PhysicalPlanLog log = new PhysicalPlanLog(plan);
+            log.setCurrLogIndex(finalI * 11  + j);
+            threadLogsToApply.add(log);
           }
-          PhysicalPlanLog log = new PhysicalPlanLog(plan);
-          log.setCurrLogIndex(finalI * 11  + j);
-          threadLogsToApply.add(log);
-        }
-        Log finalLog = new EmptyContentLog();
-        finalLog.setCurrLogIndex(finalI * 11 + 10);
-        threadLogsToApply.add(finalLog);
+          Log finalLog = new EmptyContentLog();
+          finalLog.setCurrLogIndex(finalI * 11 + 10);
+          threadLogsToApply.add(finalLog);
 
-        for (Log log : threadLogsToApply) {
-          asyncDataLogApplier.apply(log);
-        }
-      }).start();
+          for (Log log : threadLogsToApply) {
+            asyncDataLogApplier.apply(log);
+          }
+        }).start();
+      }
+
+      while (appliedLogs.size() < 11 * 10) {
+
+      }
+      assertEquals(110, appliedLogs.size());
+    } finally {
+      asyncDataLogApplier.close();
     }
-
-    while (appliedLogs.size() < 11 * 10) {
-
-    }
-    assertEquals(110, appliedLogs.size());
   }
 }
