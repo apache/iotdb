@@ -108,8 +108,8 @@ public class MTree implements Serializable {
     } else {
       try {
         last = calculateLastPairForOneSeriesLocally(node.getPartialPath(),
-            node.getSchema().getType(), queryContext, Collections.emptySet());
-        return last.getTimestamp();
+            node.getSchema().getType(), queryContext, null, Collections.emptySet());
+        return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error("Something wrong happened while trying to get last time value pair of {}",
             node.getFullPath(), e);

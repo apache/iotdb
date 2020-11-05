@@ -23,18 +23,18 @@ import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
-import org.apache.iotdb.db.conf.adapter.ManageDynamicParameters;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.CacheHitRatioMonitor;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.tsfilemanagement.HotCompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -104,7 +104,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(Monitor.getInstance());
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
-    registerManager.register(ManageDynamicParameters.getInstance());
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -140,7 +139,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SyncServerManager.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
-    registerManager.register(HotCompactionMergeTaskPoolManager.getInstance());
+    registerManager.register(CompactionMergeTaskPoolManager.getInstance());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
@@ -157,10 +156,8 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.metaManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
-    IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     logger.info(
-        "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber(),
+        "After initializing, tsFile threshold is {}, memtableSize is {}",
         IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
 
@@ -176,6 +173,8 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.metaManager.clear();
     TracingManager.getInstance().close();
     registerManager.shutdownAll();
+    PrimitiveArrayManager.close();
+    SystemInfo.getInstance().close();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
   }

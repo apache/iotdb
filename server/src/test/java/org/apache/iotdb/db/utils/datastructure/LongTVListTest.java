@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
@@ -73,21 +74,4 @@ public class LongTVListTest {
       Assert.assertEquals(inputs.get((int)i).getValue().getLong(), tvList.getLong((int)i));
     }
   }
-
-
-  @Test
-  public void compareLongTVListSortTime() {
-    for (int j = 0; j < 100; j++) {
-      LongTVList tvList = new LongTVList();
-      for (long i = 0; i < 1000; i++) {
-        tvList.putLong(i, i);
-      }
-      tvList.sort();
-      for (int i = 0; i < tvList.size; i++) {
-        tvList.getLong(i);
-        tvList.getTime(i);
-      }
-    }
-  }
-
 }

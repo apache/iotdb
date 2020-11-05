@@ -21,9 +21,9 @@
 
 # Files
 
-In IoTDB, there are many kinds of data needed to be stored. In this section, we will introduce IoTDB's data storage strategy in order to give you an explicit understanding of IoTDB's data management.
+In IoTDB, there are many kinds of data needed to be stored. This section introduces IoTDB's data storage strategy to provide you an explicit understanding of IoTDB's data management.
 
-The data that IoTDB stores is divided into three categories, namely data files, system files, and pre-write log files.
+The data in IoTDB is divided into three categories, namely data files, system files, and pre-write log files.
 
 ## Data Files
 
@@ -43,7 +43,7 @@ Pre-write log files store WAL files. It can be configured through the `wal_dir` 
 
 For a clearer understanding of configuring the data storage directory, we will give an example in this section.
 
-All data directory paths involved in storage directory setting are: base_dir, data_dirs, multi_dir_strategy, and wal_dir, which refer to system files, data folders, storage strategy, and pre-write log files.
+The data directory path included in storage directory setting are: base_dir, data_dirs, multi_dir_strategy, and wal_dir, which refer to system files, data folders, storage strategy, and pre-write log files.
 
 An example of the configuration items are as follows:
 
@@ -56,5 +56,5 @@ wal_dir= $IOTDB_HOME/data/wal
 After setting the configuration, the system will:
 
 * Save all system files in $IOTDB_HOME/data
-* Save TsFile in /data1/data, /data2/data, /data3/data. And the choosing strategy is `MaxDiskUsableSpaceFirstStrategy`, that is every time data writes to the disk, the system will automatically select a directory with the largest remaining disk space to write data.
+* Save TsFile in /data1/data, /data2/data, /data3/data. And the choosing strategy is `MaxDiskUsableSpaceFirstStrategy`, when data writes to the disk, the system will automatically select a directory with the largest remaining disk space to write data.
 * Save WAL data in $IOTDB_HOME/data/wal

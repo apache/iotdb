@@ -36,14 +36,14 @@ Execute the following command in the root directory:
 mvn clean package -pl jdbc -am -DskipTests
 ```
 
-## How to install in local maven repository
+## Install in local maven repository
 
 In root directory:
 ```
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-## Using IoTDB JDBC with Maven
+## Use IoTDB JDBC with Maven
 
 ```
 <dependencies>
@@ -60,7 +60,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 This chapter provides an example of how to open a database connection, execute a SQL query, and display the results.
 
-Requires that you include the packages containing the JDBC classes needed for database programming.
+It requires including the packages containing the JDBC classes needed for database programming.
 
 **NOTE: For faster insertion, the insertTablet() in Session is recommended.**
 

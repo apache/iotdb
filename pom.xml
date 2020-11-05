@@ -97,6 +97,7 @@
         <module>distribution</module>
         <module>hive-connector</module>
         <module>cross-tests</module>
+        <module>client-py</module>
     </modules>
     <!-- Properties Management -->
     <properties>

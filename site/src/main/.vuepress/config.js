@@ -460,7 +460,6 @@ var config = {
 						title: 'System Tools',
 						children: [
 							['System Tools/Sync Tool','Sync Tool'],
-							['System Tools/Memory Estimation Tool','Memory Estimation Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
@@ -981,7 +980,6 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System Tools/Sync Tool','同步工具'],
-							['System Tools/Memory Estimation Tool','内存预估'],
 							['System Tools/JMX Tool','JMX工具'],
 							['System Tools/Watermark Tool','水印工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],

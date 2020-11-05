@@ -603,15 +603,21 @@ The LAST function returns the last time-value pair of the given timeseries. Curr
 SELECT LAST <SelectClause> FROM <FromClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : <TimeExpr> [(AND | OR) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 
 Eg. SELECT LAST s1 FROM root.sg.d1
 Eg. SELECT LAST s1, s2 FROM root.sg.d1
 Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
+Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 Rules:
 1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 
-2. The result set of last query will always be displayed in a fixed three column table format.
+2. SELECT LAST only supports time filter that contains '>' or '>=' currently.
+
+3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
 | Time | Path         | Value |
@@ -621,7 +627,7 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 |  4   | root.sg.d2.s1| 250   |
 |  9   | root.sg.d2.s2| 600   |
 
-3. It is not supported to use "diable align" in LAST query. 
+4. It is not supported to use "diable align" in LAST query. 
 
 ```
 
