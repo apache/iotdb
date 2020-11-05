@@ -84,7 +84,7 @@ Take the following TsFile structure as an example: There are three Measurements 
 
 The existing data in the TsFile is as follows:
 
-<img width="849" alt="SI" src="https://user-images.githubusercontent.com/69114052/98134291-8f9c3080-1ef9-11eb-8b52-8cd81368c166.png">
+<img width="517" alt="SI " src="https://user-images.githubusercontent.com/69114052/98197835-99a64980-1f62-11eb-84af-8301b8a6aad5.png">
 
 The wide(default) table form is as follows:
 
