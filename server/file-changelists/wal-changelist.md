@@ -19,7 +19,7 @@
 
 -->
 
-# 0.10.x (version-2) -> 0.11.x (version-3)
+# 0.10.x -> 0.11.x
 
 Last updated on 2020-11-05 by Zesong Sun.
 
