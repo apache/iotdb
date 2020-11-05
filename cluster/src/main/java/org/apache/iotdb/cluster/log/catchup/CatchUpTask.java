@@ -104,8 +104,8 @@ public class CatchUpTask implements Runnable {
         List<Log> logsInDisk = getLogsInStableEntryManager(startIndex, endIndex);
         if (!logsInDisk.isEmpty()) {
           logger.info(
-              "{}, found {} logs in disk to catch up, startIndex={}, endIndex={}, memoryFirstIndex={}, getFirstLogIndex={}",
-              raftMember.getName(), logsInDisk.size(), startIndex, endIndex, localFirstIndex,
+              "{}, found {} logs in disk to catch up {} , startIndex={}, endIndex={}, memoryFirstIndex={}, getFirstLogIndex={}",
+              raftMember.getName(), logsInDisk.size(), node, startIndex, endIndex, localFirstIndex,
               logsInDisk.get(0).getCurrLogIndex());
           logs = logsInDisk;
           return true;
@@ -114,7 +114,7 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
-    peer.setMatchIndex(logs.get(index).getCurrLogIndex());
+    peer.setMatchIndex(logs.get(index).getCurrLogIndex() - 1);
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
     logs.subList(0, index).clear();
     if (logger.isDebugEnabled()) {
@@ -144,8 +144,8 @@ public class CatchUpTask implements Runnable {
   private List<Log> getLogsInStableEntryManager(long startIndex, long endIndex) {
     List<Log> logsInDisk = raftMember.getLogManager().getStableEntryManager()
         .getLogs(startIndex, endIndex);
-    logger.debug("{}, found {} logs in disk to catchup, startIndex={}, endIndex={}",
-        raftMember.getName(), logsInDisk.size(), startIndex, endIndex);
+    logger.debug("{}, found {} logs in disk to catchup {}, startIndex={}, endIndex={}",
+        raftMember.getName(), logsInDisk.size(), node, startIndex, endIndex);
     return logsInDisk;
   }
 

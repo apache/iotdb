@@ -88,7 +88,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         .isLogUpToDate(lastLogTerm, lastLogIdx) || !localMember.getLogManager()
         .matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
-      if (peer.getMatchIndex() > lastLogIdx) {
+      if (lastLogIdx == -1) {
         // the last log index becomes less than match index, maybe the follower has restarted, so
         // we need to find its match index again
         peer.setMatchIndex(-1);
