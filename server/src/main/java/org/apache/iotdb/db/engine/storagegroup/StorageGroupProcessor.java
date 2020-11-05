@@ -914,6 +914,10 @@ public class StorageGroupProcessor {
   }
 
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+      return;
+    }
     writeLock();
     try {
       fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
@@ -1089,6 +1093,12 @@ public class StorageGroupProcessor {
   public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+      return;
+    }
+    logger.info("Async close tsfile: {}",
+        tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);
       updateEndTimeMap(tsFileProcessor);
