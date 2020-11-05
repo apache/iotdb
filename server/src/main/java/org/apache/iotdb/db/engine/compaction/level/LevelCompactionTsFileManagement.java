@@ -57,7 +57,8 @@ import org.slf4j.LoggerFactory;
  */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
 
-  private static final Logger logger = LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(LevelCompactionTsFileManagement.class);
 
   private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
   private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
@@ -391,11 +392,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
         seqLevelNum);
+    // we have to copy all unseq file
     forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
-        unseqLevelNum);
+        unseqLevelNum + 1);
   }
 
   private void forkTsFileList(
