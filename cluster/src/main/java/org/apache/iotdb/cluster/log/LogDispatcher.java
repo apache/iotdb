@@ -31,10 +31,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -46,7 +44,6 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -64,6 +61,8 @@ public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   private RaftMember member;
+  private boolean useBatchInLogCatchUp = ClusterDescriptor.getInstance().getConfig()
+      .isUseBatchInLogCatchUp();
   private List<BlockingQueue<SendLogRequest>> nodeLogQueues =
       new ArrayList<>();
   private ExecutorService executorService;
@@ -220,7 +219,13 @@ public class LogDispatcher {
           }
 
           if (currBatch.size() > 1) {
-            sendLogs(currBatch);
+            if (useBatchInLogCatchUp) {
+              sendLogs(currBatch);
+            } else {
+              for (int i = 0; i < currBatch.size(); i++) {
+                sendLog(currBatch.get(i));
+              }
+            }
           } else {
             sendLog(currBatch.get(0));
           }
@@ -241,7 +246,7 @@ public class LogDispatcher {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       AsyncClient client = member.getSendLogAsyncClient(receiver);
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: Catching up {} with {} logs", member.getName(), receiver, logList.size());
+        logger.debug("{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
       }
       if (client != null) {
         client.appendEntries(request, handler);
@@ -306,7 +311,7 @@ public class LogDispatcher {
     private void sendLogs(List<SendLogRequest> currBatch) throws TException {
       int logIndex = 0;
       logger.info("send logs from index {} to {}", currBatch.get(0).getLog().getCurrLogIndex(),
-        currBatch.get(currBatch.size() - 1).getLog().getCurrLogIndex());
+          currBatch.get(currBatch.size() - 1).getLog().getCurrLogIndex());
       while (logIndex < currBatch.size()) {
         long logSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
         List<ByteBuffer> logList = new ArrayList<>();
@@ -319,7 +324,7 @@ public class LogDispatcher {
           }
           logSize -= curSize;
           Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
-            .calOperationCostTimeFromStart(currBatch.get(logIndex).getLog().getCreateTime());
+              .calOperationCostTimeFromStart(currBatch.get(logIndex).getLog().getCreateTime());
           logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
         }
 
@@ -331,7 +336,7 @@ public class LogDispatcher {
         }
         for (; prevIndex < logIndex; prevIndex++) {
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-            .calOperationCostTimeFromStart(currBatch.get(prevIndex).getLog().getCreateTime());
+              .calOperationCostTimeFromStart(currBatch.get(prevIndex).getLog().getCreateTime());
         }
       }
     }
