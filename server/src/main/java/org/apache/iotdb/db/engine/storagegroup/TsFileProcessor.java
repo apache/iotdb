@@ -972,8 +972,8 @@ public class TsFileProcessor {
     return sequence;
   }
 
-  public void checkAndMayFlush() {
-    storageGroupInfo.getStorageGroupProcessor().flushATsFileProcessor(this);
+  public void startAsyncFlush() {
+    storageGroupInfo.getStorageGroupProcessor().asyncFlushMemTableInTsFileProcessor(this);
   }
 
   public void setFlush() {
