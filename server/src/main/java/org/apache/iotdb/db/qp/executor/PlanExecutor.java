@@ -433,14 +433,14 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_COLUMN, false),
                 new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.TEXT);
+      Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
+      field1.setIntV(getPathsNum(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
