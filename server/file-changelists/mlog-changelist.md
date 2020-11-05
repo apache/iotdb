@@ -22,18 +22,5 @@
 # 0.10.x -> 0.11.x
 
 Last updated on 2020-11-5 by Haonan Hou
-## Delete
-| Latest Changes                     | Related Committers |
-| ---------------------------------- | -------------------|
-| None           | None
 
-## Add
-
-| Latest Changes                     | Related Committers |
-| ---------------------------------- | -------------------|
-| None           | None |
-
-## Update：
-| Latest Changes                     | Related Committers |
-| ---------------------------------- | ------------------ |
-| None           | None |
+No change.
