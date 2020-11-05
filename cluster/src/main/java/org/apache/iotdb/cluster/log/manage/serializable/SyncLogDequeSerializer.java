@@ -338,7 +338,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.debug("rename index file={} to file={}", currentLogIndexFile.getAbsoluteFile(),
           newCurrentLogIndexFile.getAbsoluteFile());
 
-      logIndexFileList.set(logIndexFileList.size() - 1,newCurrentLogIndexFile);
+      logIndexFileList.set(logIndexFileList.size() - 1, newCurrentLogIndexFile);
     }
 
     offsetOfTheCurrentLogDataOutputStream = 0;
@@ -835,6 +835,58 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
+  @Override
+  public void clearAllLogs(long commitIndex) {
+    lock.writeLock().lock();
+    try {
+      // 1. delete
+      close();
+      for (int i = 0; i < logDataFileList.size(); i++) {
+        deleteLogDataAndIndexFile(i);
+      }
+      deleteMetaFile();
+
+      logDataFileList.clear();
+      logIndexFileList.clear();
+
+      // 2. init
+      if (!logIndexOffsetList.isEmpty()) {
+        this.firstLogIndex = Math
+            .max(commitIndex + 1, firstLogIndex + logIndexOffsetList.size());
+      } else {
+        this.firstLogIndex = commitIndex + 1;
+      }
+      this.logIndexOffsetList.clear();
+      recoverMetaFile();
+      meta = new LogManagerMeta();
+      createNewLogFile(logDir, firstLogIndex);
+      logger.info("{}, clean all logs success, the new firstLogIndex={}", this, firstLogIndex);
+    } catch (IOException e) {
+      logger.error("clear all logs failed,", e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  private void deleteMetaFile() {
+    lock.writeLock().lock();
+    try {
+      File tmpMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+      if (tmpMetaFile.exists()) {
+        Files.delete(tmpMetaFile.toPath());
+      }
+
+      File localMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
+      if (localMetaFile.exists()) {
+        Files.delete(localMetaFile.toPath());
+      }
+    } catch (IOException e) {
+      logger.error("{}: delete meta log files failed", this, e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   /**
    * get file version from file The file name structure is as follows：
    * {startLogIndex}-{endLogIndex}-{version}-data)
@@ -971,7 +1023,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     long maxLogIndex = firstLogIndex + logIndexOffsetList.size();
     if (logIndex >= maxLogIndex) {
-      logger.error("given log index={} exceed the max log index={}", logIndex, maxLogIndex);
+      logger.error("given log index={} exceed the max log index={}, firstLogIndex={}", logIndex,
+          maxLogIndex, firstLogIndex);
       return -1;
     }
 
