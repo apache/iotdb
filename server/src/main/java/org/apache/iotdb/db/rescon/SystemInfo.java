@@ -87,7 +87,9 @@ public class SystemInfo {
         forceFlush();
       }
       if (totalSgMemCost < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        logger.debug("Some sg memory released, set system to normal status.");
+        if (rejected) {
+          logger.info("Some sg memory released, set system to normal status.");
+        }
         logCurrentTotalSGMemory();
         rejected = false;
       } else {
