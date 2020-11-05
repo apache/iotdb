@@ -332,7 +332,7 @@ public class IoTDBConfig {
    * Works when the compaction_strategy is LEVEL_COMPACTION.
    * The max num of unseq level.
    */
-  private int unseqLevelNum = 2;
+  private int unseqLevelNum = 1;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
