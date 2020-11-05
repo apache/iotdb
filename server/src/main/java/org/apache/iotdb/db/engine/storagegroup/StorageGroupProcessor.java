@@ -913,7 +913,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void flushATsFileProcessor(TsFileProcessor tsFileProcessor) {
+  public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
     writeLock();
     try {
       fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
