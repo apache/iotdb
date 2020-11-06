@@ -997,22 +997,30 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (endIndex - startIndex > maxNumberOfLogsPerFetchOnDisk) {
       newEndIndex = startIndex + maxNumberOfLogsPerFetchOnDisk;
     }
-    logger.debug("intend to get logs between[{}, {}], actually get logs between[{},{}]", startIndex,
-        endIndex, startIndex, newEndIndex);
+    logger
+        .debug("intend to get logs between[{}, {}], actually get logs between[{},{}]", startIndex,
+            endIndex, startIndex, newEndIndex);
 
-    List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
-        startIndex, newEndIndex);
-    if (logDataFileAndOffsetList.isEmpty()) {
-      return Collections.emptyList();
+    // maybe the logs will be delete during checkDeletePersistRaftLog or clearAllLogs
+    lock.readLock().lock();
+    try {
+      List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
+          startIndex, newEndIndex);
+      if (logDataFileAndOffsetList.isEmpty()) {
+        return Collections.emptyList();
+      }
+
+      List<Log> result = new ArrayList<>();
+      for (Pair<File, Pair<Long, Long>> pair : logDataFileAndOffsetList) {
+        result.addAll(getLogsFromOneLogDataFile(pair.left, pair.right));
+      }
+
+      return result;
+    } finally {
+      lock.readLock().unlock();
     }
-
-    List<Log> result = new ArrayList<>();
-    for (Pair<File, Pair<Long, Long>> pair : logDataFileAndOffsetList) {
-      result.addAll(getLogsFromOneLogDataFile(pair.left, pair.right));
-    }
-
-    return result;
   }
+
 
   /**
    * @param logIndex the log's index
@@ -1021,6 +1029,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public long getOffsetAccordingToLogIndex(long logIndex) {
     long offset = -1;
 
+    // in case of changed during checkDeletePersistRaftLog, so this needs one read lock
     lock.readLock().lock();
     try {
       long maxLogIndex = firstLogIndex + logIndexOffsetList.size();
@@ -1058,9 +1067,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     logger.debug(
         "start to read the log index file={} for log index={}, file size={}",
         file.getAbsoluteFile(), logIndex, file.length());
-    try (FileInputStream inputStream = new FileInputStream(file)) {
+    try (FileInputStream fileInputStream = new FileInputStream(file);
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       long bytesNeedToSkip = (logIndex - startAndEndIndex.left) * (Long.BYTES);
-      long bytesActuallySkip = inputStream.skip(bytesNeedToSkip);
+      long bytesActuallySkip = bufferedInputStream.skip(bytesNeedToSkip);
       logger.debug("skip {} bytes when read file={}", bytesActuallySkip,
           file.getAbsoluteFile());
       if (bytesNeedToSkip != bytesActuallySkip) {
@@ -1068,7 +1078,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             file.getAbsoluteFile(), bytesNeedToSkip, bytesActuallySkip);
         return -1;
       }
-      offset = ReadWriteIOUtils.readLong(inputStream);
+      offset = ReadWriteIOUtils.readLong(bufferedInputStream);
       return offset;
     } catch (IOException e) {
       logger.error("can not read the log index file={}", file.getAbsoluteFile(), e);
