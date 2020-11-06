@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.time.ZoneId;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -113,5 +115,29 @@ public abstract class AbstractCsvTool {
     System.out.printf("Input time format %s is not supported, "
         + "please input like yyyy-MM-dd\\ HH:mm:ss.SSS or yyyy-MM-dd'T'HH:mm:ss.SSS%n", timeFormat);
     return false;
+  }
+
+  protected static Options createNewOptions() {
+    Options options = new Options();
+
+    Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required().argName(HOST_NAME)
+        .hasArg()
+        .desc("Host Name (required)").build();
+    options.addOption(opHost);
+
+    Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required().argName(PORT_NAME)
+        .hasArg()
+        .desc("Port (required)").build();
+    options.addOption(opPort);
+
+    Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME).required()
+        .argName(USERNAME_NAME)
+        .hasArg().desc("Username (required)").build();
+    options.addOption(opUsername);
+
+    Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true)
+        .argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
+    options.addOption(opPassword);
+    return options;
   }
 }

@@ -61,24 +61,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @return object Options
    */
   private static Options createOptions() {
-    Options options = new Options();
-
-    Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required()
-        .argName(HOST_NAME).hasArg().desc("Host Name (required)").build();
-    options.addOption(opHost);
-
-    Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required()
-        .argName(PORT_NAME).hasArg().desc("Port (required)").build();
-    options.addOption(opPort);
-
-    Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME)
-        .required().argName(USERNAME_NAME)
-        .hasArg().desc("Username (required)").build();
-    options.addOption(opUsername);
-
-    Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME)
-        .optionalArg(true).argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
-    options.addOption(opPassword);
+    Options options = createNewOptions();
 
     Option opFile = Option.builder(FILE_ARGS).required().argName(FILE_NAME).hasArg().desc(
         "If input a file path, load a csv file, "
