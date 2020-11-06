@@ -1021,23 +1021,27 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public long getOffsetAccordingToLogIndex(long logIndex) {
     long offset = -1;
 
-    long maxLogIndex = firstLogIndex + logIndexOffsetList.size();
-    if (logIndex >= maxLogIndex) {
-      logger.error("given log index={} exceed the max log index={}, firstLogIndex={}", logIndex,
-          maxLogIndex, firstLogIndex);
-      return -1;
-    }
-
-    // 1. first find in memory
-    if (logIndex >= firstLogIndex) {
-      int arrayIndex = (int) (logIndex - firstLogIndex);
-      if (arrayIndex < logIndexOffsetList.size()) {
-        offset = logIndexOffsetList.get(arrayIndex);
-        logger.debug(
-            "found the offset in memory, logIndex={}, firstLogIndex={}, logIndexOffsetList size={}, offset={}",
-            logIndex, firstLogIndex, logIndexOffsetList.size(), offset);
-        return offset;
+    lock.readLock().lock();
+    try {
+      long maxLogIndex = firstLogIndex + logIndexOffsetList.size();
+      if (logIndex >= maxLogIndex) {
+        logger.error("given log index={} exceed the max log index={}, firstLogIndex={}", logIndex,
+            maxLogIndex, firstLogIndex);
+        return -1;
       }
+      // 1. first find in memory
+      if (logIndex >= firstLogIndex) {
+        int arrayIndex = (int) (logIndex - firstLogIndex);
+        if (arrayIndex < logIndexOffsetList.size()) {
+          offset = logIndexOffsetList.get(arrayIndex);
+          logger.debug(
+              "found the offset in memory, logIndex={}, firstLogIndex={}, logIndexOffsetList size={}, offset={}",
+              logIndex, firstLogIndex, logIndexOffsetList.size(), offset);
+          return offset;
+        }
+      }
+    } finally {
+      lock.readLock().unlock();
     }
 
     logger.debug(
