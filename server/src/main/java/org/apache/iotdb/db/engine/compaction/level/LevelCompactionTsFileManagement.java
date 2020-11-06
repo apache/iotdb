@@ -68,6 +68,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final int unseqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
       .getSeqFileNumInEachLevel();
 
+  private final boolean enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
+      .isEnableUnseqCompaction();
   private final boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig()
       .isForceFullMerge();
   // First map is partition list; Second list is level list; Third list is file list in level;
@@ -424,7 +426,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   protected void merge(long timePartition) {
     merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
         seqFileNumInEachLevel);
-    if (unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
+    if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(isForceFullMerge, getTsFileList(true), forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
@@ -444,7 +446,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       for (int i = 0; i < currMaxLevel - 1; i++) {
         if (currMaxFileNumInEachLevel <= mergeResources.get(i).size()) {
           //level is numbered from 0
-          if (!sequence && i == currMaxLevel - 2) {
+          if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to seq file
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {
