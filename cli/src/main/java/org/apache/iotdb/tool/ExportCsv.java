@@ -78,10 +78,10 @@ public class ExportCsv extends AbstractCsvTool {
   public static void main(String[] args) throws IOException {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
-    hf.setOptionComparator(null); // avoid reordering
-    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
+    hf.setOptionComparator(null); // avoid reordering
+    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");

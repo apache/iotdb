@@ -328,7 +328,7 @@ public class ImportCsv extends AbstractCsvTool {
           i = endIndex + 1;
           startIndex = endIndex + 2;
         } else {
-          throw new IllegalArgumentException("Illegal csv line: " + path);
+          throw new IllegalArgumentException("Illegal csv line, must have a pair of double quotes, " + path);
         }
       } else if (path.charAt(i) == '\'') {
         int endIndex = path.indexOf('\'', i + 1);
@@ -341,7 +341,7 @@ public class ImportCsv extends AbstractCsvTool {
           i = endIndex + 1;
           startIndex = endIndex + 2;
         } else {
-          throw new IllegalArgumentException("Illegal csv line: " + path);
+          throw new IllegalArgumentException("Illegal csv line, must have a pair of single quotes, " + path);
         }
       }
     }
