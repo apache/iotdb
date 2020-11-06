@@ -147,7 +147,13 @@ public class SystemInfo {
    * Be Careful!! This method can only be called by flush thread!
    */
   private void forceAsyncFlush() {
+    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
+      return;
+    }
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
+    if (logger.isDebugEnabled()) {
+      logger.debug("[mem control] get {} tsp to flush", processors.size());
+    }
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
         processor.startAsyncFlush();
