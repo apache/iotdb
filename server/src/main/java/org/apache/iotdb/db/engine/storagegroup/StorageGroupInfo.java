@@ -33,7 +33,8 @@ public class StorageGroupInfo {
   private StorageGroupProcessor storageGroupProcessor;
 
   /**
-   * The total Storage group memory cost
+   * The total Storage group memory cost,
+   * including unsealed TsFileResource, ChunkMetadata, WAL, primitive arrays and TEXT values
    */
   private AtomicLong memoryCost;
 
@@ -76,7 +77,7 @@ public class StorageGroupInfo {
     memoryCost.getAndAdd(-cost);
   }
 
-  public long getSgMemCost() {
+  public long getMemCost() {
     return memoryCost.get();
   }
 
