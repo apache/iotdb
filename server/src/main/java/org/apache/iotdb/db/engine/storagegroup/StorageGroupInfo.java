@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,12 +44,12 @@ public class StorageGroupInfo {
   private long storageGroupSizeReportThreshold = 
       IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
 
-  private long lastReportedSize = 0L;
+  private AtomicLong lastReportedSize = new AtomicLong();
 
   /**
    * A set of all unclosed TsFileProcessors in this SG
    */
-  private Set<TsFileProcessor> reportedTsps = new HashSet<>();
+  private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
   public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupProcessor = storageGroupProcessor;
@@ -81,16 +81,16 @@ public class StorageGroupInfo {
     return memoryCost.get();
   }
 
-  public Set<TsFileProcessor> getAllReportedTsp() {
+  public List<TsFileProcessor> getAllReportedTsp() {
     return reportedTsps;
   }
 
   public boolean needToReportToSystem() {
-    return memoryCost.get() - lastReportedSize > storageGroupSizeReportThreshold;
+    return memoryCost.get() - lastReportedSize.get() > storageGroupSizeReportThreshold;
   }
 
   public void setLastReportedSize(long size) {
-    lastReportedSize = size;
+    lastReportedSize.set(size);
   }
 
   /**

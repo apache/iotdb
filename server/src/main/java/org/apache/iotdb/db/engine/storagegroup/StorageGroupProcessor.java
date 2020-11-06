@@ -829,6 +829,10 @@ public class StorageGroupProcessor {
           .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+      return true;
+    }
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
@@ -914,13 +918,12 @@ public class StorageGroupProcessor {
   }
 
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
-        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
-      return;
-    }
     writeLock();
     try {
-      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) && 
+          !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
     } finally {
       writeUnlock();
     }
