@@ -602,6 +602,8 @@ public class TsFileProcessor {
       if (workMemTable == null) {
         return;
       }
+      logger.info("Async flush a memtable to tsfile: {}",
+          tsFileResource.getTsFile().getAbsolutePath());
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error("{}: {} add a memtable into flushing list failed", storageGroupName,
