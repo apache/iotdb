@@ -89,10 +89,10 @@ public class LastQueryExecutor {
       if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).getTsAlias() != null) {
+        if (selectedSeries.get(i).isTsAliasExists()) {
           pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
         } else {
-          if (selectedSeries.get(i).getMeasurementAlias() != null) {
+          if (selectedSeries.get(i).isMeasurementAliasExists()) {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
           } else {
             pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
