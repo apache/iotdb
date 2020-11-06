@@ -235,8 +235,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!compatible) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.INCOMPATIBLE_VERSION,
             "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-            CURRENT_RPC_VERSION);
+        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
         resp.setSessionId(sessionId);
         return resp;
       }
@@ -247,8 +246,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
     } else {
-      tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
-      tsStatus.setMessage(loginMessage);
+      tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
+          loginMessage != null ? loginMessage : "Authentication failed");
     }
     auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
