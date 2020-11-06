@@ -421,6 +421,8 @@ public class TsFileProcessor {
       return false;
     }
     if (shouldFlush) {
+      logger.info("The memtable size {} of tsfile {} reaches the mem control threshold",
+          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -493,15 +495,15 @@ public class TsFileProcessor {
     }
     try {
 
-      if (logger.isDebugEnabled()) {
+      if (logger.isInfoEnabled()) {
         if (workMemTable != null) {
-          logger.debug(
+          logger.info(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
               workMemTable.memSize(),
               tsFileResource.getTsFileSize());
         } else {
-          logger.debug("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
+          logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
               tsFileResource.getTsFileSize());
         }
@@ -687,7 +689,7 @@ public class TsFileProcessor {
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
       }
       if (logger.isDebugEnabled()) {
-        logger.debug("[mem_control] {}: {} flush finished, remove a memtable from flushing list, "
+        logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
                 + "flushing memtable list size: {}", storageGroupName,
             tsFileResource.getTsFile().getName(), flushingMemTables.size());
       }

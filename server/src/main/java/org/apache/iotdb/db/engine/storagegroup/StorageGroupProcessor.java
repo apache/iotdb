@@ -829,10 +829,6 @@ public class StorageGroupProcessor {
           .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
-        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
-      return true;
-    }
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
