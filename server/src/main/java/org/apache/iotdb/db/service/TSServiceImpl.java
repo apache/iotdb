@@ -247,7 +247,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
-          loginMessage != null ? loginMessage : "Authentication failed");
+          loginMessage != null ? loginMessage : "Authentication failed.");
     }
     auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
