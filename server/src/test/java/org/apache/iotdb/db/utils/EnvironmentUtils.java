@@ -49,6 +49,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +94,7 @@ public class EnvironmentUtils {
           transport.open();
           logger.error("stop daemon failed. 6667 can be connected now.");
           transport.close();
+          Assert.fail("stop daemon failed. 6667 can be connected now.");
         } catch (TTransportException e) {
         }
       }
@@ -103,6 +105,7 @@ public class EnvironmentUtils {
           transport.open();
           logger.error("stop Sync daemon failed. 5555 can be connected now.");
           transport.close();
+          Assert.fail("stop daemon failed. 6667 can be connected now.");
         } catch (TTransportException e) {
         }
       }
@@ -113,6 +116,7 @@ public class EnvironmentUtils {
         JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
         logger.error("stop JMX failed. 31999 can be connected now.");
         jmxConnector.close();
+        Assert.fail("stop daemon failed. 6667 can be connected now.");
       } catch (IOException e) {
         //do nothing
       }
@@ -121,6 +125,7 @@ public class EnvironmentUtils {
       try {
         socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
         logger.error("stop MetricService failed. 8181 can be connected now.");
+        Assert.fail("stop daemon failed. 6667 can be connected now.");
       } catch (Exception e) {
         //do nothing
       } finally {
