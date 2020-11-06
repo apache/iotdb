@@ -1745,6 +1745,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean execRet;
     try {
+      plan.checkIntegrity();
       execRet = executeNonQuery(plan);
     } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));

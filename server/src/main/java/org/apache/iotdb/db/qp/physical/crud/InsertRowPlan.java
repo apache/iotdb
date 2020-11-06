@@ -447,7 +447,8 @@ public class InsertRowPlan extends InsertPlan {
 
   @Override
   public String toString() {
-    return "deviceId: " + deviceId + ", time: " + time;
+    return "deviceId: " + deviceId + ", time: " + time + ", measurements: " + Arrays
+        .toString(measurements) + ", values: " + Arrays.toString(values);
   }
 
   public TimeValuePair composeTimeValuePair(int measurementIndex) {
@@ -456,7 +457,8 @@ public class InsertRowPlan extends InsertPlan {
     }
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
-        TsPrimitiveType.getByType(measurementMNodes[measurementIndex].getSchema().getType(), value));
+        TsPrimitiveType
+            .getByType(measurementMNodes[measurementIndex].getSchema().getType(), value));
   }
 
   @Override
@@ -484,4 +486,20 @@ public class InsertRowPlan extends InsertPlan {
     failedValues = null;
   }
 
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    super.checkIntegrity();
+    if (values == null) {
+      throw new QueryProcessException("Values are null");
+    }
+    if (measurements.length != values.length) {
+      throw new QueryProcessException(String.format("Measurements length [%d] does not match "
+          + "values length [%d]", measurements.length, values.length));
+    }
+    for (Object value : values) {
+      if (value == null) {
+        throw new QueryProcessException("Values contain null: " + Arrays.toString(values));
+      }
+    }
+  }
 }
