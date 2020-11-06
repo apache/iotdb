@@ -30,7 +30,9 @@ public class TsFileProcessorInfo {
    */
   private StorageGroupInfo storageGroupInfo;
 
-  // unsealed TsFileResource, ChunkMetadata, WAL
+  /**
+   * memory occupation of unsealed TsFileResource, ChunkMetadata, WAL
+   */
   private long memCost;
 
 

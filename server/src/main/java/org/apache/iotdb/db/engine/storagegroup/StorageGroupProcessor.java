@@ -914,13 +914,12 @@ public class StorageGroupProcessor {
   }
 
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
-        closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
-      return;
-    }
     writeLock();
     try {
-      fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) && 
+          !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
+        fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+      }
     } finally {
       writeUnlock();
     }
