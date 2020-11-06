@@ -58,6 +58,7 @@ public class RegisterManager {
     for (IService service : iServices) {
       try {
         service.waitAndStop(10000);
+        logger.info(service.getID() + "deregistered");
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }
