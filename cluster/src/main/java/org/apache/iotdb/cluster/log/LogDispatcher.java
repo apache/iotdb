@@ -246,7 +246,8 @@ public class LogDispatcher {
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       AsyncClient client = member.getSendLogAsyncClient(receiver);
       if (logger.isDebugEnabled()) {
-        logger.debug("{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
+        logger.debug("{}: append entries {} with {} logs", member.getName(), receiver,
+            logList.size());
       }
       if (client != null) {
         client.appendEntries(request, handler);
@@ -310,7 +311,7 @@ public class LogDispatcher {
 
     private void sendLogs(List<SendLogRequest> currBatch) throws TException {
       int logIndex = 0;
-      logger.info("send logs from index {} to {}", currBatch.get(0).getLog().getCurrLogIndex(),
+      logger.debug("send logs from index {} to {}", currBatch.get(0).getLog().getCurrLogIndex(),
           currBatch.get(currBatch.size() - 1).getLog().getCurrLogIndex());
       while (logIndex < currBatch.size()) {
         long logSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();

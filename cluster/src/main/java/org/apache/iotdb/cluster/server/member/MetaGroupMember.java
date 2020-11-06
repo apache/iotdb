@@ -1439,6 +1439,7 @@ public class MetaGroupMember extends RaftMember {
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+        logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
           return executeNonQueryPlan(plan);
@@ -1447,7 +1448,7 @@ public class MetaGroupMember extends RaftMember {
               String.format("Failed to set storage group or create timeseries, because %s", e));
         }
       }
-      logger.error("{}: Cannot found storage groups for {}", name, plan);
+      logger.error("{}: Cannot find storage groups for {}", name, plan);
       return StatusUtils.NO_STORAGE_GROUP;
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);

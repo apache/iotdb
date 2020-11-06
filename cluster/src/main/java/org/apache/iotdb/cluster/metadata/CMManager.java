@@ -449,6 +449,7 @@ public class CMManager extends MManager {
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
 
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
   }
@@ -486,7 +487,8 @@ public class CMManager extends MManager {
             seriesPath, e.getMessage());
         return false;
       }
-      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
+          result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         logger.error("{} failed to execute create timeseries {}", metaGroupMember.getThisNode(),
             seriesPath);
         return false;

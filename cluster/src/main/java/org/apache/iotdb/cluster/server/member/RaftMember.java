@@ -824,9 +824,9 @@ public abstract class RaftMember {
 
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
-        long localCommitId = logManager.getCommitLogIndex();
-        logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
-        if (leaderCommitId <= localCommitId) {
+        long localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
+        logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, leaderCommitId);
+        if (leaderCommitId <= localAppliedId) {
           // this node has caught up
           if (logger.isDebugEnabled()) {
             waitedTime = System.currentTimeMillis() - startTime;
