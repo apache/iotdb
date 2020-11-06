@@ -162,5 +162,4 @@ public class Cli extends AbstractCli {
           .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
     }
   }
-
 }
