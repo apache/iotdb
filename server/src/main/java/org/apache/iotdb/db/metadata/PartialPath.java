@@ -40,9 +40,9 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   private String[] nodes;
   // alias of measurement
-  private String measurementAlias = null;
+  private String measurementAlias = "";
   // alias of time series used in SELECT AS
-  private String tsAlias = null;
+  private String tsAlias = "";
 
   /**
    * Construct the PartialPath using a String, will split the given String into String[]
@@ -227,12 +227,20 @@ public class PartialPath extends Path implements Comparable<Path> {
     this.measurementAlias = measurementAlias;
   }
 
+  public boolean isMeasurementAliasExists(){
+    return measurementAlias != null && !measurementAlias.isEmpty();
+  }
+
   public String getTsAlias() {
     return tsAlias;
   }
 
   public void setTsAlias(String tsAlias) {
     this.tsAlias = tsAlias;
+  }
+
+  public boolean isTsAliasExists() {
+    return tsAlias != null && !tsAlias.isEmpty();
   }
 
   @Override

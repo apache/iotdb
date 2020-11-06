@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -188,9 +187,9 @@ public class MTreeTest {
           .getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"), 0, 0).left;
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
-      assertNull(result2.get(0).getMeasurementAlias());
+      assertFalse(result2.get(0).isMeasurementAliasExists());
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
-      assertNull(result2.get(1).getMeasurementAlias());
+      assertFalse(result2.get(1).isMeasurementAliasExists());
 
       result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"), 0, 0).left;
       assertEquals(2, result2.size());
