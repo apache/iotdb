@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.rescon;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -37,10 +39,10 @@ public class SystemInfo {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(SystemInfo.class);
 
-  private long totalSgMemCost;
+  private AtomicLong totalSgMemCost = new AtomicLong();
   private volatile boolean rejected = false;
 
-  private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
+  private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new ConcurrentHashMap<>();
 
   private static final double FLUSH_PROPORTION = config.getFlushProportion();
   private static final double REJECT_PROPORTION = config.getRejectProportion();
@@ -51,20 +53,20 @@ public class SystemInfo {
    *
    * @param storageGroupInfo storage group
    */
-  public synchronized void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
+  public void reportStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
     long delta = storageGroupInfo.getSgMemCost() -
         reportedSgMemCostMap.getOrDefault(storageGroupInfo, 0L);
-    totalSgMemCost += delta;
+    totalSgMemCost.addAndGet(delta);
     logger.debug("Report Storage Group Status to the system. "
           + "After adding {}, current sg mem cost is {}.", delta, totalSgMemCost);
     reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
     storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
-    if (totalSgMemCost >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
+    if (totalSgMemCost.get() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
       logger.debug("The total storage group mem costs are too large, call for flushing. "
           + "Current sg cost is {}", totalSgMemCost);
       flush();
     }
-    if (totalSgMemCost >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+    if (totalSgMemCost.get() >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
       logger.info("Change system to reject status...");
       rejected = true;
     }
@@ -72,32 +74,44 @@ public class SystemInfo {
 
   /**
    * Report resetting the mem cost of sg to system.
-   * It will be invoked after flushing, closing and failed to insert
+   * It will be called after flushing, closing and failed to insert
    *
    * @param storageGroupInfo storage group
    */
-  public synchronized void resetStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
+  public void resetStorageGroupStatus(StorageGroupInfo storageGroupInfo,
+      boolean shouldInvokeFlush) {
     if (reportedSgMemCostMap.containsKey(storageGroupInfo)) {
-      this.totalSgMemCost -= reportedSgMemCostMap.get(storageGroupInfo)
-          - storageGroupInfo.getSgMemCost();
+      this.totalSgMemCost.addAndGet(storageGroupInfo.getSgMemCost() -
+          reportedSgMemCostMap.get(storageGroupInfo));
       storageGroupInfo.setLastReportedSize(storageGroupInfo.getSgMemCost());
-      if (totalSgMemCost > config.getAllocateMemoryForWrite() * FLUSH_PROPORTION) {
-        logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
-        logCurrentTotalSGMemory();
-        forceFlush();
-      }
-      if (totalSgMemCost < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
-        if (rejected) {
-          logger.info("Some sg memory released, set system to normal status.");
-        }
-        logCurrentTotalSGMemory();
-        rejected = false;
-      } else {
-        logger.warn("Some sg memory released, but system is still in reject status.");
-        logCurrentTotalSGMemory();
-        rejected = true;
-      }
       reportedSgMemCostMap.put(storageGroupInfo, storageGroupInfo.getSgMemCost());
+      if (shouldInvokeFlush) {
+        checkSystemToInvokeFlush();
+      }
+    }
+  }
+
+  private void checkSystemToInvokeFlush() {
+    if (totalSgMemCost.get() >= config.getAllocateMemoryForWrite() * FLUSH_PROPORTION &&
+        totalSgMemCost.get() < config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      logger.debug("Some sg memory released but still exceeding flush proportion, call flush.");
+      if (rejected) {
+        logger.info("Some sg memory released, set system to normal status.");
+      }
+      logCurrentTotalSGMemory();
+      rejected = false;
+      forceAsyncFlush();
+    }
+    else if (totalSgMemCost.get() >= config.getAllocateMemoryForWrite() * REJECT_PROPORTION) {
+      logger.warn("Some sg memory released, but system is still in reject status.");
+      logCurrentTotalSGMemory();
+      rejected = true;
+      forceAsyncFlush();
+    } 
+    else {
+      logger.debug("Some sg memory released, system is in normal status.");
+      logCurrentTotalSGMemory();
+      rejected = false;
     }
   }
 
@@ -127,18 +141,14 @@ public class SystemInfo {
     }
   }
 
-  public void forceFlush() {
-    if (FlushManager.getInstance().getNumberOfWorkingTasks() > 0) {
-      return;
-    }
+  /**
+   * Be Careful!! This method can only be called by flush thread!
+   */
+  public void forceAsyncFlush() {
     List<TsFileProcessor> processors = getTsFileProcessorsToFlush();
     for (TsFileProcessor processor : processors) {
       if (processor != null) {
-        if (processor.shouldClose()) {
-          processor.startClose();
-        } else {
-          processor.asyncFlush();
-        }
+        processor.startAsyncFlush();
       }
     }
   }
@@ -151,7 +161,7 @@ public class SystemInfo {
     }
     List<TsFileProcessor> processors = new ArrayList<>();
     long memCost = 0;
-    while (totalSgMemCost - memCost > config.getAllocateMemoryForWrite() *
+    while (totalSgMemCost.get() - memCost > config.getAllocateMemoryForWrite() *
         FLUSH_PROPORTION / 2) {
       if (tsps.isEmpty() || tsps.peek().getWorkMemTableRamCost() == 0) {
         return processors;
@@ -169,7 +179,7 @@ public class SystemInfo {
 
   public void close() {
     reportedSgMemCostMap.clear();
-    totalSgMemCost = 0;
+    totalSgMemCost.set(0);
     rejected = false;
   }
 
