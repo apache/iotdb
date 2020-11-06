@@ -134,6 +134,36 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  public void testInsertWrongPathByStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1..d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      logger.error("" ,e);
+    }
+    
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    Assert.assertFalse(dataSet.hasNext());
+
+    session.close();
+  }
+
+  @Test
   public void testInsertByObjAndNotInferType()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
