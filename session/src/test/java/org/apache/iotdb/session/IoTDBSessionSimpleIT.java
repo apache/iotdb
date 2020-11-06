@@ -285,4 +285,30 @@ public class IoTDBSessionSimpleIT {
     session.deleteStorageGroup(storageGroup);
     session.close();
   }
+
+  @Test
+  public void createWrongTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    try {
+      session.createTimeseries("root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("",e);
+    }
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertFalse(dataSet.hasNext());
+
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
 }
