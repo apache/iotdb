@@ -73,7 +73,7 @@ public class EnvironmentUtils {
 
   private static IoTDB daemon;
 
-  public static boolean examinePorts = false;
+  public static boolean examinePorts = Boolean.valueOf(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     logger.warn("EnvironmentUtil cleanEnv...");
