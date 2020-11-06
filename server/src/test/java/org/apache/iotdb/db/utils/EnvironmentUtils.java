@@ -24,7 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.stream.IntStream;
+import java.util.concurrent.TimeUnit;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -50,7 +50,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,7 +92,7 @@ public class EnvironmentUtils {
       if (!closed) {
         //sleep 10 seconds
         try {
-          Thread.sleep(10_000);
+          TimeUnit.SECONDS.sleep(10);
         } catch (InterruptedException e) {
           //do nothing
         }
