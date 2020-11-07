@@ -46,7 +46,11 @@ public class MetaUtils {
     int startIndex = 0;
     for (int i = 0; i < path.length(); i++) {
       if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
-        nodes.add(path.substring(startIndex, i));
+        String node = path.substring(startIndex, i);
+        if(node.isEmpty()) {
+          throw new IllegalPathException("Node can't be empty");
+        }
+        nodes.add(node);
         startIndex = i + 1;
       } else if (path.charAt(i) == '"') {
         int endIndex = path.indexOf('"', i + 1);
@@ -55,7 +59,11 @@ public class MetaUtils {
           endIndex = path.indexOf('"', endIndex + 1);
         }
         if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          nodes.add(path.substring(startIndex, endIndex + 1));
+          String node = path.substring(startIndex, endIndex + 1);
+          if(node.isEmpty()) {
+            throw new IllegalPathException("Node can't be empty");
+          }
+          nodes.add(node);
           i = endIndex + 1;
           startIndex = endIndex + 2;
         } else {
@@ -66,7 +74,11 @@ public class MetaUtils {
       }
     }
     if (startIndex <= path.length() - 1) {
-      nodes.add(path.substring(startIndex));
+      String node = path.substring(startIndex);
+      if(node.isEmpty()) {
+        throw new IllegalPathException("Node can't be empty");
+      }
+      nodes.add(node);
     }
     return nodes.toArray(new String[0]);
   }
