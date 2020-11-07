@@ -421,6 +421,8 @@ public class TsFileProcessor {
       return false;
     }
     if (shouldFlush) {
+      logger.info("The memtable size {} of tsfile {} reaches the mem control threshold",
+          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -676,8 +678,13 @@ public class TsFileProcessor {
       }
       memTable.release();
       if (enableMemControl) {
-        // For text type data, reset the mem cost in tsFileProcessorInfo
+        // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+        if (logger.isDebugEnabled()) {
+          logger.debug("[mem control] {}: {} flush finished, try to reset system memcost, "
+              + "flushing memtable list size: {}", storageGroupName,
+          tsFileResource.getTsFile().getName(), flushingMemTables.size());
+        }
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
       }
