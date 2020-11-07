@@ -814,7 +814,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     forceFlushLogBuffer();
     try {
       closeCurrentFile(meta.getCommitLogIndex());
-      serializeMeta(meta);
       if (persistLogDeleteExecutorService != null) {
         persistLogDeleteExecutorService.shutdownNow();
         persistLogDeleteLogFuture.cancel(true);
@@ -840,7 +839,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     lock.writeLock().lock();
     try {
       // 1. delete
-      close();
+      forceFlushLogBuffer();
+      closeCurrentFile(meta.getCommitLogIndex());
       for (int i = 0; i < logDataFileList.size(); i++) {
         deleteLogDataAndIndexFile(i);
       }
@@ -912,20 +912,31 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
 
     // 2. check the persist log file number
-    while (logDataFileList.size() > maxNumberOfPersistRaftLogFiles) {
-      deleteLogDataAndIndexFile(0);
+    lock.writeLock().lock();
+    try {
+      while (logDataFileList.size() > maxNumberOfPersistRaftLogFiles) {
+        deleteLogDataAndIndexFile(0);
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
 
     // 3. check the persist log index number
-    while (logDataFileList.size() > 1) {
-      File firstFile = logDataFileList.get(0);
-      String[] splits = firstFile.getName().split(FILE_NAME_SEPARATOR);
-      if (meta.getCommitLogIndex() - Long.parseLong(splits[1]) > maxPersistRaftLogNumberOnDisk) {
-        deleteLogDataAndIndexFile(0);
-      } else {
-        return;
+    lock.writeLock().lock();
+    try {
+      while (logDataFileList.size() > 1) {
+        File firstFile = logDataFileList.get(0);
+        String[] splits = firstFile.getName().split(FILE_NAME_SEPARATOR);
+        if (meta.getCommitLogIndex() - Long.parseLong(splits[1]) > maxPersistRaftLogNumberOnDisk) {
+          deleteLogDataAndIndexFile(0);
+        } else {
+          return;
+        }
       }
+    } finally {
+      lock.writeLock().unlock();
     }
+
   }
 
   private void deleteLogDataAndIndexFile(int index) {
@@ -1001,8 +1012,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         .debug("intend to get logs between[{}, {}], actually get logs between[{},{}]", startIndex,
             endIndex, startIndex, newEndIndex);
 
-    // maybe the logs will be delete during checkDeletePersistRaftLog or clearAllLogs
-    lock.readLock().lock();
+    // maybe the logs will be delete during checkDeletePersistRaftLog or clearAllLogs,
+    // use writeLock for two reasons:
+    // 1.if the log file to read is the last log file, we need to get write lock to flush logBuffer,
+    // 2.avoid log files be deleted
+    lock.writeLock().lock();
     try {
       List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
           startIndex, newEndIndex);
@@ -1017,7 +1031,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       return result;
     } finally {
-      lock.readLock().unlock();
+      lock.writeLock().unlock();
     }
   }
 
