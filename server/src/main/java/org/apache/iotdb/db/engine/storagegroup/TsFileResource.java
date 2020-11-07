@@ -685,6 +685,7 @@ public class TsFileResource {
    * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
+    if ("".isEmpty())
     if (!fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).delete()) {
       logger.error("Cannot clean close flag for {}", file);
     }
