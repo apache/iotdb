@@ -90,6 +90,9 @@ public class IoTDBOverlappedPageIT {
       try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
+          if (cnt >= 10) {
+            fail(ans);
+          }
           Assert.assertEquals(res[cnt], ans);
           cnt++;
         }
