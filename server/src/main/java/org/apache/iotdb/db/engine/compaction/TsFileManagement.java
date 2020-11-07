@@ -241,7 +241,9 @@ public abstract class TsFileManagement {
         logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
             storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
       }
+      logger.info("try to set isUnseqMerging to true");
       isUnseqMerging = true;
+      logger.info("set isUnseqMerging to true");
       mergeStartTime = System.currentTimeMillis();
 
     } catch (MergeException | IOException e) {
