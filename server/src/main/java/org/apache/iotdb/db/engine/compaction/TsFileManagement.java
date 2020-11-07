@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -231,6 +229,8 @@ public abstract class TsFileManagement {
         tsFileResource.setMerging(true);
       }
 
+      isUnseqMerging = true;
+      mergeStartTime = System.currentTimeMillis();
       MergeTask mergeTask = new MergeTask(mergeResource, storageGroupDir,
           this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
           storageGroupName);
@@ -241,8 +241,6 @@ public abstract class TsFileManagement {
         logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
             storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
       }
-      isUnseqMerging = true;
-      mergeStartTime = System.currentTimeMillis();
 
     } catch (MergeException | IOException e) {
       logger.error("{} cannot select file for merge", storageGroupName, e);

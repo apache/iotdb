@@ -264,16 +264,25 @@ public class StorageEngine implements IService {
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
       try {
-        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+        ttlCheckThread.awaitTermination(60, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("TTL check thread still doesn't exit after 30s");
+        logger.warn("TTL check thread still doesn't exit after 60s");
         Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException("StorageEngine failed to stop.", e);
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "ttlCheckThread.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
     if (!recoverAllSgThreadPool.isShutdown()) {
       recoverAllSgThreadPool.shutdownNow();
+      try {
+        recoverAllSgThreadPool.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("recoverAllSgThreadPool thread still doesn't exit after 60s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "recoverAllSgThreadPool.", e);
+      }
     }
     this.reset();
   }
