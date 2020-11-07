@@ -245,18 +245,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       sessionIdUsernameMap.put(sessionId, req.getUsername());
       sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
+      auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
+      logger.info(
+          "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
+          req.getUsername());
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
           loginMessage != null ? loginMessage : "Authentication failed.");
+      auditLogger.info("User {} opens Session failed with an incorrect password", req.getUsername());
     }
-    auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         CURRENT_RPC_VERSION);
     resp.setSessionId(sessionId);
-    logger.info(
-        "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
-        req.getUsername());
-
     return resp;
   }
 
@@ -1740,6 +1740,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean execRet;
     try {
+      plan.checkIntegrity();
       execRet = executeNonQuery(plan);
     } catch (BatchInsertionException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
