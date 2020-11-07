@@ -20,11 +20,15 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public abstract class InsertPlan extends PhysicalPlan {
@@ -141,4 +145,18 @@ public abstract class InsertPlan extends PhysicalPlan {
     return this;
   }
 
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    if (deviceId == null) {
+      throw new QueryProcessException("DeviceId is null");
+    }
+    if (measurements == null) {
+      throw new QueryProcessException("Measurements are null");
+    }
+    for (String measurement : measurements) {
+      if (measurement == null || measurement.isEmpty()) {
+        throw new QueryProcessException("Measurement contains null or empty string: " + Arrays.toString(measurements));
+      }
+    }
+  }
 }
