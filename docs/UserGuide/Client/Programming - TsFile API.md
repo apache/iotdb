@@ -112,18 +112,7 @@ a running train monitors its speed, oil meter, miles it has run, current passeng
 Table 1 illustrates a set of time-series data. The set showed in the following table contains one device named "device\_1" 
 with three measurements named "sensor\_1", "sensor\_2" and "sensor\_3". 
 
-<center>
-<table style="text-align:center">
-    <tr><th colspan="6">device_1</th></tr>
-    <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-    <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
-    <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
-    <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
-    <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
-</table>
-<span>A set of time-series data</span>
-</center>
+<img width="388" alt="API 1" src="https://user-images.githubusercontent.com/69114052/98197532-f0f7ea00-1f61-11eb-9794-09f0644eb046.png">
 
 **One Line of Data**: In many industrial applications, a device normally contains more than one sensor and these sensors
  may have values at the same timestamp, which is called one line of data. 
@@ -305,19 +294,7 @@ A more thorough example can be found at `/example/tsfile/src/main/java/org/apach
 
 The set of time-series data in section "Time-series Data" is used here for a concrete introduction in this section. The set showed in the following table contains one deltaObject named "device\_1" with three measurements named "sensor\_1", "sensor\_2" and "sensor\_3". And the measurements has been simplified to do a simple illustration, which contains only 4 time-value pairs each.
 
-<center>
-<table style="text-align:center">
-    <tr><th colspan="6">device_1</th></tr>
-    <tr><th colspan="2">sensor_1</th><th colspan="2">sensor_2</th><th colspan="2">sensor_3</th></tr>
-    <tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-    <tr><td>1</td><td>1.2</td><td>1</td><td>20</td><td>2</td><td>50</td></tr>
-    <tr><td>3</td><td>1.4</td><td>2</td><td>20</td><td>4</td><td>51</td></tr>
-    <tr><td>5</td><td>1.1</td><td>3</td><td>21</td><td>6</td><td>52</td></tr>
-    <tr><td>7</td><td>1.8</td><td>4</td><td>20</td><td>8</td><td>53</td></tr>
-</table>
-<span>A set of time-series data</span>
-</center>
-
+<img width="388" alt="API 2" src="https://user-images.githubusercontent.com/69114052/98197592-0cfb8b80-1f62-11eb-86ec-c80ef6305469.png">
 
 #### Definition of Path
 
@@ -363,18 +340,17 @@ We create one or more filter expressions and may use binary filter operators to 
         IExpression timeFilterExpr = new GlobalTimeExpression(TimeFilter);
         ```
         Use the following relationships to get a `TimeFilter` object (value is a long int variable).
-        <center>
-        <table style="text-align:center">
-            <tr><th>Relationship</th><th>Description</th></tr>
-            <tr><td>TimeFilter.eq(value)</td><td>Choose the time equal to the value</td></tr>
-            <tr><td>TimeFilter.lt(value)</td><td>Choose the time less than the value</td></tr>
-            <tr><td>TimeFilter.gt(value)</td><td>Choose the time greater than the value</td></tr>
-            <tr><td>TimeFilter.ltEq(value)</td><td>Choose the time less than or equal to the value</td></tr>
-            <tr><td>TimeFilter.gtEq(value)</td><td>Choose the time greater than or equal to the value</td></tr>
-            <tr><td>TimeFilter.notEq(value)</td><td>Choose the time not equal to the value</td></tr>
-            <tr><td>TimeFilter.not(TimeFilter)</td><td>Choose the time not satisfy another TimeFilter</td></tr>
-        </table>
-        </center>
+        
+          |Relationship|Description|
+          |---|---|
+          |TimeFilter.eq(value)|Choose the time equal to the value|
+          |TimeFilter.lt(value)|Choose the time less than the value|
+          |TimeFilter.gt(value)|Choose the time greater than the value|
+          |TimeFilter.ltEq(value)|Choose the time less than or equal to the value|
+          |TimeFilter.gtEq(value)|Choose the time greater than or equal to the value|
+          |TimeFilter.notEq(value)|Choose the time not equal to the value|
+          |TimeFilter.not(TimeFilter)|Choose the time not satisfy another TimeFilter|
+       
         
      * ValueFilter: A filter for `value` in time-series data.
        

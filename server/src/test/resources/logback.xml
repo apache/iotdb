@@ -41,10 +41,12 @@
     <logger name="FileMonitor" level="info"/>
     -->
     <logger name="org.apache.iotdb.db.engine.merge" level="DEBUG"/>
+    <logger name="org.apache.iotdb.db.service.thrift.ThriftServiceThread" level="DEBUG"/>
     <logger name="org.eclipse.jetty.util.thread.QueuedThreadPool" level="DEBUG"/>
     <logger name="org.apache.iotdb.db.service.MetricsService" level="INFO"/>
     <logger name="org.apache.iotdb.db.engine.flush.FlushManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.integration.IoTDBMergeTest" level="INFO"/>
+    <logger name="org.apache.iotdb.db.service.RegisterManager" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.IoTDB" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>

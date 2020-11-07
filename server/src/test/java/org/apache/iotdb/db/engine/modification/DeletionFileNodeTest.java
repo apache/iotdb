@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
@@ -65,6 +66,8 @@ public class DeletionFileNodeTest {
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
 
+  private int prevUnseqLevelNum = 0;
+
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
@@ -73,6 +76,8 @@ public class DeletionFileNodeTest {
 
   @Before
   public void setup() throws MetadataException {
+    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
@@ -85,6 +90,7 @@ public class DeletionFileNodeTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   private void insertToStorageEngine(TSRecord record)

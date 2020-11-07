@@ -113,7 +113,7 @@ public class LogReplayer {
       try {
         modFile.close();
       } catch (IOException e) {
-        logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
+        logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));

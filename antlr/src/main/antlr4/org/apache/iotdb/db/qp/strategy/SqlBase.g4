@@ -507,6 +507,10 @@ nodeName
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 nodeNameWithoutStar
@@ -615,6 +619,10 @@ nodeNameWithoutStar
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 dataType
