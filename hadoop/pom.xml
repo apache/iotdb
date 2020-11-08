@@ -46,6 +46,13 @@
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-client</artifactId>
         </dependency>
+        <!-- many of hadoop dependencies use guava11, but org.apache.curator from hadoop-common uses
+        guava16 -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>16.0.1</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
