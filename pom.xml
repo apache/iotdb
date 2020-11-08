@@ -951,7 +951,7 @@
                 </plugins>
             </build>
         </profile>
-        <!-- Make sure the source assembly has the right name (includes "incubating") -->
+        <!-- Make sure the source assembly has the right name -->
         <profile>
             <id>apache-release</id>
             <build>
@@ -973,7 +973,7 @@
                                     See  https://issues.apache.org/jira/browse/MNG-5454  sigh.
                                  -->
                                 <configuration combine.self="append">
-                                    <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                                    <finalName>apache-iotdb-${project.version}</finalName>
                                     <archive>
                                         <manifest>
                                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
@@ -1006,7 +1006,7 @@
                                         <fileSet>
                                             <directory>${project.build.directory}</directory>
                                             <includes>
-                                                <include>apache-iotdb-${project.version}-incubating-source-release.zip</include>
+                                                <include>apache-iotdb-${project.version}-source-release.zip</include>
                                             </includes>
                                         </fileSet>
                                     </fileSets>
