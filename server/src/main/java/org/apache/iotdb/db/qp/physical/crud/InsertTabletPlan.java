@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -574,4 +575,20 @@ public class InsertTabletPlan extends InsertPlan {
     return result;
   }
 
+  @Override
+  public void checkIntegrity() throws QueryProcessException {
+    super.checkIntegrity();
+    if (columns == null) {
+      throw new QueryProcessException("Values are null");
+    }
+    if (measurements.length != columns.length) {
+      throw new QueryProcessException(String.format("Measurements length [%d] does not match "
+          + "columns length [%d]", measurements.length, columns.length));
+    }
+    for (Object value : columns) {
+      if (value == null) {
+        throw new QueryProcessException("Columns contain null: " + Arrays.toString(columns));
+      }
+    }
+  }
 }

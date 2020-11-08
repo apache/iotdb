@@ -865,19 +865,6 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-
-      // check insert plan
-      if (insertRowPlan.getMeasurements() == null) {
-        throw new QueryProcessException(
-            "The measurements of InsertRowPlan is null, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-      if (insertRowPlan.getValues().length == 0) {
-        throw new QueryProcessException(
-            "The size of values in this InsertRowPlan is 0, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);
