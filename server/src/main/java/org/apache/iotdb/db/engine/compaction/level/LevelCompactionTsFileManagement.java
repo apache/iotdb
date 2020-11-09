@@ -57,7 +57,8 @@ import org.slf4j.LoggerFactory;
  */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
 
-  private static final Logger logger = LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(LevelCompactionTsFileManagement.class);
 
   private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
   private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
@@ -67,6 +68,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final int unseqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
       .getSeqFileNumInEachLevel();
 
+  private final boolean enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
+      .isEnableUnseqCompaction();
   private final boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig()
       .isForceFullMerge();
   // First map is partition list; Second list is level list; Third list is file list in level;
@@ -390,17 +393,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-        seqLevelNum);
+        seqLevelNum, seqFileNumInEachLevel);
+    // we have to copy all unseq file
     forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
-        unseqLevelNum);
+        unseqLevelNum + 1, unseqFileNumInEachLevel);
   }
 
   private void forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
-      List rawTsFileResources, int currMaxLevel) {
+      List rawTsFileResources, int currMaxLevel, int currFileNumInEachLevel) {
     forkedTsFileResources.clear();
     for (int i = 0; i < currMaxLevel - 1; i++) {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
@@ -409,6 +413,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       for (TsFileResource tsFileResource : levelRawTsFileResources) {
         if (tsFileResource.isClosed()) {
           forkedLevelTsFileResources.add(tsFileResource);
+          if (forkedLevelTsFileResources.size() > currFileNumInEachLevel) {
+            break;
+          }
         }
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
@@ -419,7 +426,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   protected void merge(long timePartition) {
     merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
         seqFileNumInEachLevel);
-    if (unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
+    if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(isForceFullMerge, getTsFileList(true), forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
@@ -431,6 +438,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @SuppressWarnings("squid:S3776")
   private void merge(List<List<TsFileResource>> mergeResources, boolean sequence,
       long timePartition, int currMaxLevel, int currMaxFileNumInEachLevel) {
+    // wait until unseq merge has finished
+    while (isUnseqMerging) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
+      }
+    }
     long startTimeMillis = System.currentTimeMillis();
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
@@ -439,7 +455,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       for (int i = 0; i < currMaxLevel - 1; i++) {
         if (currMaxFileNumInEachLevel <= mergeResources.get(i).size()) {
           //level is numbered from 0
-          if (!sequence && i == currMaxLevel - 2) {
+          if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to seq file
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {

@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -63,7 +64,7 @@ public class AggregationExecutor {
   protected List<TSDataType> dataTypes;
   protected List<String> aggregations;
   protected IExpression expression;
-  protected final boolean ascending;
+  protected boolean ascending;
 
   /**
    * aggregation batch calculation size.
@@ -284,7 +285,18 @@ public class AggregationExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-
+    int index = 0;
+    for (; index < aggregations.size(); index++) {
+      String aggregationFunc = aggregations.get(index);
+      if (!aggregationFunc.equals(IoTDBConstant.MAX_TIME) && !aggregationFunc
+          .equals(IoTDBConstant.LAST_VALUE)) {
+        break;
+      }
+    }
+    if (index >= aggregations.size()) {
+      queryPlan.setAscending(false);
+      this.ascending = false;
+    }
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < selectedSeries.size(); i++) {

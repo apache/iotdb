@@ -533,7 +533,6 @@ public class InsertTabletPlan extends InsertPlan {
     columns[index] = null;
   }
 
-
   @Override
   public InsertPlan getPlanFromFailed() {
     if (super.getPlanFromFailed() == null) {

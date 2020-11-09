@@ -18,3 +18,13 @@
     under the License.
 
 -->
+
+# 0.10.x -> 0.11.x
+
+Last updated on 2020-11-05 by Zesong Sun.
+
+| PR# | Name | Author | Changes |
+| ---- | ---- | ---- | ---- |
+| 1850 | add plan index and flush/close listeners  | jiangtian | Change serialization of InsertRowPlan and InsertTabletPlan |
+
+  

@@ -88,8 +88,8 @@ public class SyncReceiverLogAnalyzerTest {
 
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
   }
 
   @Test

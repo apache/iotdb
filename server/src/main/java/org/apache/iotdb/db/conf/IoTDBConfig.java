@@ -299,12 +299,18 @@ public class IoTDBConfig {
    * Works when the compaction_strategy is LEVEL_COMPACTION.
    * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
    */
-  private int mergePagePointNumberThreshold = 1000;
+  private int mergePagePointNumberThreshold = 100;
 
   /**
    * LEVEL_COMPACTION, NO_COMPACTION
    */
   private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+
+  /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * Whether to merge unseq files into seq files or not.
+   */
+  private boolean enableUnseqCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION.
@@ -1440,6 +1446,14 @@ public class IoTDBConfig {
   public void setCompactionStrategy(
       CompactionStrategy compactionStrategy) {
     this.compactionStrategy = compactionStrategy;
+  }
+
+  public boolean isEnableUnseqCompaction() {
+    return enableUnseqCompaction;
+  }
+
+  public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
+    this.enableUnseqCompaction = enableUnseqCompaction;
   }
 
   public int getSeqFileNumInEachLevel() {

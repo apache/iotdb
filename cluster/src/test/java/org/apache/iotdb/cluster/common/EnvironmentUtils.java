@@ -145,11 +145,6 @@ public class EnvironmentUtils {
         }
       }
       try {
-        if (file.getName().contains("logMeta")) {
-          SimpleDateFormat dateFormat = new SimpleDateFormat();
-          System.out.printf("%s is removed, last modified: %s", file.getPath(),
-              dateFormat.format(new Date(file.lastModified())));
-        }
         Files.delete(Paths.get(file.getAbsolutePath()));
       } catch (DirectoryNotEmptyException e) {
         deleteRecursively(file);
