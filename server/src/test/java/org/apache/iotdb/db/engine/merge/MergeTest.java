@@ -19,10 +19,19 @@
 
 package org.apache.iotdb.db.engine.merge;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -42,14 +51,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 abstract class MergeTest {
 
@@ -75,8 +76,8 @@ abstract class MergeTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
-        IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     MergeManager.getINSTANCE().start();
@@ -87,8 +88,10 @@ abstract class MergeTest {
     removeFiles();
     seqResources.clear();
     unseqResources.clear();
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(prevMergeChunkThreshold);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
+    ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();

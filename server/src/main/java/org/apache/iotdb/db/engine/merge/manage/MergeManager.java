@@ -60,7 +60,7 @@ public class MergeManager implements IService, MergeManagerMBean {
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
-  private final RateLimiter mergeRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
@@ -74,13 +74,13 @@ public class MergeManager implements IService, MergeManagerMBean {
   private MergeManager() {
   }
 
-  public RateLimiter getMergeRateLimiter() {
-    setMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeThroughputMbPerSec());
-    return mergeRateLimiter;
+  public RateLimiter getMergeWriteRateLimiter() {
+    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
+    return mergeWriteRateLimiter;
   }
 
   /**
-   * wait by throughoutMbPerSec limit to avoid continuous Write
+   * wait by throughoutMbPerSec limit to avoid continuous Write Or Read
    */
   public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
     while (bytesLength >= Integer.MAX_VALUE) {
@@ -92,14 +92,14 @@ public class MergeManager implements IService, MergeManagerMBean {
     }
   }
 
-  private void setMergeRate(final double throughoutMbPerSec) {
+  private void setWriteMergeRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
     // if throughout = 0, disable rate limiting
     if (throughout == 0) {
       throughout = Double.MAX_VALUE;
     }
-    if (mergeRateLimiter.getRate() != throughout) {
-      mergeRateLimiter.setRate(throughout);
+    if (mergeWriteRateLimiter.getRate() != throughout) {
+      mergeWriteRateLimiter.setRate(throughout);
     }
   }
 

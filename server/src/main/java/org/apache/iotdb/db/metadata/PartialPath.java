@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -48,6 +50,11 @@ public class PartialPath extends Path implements Comparable<Path> {
   public PartialPath(String path) throws IllegalPathException {
     this.nodes = MetaUtils.splitPathToDetachedPath(path);
     this.fullPath = path;
+  }
+
+  public PartialPath(String device, String measurement) throws IllegalPathException {
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
+    this.nodes = MetaUtils.splitPathToDetachedPath(fullPath);
   }
 
   /**
@@ -87,6 +94,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     int len = nodes.length;
     this.nodes = Arrays.copyOf(nodes, nodes.length + otherNodes.length);
     System.arraycopy(otherNodes, 0, nodes, len, otherNodes.length);
+    fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
   public PartialPath concatNode(String node) {
@@ -97,6 +105,49 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   public String[] getNodes() {
     return nodes;
+  }
+
+  public int getNodeLength() {
+    return nodes.length;
+  }
+
+  public String getTailNode() {
+    if (nodes.length <= 0) {
+      return "";
+    }
+    return nodes[nodes.length - 1];
+  }
+
+  /**
+   * Construct a new PartialPath by resetting the prefix nodes to prefixPath
+   * @param prefixPath the prefix path used to replace current nodes
+   * @return A new PartialPath with altered prefix
+   */
+  public PartialPath alterPrefixPath(PartialPath prefixPath) {
+    String[] newNodes = Arrays.copyOf(nodes, Math.max(nodes.length, prefixPath.getNodeLength()));
+    System.arraycopy(prefixPath.getNodes(), 0, newNodes, 0, prefixPath.getNodeLength());
+    return new PartialPath(newNodes);
+  }
+
+  /**
+   * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
+   * without wildcards.
+   * e.g. "root.sg.device.*" matches path "root.sg.device.s1"
+   * whereas it does not match "root.sg.device" and "root.sg.vehicle.s1"
+   * @param rPath a plain full path of a timeseries
+   * @return true if a successful match, otherwise return false
+   */
+  public boolean matchFullPath(PartialPath rPath) {
+    String[] rNodes = rPath.getNodes();
+    if (rNodes.length < nodes.length) {
+      return false;
+    }
+    for (int i = 0; i < nodes.length; i++) {
+      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
@@ -167,7 +218,9 @@ public class PartialPath extends Path implements Comparable<Path> {
     return measurementAlias;
   }
 
-  public void setMeasurementAlias(String measurementAlias) { this.measurementAlias = measurementAlias; }
+  public void setMeasurementAlias(String measurementAlias) {
+    this.measurementAlias = measurementAlias;
+  }
 
   public String getTsAlias() {
     return tsAlias;
@@ -209,5 +262,13 @@ public class PartialPath extends Path implements Comparable<Path> {
   @TestOnly
   public Path toTSFilePath() {
     return new Path(getDevice(), getMeasurement());
+  }
+
+  public static List<String> toStringList(List<PartialPath> pathList) {
+    List<String> ret = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
   }
 }

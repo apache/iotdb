@@ -36,7 +36,7 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
-Msg: org.apache.iotdb.exception.MetadataErrorException: org.apache.iotdb.exception.PathErrorException: The prefix of root.ln.wf01 has been set to the storage group.
+Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
 
 ## 查看存储组
@@ -53,11 +53,13 @@ IoTDB> show storage group root.ln
 
 ## 删除存储组
 
-用户使用[DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句可以删除指定的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
+// 删除所有数据，时间序列以及存储组
+IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 ## 创建时间序列
@@ -247,7 +249,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 ## 统计节点数
 
-IoTDB支持使用`COUNT NODES <Path> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+IoTDB支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
 ```
 IoTDB > COUNT NODES root LEVEL=2
@@ -259,6 +261,7 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 <center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
+其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
 ## 删除时间序列
 

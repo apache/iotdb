@@ -21,7 +21,6 @@ package org.apache.iotdb.db.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
@@ -59,6 +58,7 @@ public class RegisterManager {
     for (IService service : iServices) {
       try {
         service.waitAndStop(10000);
+        logger.info("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }

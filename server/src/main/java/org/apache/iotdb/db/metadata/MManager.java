@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,17 +39,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -68,9 +70,9 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -94,19 +96,20 @@ public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
   private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
-  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";  
+  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
   private static final String DEBUG_MSG_1 = "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
   private static final String PREVIOUS_CONDITION = "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
-  
+
+  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
+
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
- 
+
   /**
    * A thread will check whether the MTree is modified lately each such interval. Unit: second
    */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
-  protected IoTDBConfig config;
   // the log file seriesPath
   private String logFilePath;
   private String mtreeSnapshotPath;
@@ -118,16 +121,38 @@ public class MManager {
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, MNode> mNodeCache;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
-  // storage group name -> the series number
-  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
-  private long maxSeriesNumberAmongStorageGroup;
+  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
+
+  // data type -> number
+  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
+  // reported total series number
+  private long reportedDataTypeTotalNum;
+  private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private File logFile;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
+  /**
+   * threshold total size of MTree
+   */
+  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
+
+  private boolean allowToCreateNewSeries = true;
+
+  private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
+
+  private static class MManagerHolder {
+
+    private MManagerHolder() {
+      // allowed to do nothing
+    }
+
+    private static final MManager INSTANCE = new MManager();
+  }
+
   protected MManager() {
-    config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
@@ -159,11 +184,13 @@ public class MManager {
       }
     };
 
-    timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-        "timedCreateMTreeSnapshotThread"));
-    timedCreateMTreeSnapshotThread
-        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-            MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    if (config.isEnableMTreeSnapshot()) {
+      timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+          "timedCreateMTreeSnapshotThread"));
+      timedCreateMTreeSnapshotThread
+          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+    }
   }
 
   /**
@@ -186,15 +213,10 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-
-      if (config.isEnableParameterAdapter()) {
-        List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-        for (PartialPath sg : storageGroups) {
-          MNode node = mtree.getNodeByPath(sg);
-          seriesNumberInStorageGroups.put(sg.getFullPath(), node.getLeafCount());
-        }
-        maxSeriesNumberAmongStorageGroup =
-            seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
+      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
+      for (PartialPath sg : storageGroups) {
+        MNode node = mtree.getNodeByPath(sg);
+        totalSeriesNumber.addAndGet(node.getLeafCount());
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
@@ -204,6 +226,7 @@ public class MManager {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }
+    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -262,8 +285,7 @@ public class MManager {
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
-      this.seriesNumberInStorageGroups.clear();
-      this.maxSeriesNumberAmongStorageGroup = 0;
+      this.totalSeriesNumber.set(0);
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -272,8 +294,10 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
+      this.schemaDataTypeNumMap.clear();
+      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
-      if (timedCreateMTreeSnapshotThread != null) {
+      if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
         timedCreateMTreeSnapshotThread = null;
       }
@@ -287,6 +311,20 @@ public class MManager {
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
+        if (args.length > 8) {
+          String[] tmpArgs = new String[8];
+          tmpArgs[0] = args[0];
+          int i = 1;
+          tmpArgs[1] = "";
+          for (; i < args.length - 7; i++) {
+            tmpArgs[1] += args[i] + ",";
+          }
+          tmpArgs[1] += args[i++];
+          for (int j = 2; j < 8; j++) {
+            tmpArgs[j] = args[i++];
+          }
+          args = tmpArgs;
+        }
         Map<String, String> props = null;
         if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
@@ -317,20 +355,31 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
+        if (args.length > 2) {
+          StringBuilder tmp = new StringBuilder();
+          for (int i = 1; i < args.length - 1; i++) {
+            tmp.append(args[i]).append(",");
+          }
+          tmp.append(args[args.length - 1]);
+          args[1] = tmp.toString();
+        }
         String failedTimeseries = deleteTimeseries(new PartialPath(args[1]));
         if (!failedTimeseries.isEmpty()) {
           throw new DeleteFailedException(failedTimeseries);
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(new PartialPath(args[1]));
+        try {
+          setStorageGroup(new PartialPath(args[1]));
+        }
+        // two time series may set one storage group concurrently,
+        // that's normal in our concurrency control protocol
+        catch (MetadataException e){
+          logger.info("concurrently operate set storage group cmd {} twice", cmd);
+        }
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
-        List<PartialPath> storageGroups = new ArrayList<>();
-        for (int i = 1; i <= args.length; i++) {
-          storageGroups.add(new PartialPath(args[i]));
-        }
-        deleteStorageGroups(storageGroups);
+        deleteStorageGroups(Collections.singletonList(new PartialPath(args[1])));
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(new PartialPath(args[1]), Long.parseLong(args[2]));
@@ -352,49 +401,47 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
+    if (!allowToCreateNewSeries) {
+      throw new MetadataException("IoTDB system load is too large to create timeseries, "
+          + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
+    }
     try {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
-      /*
-       * get the storage group with auto create schema
-       */
-      PartialPath storageGroupPath;
+
       try {
-        storageGroupPath = mtree.getStorageGroupPath(path);
+        mtree.getStorageGroupPath(path);
       } catch (StorageGroupNotSetException e) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;
         }
-        storageGroupPath =
+        PartialPath storageGroupPath =
             MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
         setStorageGroup(storageGroupPath);
       }
 
-      // check memory
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-
+      TSDataType type = plan.getDataType();
       // create time series in MTree
       MeasurementMNode leafMNode = mtree
-          .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
+          .createTimeseries(path, type, plan.getEncoding(), plan.getCompressor(),
               plan.getProps(), plan.getAlias());
 
       // update tag index
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
 
-      // update statistics
-      if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(storageGroupPath.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroupPath.getFullPath(), size + 1);
-        if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-          maxSeriesNumberAmongStorageGroup = size + 1L;
-        }
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber.addAndGet(1);
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
       }
+      updateSchemaDataTypeNumMap(type, 1);
 
       // write log
       if (!isRecovering) {
@@ -406,7 +453,8 @@ public class MManager {
         logWriter.createTimeseries(plan, offset);
       }
       leafMNode.setOffset(offset);
-    } catch (IOException | ConfigAdjusterException e) {
+
+    } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
@@ -418,8 +466,6 @@ public class MManager {
    * @param dataType   the dateType {@code DataType} of the timeseries
    * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
-   * @return whether the measurement occurs for the first time in this storage group (if true, the
-   * measurement should be registered to the StorageEngine too)
    */
   public void createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props) throws MetadataException {
@@ -440,17 +486,6 @@ public class MManager {
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
     if (isStorageGroup(prefixPath)) {
-
-      if (config.isEnableParameterAdapter()) {
-        int size = seriesNumberInStorageGroups.get(prefixPath.getFullPath());
-        seriesNumberInStorageGroups.put(prefixPath.getFullPath(), 0);
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream()
-              .max(Integer::compareTo)
-              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-        }
-      }
-
       mNodeCache.clear();
     }
     try {
@@ -493,9 +528,7 @@ public class MManager {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(
-                DEBUG_MSG, "Delete"
-                    + TAG_FORMAT,
+            logger.debug(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
@@ -507,9 +540,7 @@ public class MManager {
           }
         } else {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(
-                DEBUG_MSG_1, "Delete"
-                    + PREVIOUS_CONDITION,
+            logger.debug(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
                 node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
@@ -529,48 +560,33 @@ public class MManager {
     removeFromTagInvertedIndex(pair.right);
     PartialPath storageGroupPath = pair.left;
 
+    // update statistics in schemaDataTypeNumMap
+    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
+
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
-    try {
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
-    } catch (ConfigAdjusterException e) {
-      throw new MetadataException(e);
-    }
-
-    if (config.isEnableParameterAdapter()) {
-      PartialPath storageGroup = getStorageGroupPath(path);
-      int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
-      seriesNumberInStorageGroups.put(storageGroup.getFullPath(), size - 1);
-      if (size == maxSeriesNumberAmongStorageGroup) {
-        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
-      }
+    totalSeriesNumber.addAndGet(-1);
+    if (!allowToCreateNewSeries && 
+        totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+      allowToCreateNewSeries = true;
     }
     return storageGroupPath;
   }
 
   /**
-   * Set storage group of the given path to MTree. Check
+   * Set storage group of the given path to MTree.
    *
    * @param storageGroup root.node.(node)*
    */
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.setStorageGroup(storageGroup);
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-
-      if (config.isEnableParameterAdapter()) {
-        ActiveTimeSeriesCounter.getInstance().init(storageGroup.getFullPath());
-        seriesNumberInStorageGroups.put(storageGroup.getFullPath(), 0);
-      }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup.getFullPath());
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
-    } catch (ConfigAdjusterException e) {
-      mtree.deleteStorageGroup(storageGroup);
-      throw new MetadataException(e);
     }
   }
 
@@ -582,36 +598,54 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-
+        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
+        if (!allowToCreateNewSeries && 
+            totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+          logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+          allowToCreateNewSeries = true;
+        }
         mNodeCache.clear();
 
         // try to delete storage group
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
+          // update statistics in schemaDataTypeNumMap
+          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
-        if (config.isEnableParameterAdapter()) {
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-          int size = seriesNumberInStorageGroups.get(storageGroup.getFullPath());
-          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-          ActiveTimeSeriesCounter.getInstance().delete(storageGroup.getFullPath());
-          seriesNumberInStorageGroups.remove(storageGroup.getFullPath());
-          if (size == maxSeriesNumberAmongStorageGroup) {
-            maxSeriesNumberAmongStorageGroup =
-                seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
-          }
-        }
         // if success
         if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup.getFullPath());
         }
       }
-    } catch (ConfigAdjusterException e) {
-      throw new MetadataException(e);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
+    }
+  }
+
+  /**
+   * update statistics in schemaDataTypeNumMap
+   *
+   * @param type data type
+   * @param num  1 for creating timeseries and -1 for deleting timeseries
+   */
+  private synchronized void updateSchemaDataTypeNumMap(TSDataType type, int num) {
+    // add an array of the series type
+    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
+    // add an array of time
+    schemaDataTypeNumMap.put(TSDataType.INT64,
+        schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
+
+    // total current DataType Total Num (twice of number of time series)
+    // used in primitive array manager
+    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
+
+    if (num > 0 && currentDataTypeTotalNum - reportedDataTypeTotalNum
+        >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
+      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
+      reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
 
@@ -700,6 +734,11 @@ public class MManager {
     return mtree.getAllStorageGroupPaths();
   }
 
+  public List<PartialPath> searchAllRelatedStorageGroups(PartialPath path)
+      throws MetadataException {
+    return mtree.searchAllRelatedStorageGroups(path);
+  }
+
   /**
    * Get all storage group under given prefixPath.
    *
@@ -732,9 +771,9 @@ public class MManager {
   /**
    * Similar to method getAllTimeseriesPath(), but return Path with alias alias.
    */
-  public List<PartialPath> getAllTimeseriesPathWithAlias(PartialPath prefixPath)
-      throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(prefixPath);
+  public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath,
+      int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
   }
 
   /**
@@ -782,6 +821,9 @@ public class MManager {
     List<MeasurementMNode> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (tagValue.contains(plan.getValue())) {
           allMatchedNodes.addAll(entry.getValue());
@@ -789,6 +831,9 @@ public class MManager {
       }
     } else {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (plan.getValue().equals(tagValue)) {
           allMatchedNodes.addAll(entry.getValue());
@@ -906,6 +951,10 @@ public class MManager {
 
   }
 
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
+    return (MeasurementMNode) deviceMNode.getChild(measurement);
+  }
+
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     try {
@@ -974,7 +1023,7 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
-    MNode node = null;
+    MNode node;
     boolean shouldSetStorageGroup;
     try {
       node = mNodeCache.get(path);
@@ -1047,15 +1096,6 @@ public class MManager {
    */
   public String getMetadataInString() {
     return TIME_SERIES_TREE_HEADER + mtree.toString();
-  }
-
-  @TestOnly
-  public void setMaxSeriesNumberAmongStorageGroup(long maxSeriesNumberAmongStorageGroup) {
-    this.maxSeriesNumberAmongStorageGroup = maxSeriesNumberAmongStorageGroup;
-  }
-
-  public long getMaximalSeriesNumberAmongStorageGroups() {
-    return maxSeriesNumberAmongStorageGroup;
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
@@ -1148,8 +1188,8 @@ public class MManager {
       // update inverted Index map
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
       return;
@@ -1194,8 +1234,8 @@ public class MManager {
         // if the key doesn't exist or the value is not equal to the new one
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
     }
@@ -1264,8 +1304,8 @@ public class MManager {
       leafMNode.setOffset(offset);
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
-        tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
       }
       return;
     }
@@ -1287,8 +1327,8 @@ public class MManager {
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
     // update tag inverted map
-    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-        .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode));
+    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
   }
 
   /**
@@ -1427,8 +1467,8 @@ public class MManager {
               tagIndex.containsKey(key)));
         }
       }
-      tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-          .computeIfAbsent(currentValue, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     }
   }
 
@@ -1489,8 +1529,8 @@ public class MManager {
               tagIndex.containsKey(oldKey)));
         }
       }
-      tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
-          .computeIfAbsent(value, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     } else if (pair.right.containsKey(oldKey)) {
       // check attribute map
       pair.right.put(newKey, pair.right.remove(oldKey));
@@ -1539,15 +1579,20 @@ public class MManager {
     }
   }
 
+  public void collectTimeseriesSchema(String prefixPath,
+      Collection<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    collectTimeseriesSchema(getNodeByPath(new PartialPath(prefixPath)), timeseriesSchemas);
+  }
+
   public void collectMeasurementSchema(MNode startingNode,
-      Collection<MeasurementSchema> timeseriesSchemas) {
+      Collection<MeasurementSchema> measurementSchemas) {
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         MeasurementSchema nodeSchema = ((MeasurementMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+        measurementSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
             nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
@@ -1602,7 +1647,7 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(String path, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath path, MeasurementMeta meta) {
     // do nothing
   }
 
@@ -1698,19 +1743,26 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         // if do not has measurement
+        MeasurementMNode measurementMNode;
         if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new MetadataException(String.format(
-                "Current deviceId[%s] does not contain measurement:%s", deviceId,
-                measurementList[i]));
-          }
-          TSDataType dataType = getTypeInLoc(plan, i);
-          // create it, may concurrent created by multiple thread
-          internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-        }
+            // but measurement not in MTree and cannot auto-create, try the cache
+            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+            if (measurementMNode == null) {
+              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+            }
+          } else {
+            // create it
 
-        MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+            TSDataType dataType = getTypeInLoc(plan, i);
+            // create it, may concurrent created by multiple thread
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
+          }
+        } else {
+          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+        }
 
         // check type is match
         TSDataType insertDataType = null;
@@ -1728,13 +1780,13 @@ public class MManager {
         if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
+                  insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
-            throw new MetadataException(String.format(
-                "DataType mismatch, Insert measurement %s type %s, metadata tree type %s",
-                measurementList[i], insertDataType, measurementMNode.getSchema().getType()));
+            throw mismatchException;
           } else {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i);
+            plan.markFailedMeasurementInsertion(i, mismatchException);
             continue;
           }
         }
@@ -1749,7 +1801,7 @@ public class MManager {
             e.getMessage());
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
-          plan.markFailedMeasurementInsertion(i);
+          plan.markFailedMeasurementInsertion(i, e);
         } else {
           throw e;
         }
@@ -1773,8 +1825,9 @@ public class MManager {
           Collections.emptyMap());
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
-        logger.debug("Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-            + " a non-exist time series {}", path);
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}", path);
       }
     }
   }
@@ -1829,15 +1882,6 @@ public class MManager {
   public interface StorageGroupFilter {
 
     boolean satisfy(String storageGroup);
-  }
-
-  private static class MManagerHolder {
-
-    private static final MManager INSTANCE = new MManager();
-
-    private MManagerHolder() {
-      // allowed to do nothing
-    }
   }
 
 }

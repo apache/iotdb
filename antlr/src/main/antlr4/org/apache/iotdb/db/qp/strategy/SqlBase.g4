@@ -73,7 +73,6 @@ statement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
-    | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
@@ -166,7 +165,7 @@ aliasClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause
@@ -181,6 +180,7 @@ compressor
     | SDT
     | PAA
     | PLA
+    | LZ4
     ;
 
 attributeClause
@@ -472,8 +472,6 @@ nodeName
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -509,6 +507,10 @@ nodeName
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 nodeNameWithoutStar
@@ -582,8 +584,6 @@ nodeNameWithoutStar
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -619,6 +619,10 @@ nodeNameWithoutStar
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 dataType
@@ -995,15 +999,6 @@ INFO
     : I N F O
     ;
 
-DYNAMIC
-    : D Y N A M I C
-    ;
-
-PARAMETER
-    : P A R A M E T E R
-    ;
-
-
 VERSION
     : V E R S I O N
     ;
@@ -1158,6 +1153,10 @@ PAA
 
 PLA
    : P L A
+   ;
+
+LZ4
+   : L Z '4' 
    ;
 
 LATEST

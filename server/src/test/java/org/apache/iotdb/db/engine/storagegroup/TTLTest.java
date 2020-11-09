@@ -81,11 +81,13 @@ public class TTLTest {
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
-
+  private int prevUnseqLevelNum;
 
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
+    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
@@ -97,6 +99,7 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
@@ -151,7 +154,7 @@ public class TTLTest {
     plan.transferType();
 
     // ok without ttl
-    insertToStorageGroupProcessor(plan);
+    storageGroupProcessor.insert(plan);
 
     storageGroupProcessor.setDataTTL(1000);
     // with ttl
@@ -183,7 +186,7 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       plan.setTime(initTime - 2000 + i);
-      insertToStorageGroupProcessor(plan);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
@@ -191,7 +194,7 @@ public class TTLTest {
     // unsequence data
     for (int i = 0; i < 1000; i++) {
       plan.setTime(initTime - 2000 + i);
-      insertToStorageGroupProcessor(plan);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }

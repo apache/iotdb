@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -26,14 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * create multiple timeSeries, could be split to several sub Plans to execute in different DataGroup
@@ -196,6 +195,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -255,6 +256,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     } else {
       buffer.put((byte) 0);
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -300,5 +303,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
         attributes.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
+
+    this.index = buffer.getLong();
   }
 }

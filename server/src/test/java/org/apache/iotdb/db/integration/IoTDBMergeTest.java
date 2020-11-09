@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -29,7 +28,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -42,14 +41,17 @@ public class IoTDBMergeTest {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeTest.class);
   private long prevPartitionInterval;
+  private CompactionStrategy prevTsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevTsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
+        .getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -59,7 +61,7 @@ public class IoTDBMergeTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(prevTsFileManagementStrategy);
   }
 
   @Test
@@ -278,6 +280,11 @@ public class IoTDBMergeTest {
       }
       statement.execute("FLUSH");
       statement.execute("MERGE");
+      try {
+        Thread.sleep(10000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SHOW MERGE")) {
@@ -294,7 +301,7 @@ public class IoTDBMergeTest {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertEquals(0, cnt);
+      assertEquals(5, cnt);
     }
   }
 }

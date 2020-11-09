@@ -41,7 +41,11 @@ PLAIN编码，默认的编码方式，即不编码，支持多种数据类型，
 
 * GORILLA编码（GORILLA）
 
-GORILLA编码，比较适合编码前后值比较接近的浮点数序列，不适合编码前后波动较大的数据。
+GORILLA编码是一种无损编码，它比较适合编码前后值比较接近的数值序列，不适合编码前后波动较大的数据。
+
+当前系统中存在两个版本的GORILLA编码实现，推荐使用`GORILLA`，不推荐使用`GORILLA_V1`（已过时）。
+
+使用限制：使用Gorilla编码INT32数据时，需要保证序列中不存在值为`Integer.MIN_VALUE`的数据点；使用Gorilla编码INT64数据时，需要保证序列中不存在值为`Long.MIN_VALUE`的数据点。
 
 * 定频数据编码 (REGULAR)
 
@@ -53,15 +57,15 @@ GORILLA编码，比较适合编码前后值比较接近的浮点数序列，不�
 
 前文介绍的四种编码适用于不同的数据类型，若对应关系错误，则无法正确创建时间序列。数据类型与支持其编码的编码方式对应关系总结如表格2-3。
 
-<center> **表格2-3 数据类型与支持其编码的对应关系**
+<div style="text-align: center;"> **表格2-3 数据类型与支持其编码的对应关系**
 
 |数据类型	|支持的编码|
 |:---:|:---:|
 |BOOLEAN|	PLAIN, RLE|
-|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR|
-|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR|
+|INT32	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
+|INT64	|PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN|
 
-</center>
+</div>

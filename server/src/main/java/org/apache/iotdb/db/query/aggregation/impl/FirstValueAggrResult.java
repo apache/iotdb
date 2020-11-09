@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -34,7 +33,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public class FirstValueAggrResult extends AggregateResult {
 
   // timestamp of current value
-  private long timestamp = Long.MAX_VALUE;
+  protected long timestamp = Long.MAX_VALUE;
 
   public FirstValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.FIRST_VALUE);
@@ -49,12 +48,12 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public Object getResult() {
-    return hasResult() ? getValue() : null;
+    return hasCandidateResult() ? getValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
 
@@ -65,7 +64,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()) {
@@ -75,9 +74,8 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
-    if (hasResult()) {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    if (hasFinalResult()) {
       return;
     }
     if (dataInThisPage.hasCurrent()
@@ -92,7 +90,7 @@ public class FirstValueAggrResult extends AggregateResult {
   @Override
   public void updateResultUsingTimestamps(long[] timestamps, int length,
       IReaderByTimestamp dataReader) throws IOException {
-    if (hasResult()) {
+    if (hasFinalResult()) {
       return;
     }
 
@@ -107,8 +105,8 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public boolean isCalculatedAggregationResult() {
-    return hasResult();
+  public boolean hasFinalResult() {
+    return hasCandidateResult;
   }
 
   @Override
