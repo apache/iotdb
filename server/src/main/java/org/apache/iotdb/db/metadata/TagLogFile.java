@@ -128,10 +128,6 @@ public class TagLogFile implements AutoCloseable {
     ReadWriteIOUtils.write(map.size(), byteBuffer);
     byte[] bytes;
     for (Map.Entry<String, String> entry : map.entrySet()) {
-      if (entry.getKey() == null || entry.getKey().isEmpty() || entry.getValue() == null || entry
-          .getValue().isEmpty()) {
-        throw new MetadataException("Tag key or value shouldn't be null or empty string.");
-      }
       // serialize key
       bytes = entry.getKey().getBytes();
       length += (4 + bytes.length);
