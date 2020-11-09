@@ -347,7 +347,7 @@ CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
-> 如果您没有在另一台计算机的IoTDB中创建元数据，IoTDB将自己推断数据类型，这可能会导致时间序列具有不同的数据类型和许多其他意想不到的东西。
+IoTDB具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用CSV导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
 
 ### 从 csv 文件导入数据的示例
 
