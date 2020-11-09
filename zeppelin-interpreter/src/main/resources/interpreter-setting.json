@@ -1,0 +1,39 @@
+[
+  {
+    "group": "iotdb",
+    "name": "iotodb",
+    "className": "org.apache.zeppelin.iotdb.IoTDBInterpreter",
+    "properties": {
+      "host": {
+        "envName": null,
+        "propertyName": "host",
+        "defaultValue": "127.0.0.1",
+        "description": "IoTDB server host to connect to"
+      },
+      "port": {
+        "envName": null,
+        "propertyName": "port",
+        "defaultValue": "6667",
+        "description": "IoTDB server port to connect to"
+      },
+      "database": {
+        "envName": null,
+        "propertyName": "database",
+        "defaultValue": "test",
+        "description": "IoTDB database name"
+      },
+      "mongo.server.username": {
+        "envName": null,
+        "propertyName": "username",
+        "defaultValue": "root",
+        "description": "Username for authentication"
+      },
+      "mongo.server.password": {
+        "envName": null,
+        "propertyName": "password",
+        "defaultValue": "root",
+        "description": "Password for authentication"
+      }
+    }
+  }
+]
