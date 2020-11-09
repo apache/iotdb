@@ -430,6 +430,9 @@ public class MManager {
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
+          if (entry.getKey() == null || entry.getValue() == null) {
+            continue;
+          }
           tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
               .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
