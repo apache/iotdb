@@ -358,7 +358,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 2,500,world,600,700,800
 3,900,"hello, world",1000,1100,1200
 ```
-> if you have a comma in your field, the field should be enclosed by a double quote or single quote.
+> if you have some special characters like comma in your field, the field should be enclosed by a double quote or single quote. for example, "hello,\"great";
 
 ### Run import shell
 ```
