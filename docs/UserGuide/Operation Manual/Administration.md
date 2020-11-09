@@ -101,6 +101,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 <center>**List of privileges Included in the System**
 
+
 |privilege Name|Interpretation|
 |:---|:---|
 |SET\_STORAGE\_GROUP|create timeseries; set storage groups; path dependent|

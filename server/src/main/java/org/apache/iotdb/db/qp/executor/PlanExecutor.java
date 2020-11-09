@@ -433,14 +433,14 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_COLUMN, false),
                 new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.TEXT);
+      Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
+      field1.setIntV(getPathsNum(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -865,19 +865,6 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-
-      // check insert plan
-      if (insertRowPlan.getMeasurements() == null) {
-        throw new QueryProcessException(
-            "The measurements of InsertRowPlan is null, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-      if (insertRowPlan.getValues().length == 0) {
-        throw new QueryProcessException(
-            "The size of values in this InsertRowPlan is 0, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);

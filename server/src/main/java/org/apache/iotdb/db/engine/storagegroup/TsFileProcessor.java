@@ -293,7 +293,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
         throw e;
       }
     }
@@ -357,7 +357,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
         throw e;
       }
     }
@@ -421,6 +421,8 @@ public class TsFileProcessor {
       return false;
     }
     if (shouldFlush) {
+      logger.info("The memtable size {} of tsfile {} reaches the mem control threshold",
+          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
     if (!enableMemControl && workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
@@ -602,6 +604,8 @@ public class TsFileProcessor {
       if (workMemTable == null) {
         return;
       }
+      logger.info("Async flush a memtable to tsfile: {}",
+          tsFileResource.getTsFile().getAbsolutePath());
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error("{}: {} add a memtable into flushing list failed", storageGroupName,
@@ -674,10 +678,15 @@ public class TsFileProcessor {
       }
       memTable.release();
       if (enableMemControl) {
-        // For text type data, reset the mem cost in tsFileProcessorInfo
+        // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+        if (logger.isDebugEnabled()) {
+          logger.debug("[mem control] {}: {} flush finished, try to reset system memcost, "
+              + "flushing memtable list size: {}", storageGroupName,
+          tsFileResource.getTsFile().getName(), flushingMemTables.size());
+        }
         // report to System
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
       }
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
@@ -972,10 +981,8 @@ public class TsFileProcessor {
     return sequence;
   }
 
-  public void startClose() {
-    storageGroupInfo.getStorageGroupProcessor().asyncCloseOneTsFileProcessor(sequence, this);
-    logger.info("Async close tsfile: {}",
-        getTsFileResource().getTsFile().getAbsolutePath());
+  public void startAsyncFlush() {
+    storageGroupInfo.getStorageGroupProcessor().asyncFlushMemTableInTsFileProcessor(this);
   }
 
   public void setFlush() {

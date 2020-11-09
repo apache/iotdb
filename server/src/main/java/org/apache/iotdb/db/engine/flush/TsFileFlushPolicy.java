@@ -21,8 +21,6 @@ package org.apache.iotdb.db.engine.flush;
 
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * TsFileFlushPolicy is applied when a TsFileProcessor is full after insertion. For standalone
@@ -35,19 +33,13 @@ public interface TsFileFlushPolicy {
 
   class DirectFlushPolicy implements TsFileFlushPolicy {
 
-    private static final Logger logger = LoggerFactory.getLogger(DirectFlushPolicy.class);
-
     @Override
     public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
         boolean isSeq) {
       if (tsFileProcessor.shouldClose()) {
         storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);
-        logger.info("Async close tsfile: {}",
-            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       } else {
         tsFileProcessor.asyncFlush();
-        logger.info("Async flush a memtable to tsfile: {}",
-            tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
     }
   }

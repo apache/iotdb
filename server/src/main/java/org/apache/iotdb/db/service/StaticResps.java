@@ -97,7 +97,7 @@ class StaticResps {
 
   static final TSExecuteStatementResp COUNT_NODE_TIMESERIES = getNoTimeExecuteResp(
       Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.INT32.toString()));
 
   static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),

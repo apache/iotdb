@@ -746,7 +746,7 @@ public class MTree implements Serializable {
   boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
     MNode cur = root;
-    for (int i = 1; i <= nodes.length; i++) {
+    for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
         return false;
