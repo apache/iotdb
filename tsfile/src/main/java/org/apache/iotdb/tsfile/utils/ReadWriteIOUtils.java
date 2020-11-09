@@ -341,7 +341,7 @@ public class ReadWriteIOUtils {
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += write(0, outputStream);
+      len += write(-1, outputStream);
       return len;
     }
 
