@@ -307,6 +307,10 @@ public class IoTDBDescriptor {
           .getProperty("compaction_strategy",
               conf.getCompactionStrategy().toString())));
 
+      conf.setEnableUnseqCompaction(Boolean.parseBoolean(
+          properties.getProperty("enable_unseq_compaction",
+              Boolean.toString(conf.isEnableUnseqCompaction()))));
+
       conf.setSeqLevelNum(Integer.parseInt(properties
           .getProperty("seq_level_num",
               Integer.toString(conf.getSeqLevelNum()))));
@@ -770,7 +774,8 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_schema_free_memory_proportion");
+    String memoryAllocateProportion = properties
+        .getProperty("write_read_schema_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -831,9 +836,6 @@ public class IoTDBDescriptor {
 
   /**
    * Get default encode algorithm by data type
-   *
-   * @param dataType
-   * @return
    */
   public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
     switch (dataType) {

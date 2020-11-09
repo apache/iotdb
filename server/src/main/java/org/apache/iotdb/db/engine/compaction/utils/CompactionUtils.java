@@ -253,8 +253,7 @@ public class CompactionUtils {
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
             logger
-                .debug("{} [Compaction] page not enough large, use deserialize merge",
-                    storageGroup);
+                .debug("{} [Compaction] page too small, use deserialize merge", storageGroup);
             // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
                 entry, targetResource, writer);
