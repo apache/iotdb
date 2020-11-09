@@ -348,7 +348,7 @@ CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
 
-> if you didn't create metadata in the IoTDB in another computer, IoTDB will infer datatype by itself and this probably caused time series has different datatype and many other unexpected things.
+IoTDB has the ability of type inference, so it is not necessary to create metadata before data import. However, we still recommend creating metadata before importing data using the CSV import tool, as this can avoid unnecessary type conversion errors.
 
 ### An example of import csv file
 
