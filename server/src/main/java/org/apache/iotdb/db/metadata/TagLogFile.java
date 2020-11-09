@@ -40,7 +40,8 @@ public class TagLogFile implements AutoCloseable {
   private static final String LENGTH_EXCEED_MSG = "Tag/Attribute exceeds the max length limit. "
       + "Please enlarge tag_attribute_total_size in iotdb-engine.properties";
 
-  private static final int MAX_LENGTH = IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
+  private static final int MAX_LENGTH = IoTDBDescriptor.getInstance().getConfig()
+      .getTagAttributeTotalSize();
 
   private static final byte FILL_BYTE = 0;
 
@@ -57,7 +58,9 @@ public class TagLogFile implements AutoCloseable {
 
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
 
-    this.fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.DSYNC);
+    this.fileChannel = FileChannel
+        .open(logFile.toPath(), StandardOpenOption.READ, StandardOpenOption.WRITE,
+            StandardOpenOption.CREATE, StandardOpenOption.DSYNC);
     // move the current position to the tail of the file
     this.fileChannel.position(fileChannel.size());
   }
@@ -65,7 +68,8 @@ public class TagLogFile implements AutoCloseable {
   /**
    * @return tags map, attributes map
    */
-  public Pair<Map<String, String>, Map<String, String>> read(int size, long position) throws IOException {
+  public Pair<Map<String, String>, Map<String, String>> read(int size, long position)
+      throws IOException {
     if (position < 0) {
       return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
     }
@@ -82,7 +86,8 @@ public class TagLogFile implements AutoCloseable {
     return ReadWriteIOUtils.readMap(byteBuffer);
   }
 
-  public long write(Map<String, String> tagMap, Map<String, String> attributeMap) throws IOException, MetadataException {
+  public long write(Map<String, String> tagMap, Map<String, String> attributeMap)
+      throws IOException, MetadataException {
     long offset = fileChannel.position();
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
     fileChannel.write(byteBuffer);
@@ -92,12 +97,14 @@ public class TagLogFile implements AutoCloseable {
   /**
    * This method does not modify this file's current position.
    */
-  public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position) throws IOException, MetadataException {
+  public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position)
+      throws IOException, MetadataException {
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
     fileChannel.write(byteBuffer, position);
   }
 
-  private ByteBuffer convertMapToByteBuffer(Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
+  private ByteBuffer convertMapToByteBuffer(Map<String, String> tagMap,
+      Map<String, String> attributeMap) throws MetadataException {
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     int length = serializeMap(tagMap, byteBuffer, 0);
     length = serializeMap(attributeMap, byteBuffer, length);
@@ -112,7 +119,8 @@ public class TagLogFile implements AutoCloseable {
     return byteBuffer;
   }
 
-  private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length) throws MetadataException {
+  private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length)
+      throws MetadataException {
     if (map == null) {
       length += Integer.BYTES;
       if (length > MAX_LENGTH) {
@@ -128,6 +136,10 @@ public class TagLogFile implements AutoCloseable {
     ReadWriteIOUtils.write(map.size(), byteBuffer);
     byte[] bytes;
     for (Map.Entry<String, String> entry : map.entrySet()) {
+      if (entry.getKey() == null || entry.getKey().isEmpty() || entry.getValue() == null || entry
+          .getValue().isEmpty()) {
+        throw new MetadataException("Tag key or value shouldn't be null or empty string.");
+      }
       // serialize key
       bytes = entry.getKey().getBytes();
       length += (4 + bytes.length);
