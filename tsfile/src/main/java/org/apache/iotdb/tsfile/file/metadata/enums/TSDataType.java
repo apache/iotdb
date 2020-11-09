@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
   BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
@@ -96,6 +97,23 @@ public enum TSDataType {
    */
   public short serialize() {
     return enumToByte();
+  }
+
+  public int getDataTypeSize() {
+    switch (this) {
+      case BOOLEAN:
+        return 1;
+      case INT32:
+      case FLOAT:
+        return 4;
+        // For text: return the size of reference here
+      case TEXT:
+      case INT64:
+      case DOUBLE:
+        return 8;
+      default:
+        throw new UnSupportedDataTypeException(this.toString());
+    }
   }
 
   /**

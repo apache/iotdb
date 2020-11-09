@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -63,11 +62,14 @@ public class ChunkMetadataCacheTest {
   private String systemDir = TestConstant.BASE_OUTPUT_PATH.concat("data")
       .concat(File.separator).concat("info");
 
+  private int prevUnseqLevelNum = 0;
+
   @Before
   public void setUp() throws Exception {
+    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup,
         new DirectFlushPolicy());
     insertData();
@@ -79,6 +81,7 @@ public class ChunkMetadataCacheTest {
     storageGroupProcessor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(systemDir);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   private void insertOneRecord(long time, int num)

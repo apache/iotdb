@@ -45,8 +45,11 @@ public class MemUtils {
 
   /**
    * function for getting the value size.
+   * If mem control enabled, do not add text data size here, the size will be added to memtable
+   * before inserting.
    */
-  public static long getRecordSize(TSDataType dataType, Object value) {
+  public static long getRecordSize(TSDataType dataType, Object value,
+      boolean addingTextDataSize) {
     switch (dataType) {
       case INT32:
         return 8L + 4L;
@@ -59,7 +62,7 @@ public class MemUtils {
       case BOOLEAN:
         return 8L + 1L;
       case TEXT:
-        return 8L + getBinarySize((Binary) value);
+        return 8L + (addingTextDataSize ? getBinarySize((Binary) value) : 0);
       default:
         return 8L + 8L;
     }
@@ -70,7 +73,21 @@ public class MemUtils {
         .sizeOf(value.getValues());
   }
 
-  public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end) {
+  public static long getBinaryColumnSize(Binary[] column, int start, int end) {
+    long memSize = 0;
+    memSize += (end-start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
+    for (int i = start; i < end; i++) {
+      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+    }
+    return memSize;
+  }
+
+  /**
+   * If mem control enabled, do not add text data size here, the size will be added to memtable
+   * before inserting.
+   */
+  public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end,
+      boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }
@@ -92,8 +109,10 @@ public class MemUtils {
           memSize += (end - start) * (8L + 1L); break;
         case TEXT:
           memSize += (end - start) * 8L;
-          for (int j = start; j < end; j++) {
-            memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+          if (addingTextDataSize) {
+            for (int j = start; j < end; j++) {
+              memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
+            }
           }
           break;
         default:

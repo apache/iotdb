@@ -55,6 +55,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -831,6 +832,36 @@ public class TsFileResource {
       maxVersion = Collections.max(historicalVersions);
     }
     return maxVersion;
+  }
+
+  /**
+   * @return initial resource map size
+   */
+  public long calculateRamSize() {
+    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) + 
+        RamUsageEstimator.sizeOf(endTimes);
+  }
+
+  /**
+   * Calculate the resource ram increment when insert data in TsFileProcessor
+   * 
+   * @return ramIncrement
+   */
+  public long estimateRamIncrement(String deviceToBeChecked) {
+    long ramIncrement = 0L;
+    if (!containsDevice(deviceToBeChecked)) {
+      // 80 is the Map.Entry header ram size
+      if (deviceToIndex.isEmpty()) {
+        ramIncrement += 80;
+      }
+      // Map.Entry ram size
+      ramIncrement += RamUsageEstimator.sizeOf(deviceToBeChecked) + 16;
+      // if needs to extend the startTimes and endTimes arrays
+      if (deviceToIndex.size() >= startTimes.length) {
+        ramIncrement += startTimes.length * Long.BYTES;
+      }
+    }
+    return ramIncrement;
   }
 
   public void delete() throws IOException {

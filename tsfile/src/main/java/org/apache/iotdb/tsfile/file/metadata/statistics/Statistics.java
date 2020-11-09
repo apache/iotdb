@@ -80,6 +80,25 @@ public abstract class Statistics<T> {
     }
   }
 
+  public static int getSizeByType(TSDataType type) {
+    switch (type) {
+      case INT32:
+        return IntegerStatistics.INTEGER_STATISTICS_FIXED_RAM_SIZE;
+      case INT64:
+        return LongStatistics.LONG_STATISTICS_FIXED_RAM_SIZE;
+      case TEXT:
+        return BinaryStatistics.BINARY_STATISTICS_FIXED_RAM_SIZE;
+      case BOOLEAN:
+        return BooleanStatistics.BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
+      case DOUBLE:
+        return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
+      case FLOAT:
+        return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+      default:
+        throw new UnknownColumnTypeException(type.toString());
+    }
+  }
+
   public abstract TSDataType getType();
 
   public int getSerializedSize() {

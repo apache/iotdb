@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +71,7 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
@@ -235,8 +235,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (!compatible) {
         tsStatus = RpcUtils.getStatus(TSStatusCode.INCOMPATIBLE_VERSION,
             "The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
-            CURRENT_RPC_VERSION);
+        TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
         resp.setSessionId(sessionId);
         return resp;
       }
@@ -246,18 +245,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       sessionIdUsernameMap.put(sessionId, req.getUsername());
       sessionIdZoneIdMap.put(sessionId, ZoneId.of(req.getZoneId()));
       currSessionId.set(sessionId);
+      auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
+      logger.info(
+          "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
+          req.getUsername());
     } else {
-      tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
-      tsStatus.setMessage(loginMessage);
+      tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
+          loginMessage != null ? loginMessage : "Authentication failed.");
+      auditLogger.info("User {} opens Session failed with an incorrect password", req.getUsername());
     }
-    auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         CURRENT_RPC_VERSION);
     resp.setSessionId(sessionId);
-    logger.info(
-        "{}: Login status: {}. User : {}", IoTDBConstant.GLOBAL_DB_NAME, tsStatus.message,
-        req.getUsername());
-
     return resp;
   }
 
@@ -652,7 +651,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
+        // the actual row number of aggregation query is 1
+        fetchSize = 1;
       } // else default ignoreTimeStamp is false
+
+      if (plan instanceof GroupByTimePlan) {
+        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) plan;
+        // the actual row number of group by query should be calculated from startTime, endTime and interval.
+        fetchSize = Math.min(
+            (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
+                .getInterval()), fetchSize);
+      }
+
       resp.setOperationType(plan.getOperatorType().toString());
 
       // get deduplicated path num
@@ -660,13 +670,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof AlignByDevicePlan) {
         deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
       } else if (plan instanceof LastQueryPlan) {
-        deduplicatedPathNum = 0;
+        // dataset of last query consists of three column: time column + value column = 1 deduplicatedPathNum
+        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
+        deduplicatedPathNum = 2;
+        // last query's actual row number should be the minimum between the number of series and fetchSize
+        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
       } else if (plan instanceof RawDataQueryPlan) {
         deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
       }
 
       // generate the queryId for the operation
-
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
@@ -765,8 +778,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.TTL_RESP;
       case FLUSH_TASK_INFO:
         return StaticResps.FLUSH_INFO_RESP;
-      case DYNAMIC_PARAMETER:
-        return StaticResps.DYNAMIC_PARAMETER_RESP;
       case VERSION:
         return StaticResps.SHOW_VERSION_RESP;
       case TIMESERIES:
@@ -1729,6 +1740,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean execRet;
     try {
+      plan.checkIntegrity();
       execRet = executeNonQuery(plan);
     } catch (BatchInsertionException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));

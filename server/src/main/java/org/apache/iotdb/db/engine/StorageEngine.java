@@ -264,16 +264,25 @@ public class StorageEngine implements IService {
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
       try {
-        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+        ttlCheckThread.awaitTermination(60, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("TTL check thread still doesn't exit after 30s");
+        logger.warn("TTL check thread still doesn't exit after 60s");
         Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException("StorageEngine failed to stop.", e);
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "ttlCheckThread.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
     if (!recoverAllSgThreadPool.isShutdown()) {
       recoverAllSgThreadPool.shutdownNow();
+      try {
+        recoverAllSgThreadPool.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("recoverAllSgThreadPool thread still doesn't exit after 60s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "recoverAllSgThreadPool.", e);
+      }
     }
     this.reset();
   }
@@ -428,7 +437,7 @@ public class StorageEngine implements IService {
       } else {
         // to avoid concurrent modification problem, we need a new array list
         for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-            processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.getWorkUnsequenceTsFileProcessors())) {
           if (isSync) {
             processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
           } else {
@@ -459,7 +468,7 @@ public class StorageEngine implements IService {
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileProcessor> processors = isSeq ?
           new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
+          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
@@ -746,7 +755,7 @@ public class StorageEngine implements IService {
         partitionIdList.add(tmpPair);
       }
 
-      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
         Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
         partitionIdList.add(tmpPair);
       }

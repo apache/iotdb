@@ -271,11 +271,20 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* enable\_parameter\_adapter
+* enable\_mem\_comtrol
 
-|Name| enable\_parameter\_adapter |
+|Name| enable\_mem\_control |
 |:---:|:---|
-|Description| 开启自动调整系统参数，避免爆内存|
+|Description| 开启内存控制，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
+* enable\_mem\_comtrol
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| 开启内存控制，避免爆内存|
 |Type|Bool|
 |Default| true |
 |Effective|重启服务器生效|
@@ -287,7 +296,7 @@
 |Description| 内存缓冲区 memtable 阈值|
 |Type|Long|
 |Default| 1073741824 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective|enable\_mem\_control为false时生效、重启服务器生效|
 
 * avg\_series\_point\_number\_threshold
 
@@ -305,7 +314,7 @@
 |Description| 每个 tsfile 大小|
 |Type|Long|
 |Default| 536870912 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective| 重启服务器生效|
 
 * enable\_partition
 

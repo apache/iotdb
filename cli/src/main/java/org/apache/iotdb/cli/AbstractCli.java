@@ -344,12 +344,11 @@ public abstract class AbstractCli {
       return args;
     } else {
       StringBuilder executeCommand = new StringBuilder();
-      /*for (int j = index + 1; j < args.length; j++) {
+      for (int j = index + 1; j < args.length; j++) {
         executeCommand.append(args[j]).append(" ");
-      }*/
-      executeCommand.append(args[index + 1]);
+      }
       // remove last space
-      //executeCommand.deleteCharAt(executeCommand.length() - 1);
+      executeCommand.deleteCharAt(executeCommand.length() - 1);
       // some bashes may not remove quotes of parameters automatically, remove them in that case
       if (executeCommand.charAt(0) == '\'' || executeCommand.charAt(0) == '\"') {
         executeCommand.deleteCharAt(0);
@@ -361,7 +360,6 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
-      // remove "-e" and it's parameter
       args = Arrays.copyOfRange(args, 0, index);
       return args;
     }

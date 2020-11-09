@@ -35,7 +35,7 @@ public class LongStatistics extends Statistics<Long> {
   private long lastValue;
   private double sumValue;
 
-  private static final int LONG_STATISTICS_FIXED_RAM_SIZE = 80;
+  static final int LONG_STATISTICS_FIXED_RAM_SIZE = 80;
 
 
   @Override

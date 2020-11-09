@@ -710,14 +710,6 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowDynamicParameter() throws QueryProcessException {
-    String metadata = "show dynamic parameter";
-    Planner processor = new Planner();
-    ShowPlan plan = (ShowPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("SHOW DYNAMIC_PARAMETER", plan.toString());
-  }
-
-  @Test
   public void testShowFlushInfo() throws QueryProcessException {
     String metadata = "show flush task info";
     Planner processor = new Planner();
@@ -864,7 +856,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testSpecialCharacters() throws QueryProcessException {
-    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack] with "
+    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack].desc with "
         + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
         + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
