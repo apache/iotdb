@@ -599,9 +599,6 @@
                     <execution>
                         <id>enforce-version-convergence</id>
                         <configuration>
-                            <!--  Thrift 0.13 produces unknown bugs in cluster module, so we use
-                            0.12 there instead                     -->
-                            <fail>false</fail>
                             <rules>
                                 <dependencyConvergence/>
                             </rules>

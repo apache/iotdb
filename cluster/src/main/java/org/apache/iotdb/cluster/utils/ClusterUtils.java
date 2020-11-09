@@ -86,31 +86,31 @@ public class ClusterUtils {
 
     if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
-      logger.info("Remote partition interval conflicts with local. local: {}, remote: {}",
+      logger.error("Remote partition interval conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getPartitionInterval(), remoteStartUpStatus.getPartitionInterval());
     }
     if (localStartUpStatus.getHashSalt() != remoteStartUpStatus.getHashSalt()) {
       hashSaltEquals = false;
-      logger.info("Remote hash salt conflicts with local. local: {}, remote: {}",
+      logger.error("Remote hash salt conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getHashSalt(), remoteStartUpStatus.getHashSalt());
     }
     if (localStartUpStatus.getReplicationNumber() != remoteStartUpStatus.getReplicationNumber()) {
       replicationNumEquals = false;
-      logger.info("Remote replication number conflicts with local. local: {}, remote: {}",
+      logger.error("Remote replication number conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getReplicationNumber(), remoteStartUpStatus.getReplicationNumber());
     }
     if (!Objects
         .equals(localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName())) {
       clusterNameEqual = false;
-      logger.info("Remote cluster name conflicts with local. local: {}, remote: {}",
+      logger.error("Remote cluster name conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getClusterName(), remoteStartUpStatus.getClusterName());
     }
     if (!ClusterUtils
         .checkSeedNodes(false, localStartUpStatus.getSeedNodeList(),
             remoteStartUpStatus.getSeedNodeList())) {
       seedNodeListEquals = false;
-      if (logger.isInfoEnabled()) {
-        logger.info("Remote seed node list conflicts with local. local: {}, remote: {}",
+      if (logger.isErrorEnabled()) {
+        logger.error("Remote seed node list conflicts with local. local: {}, remote: {}",
             localStartUpStatus.getSeedNodeList(), remoteStartUpStatus.getSeedNodeList());
       }
     }
