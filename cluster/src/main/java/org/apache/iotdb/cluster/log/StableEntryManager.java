@@ -46,4 +46,10 @@ public interface StableEntryManager {
   List<Log> getLogs(long startIndex, long endIndex);
 
   void close();
+
+  /**
+   * clear all logs, this method mainly used for after a follower accept a snapshot, all the logs
+   * should be cleaned
+   */
+  void clearAllLogs(long commitIndex);
 }

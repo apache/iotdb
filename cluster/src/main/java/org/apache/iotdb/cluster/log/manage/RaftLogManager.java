@@ -501,6 +501,9 @@ public abstract class RaftLogManager {
       this.commitIndex = snapshot.getLastLogIndex();
     }
 
+    // as the follower receives a snapshot, the logs persisted is not complete, so remove them
+    getStableEntryManager().clearAllLogs(commitIndex);
+
     synchronized (changeApplyCommitIndexCond) {
       if (this.maxHaveAppliedCommitIndex < snapshot.getLastLogIndex()) {
         this.maxHaveAppliedCommitIndex = snapshot.getLastLogIndex();
@@ -868,7 +871,8 @@ public abstract class RaftLogManager {
     try {
       long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
       if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
-          .getLastIndex() || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
+          .getLastIndex() || (blockAppliedCommitIndex > 0
+          && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
         Thread.sleep(5);
         return;
