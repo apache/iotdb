@@ -91,10 +91,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .info("{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     for (int i = 0; i < seqLevelNum; i++) {
-      sequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+      if (sequenceTsFileResources.containsKey(timePartitionId)) {
+        if (sequenceTsFileResources.get(timePartitionId).size() > i) {
+          sequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+        }
+      }
     }
     for (int i = 0; i < unseqLevelNum; i++) {
-      unSequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+      if (unSequenceTsFileResources.containsKey(timePartitionId)) {
+        if (unSequenceTsFileResources.get(timePartitionId).size() > i) {
+          unSequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+        }
+      }
     }
   }
 
