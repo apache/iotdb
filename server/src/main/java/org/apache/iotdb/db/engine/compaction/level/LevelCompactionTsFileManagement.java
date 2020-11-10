@@ -87,6 +87,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     logger.debug("{} [compaction] merge starts to delete file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
+      logger
+          .info("{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     for (int i = 0; i < seqLevelNum; i++) {
       sequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
@@ -478,10 +480,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             logger.info(
                 "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
                 storageGroupName, i, toMergeTsFiles.size());
-            for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.info("{} [Compaction] start to delete TsFile {}", storageGroupName,
-                  toMergeTsFile);
-            }
             writeLock();
             try {
               deleteLevelFiles(timePartition, toMergeTsFiles);

@@ -169,14 +169,17 @@ public class MergeManager implements IService, MergeManagerMBean {
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
+        int timeMillis = 0;
         try {
-          Thread.sleep(200);
+          Thread.sleep(1);
         } catch (InterruptedException e) {
-          logger.error("MergeManager {} shutdown", ThreadName.MERGE_SERVICE.getName(), e);
-          return;
+          logger.error("CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(), e);
+          Thread.currentThread().interrupt();
         }
+        timeMillis++;
         long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
+        if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
@@ -203,9 +206,17 @@ public class MergeManager implements IService, MergeManagerMBean {
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
-        // wait
+        int timeMillis = 0;
+        try {
+          Thread.sleep(1);
+        } catch (InterruptedException e) {
+          logger.error("CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(), e);
+          Thread.currentThread().interrupt();
+        }
+        timeMillis++;
         long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
+        if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
