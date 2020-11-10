@@ -41,11 +41,11 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -59,6 +59,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private static final Logger logger = LoggerFactory
       .getLogger(LevelCompactionTsFileManagement.class);
+
 
   private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
   private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
