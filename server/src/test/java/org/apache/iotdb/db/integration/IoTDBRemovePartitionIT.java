@@ -29,6 +29,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -42,6 +43,7 @@ import org.junit.Test;
 public class IoTDBRemovePartitionIT {
 
   private static int partitionInterval = 100;
+  private static boolean enableUnseqCompaction;
 
   @Before
   public void setUp() throws Exception {
@@ -49,6 +51,9 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
+
+    enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
     insertData();
   }
 
@@ -56,6 +61,7 @@ public class IoTDBRemovePartitionIT {
   public void tearDown() throws Exception {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(enableUnseqCompaction);
     EnvironmentUtils.cleanEnv();
   }
 
