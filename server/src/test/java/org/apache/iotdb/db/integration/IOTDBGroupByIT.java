@@ -100,13 +100,11 @@ public class IOTDBGroupByIT {
 
   private static final String TIMESTAMP_STR = "Time";
   private long prevPartitionInterval;
-  private static boolean enableUnseqCompaction;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     EnvironmentUtils.envSetUp();
@@ -118,7 +116,6 @@ public class IOTDBGroupByIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(enableUnseqCompaction);
   }
 
   @Test
