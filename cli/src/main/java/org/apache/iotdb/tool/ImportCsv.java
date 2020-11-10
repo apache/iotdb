@@ -55,6 +55,10 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
+  // put these variable in here, because sonar fails.  have to extract some code into a function. nextNode method.
+  private static int i;
+  private static int startIndex;
+
   /**
    * create the commandline options.
    *
@@ -312,37 +316,15 @@ public class ImportCsv extends AbstractCsvTool {
 
   public static String[] splitCsvLine(String path) {
     List<String> nodes = new ArrayList<>();
-    int startIndex = 0;
-    for (int i = 0; i < path.length(); i++) {
+    startIndex = 0;
+    for (i = 0; i < path.length(); i++) {
       if (path.charAt(i) == ',') {
         nodes.add(path.substring(startIndex, i));
         startIndex = i + 1;
       } else if (path.charAt(i) == '"') {
-        int endIndex = path.indexOf('"', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('"', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
-          nodes.add(path.substring(startIndex + 1, endIndex));
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalArgumentException("Illegal csv line, must have a pair of double quotes, " + path);
-        }
+        nextNode(path, nodes, '"');
       } else if (path.charAt(i) == '\'') {
-        int endIndex = path.indexOf('\'', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('\'', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
-          nodes.add(path.substring(startIndex + 1, endIndex));
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalArgumentException("Illegal csv line, must have a pair of single quotes, " + path);
-        }
+        nextNode(path, nodes, '\'');
       }
     }
     if (startIndex <= path.length() - 1) {
@@ -350,4 +332,20 @@ public class ImportCsv extends AbstractCsvTool {
     }
     return nodes.toArray(new String[0]);
   }
+
+  public static void nextNode(String path, List<String> nodes, char enclose) {
+    int endIndex = path.indexOf(enclose, i + 1);
+    // if a double quotes with escape character
+    while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+      endIndex = path.indexOf(enclose, endIndex + 1);
+    }
+    if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
+      nodes.add(path.substring(startIndex + 1, endIndex));
+      i = endIndex + 1;
+      startIndex = endIndex + 2;
+    } else {
+      throw new IllegalArgumentException("Illegal csv line" + path);
+    }
+  }
+
 }
