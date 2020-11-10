@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.RunnableScheduledFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -97,9 +96,6 @@ public abstract class RaftLogManager {
 
   private ExecutorService checkLogApplierExecutorService;
   private Future<?> checkLogApplierFuture;
-
-  private ScheduledThreadPoolExecutor flushLogExecutorService;
-  private RunnableScheduledFuture<?> flushLogFuture;
 
   /**
    * minimum number of committed logs in memory
@@ -173,21 +169,7 @@ public abstract class RaftLogManager {
     /**
      * flush log to file periodically
      */
-    int logFlushTimeIntervalMS = ClusterDescriptor.getInstance().getConfig()
-        .getForceRaftLogPeriodInMS();
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
-      if (flushLogExecutorService == null) {
-        flushLogExecutorService = new ScheduledThreadPoolExecutor(1,
-            new BasicThreadFactory.Builder().namingPattern("raft-log-write-%d").daemon(true)
-                .build());
-        flushLogExecutorService.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
-        flushLogExecutorService.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-        flushLogExecutorService.setRemoveOnCancelPolicy(true);
-      }
-      flushLogFuture = (RunnableScheduledFuture<?>) flushLogExecutorService
-          .scheduleAtFixedRate(this::flushLogPeriodically, logFlushTimeIntervalMS,
-              logFlushTimeIntervalMS, TimeUnit.MILLISECONDS);
-
       this.applyAllCommittedLogWhenStartUp();
     }
   }
@@ -754,18 +736,6 @@ public abstract class RaftLogManager {
       checkLogApplierExecutorService = null;
     }
 
-    if (flushLogExecutorService != null) {
-      flushLogExecutorService.shutdownNow();
-      flushLogFuture.cancel(true);
-      try {
-        flushLogExecutorService.awaitTermination(5, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Close flush log thread interrupted");
-      }
-      flushLogExecutorService = null;
-    }
-
     if (logApplier != null) {
       logApplier.close();
     }
@@ -810,12 +780,6 @@ public abstract class RaftLogManager {
         return;
       }
       innerDeleteLog(minNumOfLogsInMem);
-    }
-  }
-
-  private void flushLogPeriodically() {
-    synchronized (this) {
-      getStableEntryManager().forceFlushLogBuffer();
     }
   }
 

@@ -100,8 +100,6 @@ public class ClusterConfig {
 
   private int flushRaftLogThreshold = 10000;
 
-  private int forceRaftLogPeriodInMS = 1000;
-
   /**
    * Size of log buffer. If raft log persistence is enabled and the size of a insert plan is smaller
    * than this parameter, then the insert plan will be rejected by WAL.
@@ -362,14 +360,6 @@ public class ClusterConfig {
 
   void setFlushRaftLogThreshold(int flushRaftLogThreshold) {
     this.flushRaftLogThreshold = flushRaftLogThreshold;
-  }
-
-  public int getForceRaftLogPeriodInMS() {
-    return forceRaftLogPeriodInMS;
-  }
-
-  void setForceRaftLogPeriodInMS(int forceRaftLogPeriodInMS) {
-    this.forceRaftLogPeriodInMS = forceRaftLogPeriodInMS;
   }
 
   public long getJoinClusterTimeOutMs() {

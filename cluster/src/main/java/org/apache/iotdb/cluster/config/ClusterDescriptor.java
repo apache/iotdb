@@ -264,11 +264,6 @@ public class ClusterDescriptor {
         .getProperty("flush_raft_log_threshold", String.valueOf(config.getFlushRaftLogThreshold())))
     );
 
-    config.setForceRaftLogPeriodInMS(Integer.parseInt(properties
-        .getProperty("force_raft_log_period_in_ms",
-            String.valueOf(config.getForceRaftLogPeriodInMS())))
-    );
-
     config.setRaftLogBufferSize(Integer.parseInt(properties
         .getProperty("raft_log_buffer_size", String.valueOf(config.getRaftLogBufferSize())))
     );
