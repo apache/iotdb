@@ -41,7 +41,7 @@ public class MemChunkReader implements IChunkReader, IPointReader {
   private List<IPageReader> pageReaderList;
 
 
-  public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) throws IOException{
+  public MemChunkReader(ReadOnlyMemChunk readableChunk, Filter filter) {
     timeValuePairIterator = readableChunk.getPointReader();
     this.filter = filter;
     // we treat one ReadOnlyMemChunk as one Page
