@@ -129,6 +129,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -863,7 +864,7 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     }
   }
-  
+
   protected MNode getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
     return IoTDB.metaManager
@@ -1021,9 +1022,12 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan) {
-    Map<Integer, Exception> results = new HashMap<>(multiPlan.getPaths().size());
+  private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
+      throws BatchProcessException {
     for (int i = 0; i < multiPlan.getPaths().size(); i++) {
+      if (multiPlan.getResults().containsKey(i)) {
+        continue;
+      }
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(
           multiPlan.getPaths().get(i),
           multiPlan.getDataTypes().get(i),
@@ -1035,12 +1039,15 @@ public class PlanExecutor implements IPlanExecutor {
           multiPlan.getAlias() == null ? null : multiPlan.getAlias().get(i));
       try {
         createTimeSeries(plan);
+        multiPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (QueryProcessException e) {
-        results.put(multiPlan.getIndexes().get(i), e);
-        logger.debug("meet error while processing create timeseries. ", e);
+        multiPlan.getResults().put(i, RpcUtils
+            .getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
-    multiPlan.setResults(results);
+    if (!multiPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(multiPlan.getResults().values().toArray(new TSStatus[0]));
+    }
     return true;
   }
 

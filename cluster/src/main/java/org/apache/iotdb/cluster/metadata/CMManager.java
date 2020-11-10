@@ -84,7 +84,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -392,13 +391,37 @@ public class CMManager extends MManager {
    */
   public void createSchema(PhysicalPlan plan) throws MetadataException {
     // try to set storage group
-    PartialPath deviceId;
+    List<PartialPath> deviceIds;
+    // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
     if (plan instanceof InsertPlan) {
-      deviceId = ((InsertPlan) plan).getDeviceId();
+      deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
+    } else if (plan instanceof CreateTimeSeriesPlan) {
+      deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());
     } else {
-      deviceId = ((CreateTimeSeriesPlan) plan).getPath();
+      deviceIds = plan.getPaths().stream().distinct().collect(Collectors.toList());
     }
 
+    for (PartialPath deviceId : deviceIds) {
+      createStorageGroup(deviceId);
+    }
+
+    if (plan instanceof InsertPlan) {
+      // try to create timeseries
+      boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
+      if (!isAutoCreateTimeseriesSuccess) {
+        throw new MetadataException(
+            "Failed to create timeseries from InsertPlan automatically."
+        );
+      }
+    }
+  }
+
+  /**
+   * Create storage group automatically for deviceId.
+   *
+   * @param deviceId
+   */
+  private void createStorageGroup(PartialPath deviceId) throws MetadataException {
     PartialPath storageGroupName = MetaUtils
         .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
             .getConfig().getDefaultStorageGroupLevel());
@@ -413,15 +436,6 @@ public class CMManager extends MManager {
           String.format("Status Code: %d, failed to set storage group %s",
               setStorageGroupResult.getCode(), storageGroupName)
       );
-    }
-    if (plan instanceof InsertPlan) {
-      // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
-      if (!isAutoCreateTimeseriesSuccess) {
-        throw new MetadataException(
-            "Failed to create timeseries from InsertPlan automatically."
-        );
-      }
     }
   }
 
@@ -1036,7 +1050,7 @@ public class CMManager extends MManager {
     if (offset > 0 && result.size() > offset) {
       skippedOffset = offset;
       result = result.subList(offset, result.size());
-    } else if (offset > 0){
+    } else if (offset > 0) {
       skippedOffset = result.size();
       result = Collections.emptyList();
     }
@@ -1327,7 +1341,8 @@ public class CMManager extends MManager {
     return resultBinary;
   }
 
-  public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias) throws MetadataException {
+  public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
+      throws MetadataException {
     List<String> retPaths = new ArrayList<>();
     List<String> alias = null;
     if (withAlias) {

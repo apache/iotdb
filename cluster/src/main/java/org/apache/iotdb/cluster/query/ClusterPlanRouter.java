@@ -298,15 +298,18 @@ public class ClusterPlanRouter {
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateMultiTimeSeriesPlan plan)
-    throws MetadataException {
+      throws MetadataException {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     Map<PartitionGroup, PhysicalPlan> groupHoldPlan = new HashMap<>();
 
     for (int i = 0; i < plan.getPaths().size(); i++) {
       PartialPath path = plan.getPaths().get(i);
+      if (plan.getResults().containsKey(i)) {
+        continue;
+      }
       PartitionGroup partitionGroup =
-        partitionTable.partitionByPathTime(path, 0);
-      CreateMultiTimeSeriesPlan subPlan = null;
+          partitionTable.partitionByPathTime(path, 0);
+      CreateMultiTimeSeriesPlan subPlan;
       if (groupHoldPlan.get(partitionGroup) == null) {
         subPlan = new CreateMultiTimeSeriesPlan();
         subPlan.setPaths(new ArrayList<>());
@@ -347,7 +350,7 @@ public class ClusterPlanRouter {
       if (plan.getAttributes() != null) {
         subPlan.getAttributes().add(plan.getAttributes().get(i));
       }
-      subPlan.getIndexes().add(plan.getIndexes().get(i));
+      subPlan.getIndexes().add(i);
     }
 
     for (Map.Entry<PartitionGroup, PhysicalPlan> entry : groupHoldPlan.entrySet()) {
