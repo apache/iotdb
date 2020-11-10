@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -509,11 +510,14 @@ public class SerializeUtils {
     int idLastPos = str.indexOf(',', idFirstPos);
     int dataPortFirstPos = str.indexOf("dataPort:", idLastPos) + "dataPort:".length();
     int dataPortLastPos = str.indexOf(')', dataPortFirstPos);
+    int clientPortFirstPos = str.indexOf("clientPort:", dataPortLastPos) + "clientPort:".length();
+    int clientPortLastPos = str.indexOf(')', clientPortFirstPos);
 
     String ip = str.substring(ipFirstPos, ipLastPos);
     int metaPort = Integer.parseInt(str.substring(metaPortFirstPos, metaPortLastPos));
     int id = Integer.parseInt(str.substring(idFirstPos, idLastPos));
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
-    return new Node(ip, metaPort, id, dataPort);
+    int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
+    return new Node(ip, metaPort, id, dataPort, clientPort);
   }
 }

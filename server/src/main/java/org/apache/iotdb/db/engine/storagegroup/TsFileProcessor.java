@@ -631,6 +631,7 @@ public class TsFileProcessor {
           storageGroupName, tsFileResource.getTsFile().getName(), tobeFlushed.getMemTableMap());
       return;
     }
+    logger.warn("Before flush listeners are called");
 
     for (FlushListener flushListener : flushListeners) {
       flushListener.onFlushStart(tobeFlushed);
