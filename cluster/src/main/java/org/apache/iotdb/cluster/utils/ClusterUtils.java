@@ -168,8 +168,8 @@ public class ClusterUtils {
     while (i < seedNodeList.size() && j < subSeedNodeList.size()) {
       int compareResult = compareSeedNode(seedNodeList.get(i), subSeedNodeList.get(j));
       if (compareResult > 0) {
-        if (logger.isInfoEnabled()) {
-          logger.info("Node {} not found in cluster", subSeedNodeList.get(j));
+        if (logger.isErrorEnabled()) {
+          logger.error("Node {} not found in cluster", subSeedNodeList.get(j));
         }
         return false;
       } else if (compareResult < 0) {
@@ -189,22 +189,22 @@ public class ClusterUtils {
     boolean seedNodeListEquals = response.seedNodeEquals;
     boolean clusterNameEqual = response.clusterNameEquals;
     if (!partitionIntervalEquals) {
-      logger.info(
+      logger.error(
           "Local partition interval conflicts with seed node[{}].", seedNode);
     }
     if (!hashSaltEquals) {
       logger
-          .info("Local hash salt conflicts with seed node[{}]", seedNode);
+          .error("Local hash salt conflicts with seed node[{}]", seedNode);
     }
     if (!replicationNumEquals) {
-      logger.info(
+      logger.error(
           "Local replication number conflicts with seed node[{}]", seedNode);
     }
     if (!seedNodeListEquals) {
-      logger.info("Local seed node list conflicts with seed node[{}]", seedNode);
+      logger.error("Local seed node list conflicts with seed node[{}]", seedNode);
     }
     if (!clusterNameEqual) {
-      logger.info("Local cluster name conflicts with seed node[{}]", seedNode);
+      logger.error("Local cluster name conflicts with seed node[{}]", seedNode);
     }
     if (partitionIntervalEquals
         && hashSaltEquals
