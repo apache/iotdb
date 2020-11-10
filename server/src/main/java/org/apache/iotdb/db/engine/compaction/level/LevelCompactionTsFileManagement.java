@@ -463,16 +463,28 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 i + 1);
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
-            logger.info("{} [Compaction] merge level-{}'s {} tsfiles to next level",
-                storageGroupName, i, mergeResources.get(i).size());
+            List<TsFileResource> toMergeTsFiles = mergeResources.get(i);
+            logger.info("{} [Compaction] merge level-{}'s {} TsFiles to next level",
+                storageGroupName, i, toMergeTsFiles.size());
+            for (TsFileResource toMergeTsFile : toMergeTsFiles) {
+              logger.info("{} [Compaction] start to merge TsFile {}", storageGroupName,
+                  toMergeTsFile);
+            }
 
             TsFileResource newResource = new TsFileResource(newLevelFile);
             CompactionUtils
-                .merge(newResource, mergeResources.get(i), storageGroupName, compactionLogger,
+                .merge(newResource, toMergeTsFiles, storageGroupName, compactionLogger,
                     new HashSet<>(), sequence);
+            logger.info(
+                "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
+                storageGroupName, i, toMergeTsFiles.size());
+            for (TsFileResource toMergeTsFile : toMergeTsFiles) {
+              logger.info("{} [Compaction] start to delete TsFile {}", storageGroupName,
+                  toMergeTsFile);
+            }
             writeLock();
             try {
-              deleteLevelFiles(timePartition, mergeResources.get(i));
+              deleteLevelFiles(timePartition, toMergeTsFiles);
               compactionLogger.logMergeFinish();
               if (sequence) {
                 sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
