@@ -171,13 +171,13 @@ public class MergeManager implements IService, MergeManagerMBean {
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
         int timeMillis = 0;
         try {
-          Thread.sleep(1);
+          Thread.sleep(200);
         } catch (InterruptedException e) {
           logger.error("CompactionMergeTaskPoolManager {} shutdown",
               ThreadName.COMPACTION_SERVICE.getName(), e);
           Thread.currentThread().interrupt();
         }
-        timeMillis++;
+        timeMillis += 200;
         long time = System.currentTimeMillis() - startTime;
         if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
@@ -208,13 +208,13 @@ public class MergeManager implements IService, MergeManagerMBean {
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
         int timeMillis = 0;
         try {
-          Thread.sleep(1);
+          Thread.sleep(200);
         } catch (InterruptedException e) {
           logger.error("CompactionMergeTaskPoolManager {} shutdown",
               ThreadName.COMPACTION_SERVICE.getName(), e);
           Thread.currentThread().interrupt();
         }
-        timeMillis++;
+        timeMillis += 200;
         long time = System.currentTimeMillis() - startTime;
         if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);

@@ -451,6 +451,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         Thread.sleep(200);
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
         return;
       }
     }
