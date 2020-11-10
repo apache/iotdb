@@ -113,7 +113,10 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
-  public IPointReader getPointReader() {
+  public IPointReader getPointReader() throws IOException{
+    if (!chunkPointReader.hasNextTimeValuePair()) {
+      chunkPointReader = chunkData.getIterator(floatPrecision, encoding);
+    }
     return chunkPointReader;
   }
 
