@@ -501,6 +501,10 @@ public class IoTDBDescriptor {
       conf.setThriftMaxFrameSize(Integer.parseInt(properties
           .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
+      if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
+        conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
+      }
+
       conf.setThriftInitBufferSize(Integer.parseInt(properties
           .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
 

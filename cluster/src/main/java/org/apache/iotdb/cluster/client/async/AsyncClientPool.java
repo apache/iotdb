@@ -82,8 +82,7 @@ public class AsyncClientPool {
    */
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
-    if (blockOnError && nodeErrorClientCountMap.containsKey(clusterNode)
-        && nodeErrorClientCountMap.get(clusterNode) > MAX_ERROR_COUNT) {
+    if (blockOnError && nodeErrorClientCountMap.getOrDefault(clusterNode, 0) > MAX_ERROR_COUNT) {
       throw new IOException(String.format("connect node failed, maybe the node is down, %s", node));
     }
 
