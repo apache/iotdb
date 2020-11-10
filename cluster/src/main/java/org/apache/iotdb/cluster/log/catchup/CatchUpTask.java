@@ -114,14 +114,18 @@ public class CatchUpTask implements Runnable {
       return false;
     }
 
+    if (logger.isInfoEnabled()) {
+      logger.info("{}: {} matches at {}", raftMember.getName(), node, logs.get(index).getCurrLogIndex() - 1);
+    }
+
     peer.setMatchIndex(logs.get(index).getCurrLogIndex() - 1);
     // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
     logs.subList(0, index).clear();
-    if (logger.isDebugEnabled()) {
+    if (logger.isInfoEnabled()) {
       if (logs.isEmpty()) {
-        logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
+        logger.info("{}: {} has caught up by previous catch up", raftMember.getName(), node);
       } else {
-        logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
+        logger.info("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
             node, logs.get(0), logs.size());
       }
     }
@@ -191,7 +195,7 @@ public class CatchUpTask implements Runnable {
 
     boolean matched = checkLogIsMatch(prevLogIndex, prevLogTerm);
     raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-    logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
+    logger.info("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
         matched ? "succeed" : "failed", log);
     return matched;
   }
@@ -278,12 +282,14 @@ public class CatchUpTask implements Runnable {
       boolean findMatchedIndex = checkMatchIndex();
       boolean catchUpSucceeded;
       if (!findMatchedIndex) {
+        logger.info("{}: performing a snapshot catch-up to {}", raftMember.getName(), node);
         doSnapshot();
         // snapshot may overlap with logs
         removeSnapshotLogs();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
         catchUpSucceeded = task.call();
       } else {
+        logger.info("{}: performing a log catch-up to {}", raftMember.getName(), node);
         LogCatchUpTask task = new LogCatchUpTask(logs, node, raftMember);
         catchUpSucceeded = task.call();
       }

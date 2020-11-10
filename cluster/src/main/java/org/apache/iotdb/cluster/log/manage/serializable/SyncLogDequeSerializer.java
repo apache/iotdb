@@ -361,7 +361,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         ReadWriteIOUtils
             .writeWithoutSize(logIndexBuffer, 0, logIndexBuffer.position(),
                 currentLogIndexOutputStream);
-        if (ClusterDescriptor.getInstance().getConfig().getForceRaftLogPeriodInMS() == 0) {
+        if (ClusterDescriptor.getInstance().getConfig().getFlushRaftLogThreshold() == 0) {
           currentLogDataOutputStream.getChannel().force(true);
           currentLogIndexOutputStream.getChannel().force(true);
         }
