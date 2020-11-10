@@ -110,4 +110,7 @@ public class IoTDBConstant {
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
+
+  // thrift
+  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
 }
