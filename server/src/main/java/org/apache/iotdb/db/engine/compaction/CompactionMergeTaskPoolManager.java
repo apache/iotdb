@@ -78,7 +78,13 @@ public class CompactionMergeTaskPoolManager implements IService {
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!pool.isTerminated()) {
-      // wait
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        logger.error("CompactionMergeTaskPoolManager {} shutdown",
+            ThreadName.COMPACTION_SERVICE.getName(), e);
+        return;
+      }
       long time = System.currentTimeMillis() - startTime;
       if (time % 60_000 == 0) {
         logger.warn("CompactionManager has wait for {} seconds to stop", time / 1000);

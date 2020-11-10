@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -168,7 +169,12 @@ public class MergeManager implements IService, MergeManagerMBean {
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
-        // wait
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("MergeManager {} shutdown", ThreadName.MERGE_SERVICE.getName(), e);
+          return;
+        }
         long time = System.currentTimeMillis() - startTime;
         if (time % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
