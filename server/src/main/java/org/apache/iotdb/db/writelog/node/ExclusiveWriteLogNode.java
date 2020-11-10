@@ -139,7 +139,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
       if (this.currentFileWriter != null) {
         this.currentFileWriter.close();
-        logger.warn("WAL file {} is closed", currentFileWriter);
+        logger.debug("WAL file {} is closed", currentFileWriter);
         this.currentFileWriter = null;
       }
       logger.debug("Log node {} closed successfully", identifier);
@@ -331,7 +331,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
-    logger.warn("WAL file {} is opened", newFile);
+    logger.debug("WAL file {} is opened", newFile);
     currentFileWriter = new LogWriter(newFile);
   }
 
