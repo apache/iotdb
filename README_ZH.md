@@ -358,7 +358,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 3,900,IoTDB,1000,1100,1200
 ```
 
-> 如果字段中含有逗号，字段应该用双引号或单引号括起来。
+> 如果字段中有一些特殊字符，如逗号，字段应该用双引号或单引号括起来。例如, "hello,\"great";
 
 ### 运行 import shell
 ```
