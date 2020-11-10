@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -99,12 +100,15 @@ public class IOTDBGroupByIT {
 
   private static final String TIMESTAMP_STR = "Time";
   private long prevPartitionInterval;
+  private static CompactionStrategy compactionStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    compactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -114,6 +118,7 @@ public class IOTDBGroupByIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(compactionStrategy);
   }
 
   @Test
