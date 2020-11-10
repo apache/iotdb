@@ -63,6 +63,14 @@ public class TsFileMetadataV1 {
       fileMetaData.deviceIndexMap = deviceMap;
     }
 
+    size = ReadWriteIOUtils.readInt(buffer);
+    if (size > 0) {
+      for (int i = 0; i < size; i++) {
+        ReadWriteIOUtils.readString(buffer);
+        MeasurementSchema.deserializeFrom(buffer);
+      }
+    }
+
     if (ReadWriteIOUtils.readIsNull(buffer)) {
        ReadWriteIOUtils.readString(buffer); // createdBy String
     }
