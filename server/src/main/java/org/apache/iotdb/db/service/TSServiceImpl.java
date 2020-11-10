@@ -199,8 +199,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     ScheduledExecutorService timedQuerySqlCountThread = Executors
         .newSingleThreadScheduledExecutor(r -> new Thread(r, "timedQuerySqlCountThread"));
-    timedQuerySqlCountThread.scheduleAtFixedRate(() -> QUERY_FREQUENCY_LOGGER
-            .info("Query count in current 1 minute: " + queryCount.getAndSet(0)),
+    timedQuerySqlCountThread.scheduleAtFixedRate(() -> {
+          if (queryCount.get() != 0) {
+            QUERY_FREQUENCY_LOGGER.info("Query count in current 1 minute: " + queryCount.getAndSet(0));
+          }
+        },
         config.getFrequencyIntervalInMinute(), config.getFrequencyIntervalInMinute(),
         TimeUnit.MINUTES);
   }
@@ -252,7 +255,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR,
           loginMessage != null ? loginMessage : "Authentication failed.");
-      auditLogger.info("User {} opens Session failed with an incorrect password", req.getUsername());
+      auditLogger
+          .info("User {} opens Session failed with an incorrect password", req.getUsername());
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         CURRENT_RPC_VERSION);
