@@ -45,7 +45,7 @@ public class IoTDBOverlappedPageIT {
 
   private static int beforeMaxNumberOfPointsInPage;
   private static long beforeMemtableSizeThreshold;
-  private static CompactionStrategy beforeCompactionStrategy;
+  private static boolean beforeIsEnableUnseqCompaction;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -53,8 +53,8 @@ public class IoTDBOverlappedPageIT {
     beforeMemtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
-    beforeCompactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    beforeIsEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
 
     // max_number_of_points_in_page = 10
     beforeMaxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
@@ -71,7 +71,7 @@ public class IoTDBOverlappedPageIT {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(beforeMaxNumberOfPointsInPage);
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(beforeMemtableSizeThreshold);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(beforeCompactionStrategy);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(beforeIsEnableUnseqCompaction);
   }
 
   @Test
