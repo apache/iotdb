@@ -146,6 +146,14 @@ public class CatchUpTask implements Runnable {
     return logsInDisk;
   }
 
+  /**
+   * return the index of log whose previous log is matched, or -1 when can not found
+   * @param logs
+   * @return
+   * @throws LeaderUnknownException
+   * @throws TException
+   * @throws InterruptedException
+   */
   public int findLastMatchIndex(List<Log> logs)
       throws LeaderUnknownException, TException, InterruptedException {
     int start = 0;
@@ -165,7 +173,7 @@ public class CatchUpTask implements Runnable {
 
   /**
    * @param index the index of a log in logs
-   * @return true if the log at logs[index] matches a log in the remote node, false if the
+   * @return true if the previous log at logs[index] matches a log in the remote node, false if the
    * corresponding log cannot be found
    * @throws LeaderUnknownException
    * @throws TException

@@ -31,7 +31,6 @@ public class ClusterConstant {
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
 
   public static final int LOG_NUM_IN_BATCH = 1024;
-  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
 
   public static final Node EMPTY_NODE = new Node();
 

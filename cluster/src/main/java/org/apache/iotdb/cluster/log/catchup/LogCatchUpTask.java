@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
@@ -206,7 +207,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       ByteBuffer logData = logs.get(i).serialize();
       int logSize = logData.array().length;
       if (logSize > IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
-          - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+          - IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
         logger.warn("the frame size {} of thrift is too small",
             IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize());
         abort = true;
@@ -218,7 +219,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       // left 200 byte for other fields of AppendEntriesRequest
       if (totalLogSize >
           IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
-              - ClusterConstant.LEFT_SIZE_IN_REQUEST) {
+              - IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
         // batch oversize, send previous batch and add the log to a new batch
         sendBatchLogs(logList, firstLogPos);
         logList.add(logData);
