@@ -320,13 +320,17 @@ public class StorageGroupProcessor {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
             .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+        updatePartitionFileVersion(partitionNum,
+            resource.getHistoricalVersions().size() > 0 ? Collections
+                .max(resource.getHistoricalVersions()) : 0);
       }
       for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
             .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+        updatePartitionFileVersion(partitionNum,
+            resource.getHistoricalVersions().size() > 0 ? Collections
+                .max(resource.getHistoricalVersions()) : 0);
       }
 
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
@@ -562,6 +566,12 @@ public class StorageGroupProcessor {
       TsFileResource tsFileResource = tsFiles.get(i);
       // this tsfile is not zero level, no need to perform recovery here
       if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
+        try {
+          tsFileResource.deserialize();
+        } catch (IOException e) {
+          logger.warn("Cannot deserialize TsFileResource {}, construct it using "
+              + "TsFileSequenceReader", tsFileResource.getTsFile(), e);
+        }
         tsFileResource.setClosed(true);
         tsFileManagement.add(tsFileResource, isSeq);
         continue;
@@ -921,7 +931,7 @@ public class StorageGroupProcessor {
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
     writeLock();
     try {
-      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) && 
+      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) &&
           !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
@@ -1097,7 +1107,7 @@ public class StorageGroupProcessor {
   public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) ||
         closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
       return;
     }
@@ -1477,12 +1487,13 @@ public class StorageGroupProcessor {
   /**
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
-   *  @param path the timeseries path of the to be deleted.
+   *
+   * @param path the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
    * @param endTime the endTime of delete range.
-   * @param planIndex
    */
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws IOException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws IOException {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1560,11 +1571,12 @@ public class StorageGroupProcessor {
   }
 
   private boolean canSkipDelete(TsFileResource tsFileResource, Set<PartialPath> devicePaths,
-       long deleteStart, long deleteEnd) {
+      long deleteStart, long deleteEnd) {
     for (PartialPath device : devicePaths) {
       if (tsFileResource.containsDevice(device.getFullPath()) &&
-              (deleteEnd >= tsFileResource.getStartTime(device.getFullPath()) &&
-               deleteStart <= tsFileResource.getOrDefaultEndTime(device.getFullPath(), Long.MAX_VALUE))) {
+          (deleteEnd >= tsFileResource.getStartTime(device.getFullPath()) &&
+              deleteStart <= tsFileResource
+                  .getOrDefaultEndTime(device.getFullPath(), Long.MAX_VALUE))) {
         return false;
       }
     }
@@ -1573,9 +1585,10 @@ public class StorageGroupProcessor {
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
       Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
-          throws IOException {
+      throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(), deletion.getEndTime())) {
+      if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
+          deletion.getEndTime())) {
         continue;
       }
 
@@ -1609,7 +1622,8 @@ public class StorageGroupProcessor {
       MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
       for (MNode measurementNode : node.getChildren().values()) {
-        if (measurementNode != null && originalPath.matchFullPath(measurementNode.getPartialPath())) {
+        if (measurementNode != null && originalPath
+            .matchFullPath(measurementNode.getPartialPath())) {
           TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
           if (lastPair != null && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
@@ -1898,7 +1912,8 @@ public class StorageGroupProcessor {
       partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
           .addAll(newTsFileResource.getHistoricalVersions());
       updatePartitionFileVersion(partitionNum,
-          Collections.max(newTsFileResource.getHistoricalVersions()));
+          newTsFileResource.getHistoricalVersions().size() > 0 ?
+              Collections.max(newTsFileResource.getHistoricalVersions()) : 0);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -2242,7 +2257,8 @@ public class StorageGroupProcessor {
         p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
     if (!tsFileResource.getHistoricalVersions().isEmpty()) {
       updatePartitionFileVersion(filePartitionId,
-          Collections.max(tsFileResource.getHistoricalVersions()));
+          tsFileResource.getHistoricalVersions().size() > 0 ?
+              Collections.max(tsFileResource.getHistoricalVersions()) : 0);
     }
     return true;
   }
