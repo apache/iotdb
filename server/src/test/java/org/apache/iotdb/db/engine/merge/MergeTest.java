@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -44,6 +45,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -194,5 +196,21 @@ abstract class MergeTest {
       }
     }
     fileWriter.close();
+  }
+
+  public void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
+      File mergeLog) {
+    for (int i = 0; i < seqFiles.size(); i++) {
+      TsFileResource seqFile = seqFiles.get(i);
+      seqFile.writeLock();
+
+      File newMergeFile = seqFile.getTsFile();
+      newMergeFile.delete();
+      File mergeFile = FSFactoryProducer.getFSFactory()
+          .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
+      FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
+      seqFile.setFile(newMergeFile);
+      seqFile.writeUnlock();
+    }
   }
 }

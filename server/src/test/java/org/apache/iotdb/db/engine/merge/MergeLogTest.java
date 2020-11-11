@@ -54,7 +54,7 @@ public class MergeLogTest extends MergeTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
@@ -73,6 +73,7 @@ public class MergeLogTest extends MergeTest {
       while (bufferedReader.readLine() != null) {
         lineCnt ++;
       }
+      mergeEndAction(seqFiles, unseqFiles, mergeLog);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
