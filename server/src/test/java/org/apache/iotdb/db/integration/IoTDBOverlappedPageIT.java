@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -52,6 +53,7 @@ public class IoTDBOverlappedPageIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
     // max_number_of_points_in_page = 10
     beforeMaxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -115,15 +117,27 @@ public class IoTDBOverlappedPageIT {
         statement.execute(sql);
       }
       statement.execute("flush");
+
+      for (long time = 11; time <= 20; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+        statement.execute(sql);
+      }
       for (long time = 100; time <= 120; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");
-      for (long time = 1; time <= 20; time++) {
+
+      for (long time = 1; time <= 10; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+        statement.execute(sql);
+      }
+      for (long time = 11; time <= 20; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
         statement.execute(sql);
       }
       statement.execute("flush");
