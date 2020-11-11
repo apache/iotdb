@@ -709,6 +709,26 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * read bytes from an inputStream where the length is specified at the head of the inputStream.
+   * @param inputStream contains a int-type length and a stream
+   * @return bytebuffer
+   * @throws IOException if the read length doesn't equal to the self description length.
+   */
+  public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream)
+      throws IOException {
+    int length = readInt(inputStream);
+    byte[] bytes = new byte[length];
+    int readLen = inputStream.read(bytes);
+    if (readLen != length) {
+      throw new IOException(String.format(RETURN_ERROR, length, readLen));
+    }
+    ByteBuffer byteBuffer = ByteBuffer.allocate(length);
+    byteBuffer.put(bytes);
+    byteBuffer.flip();
+    return byteBuffer;
+  }
+
+  /**
    * read bytes from buffer with offset position to the end of buffer.
    */
   public static int readAsPossible(TsFileInput input, long position, ByteBuffer buffer)

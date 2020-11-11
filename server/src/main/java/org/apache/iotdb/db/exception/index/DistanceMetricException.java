@@ -16,21 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.exception.index;
 
-public class MetadataOperationType {
+public class DistanceMetricException extends IndexRuntimeException {
 
-  private MetadataOperationType(){
-    //allowed to do nothing
+  private static final long serialVersionUID = -2772568110478978387L;
+
+  public DistanceMetricException(String message) {
+    super(message);
   }
 
-  public static final String CREATE_TIMESERIES = "0";
-  public static final String DELETE_TIMESERIES = "1";
-  public static final String SET_STORAGE_GROUP = "2";
-  public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP = "11";
-  public static final String CREATE_INDEX = "31";
-  public static final String DROP_INDEX = "32";
-  public static final String CHANGE_OFFSET = "12";
-  public static final String CHANGE_ALIAS = "13";
 }

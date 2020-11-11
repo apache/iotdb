@@ -28,6 +28,7 @@ import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -559,5 +560,10 @@ public abstract class TVList {
     }
   }
 
+  public abstract TSDataType getDataType();
+
+  public long getLastTime() {
+    return getTime(size - 1);
+  }
 
 }
