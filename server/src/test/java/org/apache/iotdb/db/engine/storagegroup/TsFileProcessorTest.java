@@ -111,11 +111,10 @@ public class TsFileProcessorTest {
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
-    for (; num <= 100; num++) {
-      for (ReadOnlyMemChunk chunk : memChunks) {
-        IPointReader iterator = chunk.getPointReader();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());
@@ -294,11 +293,10 @@ public class TsFileProcessorTest {
         tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
-    for (; num <= 100; num++) {
-      for (ReadOnlyMemChunk chunk : memChunks) {
-        IPointReader iterator = chunk.getPointReader();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());
