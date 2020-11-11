@@ -367,7 +367,9 @@ public abstract class TsFileManagement {
 
         try {
           File newMergeFile = seqFile.getTsFile();
-          newMergeFile.delete();
+          if (!newMergeFile.delete()) {
+            throw new IOException(String.format("delete %s failed", newMergeFile.getAbsolutePath()));
+          }
           File mergeFile = FSFactoryProducer.getFSFactory()
               .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
           FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
