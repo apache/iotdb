@@ -90,7 +90,7 @@ public class SyncServerManager  extends ThriftService implements SyncServerManag
   }
 
   @Override
-  public void startService() throws StartupException {
+  public synchronized void startService() throws StartupException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if (!config.isSyncEnable()) {
       return;
@@ -111,7 +111,7 @@ public class SyncServerManager  extends ThriftService implements SyncServerManag
   }
 
   @Override
-  public void stopService() {
+  public synchronized void stopService() {
     if (IoTDBDescriptor.getInstance().getConfig().isSyncEnable()) {
       FileLoaderManager.getInstance().stop();
       super.stopService();
