@@ -559,14 +559,15 @@ public class StorageGroupProcessor {
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
-      if (LevelCompactionTsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
+      TsFileResource tsFileResource = tsFiles.get(i);
+      // this tsfile is not zero level, no need to perform recovery here
+      if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
         tsFileResource.setClosed(true);
-        tsFileManagement.add(tsFiles.get(i), isSeq);
+        tsFileManagement.add(tsFileResource, isSeq);
         continue;
       }
-      TsFileResource tsFileResource = tsFiles.get(i);
-      long timePartitionId = tsFileResource.getTimePartition();
 
+      long timePartitionId = tsFileResource.getTimePartition();
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + FILE_NAME_SEPARATOR,
           getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, isSeq,
