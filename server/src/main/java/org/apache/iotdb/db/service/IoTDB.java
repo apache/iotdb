@@ -107,6 +107,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+    registerManager.register(RPCService.getInstance());
     registerManager.register(StorageEngine.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
@@ -116,7 +117,7 @@ public class IoTDB implements IoTDBMBean {
       StatMonitor.getInstance().recovery();
     }
 
-    registerManager.register(RPCService.getInstance());
+    //registerManager.register(RPCService.getInstance());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
