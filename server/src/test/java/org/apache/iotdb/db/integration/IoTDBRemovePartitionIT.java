@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -43,7 +44,7 @@ import org.junit.Test;
 public class IoTDBRemovePartitionIT {
 
   private static int partitionInterval = 100;
-  private static boolean enableUnseqCompaction;
+  private static CompactionStrategy compactionStrategy;
 
   @Before
   public void setUp() throws Exception {
@@ -52,8 +53,9 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
 
-    enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
+    compactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     insertData();
   }
 
@@ -61,7 +63,7 @@ public class IoTDBRemovePartitionIT {
   public void tearDown() throws Exception {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(enableUnseqCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(compactionStrategy);
     EnvironmentUtils.cleanEnv();
   }
 
