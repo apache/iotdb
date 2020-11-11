@@ -560,6 +560,8 @@ public class StorageGroupProcessor {
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
       if (LevelCompactionTsFileManagement.getMergeLevel(tsFiles.get(i).getTsFile()) > 0) {
+        tsFileResource.setClosed(true);
+        tsFileManagement.add(tsFiles.get(i), isSeq);
         continue;
       }
       TsFileResource tsFileResource = tsFiles.get(i);
