@@ -102,8 +102,15 @@ public abstract class BaseSyncService implements RaftService.Iface {
     if (client == null) {
       throw new TException(new LeaderUnknownException(member.getAllNodes()));
     }
-    long commitIndex1 = client.requestCommitIndex(header);
-    putBackSyncClient(client);
+    long commitIndex1 = 0;
+    try {
+      commitIndex1 = client.requestCommitIndex(header);
+    } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
+      throw e;
+    } finally {
+      putBackSyncClient(client);
+    }
     return commitIndex1;
   }
 

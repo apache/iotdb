@@ -66,15 +66,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FileSnapshot records the data files in a slot and their md5 (or other verification).
- * When the snapshot is used to perform a catch-up, the receiver should:
- * 1. create a remote snapshot indicating that the slot is being pulled from the remote
- * 2. traverse the file list, for each file:
- *  2.1 if the file exists locally and the md5 is correct, skip it.
- *  2.2 otherwise pull the file from the remote.
- * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
- * synchronized with the remote one.
- */
+* FileSnapshot records the data files in a slot and their md5 (or other verification).
+* When the snapshot is used to perform a catch-up, the receiver should:
+* 1. create a remote snapshot indicating that the slot is being pulled from the remote
+* 2. traverse the file list, for each file:
+*  2.1 if the file exists locally and the md5 is correct, skip it.
+*  2.2 otherwise pull the file from the remote.
+* 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
+* synchronized with the remote one.
+*/
 @SuppressWarnings("java:S1135") // ignore todos
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
@@ -91,7 +91,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     addFile(resource, header, false);
   }
 
-  public void addFile(TsFileResource resource, Node header, boolean isRangeUnique) throws IOException {
+  public void addFile(TsFileResource resource, Node header, boolean isRangeUnique)
+      throws IOException {
     RemoteTsFileResource remoteTsFileResource = new RemoteTsFileResource(resource, header);
     remoteTsFileResource.setPlanRangeUnique(isRangeUnique);
     dataFiles.add(remoteTsFileResource);
@@ -162,8 +163,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     /**
      * When a DataGroupMember pulls data from another node, the data files will be firstly stored in
-     * the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to load the
-     * files into the IoTDB instance.
+     * the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to load
+     * the files into the IoTDB instance.
      */
     private static final String REMOTE_FILE_TEMP_DIR =
         IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "remote";
@@ -271,8 +272,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     /**
      * Check if the file "resource" is a duplication of some local files. As all data file close is
      * controlled by the data group leader, the files with the same version should contain identical
-     * data if without merge. Even with merge, the files that the merged file is from are recorded so
-     * we can still find out if the data of a file is already replicated in this member.
+     * data if without merge. Even with merge, the files that the merged file is from are recorded
+     * so we can still find out if the data of a file is already replicated in this member.
      *
      * @param resource
      * @return
@@ -300,6 +301,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
           try {
             client.removeHardLink(resource.getTsFile().getAbsolutePath());
+          } catch (TException te) {
+            client.getInputProtocol().getTransport().close();
           } finally {
             ClientUtils.putBackSyncClient(client);
           }
@@ -312,8 +315,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     /**
      * Load a remote file from the header of the data group that the file is in. As different IoTDB
-     * instances will name the file with the same version differently, we can only pull the file from
-     * the header currently.
+     * instances will name the file with the same version differently, we can only pull the file
+     * from the header currently.
      *
      * @param resource
      */
@@ -346,8 +349,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     /**
      * When a file is successfully pulled to the local storage, load it into IoTDB with the resource
-     * and remove the files that is a subset of the new file. Also change the modification file if the
-     * new file is with one.
+     * and remove the files that is a subset of the new file. Also change the modification file if
+     * the new file is with one.
      *
      * @param resource
      */
@@ -531,6 +534,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           }
           offset += len;
         }
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
       } finally {
         ClientUtils.putBackSyncClient(client);
       }

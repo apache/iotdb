@@ -280,6 +280,12 @@ public class LogCatchUpTask implements Callable<Boolean> {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
       }
+      int totalSize = 0;
+      for (int i = 0; i < request.entries.size(); i++) {
+        totalSize += request.entries.get(i).capacity();
+      }
+      logger.info("qihouliang, entries num={}, the append entries total size={}",
+          request.entries.size(), totalSize);
       client.appendEntries(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       appendSucceed.wait(SEND_LOGS_WAIT_MS);
@@ -289,7 +295,12 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request) {
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
+    int totalSize = 0;
+    for (int i = 0; i < request.entries.size(); i++) {
+      totalSize += request.entries.get(i).capacity();
+    }
+    logger.info("qihouliang, entries num={}, the append entries total size={}",
+        request.entries.size(), totalSize);
     LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftMember(raftMember);
@@ -305,6 +316,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       handler.onComplete(result);
       return appendSucceed.get();
     } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
       handler.onError(e);
       logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       return false;

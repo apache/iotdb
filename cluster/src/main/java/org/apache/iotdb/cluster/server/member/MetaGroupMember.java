@@ -553,6 +553,9 @@ public class MetaGroupMember extends RaftMember {
       }
       try {
         resp = client.addNode(thisNode, startUpStatus);
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        throw e;
       } finally {
         ClientUtils.putBackSyncClient(client);
       }
@@ -1027,6 +1030,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Error occurs when check status on node : {}", seedNode);
       } finally {
         ClientUtils.putBackSyncClient(client);
@@ -1134,6 +1138,7 @@ public class MetaGroupMember extends RaftMember {
         try {
           handler.onComplete(client.appendEntry(request));
         } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
           handler.onError(e);
         } finally {
           ClientUtils.putBackSyncClient(client);
@@ -1530,7 +1535,7 @@ public class MetaGroupMember extends RaftMember {
    * @param planGroupMap sub-plan -> data group pairs
    */
   private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-                                           PhysicalPlan parentPlan) {
+      PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     TSStatus[] subStatus = null;
@@ -1555,12 +1560,13 @@ public class MetaGroupMember extends RaftMember {
       tmpStatus = forwardToSingleGroup(entry);
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
-        (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-        || isBatchFailure;
+          || isBatchFailure;
       if (parentPlan instanceof InsertTabletPlan) {
         if (tmpStatus.isSetRedirectNode() &&
-          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan).getMaxTime()) {
+            ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
+                .getMaxTime()) {
           endPoint = tmpStatus.getRedirectNode();
         }
       }
@@ -1572,7 +1578,7 @@ public class MetaGroupMember extends RaftMember {
         // set the status from one group to the proper positions of the overall status
         if (parentPlan instanceof InsertTabletPlan) {
           PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-            tmpStatus.subStatus.toArray(new TSStatus[]{}));
+              tmpStatus.subStatus.toArray(new TSStatus[]{}));
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
           CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
           for (int i = 0; i < subPlan.getIndexes().size(); i++) {
@@ -1583,12 +1589,13 @@ public class MetaGroupMember extends RaftMember {
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-          tmpStatus.getCode(), entry.getValue().getHeader(),
-          tmpStatus.getMessage(), tmpStatus.subStatus));
+            tmpStatus.getCode(), entry.getValue().getHeader(),
+            tmpStatus.getMessage(), tmpStatus.subStatus));
       }
     }
 
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
+        errorCodePartitionGroups);
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
@@ -1857,7 +1864,15 @@ public class MetaGroupMember extends RaftMember {
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
       if (!node.equals(thisNode) && client != null) {
-        nodeStatusHandler.onComplete(client.checkAlive());
+        Node response = null;
+        try {
+          response = client.checkAlive();
+        } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
+        } finally {
+          ClientUtils.putBackSyncClient(client);
+        }
+        nodeStatusHandler.onComplete(response);
       }
     }
   }
@@ -2027,9 +2042,11 @@ public class MetaGroupMember extends RaftMember {
       try {
         client.exile();
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Cannot inform {} its removal", node, e);
+      } finally {
+        ClientUtils.putBackSyncClient(client);
       }
-      ClientUtils.putBackSyncClient(client);
     }
   }
 

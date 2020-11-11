@@ -231,7 +231,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // request, and forward the request to it. See methods in DataGroupMember for details.
 
   @Override
-  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+  public void sendHeartbeat(HeartBeatRequest request,
+      AsyncMethodCallback<HeartBeatResponse> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -306,7 +307,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(thisNode, resultHandler, "Read file:" + filePath);
+    DataAsyncService service = getDataAsyncService(thisNode, resultHandler,
+        "Read file:" + filePath);
     if (service != null) {
       service.readFile(filePath, offset, length, resultHandler);
     }
@@ -325,7 +327,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(header, resultHandler, "Fetch reader:" + readerId);
+    DataAsyncService service = getDataAsyncService(header, resultHandler,
+        "Fetch reader:" + readerId);
     if (service != null) {
       service.fetchSingleSeries(header, readerId, resultHandler);
     }
@@ -426,10 +429,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler) {
+  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList,
+      AsyncMethodCallback<List<String>> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler,
-            "Check if measurements are registered");
-    service.getUnregisteredTimeseries(header,timeseriesList, resultHandler);
+        "Check if measurements are registered");
+    service.getUnregisteredTimeseries(header, timeseriesList, resultHandler);
   }
 
   @Override
@@ -460,8 +464,13 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
           thisNode.getDataPort()), getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
-          thisNode.getDataPort()));
+      return new TServerSocket(
+          new TServerSocket.ServerSocketTransportArgs().
+              bindAddr(new InetSocketAddress(config.getClusterRpcIp(),
+                  thisNode.getDataPort())).backlog(0).
+              clientTimeout(60000));
+//      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+//          thisNode.getDataPort())).;
     }
   }
 
@@ -701,7 +710,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(Node header, List<String> path, boolean withAlias) throws TException {
+  public GetAllPathsResult getAllPaths(Node header, List<String> path, boolean withAlias)
+      throws TException {
     return getDataSyncService(header).getAllPaths(header, path, withAlias);
   }
 
@@ -836,7 +846,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void peekNextNotNullValue(Node header, long executorId, long startTime, long endTime,
       AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
-    resultHandler.onComplete(getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime));
+    resultHandler.onComplete(
+        getDataSyncService(header).peekNextNotNullValue(header, executorId, startTime, endTime));
   }
 
   @Override

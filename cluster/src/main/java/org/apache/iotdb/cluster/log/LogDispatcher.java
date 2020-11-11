@@ -278,6 +278,7 @@ public class LogDispatcher {
         }
         handler.onComplete(result);
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         handler.onError(e);
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       } finally {
