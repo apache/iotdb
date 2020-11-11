@@ -69,8 +69,8 @@ public class EnvironmentUtils {
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
-
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
+  private static final boolean oldEnableUnseqCompaction = config.isEnableUnseqCompaction();
 
   private static IoTDB daemon;
 
@@ -135,6 +135,7 @@ public class EnvironmentUtils {
     cleanAllDir();
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
+    config.setEnableUnseqCompaction(oldEnableUnseqCompaction);
   }
 
 
@@ -233,6 +234,8 @@ public class EnvironmentUtils {
     //we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
+
     if (daemon == null) {
       daemon = new IoTDB();
     }

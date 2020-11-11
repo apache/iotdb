@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -105,6 +106,7 @@ public class IOTDBGroupByIT {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
