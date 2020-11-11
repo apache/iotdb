@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -696,7 +697,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       // put it into the corresponding Set
 
-      statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
+      statementId2QueryId.computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
+          .add(queryId);
 
       if (plan instanceof AuthorPlan) {
         plan.setLoginUserName(username);
@@ -1720,7 +1722,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public long requestStatementId(long sessionId) {
     long statementId = statementIdGenerator.incrementAndGet();
-    sessionId2StatementId.computeIfAbsent(sessionId, s -> new HashSet<>()).add(statementId);
+    sessionId2StatementId.computeIfAbsent(sessionId, s -> new CopyOnWriteArraySet<>())
+        .add(statementId);
     return statementId;
   }
 
