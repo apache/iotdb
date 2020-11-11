@@ -140,18 +140,21 @@ public class BasicDaoImpl implements BasicDao {
         s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
         from * timestampRadioX, to * timestampRadioX);
     String columnName = "root." + s;
+    String internalLocal = this.interval;
+    logger.info(String.format("get hour %d", hours));
+    
     if (isDownSampling && (hours > 1)) {
       if (hours < 30 * 24 && hours > 24) {
-        interval = "1h";
+        internalLocal = "1h";
       } else if (hours > 30 * 24) {
-        interval = "1d";
+        internalLocal = "1d";
       }
       sql = String.format(
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
           s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
           from * timestampRadioX, to * timestampRadioX,
-          from * timestampRadioX, to * timestampRadioX, interval);
+          from * timestampRadioX, to * timestampRadioX, internalLocal);
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);
