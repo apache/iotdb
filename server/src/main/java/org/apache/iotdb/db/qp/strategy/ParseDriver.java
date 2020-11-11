@@ -25,29 +25,29 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 
 /**
  * ParseDriver.
  *
  */
 public class ParseDriver {
-  private ParseTreeWalker walker;
 
-  public ParseDriver() {
-    walker = new ParseTreeWalker();
-  }
+  public ParseDriver() { }
 
   public Operator parse(String sql, ZoneId zoneId) throws ParseCancellationException {
-    LogicalGenerator logicalGenerator = new LogicalGenerator(zoneId);
+    IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
+    ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
     SqlBaseParser parser1 = new SqlBaseParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
-    parser1.addErrorListener(LogicalGeneratorError.INSTANCE);
+    parser1.addErrorListener(SQLParseError.INSTANCE);
     ParseTree tree;
     try {
       tree = parser1.singleStatement();  // STAGE 1
@@ -59,11 +59,10 @@ public class ParseDriver {
       SqlBaseParser parser2 = new SqlBaseParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
-      parser2.addErrorListener(LogicalGeneratorError.INSTANCE);
+      parser2.addErrorListener(SQLParseError.INSTANCE);
       tree = parser2.singleStatement();  // STAGE 2
       // if we parse ok, it's LL not SLL
     }
-    walker.walk(logicalGenerator, tree);
-    return logicalGenerator.getLogicalPlan();
+    return ioTDBSqlVisitor.visit(tree);
   }
 }

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.constant;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
 /**
  * this class contains several constants used in SQL.
