@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -376,6 +377,12 @@ public abstract class TsFileManagement {
       doubleWriteLock(seqFile);
 
       try {
+        File newMergeFile = seqFile.getTsFile();
+        newMergeFile.delete();
+        File mergeFile = FSFactoryProducer.getFSFactory()
+            .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
+        FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
+        seqFile.setFile(newMergeFile);
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
           //FIXME if there is an exception, the the modification file will be not closed.
