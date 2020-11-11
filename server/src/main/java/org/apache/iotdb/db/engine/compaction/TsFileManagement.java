@@ -55,12 +55,7 @@ public abstract class TsFileManagement {
   protected String storageGroupDir;
 
   /**
-   * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
-   * result in losing some deletion in the merged new file, so a lock is necessary.
-   */
-  public final ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
-  /**
-   * compactionMergeLock is used to wait for TsFile list change in compaction processor.
+   * Serialize queries, delete resource files, compaction cleanup files
    */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
@@ -266,22 +261,17 @@ public abstract class TsFileManagement {
    */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
-    boolean mergeLockGot;
     boolean compactionLockGot;
     while (true) {
       fileLockGot = seqFile.tryWriteLock();
-      mergeLockGot = mergeLock.writeLock().tryLock();
       compactionLockGot = tryWriteLock();
 
-      if (fileLockGot && mergeLockGot && compactionLockGot) {
+      if (fileLockGot && compactionLockGot) {
         break;
       } else {
         // did not get all of them, release the gotten one and retry
         if (compactionLockGot) {
           writeUnlock();
-        }
-        if (mergeLockGot) {
-          mergeLock.writeLock().unlock();
         }
         if (fileLockGot) {
           seqFile.writeUnlock();
@@ -295,12 +285,10 @@ public abstract class TsFileManagement {
    */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();
-    mergeLock.writeLock().unlock();
     seqFile.writeUnlock();
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    mergeLock.writeLock().lock();
     writeLock();
     try {
       removeAll(unseqFiles, false);
@@ -312,7 +300,6 @@ public abstract class TsFileManagement {
       }
     } finally {
       writeUnlock();
-      mergeLock.writeLock().unlock();
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
@@ -360,7 +347,7 @@ public abstract class TsFileManagement {
 
   public void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       File mergeLog) {
-    mergeLock.writeLock().lock();
+    writeLock();
     try {
       logger.info("{} a merge task is ending...", storageGroupName);
 
@@ -401,7 +388,7 @@ public abstract class TsFileManagement {
       }
       logger.info("{} a merge task ends", storageGroupName);
     } finally {
-      mergeLock.writeLock().unlock();
+      writeUnlock();
     }
   }
 
