@@ -1466,10 +1466,8 @@ public class StorageGroupProcessor {
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (config.isDebugOn() && !res) {
-        if (config.isDebugOn()) {
-          DEBUG_LOGGER.info("Path: " + deviceId + " file " + tsFileResource
-              + " is not satisfied because of time filter!");
-        }
+        DEBUG_LOGGER.info("Path: " + deviceId + " file " + tsFileResource
+            + " is not satisfied because of time filter!");
       }
       return res;
     }
