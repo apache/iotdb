@@ -114,6 +114,7 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
+    chunkPointReader = chunkData.getIterator(floatPrecision, encoding);
     return chunkPointReader;
   }
 
