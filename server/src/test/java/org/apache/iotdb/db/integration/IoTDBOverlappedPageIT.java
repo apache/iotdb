@@ -69,21 +69,21 @@ public class IoTDBOverlappedPageIT {
   @Test
   public void selectOverlappedPageTest() {
     String[] res = {
-        "11,111",
-        "12,112",
-        "13,113",
-        "14,114",
-        "15,115",
-        "16,116",
-        "17,117",
-        "18,118",
-        "19,119",
-        "20,120",
+            "11,111",
+            "12,112",
+            "13,113",
+            "14,114",
+            "15,115",
+            "16,116",
+            "17,117",
+            "18,118",
+            "19,119",
+            "20,120",
     };
 
     try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
       String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 110 AND root.vehicle.d0.s0 > 110";
       ResultSet resultSet = statement.executeQuery(sql);
       int cnt = 0;
@@ -104,14 +104,14 @@ public class IoTDBOverlappedPageIT {
 
   private static void insertData() {
     try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
 
       statement.execute("CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
 
       for (long time = 1; time <= 10; time++) {
         String sql = String
-            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
+                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");
@@ -123,14 +123,14 @@ public class IoTDBOverlappedPageIT {
       }
       for (long time = 100; time <= 120; time++) {
         String sql = String
-            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
+                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");
 
       for (long time = 1; time <= 10; time++) {
         String sql = String
-            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
         statement.execute(sql);
       }
       for (long time = 11; time <= 20; time++) {
