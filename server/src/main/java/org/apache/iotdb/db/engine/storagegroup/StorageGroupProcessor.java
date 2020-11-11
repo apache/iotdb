@@ -86,7 +86,6 @@ import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -316,19 +315,6 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
-      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
-        long partitionNum = resource.getTimePartition();
-        partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
-            .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
-      }
-      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
-        long partitionNum = resource.getTimePartition();
-        partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
-            .addAll(resource.getHistoricalVersions());
-        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
-      }
-
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
       File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
           MERGING_MODIFICATION_FILE_NAME);
@@ -349,6 +335,18 @@ public class StorageGroupProcessor {
       }
       tsFileManagement.recover();
 
+      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+        long partitionNum = resource.getTimePartition();
+        partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
+            .addAll(resource.getHistoricalVersions());
+        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+      }
+      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+        long partitionNum = resource.getTimePartition();
+        partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
+            .addAll(resource.getHistoricalVersions());
+        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
+      }
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
@@ -560,13 +558,6 @@ public class StorageGroupProcessor {
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
-      // this tsfile is not zero level, no need to perform recovery here
-      if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
-        tsFileResource.setClosed(true);
-        tsFileManagement.add(tsFileResource, isSeq);
-        continue;
-      }
-
       long timePartitionId = tsFileResource.getTimePartition();
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + FILE_NAME_SEPARATOR,
@@ -575,12 +566,22 @@ public class StorageGroupProcessor {
 
       RestorableTsFileIOWriter writer;
       try {
-        writer = recoverPerformer.recover();
+        // this tsfile is not zero level, no need to perform redo wal
+        if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
+          recoverPerformer.recover(false);
+          tsFileResource.setClosed(true);
+          tsFileManagement.add(tsFileResource, isSeq);
+          continue;
+        } else {
+          writer = recoverPerformer.recover(true);
+        }
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(),
             e);
         continue;
       }
+
+
 
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
