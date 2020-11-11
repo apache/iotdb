@@ -562,7 +562,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return Integer.parseInt(mergeLevelStr);
   }
 
-  private TsFileResource getTsFileResource(String filePath, boolean isSeq) {
+  private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
     if (isSeq) {
       for (List<TreeSet<TsFileResource>> tsFileResourcesWithLevel : sequenceTsFileResources
           .values()) {
@@ -586,6 +586,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     }
-    return null;
+    logger.error("cannot get tsfile resource path: {}", filePath);
+    throw new IOException();
   }
 }
