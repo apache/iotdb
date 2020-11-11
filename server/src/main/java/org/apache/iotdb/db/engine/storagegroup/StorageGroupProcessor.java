@@ -1389,10 +1389,9 @@ public class StorageGroupProcessor {
       throws MetadataException {
 
     if (config.isDebugOn()) {
-      DEBUG_LOGGER.info(
-          "Path: " + deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId
-              + ", get tsfile list: " + tsFileResources + " isSeq: " + isSeq + " timefilter: " + (
-              timeFilter == null ? "null" : timeFilter.toString()));
+      DEBUG_LOGGER
+          .info("Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}", deviceId.getFullPath(),
+              measurementId, tsFileResources, isSeq, (timeFilter == null ? "null" : timeFilter));
     }
 
     MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
@@ -1444,8 +1443,8 @@ public class StorageGroupProcessor {
       Filter timeFilter, boolean isSeq) {
     if (!tsFileResource.containsDevice(deviceId)) {
       if (config.isDebugOn()) {
-        DEBUG_LOGGER.info("Path: " + deviceId + " file " + tsFileResource
-            + " is not satisfied because of no device!");
+        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of no device!", deviceId,
+            tsFileResource);
       }
       return false;
     }
@@ -1457,8 +1456,8 @@ public class StorageGroupProcessor {
 
     if (!isAlive(endTime)) {
       if (config.isDebugOn()) {
-        DEBUG_LOGGER.info("Path: " + deviceId + " file " + tsFileResource
-            + " is not satisfied because of ttl!");
+        DEBUG_LOGGER
+            .info("Path: {} file {} is not satisfied because of ttl!", deviceId, tsFileResource);
       }
       return false;
     }
@@ -1466,8 +1465,8 @@ public class StorageGroupProcessor {
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (config.isDebugOn() && !res) {
-        DEBUG_LOGGER.info("Path: " + deviceId + " file " + tsFileResource
-            + " is not satisfied because of time filter!");
+        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of time filter!", deviceId,
+            tsFileResource);
       }
       return res;
     }
