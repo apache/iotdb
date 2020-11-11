@@ -360,44 +360,49 @@ public abstract class TsFileManagement {
 
   public void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
       File mergeLog) {
-    logger.info("{} a merge task is ending...", storageGroupName);
+    mergeLock.writeLock().lock();
+    try {
+      logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
-      isUnseqMerging = false;
-      logger.info("{} a merge task abnormally ends", storageGroupName);
-      return;
-    }
-
-    removeUnseqFiles(unseqFiles);
-
-    for (int i = 0; i < seqFiles.size(); i++) {
-      TsFileResource seqFile = seqFiles.get(i);
-      // get both seqFile lock and merge lock
-      doubleWriteLock(seqFile);
-
-      try {
-        File newMergeFile = seqFile.getTsFile();
-        newMergeFile.delete();
-        File mergeFile = FSFactoryProducer.getFSFactory()
-            .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
-        FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
-        seqFile.setFile(newMergeFile);
-        updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          //FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isUnseqMerging = false;
-          Files.delete(mergeLog.toPath());
-        }
-      } catch (IOException e) {
-        logger.error("{} a merge task ends but cannot delete log {}", storageGroupName,
-            mergeLog.toPath());
-      } finally {
-        doubleWriteUnlock(seqFile);
+      if (unseqFiles.isEmpty()) {
+        // merge runtime exception arose, just end this merge
+        isUnseqMerging = false;
+        logger.info("{} a merge task abnormally ends", storageGroupName);
+        return;
       }
+
+      removeUnseqFiles(unseqFiles);
+
+      for (int i = 0; i < seqFiles.size(); i++) {
+        TsFileResource seqFile = seqFiles.get(i);
+        // get both seqFile lock and merge lock
+        doubleWriteLock(seqFile);
+
+        try {
+          File newMergeFile = seqFile.getTsFile();
+          newMergeFile.delete();
+          File mergeFile = FSFactoryProducer.getFSFactory()
+              .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
+          FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
+          seqFile.setFile(newMergeFile);
+          updateMergeModification(seqFile);
+          if (i == seqFiles.size() - 1) {
+            //FIXME if there is an exception, the the modification file will be not closed.
+            removeMergingModification();
+            isUnseqMerging = false;
+            Files.delete(mergeLog.toPath());
+          }
+        } catch (IOException e) {
+          logger.error("{} a merge task ends but cannot delete log {}", storageGroupName,
+              mergeLog.toPath());
+        } finally {
+          doubleWriteUnlock(seqFile);
+        }
+      }
+      logger.info("{} a merge task ends", storageGroupName);
+    } finally {
+      mergeLock.writeLock().unlock();
     }
-    logger.info("{} a merge task ends", storageGroupName);
   }
 
 }
