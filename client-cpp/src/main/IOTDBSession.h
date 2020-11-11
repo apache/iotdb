@@ -174,15 +174,6 @@ namespace TSStatusCode {
     };
 }
 
-class Config
-{
-public:
-    static const std::string DEFAULT_USER;
-    static const std::string DEFAULT_PASSWORD;
-    static const int DEFAULT_FETCH_SIZE = 10000;
-    static const int DEFAULT_TIMEOUT_MS = 0;
-};
-
 class RpcUtils
 {
 public:
@@ -509,7 +500,7 @@ private:
     std::string sql;
     int64_t queryId;
     int64_t sessionId;
-	std::shared_ptr<TSIServiceIf> client;
+	  std::shared_ptr<TSIServiceIf> client;
     int batchSize = 1024;
     std::vector<std::string> columnNameList;
     std::vector<std::string> columnTypeDeduplicatedList;
@@ -545,8 +536,7 @@ public:
             std::string name = columnNameList[i];
             if (this->columnMap.find(name) != this->columnMap.end()) {
                 duplicateLocation[i] = columnMap[name];
-            }
-            else {
+            } else {
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
@@ -569,10 +559,10 @@ class Session
 {
     private:
         std::string host;
-        int port;
+        int rpcPort;
         std::string username;
         std::string password;
-        TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V2;
+        TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
         std::shared_ptr<TSIServiceIf> client;
         std::shared_ptr<apache::thrift::transport::TSocket> transport;
         bool isClosed = true;
@@ -580,7 +570,9 @@ class Session
         int64_t statementId;
         std::string zoneId;
         int fetchSize;
-        
+        const static int DEFAULT_FETCH_SIZE = 10000;
+        const static int DEFAULT_TIMEOUT_MS = 0;
+
         bool checkSorted(Tablet& tablet);
         void sortTablet(Tablet& tablet);
         std::vector<std::string> sortList(std::vector<std::string>& valueList, int* index, int indexLength);
@@ -588,25 +580,37 @@ class Session
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
     public:
-        Session(std::string host, int port) { Session(host, port, Config::DEFAULT_USER, Config::DEFAULT_PASSWORD); }
-        Session(std::string host, int port, std::string username, std::string password)
-        {
+        Session(std::string host, int rpcPort) : username("user"), password("password") {
             this->host = host;
-            this->port = port;
+            this->rpcPort = rpcPort;
+        }
+
+        Session(std::string host, int rpcPort, std::string username, std::string password)
+                : fetchSize(10000) {
+            this->host = host;
+            this->rpcPort = rpcPort;
             this->username = username;
             this->password = password;
+            this->zoneId = "UTC+08:00";
         }
-        Session(std::string host, std::string port, std::string username, std::string password)
-        {
-            Session(host, stoi(port), username, password);
-        }
-        Session(std::string host, int port, std::string username, std::string password, int fetchSize)
-        {
+
+        Session(std::string host, int rpcPort, std::string username, std::string password, int fetchSize) {
             this->host = host;
-            this->port = port;
+            this->rpcPort = rpcPort;
             this->username = username;
             this->password = password;
             this->fetchSize = fetchSize;
+            this->zoneId = "UTC+08:00";
+        }
+
+        Session(std::string host, std::string rpcPort, std::string username = "user",
+                std::string password = "password", int fetchSize = 10000) {
+            this->host = host;
+            this->rpcPort = stoi(rpcPort);
+            this->username = username;
+            this->password = password;
+            this->fetchSize = fetchSize;
+            this->zoneId = "UTC+08:00";
         }
 
         void open();

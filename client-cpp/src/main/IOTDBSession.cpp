@@ -21,9 +21,6 @@
 
 using namespace std;
 
-const string Config::DEFAULT_USER = "user";
-const string Config::DEFAULT_PASSWORD = "password";
-
 TSDataType::TSDataType getTSDataTypeFromString(string str) {
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
     if (str == "BOOLEAN")   return TSDataType::BOOLEAN;
@@ -234,8 +231,7 @@ bool SessionDataSet::hasNext()
 
             if (!resp->hasResultSet) {
                 return false;
-            }
-            else {
+            } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
                 tsQueryDataSetTimeBuffer = tsQueryDataSet->time;
                 rowsIndex = 0;
@@ -262,8 +258,7 @@ void SessionDataSet::constructOneRow() {
 
         if (duplicateLocation.find(i) != duplicateLocation.end()) {
             field = new Field(*outFields[duplicateLocation[i]]);
-        }
-        else {
+        } else {
             MyStringBuffer bitmapBuffer = MyStringBuffer(tsQueryDataSet->bitmapList[loc]);
             // another new 8 row, should move the bitmap buffer position to next byte
             if (rowsIndex % 8 == 0) {
@@ -311,8 +306,7 @@ void SessionDataSet::constructOneRow() {
                     throw UnSupportedDataTypeException(buf);
                 }
                 }
-            }
-            else {
+            } else {
                 field = new Field(TSDataType::NULLTYPE);
             }
             loc++;
@@ -426,7 +420,7 @@ void Session::open()
 {
     try
     {
-        open(false, Config::DEFAULT_TIMEOUT_MS);
+        open(false, DEFAULT_TIMEOUT_MS);
     }
     catch (IoTDBConnectionException e)
     {
@@ -437,7 +431,7 @@ void Session::open()
 void Session::open(bool enableRPCCompression) {
     try
     {
-        open(enableRPCCompression, Config::DEFAULT_TIMEOUT_MS);
+        open(enableRPCCompression, DEFAULT_TIMEOUT_MS);
     }
     catch (IoTDBConnectionException e)
     {
@@ -451,9 +445,9 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
     {
         return;
     }
-	shared_ptr<TSocket> socket(new TSocket(host, port));
-	shared_ptr<TTransport> transport(new TFramedTransport(socket));
-	socket->setConnTimeout(connectionTimeoutInMs);
+    shared_ptr<TSocket> socket(new TSocket(host, rpcPort));
+    shared_ptr<TTransport> transport(new TFramedTransport(socket));
+    socket->setConnTimeout(connectionTimeoutInMs);
     if (!transport->isOpen()) 
     {
         try 
@@ -468,18 +462,17 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
     if (enableRPCCompression) 
     {
         shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
-		shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
-		client = client_instance;
-    }
-    else 
-    {
-		shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-		shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
-		client = client_instance;
+        shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
+        client = client_instance;
+    } else {
+        shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
+        shared_ptr<TSIServiceIf> client_instance(new TSIServiceClient(protocol));
+        client = client_instance;
     }
     shared_ptr<TSOpenSessionReq> openReq(new TSOpenSessionReq());
     openReq->__set_username(username);
     openReq->__set_password(password);
+    openReq->__set_zoneId(zoneId);
     try 
     {
         shared_ptr<TSOpenSessionResp> openResp(new TSOpenSessionResp());
@@ -500,11 +493,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs)
         
         if (zoneId != "") {
             setTimeZone(zoneId);
-        }
-        else {
+        } else {
             zoneId = getTimeZone();
         }
-    } 
+    }
     catch (exception e) 
     {
         transport->close();
@@ -527,7 +519,7 @@ void Session::close()
     {
         shared_ptr<TSStatus> resp(new TSStatus());
         client->closeSession(*resp,*req);
-    } 
+    }
     catch (exception e) 
     {
         char buf[111];
@@ -556,7 +548,7 @@ void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measu
     {
         client->insertStringRecord(*resp,*req);
         RpcUtils::verifySuccess(*resp);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -606,8 +598,7 @@ void Session::insertTablet(Tablet& tablet, bool sorted) {
         if (!checkSorted(tablet)) {
             throw BatchExecutionException("Times in Tablet are not in ascending order");
         }
-    }
-    else {
+    } else {
         sortTablet(tablet);
     }
 
@@ -655,8 +646,7 @@ void Session::insertTablets(map<string, Tablet*>& tablets, bool sorted) {
             if (!checkSorted(*(item.second))) {
                 throw BatchExecutionException("Times in Tablet are not in ascending order");
             }
-        }
-        else {
+        } else {
             sortTablet(*(tablets[item.first]));
         }
 
@@ -793,7 +783,7 @@ void Session::deleteData(vector<string>& deviceId, int64_t time)
     {
         client->deleteData(*resp,*req);
         RpcUtils::verifySuccess(*resp);
-    } 
+    }
     catch (exception& e) 
     {
         throw IoTDBConnectionException(e.what());
@@ -807,7 +797,7 @@ void Session::setStorageGroup(string storageGroupId)
     {
         client->setStorageGroup(*resp,sessionId, storageGroupId);
         RpcUtils::verifySuccess(*resp);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -828,7 +818,7 @@ void Session::deleteStorageGroups(vector<string>& storageGroups)
     {
         client->deleteStorageGroups(*resp, sessionId, storageGroups);
         RpcUtils::verifySuccess(*resp);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -858,7 +848,7 @@ void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSE
     if (props != NULL) {
         req->__set_props(*props);
     }
-    
+
     if (tags != NULL) {
         req->__set_tags(*tags);
     }
@@ -874,7 +864,7 @@ void Session::createTimeseries(string path, TSDataType::TSDataType dataType, TSE
     {
         client->createTimeseries(*resp,*req);
         RpcUtils::verifySuccess(*resp);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -908,7 +898,7 @@ void Session::createMultiTimeseries(vector<string> paths, vector<TSDataType::TSD
     if (propsList != NULL) {
         request->__set_propsList(*propsList);
     }
-    
+
     if (tagsList != NULL) {
         request->__set_tagsList(*tagsList);
     }
@@ -952,7 +942,7 @@ string Session::getTimeZone()
     {
         client->getTimeZone(*resp, sessionId);
         RpcUtils::verifySuccess(resp->status);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -969,7 +959,7 @@ void Session::setTimeZone(string zoneId)
     try
     {
         client->setTimeZone(*resp,*req);
-    } 
+    }
     catch (IoTDBConnectionException& e)
     {
         throw IoTDBConnectionException(e.what());
@@ -990,7 +980,7 @@ SessionDataSet* Session::executeQueryStatement(string sql)
     {
         client->executeStatement(*resp,*req);
         RpcUtils::verifySuccess(resp->status);
-    } 
+    }
     catch (IoTDBConnectionException e)
     {
         throw IoTDBConnectionException(e.what());
