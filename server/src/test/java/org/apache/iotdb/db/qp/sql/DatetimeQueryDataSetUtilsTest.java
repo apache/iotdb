@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sql;
+package org.apache.iotdb.db.qp.sql;
 
 import static org.junit.Assert.assertEquals;
 
