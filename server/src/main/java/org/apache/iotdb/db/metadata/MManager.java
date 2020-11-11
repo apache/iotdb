@@ -531,8 +531,8 @@ public class MManager {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
+            logger.debug(String.format(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
           if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
@@ -543,8 +543,8 @@ public class MManager {
           }
         } else {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
+            logger.debug(String.format(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
         }
