@@ -133,22 +133,17 @@ public class BasicDaoImpl implements BasicDao {
   }
 
   public List<TimeValues> querySeriesInternal(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
-      Long from = zonedCovertToLong(timeRange.left);
+    Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
+
     String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
         s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
         from * timestampRadioX, to * timestampRadioX);
     String columnName = "root." + s;
-    String internalLocal = this.interval;
-    logger.info(String.format("get hour %d", hours));
-    
-    if (isDownSampling && (hours > 1)) {
-      if (hours < 30 * 24 && hours > 24) {
-        internalLocal = "1h";
-      } else if (hours > 30 * 24) {
-        internalLocal = "1d";
-      }
+
+    String internalLocal = getInternal(hours);
+    if (!internalLocal.equals("")) {
       sql = String.format(
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
@@ -157,8 +152,23 @@ public class BasicDaoImpl implements BasicDao {
           from * timestampRadioX, to * timestampRadioX, internalLocal);
       columnName = function + "(root." + s + ")";
     }
+
     logger.info(sql);
     return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
+  }
+
+  public String getInternal(final long hours) {
+    if (!isDownSampling || !(hours > 1)) {
+      return "";
+    }
+
+    if (hours < 30 * 24 && hours > 24) {
+      return  "1h";
+    } else if (hours > 30 * 24) {
+      return "1d";
+    }
+
+    return this.interval;
   }
 
   private Long zonedCovertToLong(ZonedDateTime time) {
