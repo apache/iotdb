@@ -190,16 +190,17 @@ public abstract class TsFileManagement {
       }
       return;
     }
-    logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
-        fullMerge);
+    isUnseqMerging = true;
 
     if (seqMergeList.isEmpty()) {
       logger.info("{} no seq files to be merged", storageGroupName);
+      isUnseqMerging = false;
       return;
     }
 
     if (unSeqMergeList.isEmpty()) {
       logger.info("{} no unseq files to be merged", storageGroupName);
+      isUnseqMerging = false;
       return;
     }
 
@@ -213,6 +214,7 @@ public abstract class TsFileManagement {
       if (mergeFiles.length == 0) {
         logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
             budget);
+        isUnseqMerging = false;
         return;
       }
       // avoid pending tasks holds the metadata and streams
@@ -229,7 +231,6 @@ public abstract class TsFileManagement {
         tsFileResource.setMerging(true);
       }
 
-      isUnseqMerging = true;
       mergeStartTime = System.currentTimeMillis();
       MergeTask mergeTask = new MergeTask(mergeResource, storageGroupDir,
           this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
