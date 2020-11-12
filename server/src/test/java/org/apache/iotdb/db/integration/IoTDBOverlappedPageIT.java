@@ -53,6 +53,7 @@ public class IoTDBOverlappedPageIT {
     // max_number_of_points_in_page = 10
     beforeMaxNumberOfPointsInPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
+
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     insertData();
