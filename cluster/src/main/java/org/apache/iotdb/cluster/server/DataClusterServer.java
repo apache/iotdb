@@ -468,7 +468,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           new TServerSocket.ServerSocketTransportArgs().
               bindAddr(new InetSocketAddress(config.getClusterRpcIp(),
                   thisNode.getDataPort())).backlog(0).
-              clientTimeout(60000));
+              clientTimeout(getConnectionTimeoutInMS()));
 //      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
 //          thisNode.getDataPort())).;
     }

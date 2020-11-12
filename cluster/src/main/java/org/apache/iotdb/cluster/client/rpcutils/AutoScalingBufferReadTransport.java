@@ -1,6 +1,8 @@
 package org.apache.iotdb.cluster.client.rpcutils;
 
 import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author HouliangQi (neuyilan@163.com)
@@ -9,6 +11,8 @@ import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
  */
 public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTransport {
 
+  private static final Logger logger = LoggerFactory
+      .getLogger(AutoScalingBufferReadTransport.class);
   private final AutoScalingBuffer buf;
 
   public AutoScalingBufferReadTransport(int initialCapacity, double overgrowthCoefficient) {
@@ -17,6 +21,7 @@ public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTrans
   }
 
   public void shrinkSizeIfNecessary(int size) {
+    logger.debug("try to shrink the read buffer, size={}", size);
     buf.shrinkSizeIfNecessary(size);
   }
 }

@@ -25,6 +25,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -40,7 +41,6 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadedSelectorServer;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -188,9 +188,9 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 //    poolArgs.maxReadBufferBytes =  IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
     poolArgs.selectorThreads(CommonUtils.getCpuCores());
     int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-            config.getMaxConcurrentClientNum());
+        config.getMaxConcurrentClientNum());
     poolArgs.executorService(new ThreadPoolExecutor(CommonUtils.getCpuCores(),
-            maxConcurrentClientNum, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
+        maxConcurrentClientNum, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
 
@@ -202,7 +202,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     poolArgs.processor(getProcessor());
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+    poolArgs.transportFactory(new TElasticFramedTransport.Factory(
         IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 

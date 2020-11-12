@@ -16,16 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-
 package org.apache.iotdb.cluster.client.rpcutils;
 
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.thrift.transport.TTransportFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TElasticFramedTransport extends TFastFramedTransport {
+
+  private static final Logger logger = LoggerFactory.getLogger(TElasticFramedTransport.class);
+
+  public static class Factory extends TTransportFactory {
+
+    private final int initialCapacity;
+    private final int maxLength;
+
+    public Factory() {
+      this(DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
+    }
+
+    public Factory(int initialCapacity) {
+      this(initialCapacity, DEFAULT_MAX_LENGTH);
+    }
+
+    public Factory(int initialCapacity, int maxLength) {
+      this.initialCapacity = initialCapacity;
+      this.maxLength = maxLength;
+    }
+
+    @Override
+    public TTransport getTransport(TTransport trans) {
+      return new TElasticFramedTransport(trans, initialCapacity, maxLength);
+    }
+  }
 
   public TElasticFramedTransport(TTransport underlying) {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
@@ -59,6 +86,9 @@ public class TElasticFramedTransport extends TFastFramedTransport {
     // Read another frame of data
     readFrame();
 
+    if (len > maxLength) {
+      logger.info("start to read to buffer, the len={}", len);
+    }
     return readBuffer.read(buf, off, len);
   }
 
@@ -71,26 +101,42 @@ public class TElasticFramedTransport extends TFastFramedTransport {
       throw new TTransportException(TTransportException.CORRUPTED_DATA,
           "Read a negative frame size (" + size + ")!");
     }
-
+    logger.debug("start to read size={}", size);
     if (size < maxLength) {
+      logger.debug("the size={} is smaller than maxLength={}, try to shrink the buffer size", size,
+          maxLength);
       readBuffer.shrinkSizeIfNecessary(maxLength);
     }
+    if (size > maxLength) {
+      logger.info("start to read the frame, size={}", size);
+    }
     readBuffer.fill(underlying, size);
+    if (size > maxLength) {
+      logger.info("end to read the frame, size={}", size);
+    }
   }
 
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
+    logger.debug("try to flush the buffer, length={}", length);
+    if (length > maxLength) {
+      logger.info("start to flush the data, length={}", length);
+    }
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuf().array(), 0, length);
     writeBuffer.reset();
     writeBuffer.shrinkSizeIfNecessary(maxLength);
     underlying.flush();
+    if (length > maxLength) {
+      logger.info("end to flush the data, length={}", length);
+    }
   }
 
   @Override
   public void write(byte[] buf, int off, int len) throws TTransportException {
+    logger.debug("try to write the buffer, off={}, len={}", off, len);
     writeBuffer.write(buf, off, len);
   }
 }
