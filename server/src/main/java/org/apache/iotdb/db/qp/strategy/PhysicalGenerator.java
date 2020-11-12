@@ -356,6 +356,7 @@ public class PhysicalGenerator {
 
       if (queryOperator.isGroupByTime()) {
         ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
+        ((GroupByTimePlan) queryPlan).setIsGroupByMonth(queryOperator.isGroupByMonth());
         ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
         ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
         if (!queryOperator.isLeftCRightO()) {

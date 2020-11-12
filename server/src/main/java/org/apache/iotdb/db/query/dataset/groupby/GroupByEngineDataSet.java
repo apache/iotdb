@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
@@ -43,6 +45,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected boolean hasCachedTimeInterval;
 
   protected boolean leftCRightO;
+  protected boolean isGroupByMonth;
+  protected int intervalTimes;
 
   public GroupByEngineDataSet() {
   }
@@ -66,6 +70,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = groupByTimePlan.getEndTime();
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
     this.ascending = groupByTimePlan.isAscending();
+    this.isGroupByMonth = groupByTimePlan.isGroupByMonth();
 
     if (ascending) {
       curStartTime = startTime;
@@ -75,34 +80,62 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
       curStartTime = slidingStep * (intervalNum - 1) + startTime;
     }
-    curEndTime = Math.min(curStartTime + interval, endTime);
+
+    if (isGroupByMonth) {
+      //interval and sliding step are calculated in ms by * 30 * 86400_000L by default
+      //now converting them back to months
+      interval = interval / 30 / 86400_000L;
+      slidingStep = slidingStep / 30 / 86400_000L;
+      curEndTime = Math.min(curStartTime + calcIntervalByMonth(interval, curStartTime), endTime);
+    } else {
+      curEndTime = Math.min(curStartTime + interval, endTime);
+    }
     this.hasCachedTimeInterval = true;
   }
 
   @Override
   protected boolean hasNextWithoutConstraint() {
+    long curSlidingStep = slidingStep;
+    long curInterval = interval;
     // has cached
     if (hasCachedTimeInterval) {
       return true;
     }
 
+    //gorup by natural month, given startTime recalculate interval and sliding step
+    if (isGroupByMonth) {
+      curInterval = calcIntervalByMonth(++intervalTimes * slidingStep + interval, startTime);
+      curSlidingStep = calcIntervalByMonth(slidingStep * intervalTimes, curStartTime);
+    }
+
     // check if the next interval out of range
     if (ascending) {
-      curStartTime += slidingStep;
+      curStartTime += curSlidingStep;
       //This is an open interval , [0-100)
       if (curStartTime >= endTime) {
         return false;
       }
     } else {
-      curStartTime -= slidingStep;
+      curStartTime -= curSlidingStep;
       if (curStartTime < startTime) {
         return false;
       }
     }
 
     hasCachedTimeInterval = true;
-    curEndTime = Math.min(curStartTime + interval, endTime);
+    if (isGroupByMonth) {
+      curEndTime = Math.min(startTime + curInterval, endTime);
+    } else {
+      curEndTime = Math.min(curStartTime + curInterval, endTime);
+    }
     return true;
+  }
+
+  public long calcIntervalByMonth(long numMonths, long curStartTime) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeInMillis(startTime);
+    calendar.add(Calendar.MONTH, (int) (numMonths));
+    return calendar.getTimeInMillis() - curStartTime;
   }
 
   @Override
