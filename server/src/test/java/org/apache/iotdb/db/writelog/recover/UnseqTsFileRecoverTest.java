@@ -180,7 +180,7 @@ public class UnseqTsFileRecoverTest {
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, false, false);
-    performer.recover().close();
+    performer.recover(true).close();
 
     assertEquals(1, resource.getStartTime("root.sg.device99"));
     assertEquals(300, resource.getEndTime("root.sg.device99"));

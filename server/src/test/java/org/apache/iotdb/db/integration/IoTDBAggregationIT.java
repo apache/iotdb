@@ -490,6 +490,34 @@ public class IoTDBAggregationIT {
   }
 
   @Test
+  public void firstLastValueTest() throws SQLException {
+    String[] retArray = new String[]{
+        "0,2.2,4.4",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement
+          .execute("SELECT first_value(temperature),last_value(temperature) " +
+              "FROM root.ln.wf01.wt01 WHERE time > 1 AND time < 5");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(1)
+                  + "," + resultSet.getString(2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    }
+  }
+
+  @Test
   public void maxminValueTest() throws SQLException {
     String[] retArray = new String[]{
         "0,8499,500.0",
@@ -798,10 +826,6 @@ public class IoTDBAggregationIT {
         statement.execute(sql);
       }
 
-      for (String sql : dataSet2) {
-        statement.execute(sql);
-      }
-
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
         statement.execute(String
@@ -837,6 +861,10 @@ public class IoTDBAggregationIT {
       }
 
       for (String sql : dataSet3) {
+        statement.execute(sql);
+      }
+
+      for (String sql : dataSet2) {
         statement.execute(sql);
       }
     } catch (Exception e) {

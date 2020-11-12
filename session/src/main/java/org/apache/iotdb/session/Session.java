@@ -81,7 +81,8 @@ public class Session {
   private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
   public Session(String host, int rpcPort) {
-    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE,
+        null);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -100,7 +101,8 @@ public class Session {
     this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
 
-  public Session(String host, int rpcPort, String username, String password, int fetchSize, ZoneId zoneId) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      ZoneId zoneId) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -305,8 +307,7 @@ public class Session {
 
   public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws StatementExecutionException, IoTDBConnectionException {
-    TSRawDataQueryReq request = genTSRawDataQueryReq(paths, startTime, endTime);
-    return defaultSessionConnection.executeRawDataQuery(request);
+    return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
   }
 
   private TSRawDataQueryReq genTSRawDataQueryReq(List<String> paths, long startTime, long endTime) {
