@@ -28,7 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -98,10 +100,16 @@ public class AggregationExecutor {
         selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     // TODO-Cluster: group the paths by storage group to reduce communications
-    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      aggregateOneSeries(entry, aggregateResultList,
-          aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
-          context);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance()
+        .mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+    try {
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+        aggregateOneSeries(entry, aggregateResultList,
+            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
+            context);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -298,11 +306,16 @@ public class AggregationExecutor {
     }
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath path = selectedSeries.get(i);
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
-          dataTypes.get(i), context);
-      readersOfSelectedSeries.add(seriesReaderByTimestamp);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    try {
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        PartialPath path = selectedSeries.get(i);
+        IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
+            dataTypes.get(i), context);
+        readersOfSelectedSeries.add(seriesReaderByTimestamp);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     List<AggregateResult> aggregateResults = new ArrayList<>();
