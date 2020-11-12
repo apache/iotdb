@@ -51,7 +51,7 @@ Step 4: Use jvisualvm
 <img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81464569-725e0200-91f5-11ea-9ff9-49745f4c9ef2.png">
 
 4. Fill in information and log in as below. Remember to check "Do not require SSL connection".
-Here is an example:
+An example is:
 Connection：192.168.130.15:31999
 Username：iotdb
 Password：passw!d

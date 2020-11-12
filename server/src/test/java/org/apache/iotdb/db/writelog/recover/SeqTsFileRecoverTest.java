@@ -171,7 +171,7 @@ public class SeqTsFileRecoverTest {
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
         resource, false, false);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true);
     assertFalse(writer.canWrite());
     writer.close();
 
@@ -220,7 +220,7 @@ public class SeqTsFileRecoverTest {
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
         resource, false, true);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true);
 
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());
