@@ -30,7 +30,8 @@ public class GroupByTimePlan extends AggregationPlan {
   // sliding step
   private long slidingStep;
   //if group by query is by natural month
-  private boolean isGroupByMonth;
+  private boolean isIntervalByMonth;
+  private boolean isSlidingStepByMonth;
 
   // if it is left close and right open interval
   private boolean leftCRightO = true;
@@ -64,12 +65,20 @@ public class GroupByTimePlan extends AggregationPlan {
     this.interval = interval;
   }
 
-  public void setIsGroupByMonth(boolean isGroupByMonth) {
-    this.isGroupByMonth = isGroupByMonth;
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
   }
 
-  public boolean isGroupByMonth() {
-    return isGroupByMonth;
+  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean isIntervalByMonth) {
+    this.isIntervalByMonth = isIntervalByMonth;
   }
 
   public long getSlidingStep() {
