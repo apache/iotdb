@@ -158,6 +158,7 @@
                         <executions>
                             <execution>
                                 <id>generate-thrift-sources-cpp</id>
+                                <!-- Move from generate-sources to generate-resources to avoid executing twice -->
                                 <phase>generate-resources</phase>
                                 <goals>
                                     <goal>compile</goal>
