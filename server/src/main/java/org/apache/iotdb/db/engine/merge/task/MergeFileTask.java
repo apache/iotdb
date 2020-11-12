@@ -188,11 +188,6 @@ class MergeFileTask {
       seqFile.serialize();
       mergeLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
-
-      File newMergedFile = newFileWriter.getFile();
-      newMergedFile.delete();
-      fsFactory.moveFile(seqFile.getTsFile(), newMergedFile);
-      seqFile.setFile(newMergedFile);
     } catch (Exception e) {
       restoreOldFile(seqFile);
       throw e;

@@ -37,7 +37,7 @@
 
 > under directory basedir/system/schema
 1. system.properties
-    + record all immutable properties, will be checked when starting IoTDB to avoid system error
+    + record all immutable properties, will be checked when starting IoTDB to avoid system errors
 
 ## State Related Files
 
@@ -88,7 +88,7 @@
 #### Version
 > under directory basedir/system/storage_groups/{StorageGroupName}/{TimePartitionId} or upgrade
 1. Version-{version}
-    + version file, record the max version in fileName of a stroage group
+    + version file, record the max version in fileName of a storage group
 
 #### Upgrade
 > under directory basedir/system/upgrade

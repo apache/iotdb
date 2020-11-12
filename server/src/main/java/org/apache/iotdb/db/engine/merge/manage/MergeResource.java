@@ -49,8 +49,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 /**
- * MergeResource manages files and caches of readers, writers, MeasurementSchemas and
- * modifications to avoid unnecessary object creations and file openings.
+ * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
+ * to avoid unnecessary object creations and file openings.
  */
 public class MergeResource {
 
@@ -75,7 +75,7 @@ public class MergeResource {
   }
 
   private boolean filterResource(TsFileResource res) {
-    return !res.isDeleted() && res.stillLives(timeLowerBound);
+    return res.getTsFile().exists() && !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
   public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
@@ -107,8 +107,9 @@ public class MergeResource {
   }
 
   /**
-   * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a
-   * SeqFile. The path of the merge temp file will be the seqFile's + ".merge".
+   * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a SeqFile.
+   * The path of the merge temp file will be the seqFile's + ".merge".
+   *
    * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
    */
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
@@ -122,8 +123,9 @@ public class MergeResource {
   }
 
   /**
-   * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata
-   * is not cached since it is usually huge.
+   * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata is
+   * not cached since it is usually huge.
+   *
    * @param path name of the time series
    */
   public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
@@ -134,6 +136,7 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
+   *
    * @return a TsFileSequenceReader
    */
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
@@ -148,6 +151,7 @@ public class MergeResource {
   /**
    * Construct UnseqResourceMergeReaders of for each timeseries over all seqFiles. The readers are
    * not cached since the method is only called once for each timeseries.
+   *
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
@@ -171,6 +175,7 @@ public class MergeResource {
 
   /**
    * Get the modifications of a timeseries in the ModificationFile of a TsFile.
+   *
    * @param path name of the time series
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
@@ -191,6 +196,7 @@ public class MergeResource {
   /**
    * Remove and close the writer of the merge temp file of a SeqFile. The merge temp file is also
    * deleted.
+   *
    * @param tsFileResource the SeqFile
    */
   public void removeFileAndWriter(TsFileResource tsFileResource) throws IOException {
@@ -203,6 +209,7 @@ public class MergeResource {
 
   /**
    * Remove and close the reader of the TsFile. The TsFile is NOT deleted.
+   *
    * @param resource the SeqFile
    */
   public void removeFileReader(TsFileResource resource) throws IOException {
