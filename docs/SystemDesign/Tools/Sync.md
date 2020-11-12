@@ -184,7 +184,7 @@ Each time the sending end of the synchronization tool starts a synchronization t
 
 ### Statement of needs
 
-* Because the receiving end needs to receive files from multiple sending ends at the same time, it is necessary to distinguish files from different sending ends and manage these files in a unified manner.
+* Because the receiver needs to receive files from multiple senders at the same time, it is necessary to distinguish files from different senders and manage these files in a unified manner.
 
 * The receiving end receives the file from the transmitting end and verifies the file name, the file data, and the MD5 value of the file.  After the file is received, the file is stored locally at the receiving end, and the received tsfile file is checked for the MD5 value and the end of the file is checked. If the check is passed correctly, the file is retransmitted.
 

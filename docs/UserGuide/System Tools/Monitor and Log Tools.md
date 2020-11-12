@@ -23,19 +23,19 @@
 
 ## System Monitor
 
-Currently, IoTDB provides users to use Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
+Currently, IoTDB provides users Java's JConsole tool to monitor system status or use IoTDB's open API to check data status.
 
 ### System Status Monitoring
 
-After starting JConsole tool and connecting to IoTDB server, you will have a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.). See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more informations.
+After starting JConsole tool and connecting to IoTDB server, a basic look at IoTDB system status(CPU Occupation, in-memory information, etc.) is provided. See [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/management/jconsole.html) for more information.
 
 #### JMX MBean Monitoring
-By using JConsole tool and connecting with JMX you can see some system statistics and parameters.
+By using JConsole tool and connecting with JMX you are provided with some system statistics and parameters.
 This section describes how to use the JConsole ```Mbean``` tab to monitor the number of files opened by the IoTDB service process, the size of the data file, and so on. Once connected to JMX, you can find the ```MBean``` named ```org.apache.iotdb.service``` through the ```MBeans``` tab, as shown in the following Figure.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
 
-There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it can also display a line chart of that attribute. In particular, all the opened file count statistics are currently only supported on ```MacOS``` and most ```Linux``` distro except ```CentOS```. For the OS not supported these statistics will return ```-2```. See the following section for specific introduction of the Monitor attributes.
+There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it also displays a line chart of that attribute. Currently, all the opened file count statistics are only supported on ```MacOS``` and most ```Linux``` distro except ```CentOS```. For the OS not supported these statistics returns ```-2```. See the following section for specific introduction of the Monitor attributes.
 
 ##### MBean Monitor Attributes List
 
@@ -148,7 +148,7 @@ There are several attributes under Monitor, including the numbers of files opene
 
 ### Data Status Monitoring
 
-This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.8.0 version of IoTDB provides statistics for writing data.
+This module is the statistical monitoring method provided by IoTDB for users to store data information. The statistical data are recorded in the system and stored in the database. The current 0.8.0 version of IoTDB provides statistics for writing data.
 
 The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file).
 
@@ -158,9 +158,9 @@ The current statistics of writing data by the system can be divided into two maj
 
 The system defaults to collect data every 5 seconds, and writes the statistics to the IoTDB and stores them in a system-specified locate. (If you need to change the statistic frequency, you can set The `back_loop_period_in_second entry` in the configuration file, see Section [Engine Layer](../Server/Single%20Node%20Setup.md) for details). After the system is refreshed or restarted, IoTDB does not recover the statistics, and the statistics data will restart from zero.
 
-In order to avoid the excessive use of statistical information, we add a mechanism to periodically clear invalid data for statistical information. The system will delete invalid data at regular intervals. The user can set the trigger frequency (`stat_monitor_retain_interval_in_second`, default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the frequency of deleting data. By setting the valid data duration (`stat_monitor_detect_freq_in_second entry`, the default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the time period of valid data, that is, the data within the time of the clear operation trigger time is stat_monitor_detect_freq_in_second is valid data. In order to ensure the stability of the system, it is not allowed to delete the statistics frequently. Therefore, if the configuration parameter time is less than the default value (600s), the system will abort the configuration parameter and uses the default parameter.
+To avoid the excessive use of statistical information, a mechanism is set to periodically clear invalid data for statistical information. The system deletes invalid data at regular intervals. The user set the trigger frequency (`stat_monitor_retain_interval_in_second`, default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the frequency of deleting data. By setting the valid data duration (`stat_monitor_detect_freq_in_second entry`, the default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the time period of valid data, that is, the data within the time of the clear operation trigger time is stat_monitor_detect_freq_in_second is valid data. In order to ensure the stability of the system, it is not allowed to delete the statistics frequently. Therefore, if the configuration parameter time is less than the default value (600s), the system will abort the configuration parameter and use the default parameter.
 
-It's convenient for you to use `select` clause to get the writing data statistics the same as other timeseires.
+It's convenient for you to use `select` clause to get the writing data statistics the same as other timeseries.
 
 Here are the writing data statistics:
 
@@ -266,19 +266,19 @@ Here are the writing data statistics:
 
 Here we give some example of using writing data statistics.
 
-If you want to know the global successful writing points number, you can use `select` clause to query it's value. The query statement is like this:
+To know the global successful writing points number, use `select` clause to query it's value. The query statement is:
 
 ```
 select TOTAL_POINTS_SUCCESS from root.stats.write.global
 ```
 
-If you want to know the successfule writing points number of root.ln (storage group), here is the query statement:
+To know the successfule writing points number of root.ln (storage group), the query statement is:
 
 ```
 select TOTAL_POINTS_SUCCESS from root.stats.write.root_ln
 ```
 
-If you want to know the current timeseries point in the system, you can use `MAX_VALUE` function to query. Here is the query statement:
+To know the current timeseries point in the system, use `MAX_VALUE` function to query. Here is the query statement:
 
 ```
 select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
@@ -286,11 +286,11 @@ select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
 
 #### File Size Monitor
 
-Sometimes we are concerned about how the data file size of IoTDB is changing, maybe to help calculate how much disk space is left or the data ingestion speed. The File Size Monitor provides several statistics to show how different types of file-sizes change. 
+Sometimes we are concerned about how the data file size of IoTDB changes, maybe to help calculate how much disk space is left or the data ingestion speed. The File Size Monitor provides several statistics to show how different types of file-sizes change. 
 
 The file size monitor defaults to collect file size data every 5 seconds using the same shared parameter ```back_loop_period_in_second```, 
 
-Unlike Writing Data Monitor, currently File Size Monitor will not delete statistic data at regular intervals. 
+Unlike Writing Data Monitor, currently File Size Monitor does not delete statistic data at regular intervals. 
 
 You can also use `select` clause to get the file size statistics like other time series.
 
@@ -362,7 +362,7 @@ Here are the file size statistics:
 
 ### Introduction
 
-In order to grasp the performance of iotdb, we add this module to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
+To grasp the performance of iotdb, this module is added to count the time-consumption of each operation. This module can compute the statistics of the avg time-consuming of each operation and the proportion of each operation whose time consumption falls into a time range. The output is in log_measure.log file. An output example is below.  
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/60937461-14296f80-a303-11e9-9602-a7bed624bfb3.png">
 
@@ -446,7 +446,7 @@ Start the JConsole, establish a new JMX connection with the IoTDB Server (you ca
 After connected, click `MBean` and find `ch.qos.logback.classic.default.ch.qos.logback.classic.jmx.JMXConfigurator`(As shown in fig 4.2).
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577204-fe122900-1ef3-11e9-9e89-2eb1d46e24b8.png">
 
-In the JMXConfigurator Window, there are 6 operations provided for you, as shown in fig 4.3. You can use there interfaces to perform operation.
+In the JMXConfigurator Window, there are 6 operations provided, as shown in fig 4.3. You can use these interfaces to perform operation.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577216-09fdeb00-1ef4-11e9-9005-542ad7d9e9e0.png">
 
@@ -467,5 +467,4 @@ This method is to obtain the current log level of the specified Logger. This met
 * getLoggerLevel
 
 This method is to obtain the log level of the specified Logger. This method accepts a String type parameter named p1, which is the name of the specified Logger. This method returns the log level of the specified Logger.
-It should be noted that the difference between this method and the `getLoggerEffectiveLevel` method is that the method returns the log level that the specified Logger is set in the configuration file. If the user does not set the log level for the Logger. , then return empty. According to Logger's log-level inheritance mechanism, f a Logger's level is not explicitly set, it will inherit the log level settings from its nearest ancestor. At this point, calling the `getLoggerEffectiveLevel` method will return the log level in which the Logger is in effect; calling `getLoggerLevel` will return null.
-
+It should be noted that the difference between this method and the `getLoggerEffectiveLevel` method is that the method returns the log level that the specified Logger is set in the configuration file. If the user does not set the log level for the Logger, then return empty. According to Logger's log-level inheritance mechanism, a Logger's level is not explicitly set, it will inherit the log level settings from its nearest ancestor. At this point, calling the `getLoggerEffectiveLevel` method will return the log level in which the Logger is in effect; calling `getLoggerLevel` will return null.
