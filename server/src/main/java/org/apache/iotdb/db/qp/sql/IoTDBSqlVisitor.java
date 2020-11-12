@@ -139,6 +139,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowWhereClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SingleStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.StringLiteralContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SuffixPathContext;
@@ -168,6 +169,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
+  }
+
+  @Override
+  public Operator visitSingleStatement(SingleStatementContext ctx) {
+    return visit(ctx.statement());
   }
 
   @Override
