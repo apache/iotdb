@@ -180,8 +180,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitCreateTimeseries(CreateTimeseriesContext ctx) {
     CreateTimeSeriesOperator createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
-    createTimeSeriesOperator.setAlias(ctx.alias().ID().getText());
-    parseAttributeClauses(ctx.attributeClauses(), createTimeSeriesOperator);
+    if(ctx.alias() != null) {
+      createTimeSeriesOperator.setAlias(ctx.alias().ID().getText());
+    }
+    if(ctx.attributeClauses() != null) {
+      parseAttributeClauses(ctx.attributeClauses(), createTimeSeriesOperator);
+    }
     return createTimeSeriesOperator;
   }
 
