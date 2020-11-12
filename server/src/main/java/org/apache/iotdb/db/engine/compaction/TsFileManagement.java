@@ -355,6 +355,7 @@ public abstract class TsFileManagement {
       logger.info("{} a merge task abnormally ends", storageGroupName);
       return;
     }
+    removeUnseqFiles(unseqFiles);
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
@@ -362,14 +363,6 @@ public abstract class TsFileManagement {
       doubleWriteLock(seqFile);
 
       try {
-        File newMergeFile = seqFile.getTsFile();
-        if (!newMergeFile.delete()) {
-          throw new IOException(String.format("delete %s failed", newMergeFile.getAbsolutePath()));
-        }
-        File mergeFile = FSFactoryProducer.getFSFactory()
-            .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
-        FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
-        seqFile.setFile(newMergeFile);
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
           //FIXME if there is an exception, the the modification file will be not closed.
@@ -384,7 +377,6 @@ public abstract class TsFileManagement {
         doubleWriteUnlock(seqFile);
       }
     }
-    removeUnseqFiles(unseqFiles);
 
     logger.info("{} a merge task ends", storageGroupName);
   }

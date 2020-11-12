@@ -73,7 +73,6 @@ public class MergeLogTest extends MergeTest {
       while (bufferedReader.readLine() != null) {
         lineCnt ++;
       }
-      mergeEndAction(seqFiles, unseqFiles, mergeLog);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());

@@ -198,19 +198,4 @@ abstract class MergeTest {
     fileWriter.close();
   }
 
-  public void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
-    for (int i = 0; i < seqFiles.size(); i++) {
-      TsFileResource seqFile = seqFiles.get(i);
-      seqFile.writeLock();
-
-      File newMergeFile = seqFile.getTsFile();
-      newMergeFile.delete();
-      File mergeFile = FSFactoryProducer.getFSFactory()
-          .getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
-      FSFactoryProducer.getFSFactory().moveFile(mergeFile, newMergeFile);
-      seqFile.setFile(newMergeFile);
-      seqFile.writeUnlock();
-    }
-  }
 }

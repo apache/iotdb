@@ -194,6 +194,10 @@ class MergeFileTask {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
+      File newMergeFile = seqFile.getTsFile();
+      newMergeFile.delete();
+      fsFactory.moveFile(fileWriter.getFile(), newMergeFile);
+      seqFile.setFile(newMergeFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
@@ -202,6 +206,7 @@ class MergeFileTask {
         ChunkCache.getInstance().clear();
         ChunkMetadataCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
+        FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       }
       seqFile.writeUnlock();
     }
