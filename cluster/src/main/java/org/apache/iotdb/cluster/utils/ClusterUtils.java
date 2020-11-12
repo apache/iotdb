@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -45,7 +46,6 @@ import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TServerTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,7 +235,7 @@ public class ClusterUtils {
       String clientThreadPrefix, TProcessor processor, TProtocolFactory protocolFactory) {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-            config.getMaxConcurrentClientNum());
+        config.getMaxConcurrentClientNum());
     TThreadPoolServer.Args poolArgs =
         new TThreadPoolServer.Args(socket).maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
@@ -253,7 +253,7 @@ public class ClusterUtils {
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+    poolArgs.transportFactory(new TElasticFramedTransport.Factory(
         IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 

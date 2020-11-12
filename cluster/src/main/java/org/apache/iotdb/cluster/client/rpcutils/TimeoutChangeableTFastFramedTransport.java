@@ -21,10 +21,10 @@ package org.apache.iotdb.cluster.client.rpcutils;
 
 import java.net.SocketException;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 
-public class TimeoutChangeableTFastFramedTransport extends TFastFramedTransport {
+public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport {
 
   private TSocket underlying;
 
@@ -33,7 +33,12 @@ public class TimeoutChangeableTFastFramedTransport extends TFastFramedTransport 
     this.underlying = underlying;
   }
 
-  public void setTimeout(int timeout){
+  public TimeoutChangeableTFastFramedTransport(TTransport underlying, int initialBufferCapacity,
+      int maxLength) {
+    super(underlying, initialBufferCapacity, maxLength);
+  }
+
+  public void setTimeout(int timeout) {
     underlying.setTimeout(timeout);
   }
 
