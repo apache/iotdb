@@ -31,14 +31,14 @@ import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 
 /**
- * ParseDriver.
+ * LogicalGenerator.
  *
  */
-public class ParseDriver {
+public class LogicalGenerator {
 
-  public ParseDriver() { }
+  public LogicalGenerator() { }
 
-  public Operator parse(String sql, ZoneId zoneId) throws ParseCancellationException {
+  public Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
