@@ -157,7 +157,7 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT aliasClause tagClause attributeClause
+    | UPSERT aliasClause tagClause attributeClause?
     ;
 
 aliasClause
@@ -168,8 +168,8 @@ attributeClauses
     : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
-    tagClause
-    attributeClause
+    tagClause?
+    attributeClause?
     ;
 
 compressor
@@ -184,11 +184,11 @@ compressor
     ;
 
 attributeClause
-    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET
     ;
 
 tagClause
-    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : TAGS LR_BRACKET property (COMMA property)* RR_BRACKET
     ;
 
 setClause
@@ -229,19 +229,19 @@ fromClause
     ;
 
 specialClause
-    : specialLimit
-    | orderByTimeClause specialLimit?
-    | groupByTimeClause orderByTimeClause? specialLimit?
-    | groupByFillClause orderByTimeClause? specialLimit?
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause orderByTimeClause? specialLimit?
+    : specialLimit #specialLimitStatement
+    | orderByTimeClause specialLimit? #orderByTimeStatement
+    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
+    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
     ;
 
 specialLimit
-    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
     ;
 
 orderByTimeClause
