@@ -28,7 +28,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -81,31 +83,36 @@ public class LastQueryExecutor {
         Arrays.asList(new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      TimeValuePair lastTimeValuePair;
-      lastTimeValuePair = calculateLastPairForOneSeries(
-              selectedSeries.get(i), dataTypes.get(i), context,
-              lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
-      if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
-        RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
-        Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).getTsAlias() != null) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
-        } else {
-          if (selectedSeries.get(i).getMeasurementAlias() != null) {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    try {
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        TimeValuePair lastTimeValuePair;
+        lastTimeValuePair = calculateLastPairForOneSeries(
+            selectedSeries.get(i), dataTypes.get(i), context,
+            lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
+        if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
+          RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
+          Field pathField = new Field(TSDataType.TEXT);
+          if (selectedSeries.get(i).getTsAlias() != null) {
+            pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
           } else {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+            if (selectedSeries.get(i).getMeasurementAlias() != null) {
+              pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+            } else {
+              pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+            }
           }
+          resultRecord.addField(pathField);
+
+          Field valueField = new Field(TSDataType.TEXT);
+          valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+          resultRecord.addField(valueField);
+
+          dataSet.putRecord(resultRecord);
         }
-        resultRecord.addField(pathField);
-
-        Field valueField = new Field(TSDataType.TEXT);
-        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
-        resultRecord.addField(valueField);
-
-        dataSet.putRecord(resultRecord);
       }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     if (!lastQueryPlan.isAscending()) {

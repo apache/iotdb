@@ -1342,7 +1342,6 @@ public class StorageGroupProcessor {
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
-    tsFileManagement.readLock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
           tsFileManagement.getTsFileList(true),
@@ -1363,7 +1362,6 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      tsFileManagement.readUnLock();
       insertLock.readLock().unlock();
     }
   }
