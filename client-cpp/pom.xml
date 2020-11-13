@@ -139,12 +139,12 @@
                                             <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.h</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.h</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/Session.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.h</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.cpp</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.cpp</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/Session.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.cpp</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
