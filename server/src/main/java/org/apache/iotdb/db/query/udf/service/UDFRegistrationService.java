@@ -62,6 +62,7 @@ public class UDFRegistrationService implements IService {
     lock = new ReentrantReadWriteLock();
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void register(String functionName, String className, boolean isTemporary,
       boolean writeToTemporaryLogFile) throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
@@ -193,7 +194,7 @@ public class UDFRegistrationService implements IService {
 
       if (temporaryLogFile.exists()) {
         if (logFile.exists()) {
-          logFile.delete();
+          FileUtils.deleteQuietly(logFile);
         }
         recoveryFromLogFile(temporaryLogFile);
       } else {

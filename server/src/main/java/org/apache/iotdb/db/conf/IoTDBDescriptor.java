@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.time.ZoneId;
 import java.util.Properties;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -788,6 +787,7 @@ public class IoTDBDescriptor {
     }
   }
 
+  @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
   private void loadUDFProps(Properties properties) {
     String initialByteArrayLengthForMemoryControl = properties
         .getProperty("udf_initial_byte_array_length_for_memory_control");

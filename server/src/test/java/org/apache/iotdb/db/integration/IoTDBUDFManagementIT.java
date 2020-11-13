@@ -186,74 +186,84 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
-  public void testCreateFunction1() { // create function twice
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  public void testCreateFunction1() throws SQLException { // create function twice
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+      try {
+        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+      }
     }
   }
 
   @Test
-  public void testCreateFunction2() { // create function twice
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  public void testCreateFunction2() throws SQLException { // create function twice
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      statement.execute(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+      try {
+        statement.execute(
+            "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+      }
     }
   }
 
   @Test
-  public void testCreateFunction3() { // create function twice
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  public void testCreateFunction3() throws SQLException { // create function twice
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      try {
+        statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains(
+            "with the same function name and the class name has already been registered"));
+      }
+    }
+  }
+
+  @Test
+  public void testCreateFunction4() throws SQLException { // create function twice
+    try (Connection connection = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage()
-          .contains("with the same function name and the class name has already been registered"));
+      try {
+        statement.execute(
+            "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains(
+            "with the same function name and the class name has already been registered"));
+      }
     }
   }
 
   @Test
-  public void testCreateFunction4() { // create function twice
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      statement.execute(
-          "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage()
-          .contains("with the same function name and the class name has already been registered"));
-    }
-  }
-
-  @Test
-  public void testDropFunction1() { // create + drop twice
-    try (Connection connection = DriverManager.getConnection(
-        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  public void testDropFunction1() throws SQLException { // create + drop twice
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       statement.execute("drop function udf");
-      statement.execute("drop function udf");
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("does not exist"));
+      try {
+        statement.execute("drop function udf");
+        fail();
+      } catch (SQLException throwable) {
+        assertTrue(throwable.getMessage().contains("does not exist"));
+      }
     }
   }
 

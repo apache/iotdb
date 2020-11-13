@@ -91,6 +91,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
 
+  @SuppressWarnings("squid:S3518") // "Math.max(windowTransformerCount, 1)" can't be zero
   protected void initTransformers(float memoryBudgetInMB)
       throws QueryProcessException, IOException {
     int size = udtfPlan.getPathToIndex().size();
