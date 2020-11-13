@@ -34,17 +34,15 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public class ElasticSerializableTVList implements PointCollector {
 
   public static ElasticSerializableTVList newElasticSerializableTVList(TSDataType dataType,
-      long queryId, String uniqueId, float memoryLimitInMB, int cacheSize)
-      throws QueryProcessException {
+      long queryId, float memoryLimitInMB, int cacheSize) throws QueryProcessException {
     if (dataType.equals(TSDataType.TEXT)) {
-      return new ElasticSerializableBinaryTVList(queryId, uniqueId, memoryLimitInMB, cacheSize);
+      return new ElasticSerializableBinaryTVList(queryId, memoryLimitInMB, cacheSize);
     }
-    return new ElasticSerializableTVList(dataType, queryId, uniqueId, memoryLimitInMB, cacheSize);
+    return new ElasticSerializableTVList(dataType, queryId, memoryLimitInMB, cacheSize);
   }
 
   protected TSDataType dataType;
   protected long queryId;
-  protected String uniqueId;
   protected float memoryLimitInMB;
   protected int internalTVListCapacity;
   protected int cacheSize;
@@ -54,11 +52,10 @@ public class ElasticSerializableTVList implements PointCollector {
   protected int size;
   protected int evictionUpperBound;
 
-  protected ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
-      float memoryLimitInMB, int cacheSize) throws QueryProcessException {
+  protected ElasticSerializableTVList(TSDataType dataType, long queryId, float memoryLimitInMB,
+      int cacheSize) throws QueryProcessException {
     this.dataType = dataType;
     this.queryId = queryId;
-    this.uniqueId = uniqueId;
     this.memoryLimitInMB = memoryLimitInMB;
     int allocatableCapacity = SerializableTVList.calculateCapacity(dataType, memoryLimitInMB);
     internalTVListCapacity = allocatableCapacity / cacheSize;
@@ -74,11 +71,10 @@ public class ElasticSerializableTVList implements PointCollector {
     evictionUpperBound = 0;
   }
 
-  protected ElasticSerializableTVList(TSDataType dataType, long queryId, String uniqueId,
-      float memoryLimitInMB, int internalTVListCapacity, int cacheSize) {
+  protected ElasticSerializableTVList(TSDataType dataType, long queryId, float memoryLimitInMB,
+      int internalTVListCapacity, int cacheSize) {
     this.dataType = dataType;
     this.queryId = queryId;
-    this.uniqueId = uniqueId;
     this.memoryLimitInMB = memoryLimitInMB;
     this.internalTVListCapacity = internalTVListCapacity;
     this.cacheSize = cacheSize;
@@ -214,8 +210,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
   private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
-      int index = tvLists.size();
-      tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId, uniqueId, index));
+      tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
     }
   }
 

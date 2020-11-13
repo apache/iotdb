@@ -34,12 +34,8 @@ public class ElasticSerializableRowRecordList {
 
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
-  protected static final String UNIQUE_ID_MAGIC_STRING = "__ROW__";
-  protected static final String UNIQUE_ID_STRING_PATTERN = "%s" + UNIQUE_ID_MAGIC_STRING + "%d";
-
   protected TSDataType[] dataTypes;
   protected long queryId;
-  protected String uniqueId;
   protected float memoryLimitInMB;
   protected int internalRowRecordListCapacity;
   protected int cacheSize;
@@ -54,13 +50,11 @@ public class ElasticSerializableRowRecordList {
   protected int byteArrayLengthForMemoryControl;
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
-  protected int uniqueIdVersion;
 
-  public ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId, String uniqueId,
+  public ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId,
       float memoryLimitInMB, int cacheSize) throws QueryProcessException {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
-    this.uniqueId = uniqueId;
     this.memoryLimitInMB = memoryLimitInMB;
     int allocatableCapacity = SerializableRowRecordList
         .calculateCapacity(dataTypes, memoryLimitInMB,
@@ -87,14 +81,12 @@ public class ElasticSerializableRowRecordList {
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     totalByteArrayLengthLimit = 0;
     totalByteArrayLength = 0;
-    uniqueIdVersion = 0;
   }
 
-  protected ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId, String uniqueId,
+  protected ElasticSerializableRowRecordList(TSDataType[] dataTypes, long queryId,
       float memoryLimitInMB, int internalRowRecordListCapacity, int cacheSize) {
     this.dataTypes = dataTypes;
     this.queryId = queryId;
-    this.uniqueId = uniqueId;
     this.memoryLimitInMB = memoryLimitInMB;
     this.internalRowRecordListCapacity = internalRowRecordListCapacity;
     this.cacheSize = cacheSize;
@@ -138,9 +130,8 @@ public class ElasticSerializableRowRecordList {
 
   private void checkExpansion() {
     if (size % internalRowRecordListCapacity == 0) {
-      int index = rowRecordLists.size();
-      rowRecordLists.add(SerializableRowRecordList
-          .newSerializableRowRecordList(dataTypes, queryId, uniqueId, index));
+      rowRecordLists
+          .add(SerializableRowRecordList.newSerializableRowRecordList(dataTypes, queryId));
     }
   }
 
@@ -181,10 +172,8 @@ public class ElasticSerializableRowRecordList {
 
   protected void applyNewMemoryControlParameters(int newByteArrayLengthForMemoryControl,
       int newInternalRowRecordListCapacity) throws IOException, QueryProcessException {
-    String newUniqueId = generateNewUniqueId();
     ElasticSerializableRowRecordList newElasticSerializableRowRecordList = new ElasticSerializableRowRecordList(
-        dataTypes, queryId, newUniqueId, memoryLimitInMB, newInternalRowRecordListCapacity,
-        cacheSize);
+        dataTypes, queryId, memoryLimitInMB, newInternalRowRecordListCapacity, cacheSize);
 
     newElasticSerializableRowRecordList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalRowRecordListCapacity;
@@ -200,7 +189,6 @@ public class ElasticSerializableRowRecordList {
       newElasticSerializableRowRecordList.put(getRowRecord(i));
     }
 
-    uniqueId = newUniqueId;
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;
     cache = newElasticSerializableRowRecordList.cache;
     rowRecordLists = newElasticSerializableRowRecordList.rowRecordLists;
@@ -208,12 +196,6 @@ public class ElasticSerializableRowRecordList {
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit =
         (long) size * indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
-  }
-
-  protected String generateNewUniqueId() {
-    int firstOccurrence = uniqueId.indexOf(UNIQUE_ID_MAGIC_STRING);
-    return String.format(UNIQUE_ID_STRING_PATTERN, firstOccurrence == -1
-        ? uniqueId : uniqueId.substring(0, firstOccurrence), uniqueIdVersion++);
   }
 
   public void setEvictionUpperBound(int evictionUpperBound) {

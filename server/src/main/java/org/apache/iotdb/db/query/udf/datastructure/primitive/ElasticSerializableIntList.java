@@ -28,16 +28,14 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 public class ElasticSerializableIntList implements IntList {
 
   protected long queryId;
-  protected String dataId;
   protected int internalIntListCapacity;
   protected ElasticSerializableIntList.LRUCache cache;
   protected List<SerializableIntList> intLists;
   protected int size;
 
-  public ElasticSerializableIntList(long queryId, String dataId, float memoryLimitInMB,
-      int cacheSize) throws QueryProcessException {
+  public ElasticSerializableIntList(long queryId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
     this.queryId = queryId;
-    this.dataId = dataId;
     int allocatableCapacity = SerializableIntList.calculateCapacity(memoryLimitInMB);
     internalIntListCapacity = allocatableCapacity / cacheSize;
     if (internalIntListCapacity == 0) {
@@ -75,8 +73,7 @@ public class ElasticSerializableIntList implements IntList {
 
   private void checkExpansion() {
     if (size % internalIntListCapacity == 0) {
-      int index = intLists.size();
-      intLists.add(SerializableIntList.newSerializableIntList(queryId, dataId, index));
+      intLists.add(SerializableIntList.newSerializableIntList(queryId));
     }
   }
 

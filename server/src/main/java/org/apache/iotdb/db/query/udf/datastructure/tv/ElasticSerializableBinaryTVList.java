@@ -30,23 +30,17 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
   protected static final int MEMORY_CHECK_THRESHOLD = 1000;
 
-  protected static final String UNIQUE_ID_MAGIC_STRING = "__BINARY__";
-  protected static final String UNIQUE_ID_STRING_PATTERN = "%s" + UNIQUE_ID_MAGIC_STRING + "%d";
-
   protected int byteArrayLengthForMemoryControl;
 
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
 
-  protected int uniqueIdVersion;
-
-  public ElasticSerializableBinaryTVList(long queryId, String uniqueId, float memoryLimitInMB,
-      int cacheSize) throws QueryProcessException {
-    super(TSDataType.TEXT, queryId, uniqueId, memoryLimitInMB, cacheSize);
+  public ElasticSerializableBinaryTVList(long queryId, float memoryLimitInMB, int cacheSize)
+      throws QueryProcessException {
+    super(TSDataType.TEXT, queryId, memoryLimitInMB, cacheSize);
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     totalByteArrayLengthLimit = 0;
     totalByteArrayLength = 0;
-    uniqueIdVersion = 0;
   }
 
   @Override
@@ -100,10 +94,8 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
 
   protected void applyNewMemoryControlParameters(int newByteArrayLengthForMemoryControl,
       int newInternalTVListCapacity) throws IOException, QueryProcessException {
-    String newUniqueId = generateNewUniqueId();
     ElasticSerializableTVList newElasticSerializableTVList = new ElasticSerializableTVList(
-        TSDataType.TEXT, queryId, newUniqueId, memoryLimitInMB, newInternalTVListCapacity,
-        cacheSize);
+        TSDataType.TEXT, queryId, memoryLimitInMB, newInternalTVListCapacity, cacheSize);
 
     newElasticSerializableTVList.evictionUpperBound = evictionUpperBound;
     int internalListEvictionUpperBound = evictionUpperBound / newInternalTVListCapacity;
@@ -119,18 +111,11 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
       newElasticSerializableTVList.putBinary(getTime(i), getBinary(i));
     }
 
-    uniqueId = newUniqueId;
     internalTVListCapacity = newInternalTVListCapacity;
     cache = newElasticSerializableTVList.cache;
     tvLists = newElasticSerializableTVList.tvLists;
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit = (long) size * byteArrayLengthForMemoryControl;
-  }
-
-  protected String generateNewUniqueId() {
-    int firstOccurrence = uniqueId.indexOf(UNIQUE_ID_MAGIC_STRING);
-    return String.format(UNIQUE_ID_STRING_PATTERN, firstOccurrence == -1
-        ? uniqueId : uniqueId.substring(0, firstOccurrence), uniqueIdVersion++);
   }
 }

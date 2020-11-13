@@ -41,7 +41,7 @@ public class SerializableDoubleTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList = (SerializableDoubleTVList) SerializableTVList
-        .newSerializableTVList(TSDataType.DOUBLE, QUERY_ID, UNIQUE_ID, INDEX);
+        .newSerializableTVList(TSDataType.DOUBLE, QUERY_ID);
   }
 
   @After

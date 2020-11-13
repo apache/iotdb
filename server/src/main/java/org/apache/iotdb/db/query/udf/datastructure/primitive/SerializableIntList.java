@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class SerializableIntList implements SerializableList {
 
-  public static SerializableIntList newSerializableIntList(long queryId, String dataId, int index) {
-    SerializationRecorder recorder = new SerializationRecorder(queryId, dataId, index);
+  public static SerializableIntList newSerializableIntList(long queryId) {
+    SerializationRecorder recorder = new SerializationRecorder(queryId);
     return new SerializableIntList(recorder);
   }
 

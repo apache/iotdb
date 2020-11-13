@@ -24,6 +24,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -47,20 +48,17 @@ public interface SerializableList {
     protected static final int NOT_SERIALIZED = -1;
 
     protected final long queryId;
-    protected final String dataId;
-    protected final int index;
 
     protected boolean isSerialized;
     protected int serializedByteLength;
     protected int serializedElementSize;
 
+    protected String fileName;
     protected RandomAccessFile file;
     protected FileChannel fileChannel;
 
-    public SerializationRecorder(long queryId, String dataId, int index) {
+    public SerializationRecorder(long queryId) {
       this.queryId = queryId;
-      this.dataId = dataId;
-      this.index = index;
       isSerialized = false;
       serializedByteLength = NOT_SERIALIZED;
       serializedElementSize = NOT_SERIALIZED;
@@ -98,7 +96,10 @@ public interface SerializableList {
 
     public RandomAccessFile getFile() throws IOException {
       if (file == null) {
-        file = TemporaryQueryDataFileService.getInstance().register(this);
+        if (fileName == null) {
+          fileName = TemporaryQueryDataFileService.getInstance().register(this);
+        }
+        file = new RandomAccessFile(SystemFileFactory.INSTANCE.getFile(fileName), "rw");
       }
       return file;
     }
@@ -129,14 +130,6 @@ public interface SerializableList {
 
     public long getQueryId() {
       return queryId;
-    }
-
-    public String getDataId() {
-      return dataId;
-    }
-
-    public int getIndex() {
-      return index;
     }
   }
 

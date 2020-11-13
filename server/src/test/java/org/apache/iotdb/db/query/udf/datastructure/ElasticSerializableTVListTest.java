@@ -88,8 +88,8 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private void initESTVList(TSDataType dataType) {
     try {
-      tvList = ElasticSerializableTVList.newElasticSerializableTVList(dataType, QUERY_ID, UNIQUE_ID,
-          MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
+      tvList = ElasticSerializableTVList
+          .newElasticSerializableTVList(dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());
     }

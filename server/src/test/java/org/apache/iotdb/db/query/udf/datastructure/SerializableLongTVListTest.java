@@ -40,7 +40,7 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList = (SerializableLongTVList) SerializableTVList
-        .newSerializableTVList(TSDataType.INT64, QUERY_ID, UNIQUE_ID, INDEX);
+        .newSerializableTVList(TSDataType.INT64, QUERY_ID);
   }
 
   @After

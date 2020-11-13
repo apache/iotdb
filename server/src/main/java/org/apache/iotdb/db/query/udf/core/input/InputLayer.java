@@ -46,9 +46,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public class InputLayer {
 
-  private static final String DATA_ID_PREFIX = "input_layer_";
-  private int elasticSerializableListCount = 0;
-
   private final long queryId;
 
   private final QueryDataSet queryDataSet;
@@ -62,8 +59,7 @@ public class InputLayer {
     this.queryId = queryId;
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);
-    rowRecordList = new ElasticSerializableRowRecordList(dataTypes, queryId,
-        DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB,
+    rowRecordList = new ElasticSerializableRowRecordList(dataTypes, queryId, memoryBudgetInMB,
         1 + dataTypes.length / 2);
     safetyLine = new SafetyLine();
   }
@@ -307,8 +303,7 @@ public class InputLayer {
       windowSize = accessStrategy.getWindowSize();
       rowIndexes = windowSize < SerializableIntList.calculateCapacity(memoryBudgetInMB)
           ? new WrappedIntArray(windowSize)
-          : new ElasticSerializableIntList(queryId,
-              DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB, 2);
+          : new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       maxIndexInLastWindow = -1;
@@ -403,8 +398,7 @@ public class InputLayer {
       slidingStep = accessStrategy.getSlidingStep();
       displayWindowEnd = accessStrategy.getDisplayWindowEnd();
 
-      rowIndexes = new ElasticSerializableIntList(queryId,
-          DATA_ID_PREFIX + elasticSerializableListCount++, memoryBudgetInMB, 2);
+      rowIndexes = new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();

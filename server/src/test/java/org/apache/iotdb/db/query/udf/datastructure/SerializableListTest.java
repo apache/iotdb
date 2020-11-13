@@ -29,8 +29,6 @@ public abstract class SerializableListTest {
   protected static final int CACHE_SIZE = 3;
 
   protected final static long QUERY_ID = 0;
-  protected final static String UNIQUE_ID = "unique_id";
-  protected final static int INDEX = 0;
 
   public void setUp() throws Exception {
     TemporaryQueryDataFileService.getInstance().start();

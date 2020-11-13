@@ -63,7 +63,7 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
   private void initESRowRecordList() {
     try {
-      rowRecordList = new ElasticSerializableRowRecordList(DATA_TYPES, QUERY_ID, UNIQUE_ID,
+      rowRecordList = new ElasticSerializableRowRecordList(DATA_TYPES, QUERY_ID,
           MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     } catch (QueryProcessException e) {
       fail(e.toString());

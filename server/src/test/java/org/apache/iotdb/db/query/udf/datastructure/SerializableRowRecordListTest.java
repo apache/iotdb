@@ -46,8 +46,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList = SerializableRowRecordList
-        .newSerializableRowRecordList(DATA_TYPES, QUERY_ID, UNIQUE_ID, INDEX);
+    testList = SerializableRowRecordList.newSerializableRowRecordList(DATA_TYPES, QUERY_ID);
   }
 
   @After

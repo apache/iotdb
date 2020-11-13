@@ -54,7 +54,7 @@ public class UDTFExecutor {
       throws QueryProcessException {
     collector = ElasticSerializableTVList
         .newElasticSerializableTVList(configurations.getOutputDataType(), queryId,
-            context.getColumnName(), collectorMemoryBudgetInMB, 1);
+            collectorMemoryBudgetInMB, 1);
   }
 
   public void execute(Row row) throws QueryProcessException {

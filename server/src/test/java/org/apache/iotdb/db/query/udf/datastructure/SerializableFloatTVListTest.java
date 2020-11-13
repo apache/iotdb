@@ -40,7 +40,7 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
     super.setUp();
     originalList = new ArrayList<>();
     testList = (SerializableFloatTVList) SerializableTVList
-        .newSerializableTVList(TSDataType.FLOAT, QUERY_ID, UNIQUE_ID, INDEX);
+        .newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
   }
 
   @After

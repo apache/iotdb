@@ -21,9 +21,11 @@ package org.apache.iotdb.db.query.udf.service;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -42,30 +44,32 @@ public class TemporaryQueryDataFileService implements IService {
       IoTDBDescriptor.getInstance().getConfig().getQueryDir()
           + File.separator + "udf" + File.separator + "tmp" + File.separator;
 
-  private final Map<Long, Map<String, SerializationRecorder>> recorders;
+  private final AtomicLong uniqueDataId;
+  private final Map<Long, List<SerializationRecorder>> recorders;
 
   private TemporaryQueryDataFileService() {
+    uniqueDataId = new AtomicLong(0);
     recorders = new ConcurrentHashMap<>();
   }
 
-  public RandomAccessFile register(SerializationRecorder recorder) throws IOException {
+  public String register(SerializationRecorder recorder) throws IOException {
     long queryId = recorder.getQueryId();
-    String dirName = getDirName(queryId, recorder.getDataId());
-    makeDirIfNecessary(dirName);
-    String fileName = getFileName(dirName, recorder.getIndex());
     if (!recorders.containsKey(queryId)) {
-      recorders.put(queryId, new ConcurrentHashMap<>());
+      recorders.put(queryId, new ArrayList<>());
     }
-    recorders.get(queryId).putIfAbsent(fileName, recorder);
-    return new RandomAccessFile(SystemFileFactory.INSTANCE.getFile(fileName), "rw");
+    recorders.get(queryId).add(recorder);
+
+    String dirName = getDirName(queryId);
+    makeDirIfNecessary(dirName);
+    return getFileName(dirName, uniqueDataId.getAndIncrement());
   }
 
   public void deregister(long queryId) {
-    Map<String, SerializationRecorder> dataId2Recorders = recorders.remove(queryId);
-    if (dataId2Recorders == null) {
+    List<SerializationRecorder> recorderList = recorders.remove(queryId);
+    if (recorderList == null) {
       return;
     }
-    for (SerializationRecorder recorder : dataId2Recorders.values()) {
+    for (SerializationRecorder recorder : recorderList) {
       try {
         recorder.closeFile();
       } catch (IOException e) {
@@ -93,11 +97,7 @@ public class TemporaryQueryDataFileService implements IService {
     return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator;
   }
 
-  private String getDirName(long queryId, String dataId) {
-    return TEMPORARY_FILE_DIR + File.separator + queryId + File.separator + dataId + File.separator;
-  }
-
-  private String getFileName(String dir, int index) {
+  private String getFileName(String dir, long index) {
     return dir + index;
   }
 
