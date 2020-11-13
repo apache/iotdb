@@ -1,0 +1,6 @@
+github.com/apache/thrift v0.13.0 h1:5hryIiq9gtn+MiLVn0wP37kb/uTeRZgN08WoCsAhIhI=
+github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
+github.com/typa01/go-utils v0.0.0-20181126045345-a86b05b01c1e h1:gLqWYNlVARpRjbaXJ3Ywp3PnHhvY8aLL/hWV3j75yJY=
+github.com/typa01/go-utils v0.0.0-20181126045345-a86b05b01c1e/go.mod h1:77xqNay7XAZcNiuWNmqAKfGRZMqkXug1rKw9R0oj57w=
+github.com/yanhongwangg/go-thrift v0.0.0-20201113025537-b8cdf8f13f63 h1:PzXCZAUgwjZ1x8c0rcl4B7VtVi99axujfAClXKVG4aY=
+github.com/yanhongwangg/go-thrift v0.0.0-20201113025537-b8cdf8f13f63/go.mod h1:NhEjEtPm9JfHA1ikqrcMibewJ2iVGZlsI5rsBSbWYjU=
