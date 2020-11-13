@@ -1329,7 +1329,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
         isAllSuccessful = false;
-        statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
       }
     }
 
@@ -1403,8 +1403,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1433,12 +1433,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
-  public TSStatus deleteData(TSDeleteDataReq req) throws TException {
+  public TSStatus deleteData(TSDeleteDataReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1461,8 +1461,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(executeNonQueryPlan(plan));
     } catch (Exception e) {
       logger.error("meet error when delete data", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1560,8 +1560,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(executeNonQueryPlan(plan));
     } catch (Exception e) {
       logger.error("meet error when set storage group", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1583,8 +1583,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(executeNonQueryPlan(plan));
     } catch (Exception e) {
       logger.error("meet error when delete storage groups", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1610,8 +1610,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when create timeseries", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -1691,8 +1691,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return executeNonQueryPlan(multiPlan);
     } catch (Exception e) {
       logger.error("meet error when create multi timeseries", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
@@ -1714,8 +1714,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when delete timeseries", e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   @Override
