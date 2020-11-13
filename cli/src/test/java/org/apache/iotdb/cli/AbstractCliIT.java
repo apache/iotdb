@@ -214,5 +214,7 @@ public class AbstractCliIT {
     assertEquals(Integer.MAX_VALUE, AbstractCli.maxPrintRowCount);
     AbstractCli.setMaxDisplayNumber("-10");
     assertEquals(Integer.MAX_VALUE, AbstractCli.maxPrintRowCount);
+    AbstractCli.setMaxDisplayNumber("0");
+    assertEquals(Integer.MAX_VALUE, AbstractCli.maxPrintRowCount);
   }
 }
