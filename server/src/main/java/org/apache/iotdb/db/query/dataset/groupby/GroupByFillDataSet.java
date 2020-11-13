@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -58,8 +60,13 @@ public class GroupByFillDataSet extends QueryDataSet {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
-    initPreviousParis(context, groupByFillPlan);
-    initLastTimeArray(context, groupByFillPlan);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+    try {
+      initPreviousParis(context, groupByFillPlan);
+      initLastTimeArray(context, groupByFillPlan);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
+    }
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
@@ -67,6 +74,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
     firstNotNullTV = new TimeValuePair[paths.size()];
+
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);

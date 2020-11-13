@@ -959,6 +959,8 @@ public class Session {
     } catch (TException e) {
       if (reconnect()) {
         try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
           execResp = client.executeQueryStatement(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
@@ -990,6 +992,8 @@ public class Session {
     } catch (TException e) {
       if (reconnect()) {
         try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
           execResp = client.executeUpdateStatement(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
@@ -1026,6 +1030,8 @@ public class Session {
     } catch (TException e) {
       if (reconnect()) {
         try {
+          execReq.setSessionId(sessionId);
+          execReq.setStatementId(statementId);
           execResp = client.executeRawDataQuery(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
