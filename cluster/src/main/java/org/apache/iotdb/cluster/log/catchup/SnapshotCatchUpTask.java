@@ -89,7 +89,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       return false;
     }
 
-    logger.info("qihouliang,{}, the snapshot size={}", raftMember.getName(),
+    logger.debug("{},the snapshot request size={}", raftMember.getName(),
         request.getSnapshotBytes().length);
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
@@ -100,7 +100,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   }
 
   private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
-    logger.info("qihouliang,{}, request size={}", raftMember.getName(),
+    logger.debug("{},the snapshot request size={}", raftMember.getName(),
         request.getSnapshotBytes().length);
     Client client = raftMember.getSyncClient(node);
     try {

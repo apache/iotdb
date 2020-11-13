@@ -66,14 +66,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
-* FileSnapshot records the data files in a slot and their md5 (or other verification).
-* When the snapshot is used to perform a catch-up, the receiver should:
-* 1. create a remote snapshot indicating that the slot is being pulled from the remote
-* 2. traverse the file list, for each file:
-*  2.1 if the file exists locally and the md5 is correct, skip it.
-*  2.2 otherwise pull the file from the remote.
-* 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
-* synchronized with the remote one.
+  * FileSnapshot records the data files in a slot and their md5 (or other verification).
+  * When the snapshot is used to perform a catch-up, the receiver should:
+  * 1. create a remote snapshot indicating that the slot is being pulled from the remote
+  * 2. traverse the file list, for each file:
+  *  2.1 if the file exists locally and the md5 is correct, skip it.
+  *  2.2 otherwise pull the file from the remote.
+  * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
+  * synchronized with the remote one.
 */
 @SuppressWarnings("java:S1135") // ignore todos
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {

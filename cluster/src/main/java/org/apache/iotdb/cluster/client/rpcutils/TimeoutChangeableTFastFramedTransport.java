@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.client.rpcutils;
 import java.net.SocketException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 
 public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport {
 
@@ -31,11 +30,6 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
   public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
     super(underlying);
     this.underlying = underlying;
-  }
-
-  public TimeoutChangeableTFastFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
   }
 
   public void setTimeout(int timeout) {

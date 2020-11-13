@@ -23,12 +23,8 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TElasticFramedTransport extends TFastFramedTransport {
-
-  private static final Logger logger = LoggerFactory.getLogger(TElasticFramedTransport.class);
 
   public static class Factory extends TTransportFactory {
 
@@ -56,10 +52,6 @@ public class TElasticFramedTransport extends TFastFramedTransport {
 
   public TElasticFramedTransport(TTransport underlying) {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
-  }
-
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity) {
-    this(underlying, initialBufferCapacity, DEFAULT_MAX_LENGTH);
   }
 
   public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {

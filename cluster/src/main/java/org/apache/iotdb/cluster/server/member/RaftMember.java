@@ -596,7 +596,7 @@ public abstract class RaftMember {
       client = pool.getClient(node);
       if (client == null) {
         // this is typically because the target server is not yet ready (connection refused), so we
-        // wait for a while before reopening the transport to avoid sendinNNg requests too frequently
+        // wait for a while before reopening the transport to avoid sending requests too frequently
         try {
           Thread.sleep(syncClientTimeoutMills);
         } catch (InterruptedException e) {
