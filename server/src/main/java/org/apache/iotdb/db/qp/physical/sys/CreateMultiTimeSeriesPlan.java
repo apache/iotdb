@@ -22,14 +22,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -51,7 +52,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   /*
    ** record the result of creation of time series
    */
-  private Map<Integer, Exception> results = new HashMap<>();
+  private Map<Integer, TSStatus> results = new TreeMap<>();
   private List<Integer> indexes;
 
   public CreateMultiTimeSeriesPlan() {
@@ -132,11 +133,11 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     this.indexes = indexes;
   }
 
-  public Map<Integer, Exception> getResults() {
+  public Map<Integer, TSStatus> getResults() {
     return results;
   }
 
-  public void setResults(Map<Integer, Exception> results) {
+  public void setResults(Map<Integer, TSStatus> results) {
     this.results = results;
   }
 
