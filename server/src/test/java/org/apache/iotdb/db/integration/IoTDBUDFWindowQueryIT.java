@@ -126,6 +126,59 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
+  public void testUserDefinedFunctionFillFunctionHybridQuery() {
+    String sql = String.format(
+        "select temperature, counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      statement.executeQuery(sql);
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(
+          throwable.getMessage().contains("Fill functions are not supported in UDF queries."));
+    }
+  }
+
+  @Test
+  public void testLastUserDefinedFunctionQuery() {
+    String sql = String
+        .format("select last counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01",
+            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      statement.executeQuery(sql);
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(throwable.getMessage().contains("meet error while parsing SQL to physical plan"));
+    }
+  }
+
+  @Test
+  public void testUserDefinedFunctionAlignByDeviceQuery() {
+    String sql = String.format(
+        "select adder(temperature), counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 align by device",
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      statement.executeQuery(sql);
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(throwable.getMessage()
+          .contains("ALIGN BY DEVICE clause is not supported in UDF queries."));
+    }
+  }
+
+  @Test
   public void testRowByRow() {
     String sql = String.format("select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
         ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);

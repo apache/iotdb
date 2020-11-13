@@ -97,6 +97,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum);
       } else {
         isAlignByDevice = true;
+        if (((QueryOperator) operator).hasUdf()) {
+          throw new LogicalOptimizeException("ALIGN BY DEVICE clause is not supported in UDF queries.");
+        }
         for (PartialPath path : initialSuffixPaths) {
           String device = path.getDevice();
           if (!device.isEmpty()) {

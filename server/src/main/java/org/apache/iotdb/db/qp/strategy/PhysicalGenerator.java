@@ -393,6 +393,9 @@ public class PhysicalGenerator {
         }
       }
     } else if (queryOperator.isFill()) {
+      if (queryOperator.hasUdf()) {
+        throw new QueryProcessException("Fill functions are not supported in UDF queries.");
+      }
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
