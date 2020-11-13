@@ -341,7 +341,7 @@ public class ReadWriteIOUtils {
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += write(0, outputStream);
+      len += write(-1, outputStream);
       return len;
     }
 
@@ -591,8 +591,10 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
-    if (strLength <= 0) {
+    if (strLength < 0) {
       return null;
+    } else if (strLength == 0) {
+      return "";
     }
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);

@@ -19,7 +19,11 @@
 package org.apache.iotdb.db.query.timegenerator;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -28,6 +32,8 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.ExpressionType;
+import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -59,9 +65,29 @@ public class ServerTimeGenerator extends TimeGenerator {
     this.context = context;
     this.queryPlan = queryPlan;
     try {
-      super.constructNode(expression);
+      serverConstructNode(expression);
     } catch (IOException e) {
       throw new StorageEngineException(e);
+    }
+  }
+
+  public void serverConstructNode(IExpression expression) throws IOException, StorageEngineException {
+    List<PartialPath> pathList = new ArrayList<>();
+    getPartialPathFromExpression(expression, pathList);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
+    try {
+      operatorNode = construct(expression);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
+    }
+  }
+
+  private void getPartialPathFromExpression(IExpression expression, List<PartialPath> pathList) {
+    if (expression.getType() == ExpressionType.SERIES) {
+      pathList.add((PartialPath) ((SingleSeriesExpression) expression).getSeriesPath());
+    } else {
+      getPartialPathFromExpression(((IBinaryExpression) expression).getLeft(), pathList);
+      getPartialPathFromExpression(((IBinaryExpression) expression).getRight(), pathList);
     }
   }
 

@@ -410,6 +410,12 @@ public class SeriesReader {
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
       initFirstPageReader();
+      if (firstPageReader != null) {
+        long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
+        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
+      }
 
       if (firstPageOverlapped()) {
         /*
