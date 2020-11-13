@@ -32,7 +32,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
  * <p>
  * The input parameters of UDF have two parts. The first part is the paths (measurements) of the
  * time series that the UDF needs to process, and the second part is the key-value pair attributes
- * for customization. The parameters of both parts can be empty.
+ * for customization. Only the second part can be empty.
  * <p>
  * Note that the user must enter the paths (measurements) part before entering the attributes part.
  */
