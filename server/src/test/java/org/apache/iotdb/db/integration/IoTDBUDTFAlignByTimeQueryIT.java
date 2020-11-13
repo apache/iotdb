@@ -111,6 +111,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      statement.execute(
+          "create function multiplier as \"org.apache.iotdb.db.query.udf.example.Multiplier\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -249,6 +251,30 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter5() {
+    String sqlStr = "select multiplier(s2, \"a\"=\"2\", \"b\"=\"5\") from root.vehicle.d1";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+      assertEquals("multiplier(root.vehicle.d1.s2, \"a\"=\"2\", \"b\"=\"5\")",
+          resultSet.getMetaData().getColumnName(2));
+
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        if (i % 3 != 0 || i % 2 != 0) {
+          assertTrue(resultSet.next());
+          assertEquals(i * 2 * 5, Integer.parseInt(resultSet.getString(2)));
+        }
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
