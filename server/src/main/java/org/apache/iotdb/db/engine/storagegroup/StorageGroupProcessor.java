@@ -1343,8 +1343,6 @@ public class StorageGroupProcessor {
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
-    tsFileManagement.mergeLock.readLock().lock();
-    tsFileManagement.readLock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
           tsFileManagement.getTsFileList(true),
@@ -1365,8 +1363,6 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      tsFileManagement.readUnLock();
-      tsFileManagement.mergeLock.readLock().unlock();
       insertLock.readLock().unlock();
     }
   }
@@ -1488,7 +1484,6 @@ public class StorageGroupProcessor {
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
     writeLock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
 
     // record files which are updated so that we can roll back them in case of exception
@@ -1535,7 +1530,6 @@ public class StorageGroupProcessor {
       throw new IOException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -1763,18 +1757,19 @@ public class StorageGroupProcessor {
       );
     }
     insertLock.writeLock().lock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
-    if (tsFileResource.isSeq()) {
-      tsFileManagement.addAll(upgradedResources, true);
-      upgradeSeqFileList.remove(tsFileResource);
-    } else {
-      tsFileManagement.addAll(upgradedResources, false);
-      upgradeUnseqFileList.remove(tsFileResource);
+    try {
+      if (tsFileResource.isSeq()) {
+        tsFileManagement.addAll(upgradedResources, true);
+        upgradeSeqFileList.remove(tsFileResource);
+      } else {
+        tsFileManagement.addAll(upgradedResources, false);
+        upgradeUnseqFileList.remove(tsFileResource);
+      }
+    } finally {
+      tsFileManagement.writeUnlock();
+      insertLock.writeLock().unlock();
     }
-    tsFileManagement.writeUnlock();
-    tsFileManagement.mergeLock.writeLock().unlock();
-    insertLock.writeLock().unlock();
 
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
     if (countUpgradeFiles() == 0) {
@@ -1824,7 +1819,6 @@ public class StorageGroupProcessor {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     try {
       if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
@@ -1839,7 +1833,6 @@ public class StorageGroupProcessor {
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -1862,7 +1855,6 @@ public class StorageGroupProcessor {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     try {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
@@ -1908,7 +1900,6 @@ public class StorageGroupProcessor {
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
   }
@@ -2261,7 +2252,6 @@ public class StorageGroupProcessor {
    */
   public boolean deleteTsfile(File tsfieToBeDeleted) {
     writeLock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
@@ -2287,7 +2277,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       tsFileManagement.writeUnlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
     if (tsFileResourceToBeDeleted == null) {
@@ -2321,7 +2310,6 @@ public class StorageGroupProcessor {
    */
   public boolean moveTsfile(File fileToBeMoved, File targetDir) {
     writeLock();
-    tsFileManagement.mergeLock.writeLock().lock();
     tsFileManagement.writeLock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
@@ -2347,7 +2335,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       tsFileManagement.writeUnlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
       writeUnlock();
     }
     if (tsFileResourceToBeMoved == null) {
@@ -2434,7 +2421,7 @@ public class StorageGroupProcessor {
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
     insertLock.writeLock().lock();
-    tsFileManagement.mergeLock.writeLock().lock();
+    tsFileManagement.writeLock();
     try {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(storageGroupName);
@@ -2448,7 +2435,7 @@ public class StorageGroupProcessor {
 
     } finally {
       insertLock.writeLock().unlock();
-      tsFileManagement.mergeLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
