@@ -108,11 +108,12 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         (SyncMetaClient) metaGroupMember.getSyncClient(metaGroupMember.getLeader());
     if (client != null) {
       try {
-        AddNodeResponse response = client.addNode(node, startUpStatus);
-        putBackSyncClient(client);
-        return response;
+        return client.addNode(node, startUpStatus);
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
+      } finally {
+        putBackSyncClient(client);
       }
     }
     return null;
@@ -147,8 +148,10 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
       return result;
     }
 
-    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER && metaGroupMember.getLeader() != null) {
-      logger.info("Forward the node removal request of {} to leader {}", node, metaGroupMember.getLeader());
+    if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER
+        && metaGroupMember.getLeader() != null) {
+      logger.info("Forward the node removal request of {} to leader {}", node,
+          metaGroupMember.getLeader());
       Long rst = forwardRemoveNode(node);
       if (rst != null) {
         return rst;
@@ -160,7 +163,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   /**
    * Forward a node removal request to the leader.
    *
-   * @param node          the node to be removed
+   * @param node the node to be removed
    * @return true if the request is successfully forwarded, false otherwise
    */
   private Long forwardRemoveNode(Node node) {
@@ -168,11 +171,12 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         (SyncMetaClient) metaGroupMember.getSyncClient(metaGroupMember.getLeader());
     if (client != null) {
       try {
-        long result = client.removeNode(node);
-        putBackSyncClient(client);
-        return result;
+        return client.removeNode(node);
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Cannot connect to node {}", node, e);
+      } finally {
+        putBackSyncClient(client);
       }
     }
     return null;
@@ -182,7 +186,6 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
    * Process a request that the local node is removed from the cluster. As a node is removed from
    * the cluster, it no longer receive heartbeats or logs and cannot know it has been removed, so we
    * must tell it directly.
-   *
    */
   @Override
   public void exile() {

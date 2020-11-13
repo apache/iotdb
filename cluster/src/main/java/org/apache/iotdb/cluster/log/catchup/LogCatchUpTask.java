@@ -289,7 +289,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request) {
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
     LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
     handler.setAppendSucceed(appendSucceed);
     handler.setRaftMember(raftMember);
@@ -305,6 +304,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       handler.onComplete(result);
       return appendSucceed.get();
     } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
       handler.onError(e);
       logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       return false;

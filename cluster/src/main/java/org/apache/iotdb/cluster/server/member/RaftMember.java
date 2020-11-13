@@ -1001,6 +1001,9 @@ public abstract class RaftMember {
     long commitIndex;
     try {
       commitIndex = client.requestCommitIndex(getHeader());
+    } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
+      throw e;
     } finally {
       ClientUtils.putBackSyncClient(client);
     }
@@ -1229,8 +1232,8 @@ public abstract class RaftMember {
   /**
    * Get an asynchronous thrift client of the given node.
    *
-   * @return an asynchronous thrift client or null if the caller tries to connect the local node
-   * or the node cannot be reached.
+   * @return an asynchronous thrift client or null if the caller tries to connect the local node or
+   * the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
     return getAsyncClient(node, asyncClientPool);

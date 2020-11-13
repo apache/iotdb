@@ -106,14 +106,19 @@ public class QueryCoordinator {
         }
         startTime = System.nanoTime();
         status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
-        responseTime = System.nanoTime() - startTime;
       } else {
         SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
         startTime = System.nanoTime();
-        status = syncMetaClient.queryNodeStatus();
-        responseTime = System.nanoTime() - startTime;
-        ClientUtils.putBackSyncClient(syncMetaClient);
+        try {
+          status = syncMetaClient.queryNodeStatus();
+        } catch (TException e) {
+          syncMetaClient.getInputProtocol().getTransport().close();
+          throw e;
+        } finally {
+          ClientUtils.putBackSyncClient(syncMetaClient);
+        }
       }
+      responseTime = System.nanoTime() - startTime;
 
       if (status != null) {
         nodeStatus.setStatus(status);

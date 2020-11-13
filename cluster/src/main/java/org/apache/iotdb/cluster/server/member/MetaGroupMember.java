@@ -554,6 +554,9 @@ public class MetaGroupMember extends RaftMember {
       }
       try {
         resp = client.addNode(thisNode, startUpStatus);
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        throw e;
       } finally {
         ClientUtils.putBackSyncClient(client);
       }
@@ -1028,6 +1031,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Error occurs when check status on node : {}", seedNode);
       } finally {
         ClientUtils.putBackSyncClient(client);
@@ -1135,6 +1139,7 @@ public class MetaGroupMember extends RaftMember {
         try {
           handler.onComplete(client.appendEntry(request));
         } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
           handler.onError(e);
         } finally {
           ClientUtils.putBackSyncClient(client);
@@ -1869,7 +1874,15 @@ public class MetaGroupMember extends RaftMember {
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
       if (!node.equals(thisNode) && client != null) {
-        nodeStatusHandler.onComplete(client.checkAlive());
+        Node response = null;
+        try {
+          response = client.checkAlive();
+        } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
+        } finally {
+          ClientUtils.putBackSyncClient(client);
+        }
+        nodeStatusHandler.onComplete(response);
       }
     }
   }
@@ -2039,9 +2052,11 @@ public class MetaGroupMember extends RaftMember {
       try {
         client.exile();
       } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
         logger.warn("Cannot inform {} its removal", node, e);
+      } finally {
+        ClientUtils.putBackSyncClient(client);
       }
-      ClientUtils.putBackSyncClient(client);
     }
   }
 

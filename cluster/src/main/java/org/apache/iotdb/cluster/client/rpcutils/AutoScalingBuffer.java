@@ -19,25 +19,21 @@
 
 package org.apache.iotdb.cluster.client.rpcutils;
 
-import java.net.SocketException;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.thrift.transport.TSocket;
+import java.util.Arrays;
+import org.apache.thrift.transport.AutoExpandingBuffer;
 
-public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport {
+public class AutoScalingBuffer extends AutoExpandingBuffer {
 
-  private TSocket underlying;
+  private byte[] array;
 
-  public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
-    super(underlying);
-    this.underlying = underlying;
+  public AutoScalingBuffer(int initialCapacity, double growthCoefficient) {
+    super(initialCapacity, growthCoefficient);
+    this.array = new byte[initialCapacity];
   }
 
-  public void setTimeout(int timeout) {
-    underlying.setTimeout(timeout);
-  }
-
-  @TestOnly
-  public int getTimeOut() throws SocketException {
-    return underlying.getSocket().getSoTimeout();
+  public void shrinkSizeIfNecessary(int size) {
+    if (array.length > size) {
+      array = Arrays.copyOf(array, size);
+    }
   }
 }

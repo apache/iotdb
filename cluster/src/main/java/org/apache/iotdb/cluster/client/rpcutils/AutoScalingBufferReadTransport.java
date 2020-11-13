@@ -19,25 +19,23 @@
 
 package org.apache.iotdb.cluster.client.rpcutils;
 
-import java.net.SocketException;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
 
-public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport {
+public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTransport {
 
-  private TSocket underlying;
+  private final AutoScalingBuffer buf;
 
-  public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
-    super(underlying);
-    this.underlying = underlying;
+  public AutoScalingBufferReadTransport(int initialCapacity, double overgrowthCoefficient) {
+    super(initialCapacity, overgrowthCoefficient);
+    this.buf = new AutoScalingBuffer(initialCapacity, overgrowthCoefficient);
   }
 
-  public void setTimeout(int timeout) {
-    underlying.setTimeout(timeout);
-  }
-
-  @TestOnly
-  public int getTimeOut() throws SocketException {
-    return underlying.getSocket().getSoTimeout();
+  /**
+   * shrink the buffer to the specific size
+   *
+   * @param size The size of the target you want to shrink to
+   */
+  public void shrinkSizeIfNecessary(int size) {
+    buf.shrinkSizeIfNecessary(size);
   }
 }

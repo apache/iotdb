@@ -34,6 +34,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -68,7 +69,6 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransport;
@@ -146,7 +146,7 @@ public class ClientServer extends TSServiceImpl {
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
     int maxConcurrentClientNum = Math.max(CommonUtils.getCpuCores(),
-            config.getMaxConcurrentClientNum());
+        config.getMaxConcurrentClientNum());
     TThreadPoolServer.Args poolArgs =
         new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(maxConcurrentClientNum)
             .minWorkerThreads(CommonUtils.getCpuCores());
@@ -164,7 +164,7 @@ public class ClientServer extends TSServiceImpl {
     poolArgs.processor(new Processor<>(this));
     poolArgs.protocolFactory(protocolFactory);
     // nonblocking server requests FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+    poolArgs.transportFactory(new TElasticFramedTransport.Factory(
         IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
@@ -306,7 +306,7 @@ public class ClientServer extends TSServiceImpl {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
               AsyncDataClient client = metaGroupMember
                   .getClientProvider().getAsyncDataClient(queriedNode,
-                  RaftServer.getReadOperationTimeoutMS());
+                      RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
             } else {
               SyncDataClient syncDataClient = metaGroupMember

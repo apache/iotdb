@@ -89,6 +89,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       return false;
     }
 
+    logger.debug("{},the snapshot request size={}", raftMember.getName(),
+        request.getSnapshotBytes().length);
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
@@ -98,10 +100,17 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   }
 
   private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
+    logger.debug("{},the snapshot request size={}", raftMember.getName(),
+        request.getSnapshotBytes().length);
     Client client = raftMember.getSyncClient(node);
     try {
-      client.sendSnapshot(request);
-      return true;
+      try {
+        client.sendSnapshot(request);
+        return true;
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        throw e;
+      }
     } finally {
       ClientUtils.putBackSyncClient(client);
     }

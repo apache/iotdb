@@ -93,8 +93,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           dataGroupMember.getLeader());
       SyncDataClient client =
           (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
-      PullSnapshotResp pullSnapshotResp = client.pullSnapshot(request);
-      putBackSyncClient(client);
+      PullSnapshotResp pullSnapshotResp = null;
+      try {
+        pullSnapshotResp = client.pullSnapshot(request);
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        throw e;
+      } finally {
+        putBackSyncClient(client);
+      }
       return pullSnapshotResp;
     } else {
       throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
@@ -114,8 +121,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       if (client == null) {
         throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
       }
-      PullSchemaResp pullSchemaResp = client.pullTimeSeriesSchema(request);
-      putBackSyncClient(client);
+      PullSchemaResp pullSchemaResp;
+      try {
+        pullSchemaResp = client.pullTimeSeriesSchema(request);
+      } catch (TException te) {
+        client.getInputProtocol().getTransport().close();
+        throw te;
+      } finally {
+        putBackSyncClient(client);
+      }
       return pullSchemaResp;
     } catch (MetadataException e) {
       throw new TException(e);
@@ -135,8 +149,15 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       if (client == null) {
         throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
       }
-      PullSchemaResp pullSchemaResp = client.pullMeasurementSchema(request);
-      putBackSyncClient(client);
+      PullSchemaResp pullSchemaResp;
+      try {
+        pullSchemaResp = client.pullTimeSeriesSchema(request);
+      } catch (TException te) {
+        client.getInputProtocol().getTransport().close();
+        throw te;
+      } finally {
+        putBackSyncClient(client);
+      }
       return pullSchemaResp;
     } catch (IllegalPathException e) {
       throw new TException(e);
@@ -183,14 +204,16 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
       throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().fetchSingleSeriesByTimestamp(readerId, timestamp);
+      return dataGroupMember.getLocalQueryExecutor()
+          .fetchSingleSeriesByTimestamp(readerId, timestamp);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(Node header, List<String> paths, boolean withAlias) throws TException {
+  public GetAllPathsResult getAllPaths(Node header, List<String> paths, boolean withAlias)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck();
       return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
@@ -267,10 +290,12 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<ByteBuffer> getGroupByResult(Node header, long executorId, long startTime, long endTime)
+  public List<ByteBuffer> getGroupByResult(Node header, long executorId, long startTime,
+      long endTime)
       throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().getGroupByResult(executorId, startTime, endTime);
+      return dataGroupMember.getLocalQueryExecutor()
+          .getGroupByResult(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
       throw new TException(e);
     }
@@ -312,7 +337,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public ByteBuffer peekNextNotNullValue(Node header, long executorId, long startTime, long endTime)
       throws TException {
     try {
-      return dataGroupMember.getLocalQueryExecutor().peekNextNotNullValue(executorId, startTime, endTime);
+      return dataGroupMember.getLocalQueryExecutor()
+          .peekNextNotNullValue(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException e) {
       throw new TException(e);
     }

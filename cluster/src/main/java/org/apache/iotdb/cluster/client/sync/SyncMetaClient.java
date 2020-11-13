@@ -19,18 +19,18 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
- * Notice: Because a client will be returned to a pool immediately after a successful request,
- * you should not cache it anywhere else or there may be conflicts.
+ * Notice: Because a client will be returned to a pool immediately after a successful request, you
+ * should not cache it anywhere else or there may be conflicts.
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -45,8 +45,8 @@ public class SyncMetaClient extends Client {
 
   public SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
-    super(protocolFactory.getProtocol(new TFastFramedTransport(new TSocket(node.getIp(),
-        node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
+    super(protocolFactory.getProtocol(new TElasticFramedTransport(
+        new TSocket(node.getIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
