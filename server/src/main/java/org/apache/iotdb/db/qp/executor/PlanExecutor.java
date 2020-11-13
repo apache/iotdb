@@ -27,7 +27,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TEMPORARY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -744,11 +743,18 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan) {
-    ListDataSet listDataSet = new ListDataSet(Arrays.asList(
-        new PartialPath(COLUMN_FUNCTION_NAME, false),
-        new PartialPath(COLUMN_FUNCTION_CLASS, false),
-        new PartialPath(COLUMN_FUNCTION_TEMPORARY, false)),
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.BOOLEAN));
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(
+            new PartialPath(COLUMN_FUNCTION_NAME, false),
+            new PartialPath(COLUMN_FUNCTION_CLASS, false)
+            // new PartialPath(COLUMN_FUNCTION_TEMPORARY, false)
+        ),
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT
+            // TSDataType.BOOLEAN
+        )
+    );
     for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
         .getRegistrationInformation()) {
       if (showPlan.showTemporary() && !info.isTemporary()) {
@@ -757,7 +763,7 @@ public class PlanExecutor implements IPlanExecutor {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
-      rowRecord.addField(info.isTemporary(), TSDataType.BOOLEAN);
+      // rowRecord.addField(info.isTemporary(), TSDataType.BOOLEAN);
       listDataSet.putRecord(rowRecord);
     }
     return listDataSet;

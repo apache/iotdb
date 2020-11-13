@@ -68,7 +68,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       statement.execute("select udf(*, *) from root.vehicle");
       ResultSet resultSet = statement.executeQuery("show functions");
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       int count = 0;
       while (resultSet.next()) {
         ++count;
@@ -76,7 +76,7 @@ public class IoTDBUDFManagementIT {
         for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); ++i) {
           stringBuilder.append(resultSet.getString(i)).append(",");
         }
-        Assert.assertEquals("udf,org.apache.iotdb.db.query.udf.example.Adder,false,",
+        Assert.assertEquals("udf,org.apache.iotdb.db.query.udf.example.Adder,",
             stringBuilder.toString());
       }
       Assert.assertEquals(1, count);
@@ -86,7 +86,7 @@ public class IoTDBUDFManagementIT {
         ++count;
       }
       Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       throwable.printStackTrace();
@@ -107,14 +107,14 @@ public class IoTDBUDFManagementIT {
         ++count;
       }
       Assert.assertEquals(1, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       resultSet = statement.executeQuery("show temporary functions");
       count = 0;
       while (resultSet.next()) {
         ++count;
       }
       Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       statement.execute("drop function udf");
 
       statement.execute(
@@ -126,14 +126,14 @@ public class IoTDBUDFManagementIT {
         ++count;
       }
       Assert.assertEquals(1, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       resultSet = statement.executeQuery("show temporary functions");
       count = 0;
       while (resultSet.next()) {
         ++count;
       }
       Assert.assertEquals(1, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       statement.execute("drop function udf");
 
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
@@ -144,14 +144,14 @@ public class IoTDBUDFManagementIT {
         ++count;
       }
       Assert.assertEquals(1, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       resultSet = statement.executeQuery("show temporary functions");
       count = 0;
       while (resultSet.next()) {
         ++count;
       }
       Assert.assertEquals(0, count);
-      assertEquals(3, resultSet.getMetaData().getColumnCount());
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
       throwable.printStackTrace();

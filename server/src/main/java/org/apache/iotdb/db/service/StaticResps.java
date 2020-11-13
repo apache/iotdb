@@ -28,7 +28,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TEMPORARY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
@@ -148,9 +147,11 @@ class StaticResps {
           TSDataType.BOOLEAN.toString()));
 
   static final TSExecuteStatementResp SHOW_FUNCTIONS_RESP = getNoTimeExecuteResp(
-      Arrays.asList(COLUMN_FUNCTION_NAME, COLUMN_FUNCTION_CLASS, COLUMN_FUNCTION_TEMPORARY),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
-          TSDataType.BOOLEAN.toString())
+      // Arrays.asList(COLUMN_FUNCTION_NAME, COLUMN_FUNCTION_CLASS, COLUMN_FUNCTION_TEMPORARY),
+      // Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString(),
+      //    TSDataType.BOOLEAN.toString())
+      Arrays.asList(COLUMN_FUNCTION_NAME, COLUMN_FUNCTION_CLASS),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString())
   );
 
   private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
