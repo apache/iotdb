@@ -163,7 +163,7 @@ public class CommittedEntryManager {
   Log getEntry(long index) throws EntryCompactedException {
     long dummyIndex = getDummyIndex();
     if (index < dummyIndex) {
-      logger.info(
+      logger.debug(
           "invalid committedEntryManager getEntry: parameter: index({}) < compactIndex({})",
           index, dummyIndex);
       throw new EntryCompactedException(index, dummyIndex);

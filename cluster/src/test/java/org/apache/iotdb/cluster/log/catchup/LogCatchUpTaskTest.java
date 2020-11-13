@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -253,7 +254,8 @@ public class LogCatchUpTaskTest {
       // thrift frame size is small so the logs must be sent in more than one batch
       List<Log> logList = TestUtils.prepareTestLogs(500);
       int singleLogSize = logList.get(0).serialize().limit();
-      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(100 * singleLogSize);
+      IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(100 * singleLogSize
+          + IoTDBConstant.LEFT_SIZE_IN_REQUEST);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
       LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);

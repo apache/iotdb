@@ -43,6 +43,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -208,7 +209,8 @@ public class LogDispatcherTest {
 
   @Test
   public void testWithLargeLog() throws InterruptedException {
-    IoTDBDescriptor.getInstance().getConfig().setThriftMaxFrameSize(64 * 1024);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setThriftMaxFrameSize(64 * 1024 + IoTDBConstant.LEFT_SIZE_IN_REQUEST);
     for (int i = 1; i < 4; i++) {
       downNode.add(TestUtils.getNode(i));
     }
@@ -227,13 +229,16 @@ public class LogDispatcherTest {
     }
   }
 
-  public boolean checkResult(List<Log> logs, int requestedSuccess) {
+  @SuppressWarnings("java:S2925")
+  public boolean checkResult(List<Log> logs, int requestedSuccess) throws InterruptedException {
     for (Log log : logs) {
       AtomicInteger atomicInteger = appendedEntries.get(log);
       if (atomicInteger == null) {
+        Thread.sleep(10);
         return false;
       }
       if (atomicInteger.get() != requestedSuccess) {
+        Thread.sleep(10);
         return false;
       }
     }
