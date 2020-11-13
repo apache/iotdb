@@ -44,6 +44,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -1437,12 +1438,13 @@ public class MetaGroupMember extends RaftMember {
 
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
+      if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan
+          || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
-          return executeNonQueryPlan(plan);
+          return processPartitionedPlan(plan);
         } catch (MetadataException e) {
           logger.error(
               String.format("Failed to set storage group or create timeseries, because %s", e));
@@ -1485,7 +1487,7 @@ public class MetaGroupMember extends RaftMember {
    */
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
-    TSStatus status = null;
+    TSStatus status;
     if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
@@ -1530,7 +1532,7 @@ public class MetaGroupMember extends RaftMember {
    * @param planGroupMap sub-plan -> data group pairs
    */
   private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-                                           PhysicalPlan parentPlan) {
+      PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     TSStatus[] subStatus = null;
@@ -1538,33 +1540,20 @@ public class MetaGroupMember extends RaftMember {
     boolean isBatchFailure = false;
     EndPoint endPoint = null;
     int totalRowNum = 0;
-    // for we put the result to right position for CreateMultiTimeSeriesPlan
-    Map<Integer, Integer> indexToPos = new HashMap<>();
-    if (parentPlan instanceof InsertTabletPlan) {
-      totalRowNum = ((InsertTabletPlan) parentPlan).getRowCount();
-    } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-      totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
-
-      // index -> pos in the indexs array
-      for (int i = 0; i < totalRowNum; i++) {
-        indexToPos.put(((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().get(i), i);
-      }
-    }
     // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
       logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
       noFailure =
-        (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-        || isBatchFailure;
-      if (parentPlan instanceof InsertTabletPlan) {
-        if (tmpStatus.isSetRedirectNode() &&
-          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan).getMaxTime()) {
-          endPoint = tmpStatus.getRedirectNode();
-        }
-      }
+          || isBatchFailure;
       if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        if (parentPlan instanceof InsertTabletPlan) {
+          totalRowNum = ((InsertTabletPlan) parentPlan).getRowCount();
+        } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
+          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
+        }
         if (subStatus == null) {
           subStatus = new TSStatus[totalRowNum];
           Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
@@ -1572,23 +1561,46 @@ public class MetaGroupMember extends RaftMember {
         // set the status from one group to the proper positions of the overall status
         if (parentPlan instanceof InsertTabletPlan) {
           PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-            tmpStatus.subStatus.toArray(new TSStatus[]{}));
+              tmpStatus.subStatus.toArray(new TSStatus[]{}));
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
           CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
           for (int i = 0; i < subPlan.getIndexes().size(); i++) {
-            subStatus[indexToPos.get(subPlan.getIndexes().get(i))] = tmpStatus.subStatus.get(i);
+            subStatus[subPlan.getIndexes().get(i)] = tmpStatus.subStatus.get(i);
           }
         }
       }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-          tmpStatus.getCode(), entry.getValue().getHeader(),
-          tmpStatus.getMessage(), tmpStatus.subStatus));
+            tmpStatus.getCode(), entry.getValue().getHeader(),
+            tmpStatus.getMessage(), tmpStatus.subStatus));
+      }
+      if (parentPlan instanceof InsertTabletPlan) {
+        if (tmpStatus.isSetRedirectNode() &&
+            ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
+                .getMaxTime()) {
+          endPoint = tmpStatus.getRedirectNode();
+        }
       }
     }
 
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
+    if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
+      if (!((CreateMultiTimeSeriesPlan) parentPlan).getResults().isEmpty()) {
+        if (subStatus == null) {
+          subStatus = new TSStatus[totalRowNum];
+          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+        }
+        noFailure = false;
+        isBatchFailure = true;
+        for (Entry<Integer, TSStatus> integerTSStatusEntry : ((CreateMultiTimeSeriesPlan) parentPlan)
+            .getResults().entrySet()) {
+          subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
+        }
+      }
+    }
+
+    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
+        errorCodePartitionGroups);
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,

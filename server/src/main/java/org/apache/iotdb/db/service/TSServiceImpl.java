@@ -49,10 +49,10 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -1603,10 +1603,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
             req.getPaths().size(), req.getPaths().get(0));
       }
-      boolean hasFailed = false;
-      List<TSStatus> statusList = new ArrayList<>(req.paths.size());
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
-      CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
+      CreateMultiTimeSeriesPlan multiPlan = new CreateMultiTimeSeriesPlan();
 
       List<PartialPath> paths = new ArrayList<>(req.paths.size());
       List<TSDataType> dataTypes = new ArrayList<>(req.paths.size());
@@ -1629,18 +1626,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         attributes = new ArrayList<>(req.paths.size());
       }
 
-      // record the result of creation of time series
-      List<Integer> indexes = new ArrayList<>(req.paths.size());
-
+      // for authority check
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
       for (int i = 0; i < req.paths.size(); i++) {
         plan.setPath(new PartialPath(req.paths.get(i)));
 
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           // not authorized
-          hasFailed = true;
-          statusList.add(status);
-          continue;
+          multiPlan.getResults().put(i, status);
         }
 
         paths.add(new PartialPath(req.paths.get(i)));
@@ -1659,39 +1653,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (attributes != null) {
           attributes.add(req.attributesList.get(i));
         }
-
-        indexes.add(i);
-        statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, ""));
       }
 
-      createMultiTimeSeriesPlan.setPaths(paths);
-      createMultiTimeSeriesPlan.setDataTypes(dataTypes);
-      createMultiTimeSeriesPlan.setEncodings(encodings);
-      createMultiTimeSeriesPlan.setCompressors(compressors);
-      createMultiTimeSeriesPlan.setAlias(alias);
-      createMultiTimeSeriesPlan.setProps(props);
-      createMultiTimeSeriesPlan.setTags(tags);
-      createMultiTimeSeriesPlan.setAttributes(attributes);
-      createMultiTimeSeriesPlan.setIndexes(indexes);
+      multiPlan.setPaths(paths);
+      multiPlan.setDataTypes(dataTypes);
+      multiPlan.setEncodings(encodings);
+      multiPlan.setCompressors(compressors);
+      multiPlan.setAlias(alias);
+      multiPlan.setProps(props);
+      multiPlan.setTags(tags);
+      multiPlan.setAttributes(attributes);
+      multiPlan.setIndexes(new ArrayList<>());
 
-      TSStatus status = executeNonQueryPlan(createMultiTimeSeriesPlan);
-
-      if (!createMultiTimeSeriesPlan.getResults().isEmpty()) {
-        hasFailed = true;
-        for (Map.Entry<Integer, Exception> entry : createMultiTimeSeriesPlan.getResults()
-            .entrySet()) {
-          statusList.set(entry.getKey(),
-              RpcUtils
-                  .getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, entry.getValue().getMessage()));
-        }
-      }
-
-      if (hasFailed) {
-        logger.debug("Create multiple timeseries failed!");
-        return RpcUtils.getStatus(statusList);
-      } else {
-        return status;
-      }
+      return executeNonQueryPlan(multiPlan);
     } catch (Exception e) {
       logger.error("meet error when create multi timeseries", e);
     }
