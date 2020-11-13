@@ -64,7 +64,14 @@ public class ClusterMain {
 
   public static void main(String[] args) {
     if (args.length < 1) {
-      logger.error("Usage: <start mode>");
+      logger.error("Usage: <-s|-a|-r> [-internal_meta_port <internal meta port>] "
+          + "[-internal_data_port <internal data port>] "
+          + "[-cluster_rpc_port <cluster rpc port>] "
+          + "[-seed_nodes <node1:meta_port:data_port:cluster_rpc_port,"
+          +               "node2:meta_port:data_port:cluster_rpc_port,"
+          +           "...,noden:meta_port:data_port:cluster_rpc_port,>] "
+          + "[-sc] "
+          + "[-rpc_port <rpc port>]");
       return;
     }
     String mode = args[0];
@@ -158,10 +165,12 @@ public class ClusterMain {
     String[] clusterParams;
     String[] serverParams = null;
     for (index = 0; index < args.length; index++) {
+      //find where -sc is
       if (SERVER_CONF_SEPARATOR.equals(args[index])) {
         break;
       }
     }
+    //parameters from 0 to "-sc" are for clusters
     clusterParams = Arrays.copyOfRange(args, 0, index);
 
     if (index < args.length) {
