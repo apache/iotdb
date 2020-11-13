@@ -349,6 +349,10 @@ public class PhysicalGenerator {
     QueryPlan queryPlan;
 
     if (queryOperator.hasAggregation()) {
+      if (queryOperator.hasUdf()) {
+        throw new QueryProcessException(
+            "User-defined and built-in hybrid aggregation is not supported.");
+      }
       if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
         queryPlan = new GroupByTimeFillPlan();
       } else if (queryOperator.isGroupByTime()) {

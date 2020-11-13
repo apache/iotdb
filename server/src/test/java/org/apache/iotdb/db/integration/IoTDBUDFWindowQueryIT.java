@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -105,6 +106,23 @@ public class IoTDBUDFWindowQueryIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testUserDefinedBuiltInHybridAggregationQuery() {
+    String sql = String.format("select count(*), counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      statement.executeQuery(sql);
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(throwable.getMessage()
+          .contains("User-defined and built-in hybrid aggregation is not supported."));
+    }
   }
 
   @Test
