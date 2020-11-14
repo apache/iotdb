@@ -36,4 +36,5 @@ jobs:
     - name: Check Apache Rat
       run: mvn -B apache-rat:check
     - name: Test with Maven
+      shell: bash
       run: mvn -B clean test integration-test -Dtest.port.closed=true 
