@@ -208,25 +208,28 @@ public class AbstractCliIT {
   }
 
   private void testSetMaxDisplayNumber() {
-    AbstractCli.setMaxDisplayNumber("10");
-    assertEquals(10, AbstractCli.maxPrintRowCount);
+    try {
+      AbstractCli.setMaxDisplayNumber("10");
+    } catch (NumberFormatException e) {
+      fail();
+    }
+
     try {
       AbstractCli.setMaxDisplayNumber("111111111111111");
       fail();
-    } catch (Exception e) {
-      assertEquals(new NumberFormatException(), e);
+    } catch (NumberFormatException e) {
     }
+
     try {
       AbstractCli.setMaxDisplayNumber("-10");
       fail();
-    } catch (Exception e) {
-      assertEquals(new NumberFormatException(), e);
+    } catch (NumberFormatException e) {
     }
+
     try {
       AbstractCli.setMaxDisplayNumber("0");
       fail();
-    } catch (Exception e) {
-      assertEquals(new NumberFormatException(), e);
+    } catch (NumberFormatException e) {
     }
   }
 }
