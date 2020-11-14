@@ -237,4 +237,11 @@ public class SessionPoolTest {
     }
   }
 
+  @Test
+  public void testClose() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null);
+    write10Data(pool, true);
+
+  }
+
 }
