@@ -1,0 +1,40 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: 
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: 
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+        
+jobs:
+  build:
+
+    runs-on: 
+     - ubuntu-latest
+     - windows-latest 
+     - macos-latest
+    strategy:
+      matrix:
+        java: [8, 11.0.x]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK ${{ matrix.java }}
+      uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Check Apache Rat
+      run: mvn -B apache-rat:check
+    - name: Test with Maven
+      run: mvn -B clean test integration-test -Dtest.port.closed=true 
