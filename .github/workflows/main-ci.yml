@@ -20,11 +20,12 @@ on:
         
 jobs:
   build:
-
-    runs-on: [ubuntu-latest, windows-latest, macos-latest]
     strategy:
       matrix:
         java: [8, 11.0.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os}}
+    
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK ${{ matrix.java }}
