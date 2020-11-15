@@ -42,8 +42,6 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
     - name: Check Apache Rat
       run: mvn -B apache-rat:check
-    - name: Set Hadoop PATH
-      run: echo "/d/a/iotdb/target/hadoop/bin" >> $GITHUB_PATH
     - name: Download Hadoop Tools if Needed
       if: matrix.os == 'windows-latest'
       env:
@@ -71,7 +69,9 @@ jobs:
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile D:\a\iotdb\target\hadoop\bin\rcc ; `
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile D:\a\iotdb\target\hadoop\bin\winutils.pdb ; `
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile D:\a\iotdb\target\hadoop\bin\yarn ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\iotdb\target\hadoop\bin\yarn.cmd
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\iotdb\target\hadoop\bin\yarn.cmd ; `
+           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\iotdb\target\hadoop\bin", "User") ; `
+           [Environment]::SetEnvironmentVariable("HADOOP_HOME", "D:\a\iotdb\target\hadoop", "User")
     - name: Check Hadoop Path
       shell: bash
       run: echo $PATH
