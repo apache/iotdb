@@ -19,7 +19,7 @@ on:
       - 'docs/**'
         
 jobs:
-  build-on-unix:
+  build:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -45,7 +45,7 @@ jobs:
       - name: Test with Maven
         run:  mvn -B clean test integration-test -Dtest.port.closed=true
 
-  build-on-windows:
+  build-win:
     strategy:
       fail-fast: false
       max-parallel: 20
