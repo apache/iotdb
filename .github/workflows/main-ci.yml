@@ -51,27 +51,27 @@ jobs:
       # Using Powershell ...
       # github action put codes to d:\a
       run: mkdir D:\a\iotdb\target\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -OutFile C:\windows\system32  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -OutFile C:\windows\system32  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -OutFile D:\a\iotdb\target\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile D:\a\iotdb\target\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile D:\a\iotdb\target\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile D:\a\iotdb\target\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\iotdb\target\hadoop\bin
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -OutFile D:\a\iotdb\target\hadoop\bin\winutils.exe  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -OutFile C:\windows\system32\hadoop.dll  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -OutFile D:\a\iotdb\target\hadoop\bin\hadoop  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -OutFile D:\a\iotdb\target\hadoop\bin\hadoop.cmd  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -OutFile D:\a\iotdb\target\hadoop\bin\hadoop.exp  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -OutFile D:\a\iotdb\target\hadoop\bin\hadoop.lib  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -OutFile D:\a\iotdb\target\hadoop\bin\hadoop.pdb  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -OutFile C:\windows\system32\hdfs.dll  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -OutFile D:\a\iotdb\target\hadoop\bin\hdfs  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -OutFile D:\a\iotdb\target\hadoop\bin\hdfs.cmd  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -OutFile D:\a\iotdb\target\hadoop\bin\hdfs.exp   ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -OutFile D:\a\iotdb\target\hadoop\bin\hdfs.lib  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -OutFile D:\a\iotdb\target\hadoop\bin\hdfs.pdb  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -OutFile D:\a\iotdb\target\hadoop\bin\hdfs_static.lib  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -OutFile D:\a\iotdb\target\hadoop\bin\libwinutils.lib  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -OutFile D:\a\iotdb\target\hadoop\bin\mapred  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -OutFile D:\a\iotdb\target\hadoop\bin\mapred.cmd  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile D:\a\iotdb\target\hadoop\bin\rcc ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile D:\a\iotdb\target\hadoop\bin\winutils.pdb ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile D:\a\iotdb\target\hadoop\bin\yarn ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\iotdb\target\hadoop\bin\yarn.cmd
     - name: Check Hadoop Path
       shell: bash
       run: echo $PATH
