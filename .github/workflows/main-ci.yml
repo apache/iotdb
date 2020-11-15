@@ -43,34 +43,35 @@ jobs:
     - name: Check Apache Rat
       run: mvn -B apache-rat:check
     - name: Set Hadoop PATH
-      run: echo "/c/hadoop/bin" >> $GITHUB_PATH
+      run: echo "/d/a/_tmp/hadoop/bin" >> $GITHUB_PATH
     - name: Download Hadoop Tools if Needed
       if: matrix.os == 'windows-latest'
       env:
         HADOOP_HOME: /c/hadoop
       # Using Powershell ...
-      run: mkdir C:\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -OutFile C:\hadoop\bin  ; `
+      # github action put codes to d:\a
+      run: mkdir D:\a\_tmp\hadoop\bin ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -OutFile D:\a\_tmp\hadoop\bin  ; `
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -OutFile C:\windows\system32  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -OutFile C:\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -OutFile D:\a\_tmp\hadoop\bin  ; `
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -OutFile C:\windows\system32  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -OutFile C:\hadoop\bin  ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile C:\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile C:\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile C:\hadoop\bin ; `
-           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile C:\hadoop\bin
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -OutFile D:\a\_tmp\hadoop\bin  ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile D:\a\_tmp\hadoop\bin ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile D:\a\_tmp\hadoop\bin ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile D:\a\_tmp\hadoop\bin ; `
+           Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\_tmp\hadoop\bin
     - name: Check Hadoop Path
       shell: bash
       run: echo $PATH
