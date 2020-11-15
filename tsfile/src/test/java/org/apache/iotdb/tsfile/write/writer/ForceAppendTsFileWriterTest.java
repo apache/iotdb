@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.writer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -50,6 +51,9 @@ public class ForceAppendTsFileWriterTest {
   @Test
   public void test() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
+    if (file.exists()) {
+      fail("Do not know why the file exists...." + file.getAbsolutePath());
+    }
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
