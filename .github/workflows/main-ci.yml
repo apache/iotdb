@@ -70,9 +70,21 @@ jobs:
            Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\hadoop\bin\yarn.cmd ; `
            [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\hadoop\bin", "User") ; `
            [Environment]::SetEnvironmentVariable("HADOOP_HOME", "D:\a\hadoop", "User")
-    - name: Check Hadoop Path
+    - name: Add Hadoop Path (Win)
+      if: matrix.os == 'windows-latest'
       shell: bash
       run: echo 'export PATH=/d/a/hadoop/bin:$PATH' >> ~/.bash_profile && echo 'export HADOOP_HOME=/d/a/hadoop' >> ~/.bash_profile
+    - name: Check Hadoop Path (Win)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: echo $PATH
+    - name: Cache Hadoop packages (Win)
+      if: matrix.os == 'windows-latest'
+      uses: actions/cache@v2
+      with:
+        path: D:\a\hadoop
+        key: ${{ runner.os }}-hadoop-files${{ hashFiles('**/*.exe') }}
+        restore-keys: ${{ runner.os }}-hadoop-files
     - name: Test with Maven
       shell: bash
-      run: echo $PATH && mvn -B clean test integration-test -Dtest.port.closed=true
+      run:  mvn -B clean test integration-test -Dtest.port.closed=true
