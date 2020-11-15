@@ -54,6 +54,14 @@ public class ForceAppendTsFileWriterTest {
     if (file.exists()) {
       fail("Do not know why the file exists...." + file.getAbsolutePath());
     }
+    System.out.println(file.getAbsolutePath());
+    if (!file.getParentFile().exists()) {
+      fail("folder does not exist...." + file.getParentFile().getAbsolutePath());
+    }
+    if (!file.getParentFile().isDirectory()) {
+      fail("folder is not a directory...." + file.getParentFile().getAbsolutePath());
+    }
+
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
