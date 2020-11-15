@@ -42,14 +42,14 @@ jobs:
         restore-keys: ${{ runner.os }}-m2
     - name: Check Apache Rat
       run: mvn -B apache-rat:check
+    - name: Set Hadoop PATH
+      run: echo "/c/hadoop/bin" >> $GITHUB_PATH
     - name: Download Hadoop Tools if Needed
       if: matrix.os == 'windows-latest'
       env:
-        HADOOP_HOME: C:\hadoop
+        HADOOP_HOME: /c/hadoop
       shell: bash
       run: mkdir C:\hadoop\bin && \
-           export "HADOOP_HOME=/c/hadoop" && \
-           export "PATH=/c/hadoop/bin:$PATH" && \
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -o C:\hadoop\bin  && \
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -o C:\windows\system32  && \
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -o C:\hadoop\bin  && \
@@ -71,7 +71,9 @@ jobs:
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -o C:\hadoop\bin && \
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -o C:\hadoop\bin && \
            wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -o C:\hadoop\bin
-
+    - name: Check Hadoop Path
+      shell: bash
+      run: echo $PATH
     - name: Test with Maven
       shell: bash
       run: mvn -B clean test integration-test -Dtest.port.closed=true 
