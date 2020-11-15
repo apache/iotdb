@@ -19,6 +19,34 @@ on:
       - 'docs/**'
 
 jobs:
+  sonar:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11.0.x
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11.0.x
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: sonar-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: SonarCloud Test
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
+        run: |
+          mvn -B verify sonar:sonar \
+          -Dsonar.organization=apache \
+          -Dsonar.projectKey=apache_incubator-iotdb \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ env.SONAR_TOKEN }} \
+          -DskipTests -pl '!distribution' -am
+  
   coveralls:
     runs-on: ubuntu-latest
     strategy:
@@ -41,7 +69,7 @@ jobs:
         run: |
           mvn -B coveralls:report \
           --no-transfer-progress \
-          -DserviceName=github \
+          -DserviceName=travis_ci \
           -D branch=$BRANCH_NAME \
           -D pullRequest=$PR_NUMBER \
           -D repoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
