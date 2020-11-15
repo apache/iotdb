@@ -45,7 +45,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class ForceAppendTsFileWriterTest {
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test1.tsfile");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test

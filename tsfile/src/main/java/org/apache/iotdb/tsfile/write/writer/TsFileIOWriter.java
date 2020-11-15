@@ -105,7 +105,7 @@ public class TsFileIOWriter {
    * @throws IOException if I/O error occurs
    */
   public TsFileIOWriter(File file) throws IOException {
-    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getAbsolutePath(), false);
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), false);
     this.file = file;
     if (resourceLogger.isDebugEnabled()) {
       resourceLogger.debug("{} writer is opened.", file.getName());
