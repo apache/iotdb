@@ -41,7 +41,7 @@ jobs:
         run: |
           mvn -B coveralls:report \
           --no-transfer-progress \
-          -DserviceName=github \
+          -DserviceName=travis_ci \
           -D branch=$BRANCH_NAME \
           -D pullRequest=$PR_NUMBER \
           -D repoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
