@@ -25,25 +25,39 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
-      - name: Set up JDK 11.0.x
-        uses: actions/setup-java@v1
         with:
-          java-version: 11.0.x
-      - name: Cache Maven packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: sonar-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: SonarCloud Test
-        env: 
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: 'a2n2+MFfuOb3hsrw5vjiIUZzjt6S0j4YmRVrms6NVKF+EpEAWU/zOjzfccLGRr3VFUAlkoM2p578c/0DMMGew2oj3Yl1iJe2n35BWIV6r/psUKRUMdgMAogdshQzZGMYmY1XL2xA3ATu8cf4F8WoRAafd/S58JGQdTfsQ5svh31BxK0iuh+nMIZb4dYxO717dSVD45D9hoF5ROxdtTRbyAaXFPs5djxWrdzKw0J3e6a8m82K9FGcpy4pY9ct3ttbyEzGqMnzE4fhd3KgopFJj+3QdAi/3Cmkf1voxorQdCSbktl4PtlzMY/nxF6XETI2E4T+GLUVMw4iHiXCabqwOiudGnEj5DjNz6X5MVCOyj7lrFBTlDirGzv9fNpvQ2I47WOL8DzBJPqFwQ0nRAlbvcWVtE4aAqj8YF1QwwLxEIi4abDfOwaxGG2TOixQf627pvhh1o0RdEf9R6aRyur7vbMt7H9+4tQaHGI2PY1KbCkjhppIrEsarI07uvfPic3By/yOWj6iqZ1QiVAgPTec/o1blNWlMeGwdcCPfCxMjy9iqzpzNIB9fld28CN1Yvzpg74iIKnMU5mL1wB5yT8Vo9Q28JNSEwKIBhuayZLloGbnl/PX8jvDDWSm7yYoZYEI42tgVOXAXX7R53rOcxJMEgCa5RsVDRmJn5n7o6hwhn8='
-        run: |
-          mvn -B verify sonar:sonar \
-          -Dsonar.organization=apache \
-          -Dsonar.projectKey=apache_incubator-iotdb \
-          -DskipTests -pl '!distribution' -am
+          SONAR_TOKEN: a2n2+MFfuOb3hsrw5vjiIUZzjt6S0j4YmRVrms6NVKF+EpEAWU/zOjzfccLGRr3VFUAlkoM2p578c/0DMMGew2oj3Yl1iJe2n35BWIV6r/psUKRUMdgMAogdshQzZGMYmY1XL2xA3ATu8cf4F8WoRAafd/S58JGQdTfsQ5svh31BxK0iuh+nMIZb4dYxO717dSVD45D9hoF5ROxdtTRbyAaXFPs5djxWrdzKw0J3e6a8m82K9FGcpy4pY9ct3ttbyEzGqMnzE4fhd3KgopFJj+3QdAi/3Cmkf1voxorQdCSbktl4PtlzMY/nxF6XETI2E4T+GLUVMw4iHiXCabqwOiudGnEj5DjNz6X5MVCOyj7lrFBTlDirGzv9fNpvQ2I47WOL8DzBJPqFwQ0nRAlbvcWVtE4aAqj8YF1QwwLxEIi4abDfOwaxGG2TOixQf627pvhh1o0RdEf9R6aRyur7vbMt7H9+4tQaHGI2PY1KbCkjhppIrEsarI07uvfPic3By/yOWj6iqZ1QiVAgPTec/o1blNWlMeGwdcCPfCxMjy9iqzpzNIB9fld28CN1Yvzpg74iIKnMU5mL1wB5yT8Vo9Q28JNSEwKIBhuayZLloGbnl/PX8jvDDWSm7yYoZYEI42tgVOXAXX7R53rOcxJMEgCa5RsVDRmJn5n7o6hwhn8=
+        with:
+          args: >
+            -Dsonar.organization=apache
+            -Dsonar.projectKey=apache_incubator-iotdb
+            
+#       - uses: actions/checkout@v2
+#       - name: Set up JDK 11.0.x
+#         uses: actions/setup-java@v1
+#         with:
+#           java-version: 11.0.x
+#       - name: Cache Maven packages
+#         uses: actions/cache@v2
+#         with:
+#           path: ~/.m2
+#           key: sonar-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+#           restore-keys: ${{ runner.os }}-m2
+#       - name: SonarCloud Test
+#         env: 
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           SONAR_TOKEN: 'a2n2+MFfuOb3hsrw5vjiIUZzjt6S0j4YmRVrms6NVKF+EpEAWU/zOjzfccLGRr3VFUAlkoM2p578c/0DMMGew2oj3Yl1iJe2n35BWIV6r/psUKRUMdgMAogdshQzZGMYmY1XL2xA3ATu8cf4F8WoRAafd/S58JGQdTfsQ5svh31BxK0iuh+nMIZb4dYxO717dSVD45D9hoF5ROxdtTRbyAaXFPs5djxWrdzKw0J3e6a8m82K9FGcpy4pY9ct3ttbyEzGqMnzE4fhd3KgopFJj+3QdAi/3Cmkf1voxorQdCSbktl4PtlzMY/nxF6XETI2E4T+GLUVMw4iHiXCabqwOiudGnEj5DjNz6X5MVCOyj7lrFBTlDirGzv9fNpvQ2I47WOL8DzBJPqFwQ0nRAlbvcWVtE4aAqj8YF1QwwLxEIi4abDfOwaxGG2TOixQf627pvhh1o0RdEf9R6aRyur7vbMt7H9+4tQaHGI2PY1KbCkjhppIrEsarI07uvfPic3By/yOWj6iqZ1QiVAgPTec/o1blNWlMeGwdcCPfCxMjy9iqzpzNIB9fld28CN1Yvzpg74iIKnMU5mL1wB5yT8Vo9Q28JNSEwKIBhuayZLloGbnl/PX8jvDDWSm7yYoZYEI42tgVOXAXX7R53rOcxJMEgCa5RsVDRmJn5n7o6hwhn8='
+#         run: |
+#           mvn -B verify sonar:sonar \
+#           -Dsonar.organization=apache \
+#           -Dsonar.projectKey=apache_incubator-iotdb \
+#           -DskipTests -pl '!distribution' -am
   
   
   coveralls:
@@ -72,7 +86,7 @@ jobs:
           -D branch=$BRANCH_NAME \
           -D pullRequest=$PR_NUMBER \
           -D repoToken=${{ secrets.COVERALLS_TOKEN }} \
-          -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
+          -pl tsfile,server,jdbc,cli,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
   build:
     needs: [sonar, coveralls]
     strategy:
