@@ -43,7 +43,7 @@ jobs:
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Test with Maven
-        run:  mvn -B clean test integration-test -Dtest.port.closed=true
+        run:  mvn -B clean integration-test -Dtest.port.closed=true
 
   build-win:
     strategy:
@@ -109,4 +109,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean test integration-test -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true
