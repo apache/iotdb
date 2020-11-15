@@ -46,6 +46,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       env:
         HADOOP_HOME: C:\hadoop
+      shell: bash
       run: mkdir C:\hadoop\bin && \
            export "HADOOP_HOME=/c/hadoop" && \
            export "PATH=/c/hadoop/bin:$PATH" && \
