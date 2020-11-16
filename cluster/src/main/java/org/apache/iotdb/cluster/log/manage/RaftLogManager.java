@@ -147,11 +147,11 @@ public abstract class RaftLogManager {
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
     this.deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
+        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-" + name).daemon(true)
             .build());
 
     this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     /**
      * deletion check period of the submitted log
@@ -692,7 +692,7 @@ public abstract class RaftLogManager {
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
     this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
   }
@@ -832,8 +832,8 @@ public abstract class RaftLogManager {
   }
 
   void doCheckAppliedLogIndex() {
+    long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
     try {
-      long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
       if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
           .getLastIndex() || (blockAppliedCommitIndex > 0
           && blockAppliedCommitIndex < nextToCheckIndex)) {
@@ -843,8 +843,8 @@ public abstract class RaftLogManager {
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
       synchronized (log) {
-        while (!log.isApplied()) {
-          // wait until the log is applied
+        while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
+          // wait until the log is applied or a newer snapshot is installed
           log.wait(5);
         }
       }
@@ -859,7 +859,13 @@ public abstract class RaftLogManager {
       Thread.currentThread().interrupt();
       logger.info("{}: do check applied log index is interrupt", name);
     } catch (EntryCompactedException e) {
-      // ignore
+      synchronized (changeApplyCommitIndexCond) {
+        // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
+        maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
+      }
+      logger.debug("{}: compacted log is assumed applied, nextToCheckIndex={}, commitIndex={}, "
+              + "maxHaveAppliedCommitIndex={}",
+          name, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
     }
   }
 
