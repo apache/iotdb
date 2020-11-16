@@ -80,7 +80,8 @@ public enum IndexType {
     try {
       return IndexType.valueOf(normalized);
     } catch (IllegalArgumentException e) {
-      throw new UnsupportedIndexTypeException("unsupported index type:" + indexTypeString);
+      throw new UnsupportedIndexTypeException(indexTypeString);
+
     }
   }
 }

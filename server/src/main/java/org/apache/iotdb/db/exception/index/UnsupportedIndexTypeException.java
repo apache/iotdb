@@ -24,7 +24,7 @@ public class UnsupportedIndexTypeException extends QueryIndexException {
 
   private static final long serialVersionUID = -7091830159338197925L;
 
-  public UnsupportedIndexTypeException(String message) {
-    super(message, TSStatusCode.UNSUPPORTED_INDEX_TYPE_ERROR.getStatusCode());
+  public UnsupportedIndexTypeException(String indexType) {
+    super("Unsupported index type: " + indexType, TSStatusCode.UNSUPPORTED_INDEX_TYPE_ERROR.getStatusCode());
   }
 }

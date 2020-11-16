@@ -1225,7 +1225,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       indexType = IndexType.getIndexType(ctx.indexName.getText());
     } catch (UnsupportedIndexTypeException e) {
       throw new SQLParserException(
-          String.format("index type %s is not supported.", ctx.indexName.getText()));
+          String.format(ctx.indexName.getText()));
     }
 
     List<PropertyContext> properties = ctx.property();
@@ -1834,7 +1834,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       dropIndexOperator.setIndexType(IndexType.getIndexType(ctx.indexName.getText()));
     } catch (UnsupportedIndexTypeException e) {
       throw new SQLParserException(
-          String.format("index type %s is not supported.", ctx.indexName.getText()));
+          String.format(ctx.indexName.getText()));
     }
     initializedOperator = dropIndexOperator;
     operatorType = SQLConstant.TOK_DROP_INDEX;
