@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -112,7 +113,7 @@ public class ExportCsvTestIT extends AbstractScript{
   @Test
   public void test() throws IOException, StatementExecutionException, IoTDBConnectionException {
     final String[] expectCsv = new String[]{"Time,root.sg1.d1.s1",
-        "1970-01-01T08:00:00.001+08:00,1.0"};
+        "1.0"};
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateSQLFile());
@@ -126,7 +127,12 @@ public class ExportCsvTestIT extends AbstractScript{
     String line = br.readLine();
     int i = 0;
     while(line != null) {
-      assertEquals(expectCsv[i], line);
+      if(i == 0) {
+        assertEquals(expectCsv[i], line);
+      } else {
+        String[] fields = line.split(",");
+        assertEquals(expectCsv[i], fields[1]);
+      }
       i++;
       line = br.readLine();
     }
