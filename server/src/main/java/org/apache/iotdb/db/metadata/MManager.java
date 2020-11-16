@@ -1256,7 +1256,10 @@ public class MManager {
       }
     }
 
-    pair.right.putAll(attributesMap);
+    if (attributesMap != null) {
+      pair.right.putAll(attributesMap);
+    }
+
 
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
