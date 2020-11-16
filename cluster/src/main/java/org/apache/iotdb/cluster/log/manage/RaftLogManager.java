@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -150,9 +151,9 @@ public abstract class RaftLogManager {
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
 
-    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
-            .build());
+    this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
+        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true).build());
+
     /**
      * deletion check period of the submitted log
      */
@@ -691,9 +692,8 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
-    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true)
-            .build());
+    this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
+        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true).build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
   }
 
@@ -826,9 +826,11 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    while (!Thread.interrupted()) {
+    while (!Thread.currentThread().isInterrupted()) {
       doCheckAppliedLogIndex();
     }
+    logger.error("{}, the check-log-applier thread {} is interrupted", name,
+        Thread.currentThread().getName());
   }
 
   void doCheckAppliedLogIndex() {
