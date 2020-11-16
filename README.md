@@ -389,3 +389,14 @@ select * from root.fit.d1
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
+
+# Contact Us
+### QQ Group
+
+* Apache IoTDB User Group: 659990460
+
+### Wechat Group
+
+* Add friend: tietouqiao, and then we'll invite you to the group.
+
+see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!
