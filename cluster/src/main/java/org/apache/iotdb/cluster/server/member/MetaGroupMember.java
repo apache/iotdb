@@ -1589,21 +1589,19 @@ public class MetaGroupMember extends RaftMember {
       }
     }
 
-    if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-      if (!((CreateMultiTimeSeriesPlan) parentPlan).getResults().isEmpty()) {
-        if (subStatus == null) {
-          subStatus = new TSStatus[totalRowNum];
-          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-        }
-        noFailure = false;
-        isBatchFailure = true;
-        for (Entry<Integer, TSStatus> integerTSStatusEntry : ((CreateMultiTimeSeriesPlan) parentPlan)
-            .getResults().entrySet()) {
-          subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
-        }
+    if (parentPlan instanceof CreateMultiTimeSeriesPlan &&
+        !((CreateMultiTimeSeriesPlan) parentPlan).getResults().isEmpty()) {
+      if (subStatus == null) {
+        subStatus = new TSStatus[totalRowNum];
+        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+      }
+      noFailure = false;
+      isBatchFailure = true;
+      for (Entry<Integer, TSStatus> integerTSStatusEntry : ((CreateMultiTimeSeriesPlan) parentPlan)
+          .getResults().entrySet()) {
+        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
       }
     }
-
     return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
         errorCodePartitionGroups);
   }
