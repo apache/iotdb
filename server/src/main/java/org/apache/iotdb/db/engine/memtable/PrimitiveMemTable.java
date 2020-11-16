@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -30,6 +29,9 @@ public class PrimitiveMemTable extends AbstractMemTable {
   public PrimitiveMemTable() {
   }
 
+  public PrimitiveMemTable(boolean enableMemControl) {
+    this.disableMemControl = !enableMemControl;
+  }
   public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
     super(memTableMap);
   }

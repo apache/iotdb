@@ -73,6 +73,9 @@ public class ChunkMetadata implements Accountable {
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
 
 
+  // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
+  private boolean isSeq = true;
+
   private ChunkMetadata() {
   }
 
@@ -256,10 +259,18 @@ public class ChunkMetadata implements Accountable {
         .calculateRamSize();
   }
 
+  public static long calculateRamSize(String measurementId, TSDataType dataType) {
+    return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementId) + Statistics
+        .getSizeByType(dataType);
+  }
+
   public void setRamSize(long size) {
     this.ramSize = size;
   }
 
+  /**
+   * must use calculate ram size first
+   */
   @Override
   public long getRamSize() {
     return ramSize;
@@ -268,5 +279,13 @@ public class ChunkMetadata implements Accountable {
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     this.statistics.mergeStatistics(chunkMetadata.getStatistics());
     this.ramSize = calculateRamSize();
+  }
+
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
   }
 }

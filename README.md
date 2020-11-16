@@ -21,17 +21,17 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![coveralls](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)
-[![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
+[![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
+[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
-![](https://img.shields.io/github/downloads/apache/incubator-iotdb/total.svg)
+![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
+![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/incubator-iotdb) 
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb) 
 
 # Overview
 
@@ -100,8 +100,8 @@ To use IoTDB, you need to have:
 IoTDB provides three installation methods, you can refer to the following suggestions, choose the one fits you best:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
-* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/tree/master/docker/src/main
+* Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
 
 
 Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
@@ -111,7 +111,7 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 You can download the source code from:
 
 ```
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
 The default master branch is the dev branch, If you want to use a released version x.x.x:
@@ -121,15 +121,16 @@ git checkout release/x.x.x
 ```
 
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
+Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-bin.zip**
 
 > NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
+
 
 ### Configurations
 
@@ -235,12 +236,12 @@ In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <P
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+---------------+--------+--------+
-|                     Timeseries|  Storage Group|DataType|Encoding|
-+-------------------------------+---------------+--------+--------+
-|       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
-|  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
-+-------------------------------+---------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 2
 ```
 
@@ -248,11 +249,11 @@ Total timeseries number = 2
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+------------------------------+--------------+--------+--------+
-|                    Timeseries| Storage Group|DataType|Encoding|
-+------------------------------+--------------+--------+--------+
-|      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
-+------------------------------+--------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 1
 ```
 
@@ -297,7 +298,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1).
+For more information about the commands supported by IoTDB SQL, please see [SQL Reference](http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/SQL%20Reference.html).
 
 ### Stop IoTDB
 
@@ -313,7 +314,7 @@ The server can be stopped with "ctrl-C" or the following script:
 
 ## Only build server
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl server -am -DskipTests
@@ -324,7 +325,7 @@ After being built, the IoTDB server is located at the folder: "server/target/iot
 
 ## Only build cli
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
@@ -384,3 +385,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 ```
 select * from root.fit.d1
 ```
+
+
+# Frequent Questions for Compiling
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

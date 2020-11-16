@@ -96,6 +96,7 @@ public class DeletePlan extends PhysicalPlan {
     return paths;
   }
 
+  @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
@@ -128,6 +129,8 @@ public class DeletePlan extends PhysicalPlan {
     for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -140,6 +143,8 @@ public class DeletePlan extends PhysicalPlan {
     for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -147,9 +152,11 @@ public class DeletePlan extends PhysicalPlan {
     this.deleteStartTime = buffer.getLong();
     this.deleteEndTime = buffer.getLong();
     int pathSize = buffer.getInt();
-    this.paths = new ArrayList();
+    this.paths = new ArrayList<>();
     for (int i = 0; i < pathSize; i++) {
       paths.add(new PartialPath(readString(buffer)));
     }
+
+    this.index = buffer.getLong();
   }
 }

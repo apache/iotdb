@@ -54,7 +54,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
+* Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/blob/master/docker/src/main
 
 
 Here in the Quick Start, we give a brief introduction to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
@@ -169,9 +169,9 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-In order to query the specific timeseries, we can use SHOW TIMESERIES \<Path\>. \<Path\> represent the path of the timeseries. Its default value is null, which means querying all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+To query the specific timeseries, use SHOW TIMESERIES \<Path\>. \<Path\> represents the path of the timeseries. Its default value is null, which means querying all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
 
-1. Querying all timeseries in the system:
+1. Query all timeseries in the system:
 
 ```
 IoTDB> SHOW TIMESERIES
@@ -184,7 +184,7 @@ IoTDB> SHOW TIMESERIES
 Total timeseries number = 2
 ```
 
-2. Querying a specific timeseries(root.ln.wf01.wt01.status):
+2. Query a specific timeseries(root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
@@ -196,7 +196,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 Total timeseries number = 1
 ```
 
-Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before inserting you should assign the timestamp and the suffix path name:
+Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insert you should assign the timestamp and the suffix path name:
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
@@ -229,7 +229,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-The commands to exit the Cli is:  
+The commands to exit the Cli are:  
 
 ```
 IoTDB> quit
@@ -254,10 +254,10 @@ The server can be stopped with ctrl-C or the following script:
 
 ## Only build cli
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB cli will be at the folder "cli/target/iotdb-cli-{project.version}".
+After build, the IoTDB cli will be in the folder "cli/target/iotdb-cli-{project.version}".

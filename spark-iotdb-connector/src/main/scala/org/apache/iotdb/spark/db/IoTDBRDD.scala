@@ -111,11 +111,9 @@ class IoTDBRDD private[iotdb](
 
 
     override def hasNext: Boolean = {
-      if (!finished) {
-        if (!gotNext) {
+      if (!finished && !gotNext) {
           nextValue = getNext
           gotNext = true
-        }
       }
       !finished
     }

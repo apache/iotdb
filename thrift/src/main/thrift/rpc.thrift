@@ -79,9 +79,10 @@ struct TSOpenSessionResp {
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
   1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
-  2: optional string username
-  3: optional string password
-  4: optional map<string, string> configuration
+  2: required string zoneId
+  3: optional string username
+  4: optional string password
+  5: optional map<string, string> configuration
 }
 
 // CloseSession()
@@ -256,6 +257,7 @@ struct TSRawDataQueryReq {
     3: optional i32 fetchSize
     4: required i64 startTime
     5: required i64 endTime
+    6: required i64 statementId
 }
 
 struct TSCreateMultiTimeseriesReq {

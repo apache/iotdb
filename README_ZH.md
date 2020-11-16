@@ -21,12 +21,12 @@
 [English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
-[![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![coveralls](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)
-[![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
+[![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
+[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
-![](https://img.shields.io/github/downloads/apache/incubator-iotdb/total.svg)
+![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
+![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
@@ -109,7 +109,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 从 git 克隆源代码:
 
 ```
-git clone https://github.com/apache/incubator-iotdb.git
+git clone https://github.com/apache/iotdb.git
 ```
 
 默认的主分支是dev分支，如果你想使用某个发布版本x.x.x，请切换分支:
@@ -118,7 +118,7 @@ git clone https://github.com/apache/incubator-iotdb.git
 git checkout release/x.x.x
 ```
 
-在 incubator-iotdb 根目录下执行 maven 编译:
+在 iotdb 根目录下执行 maven 编译:
 
 ```
 > mvn clean package -DskipTests
@@ -235,12 +235,12 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+---------------+--------+--------+
-|                     Timeseries|  Storage Group|DataType|Encoding|
-+-------------------------------+---------------+--------+--------+
-|       root.ln.wf01.wt01.status|        root.ln| BOOLEAN|   PLAIN|
-|  root.ln.wf01.wt01.temperature|        root.ln|   FLOAT|     RLE|
-+-------------------------------+---------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 2
 ```
 
@@ -248,11 +248,11 @@ Total timeseries number = 2
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+------------------------------+--------------+--------+--------+
-|                    Timeseries| Storage Group|DataType|Encoding|
-+------------------------------+--------------+--------+--------+
-|      root.ln.wf01.wt01.status|       root.ln| BOOLEAN|   PLAIN|
-+------------------------------+--------------+--------+--------+
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
+|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-------------------------------+------+-------------+--------+--------+-----------+----+----------+
 Total timeseries number = 1
 ```
 
@@ -298,7 +298,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
 
 ### 停止 IoTDB
 
@@ -314,7 +314,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ## 只编译 server
 
-在 incubator-iotdb 根目录下执行:
+在 iotdb 根目录下执行:
 
 ```
 > mvn clean package -pl server -am -DskipTests
@@ -325,7 +325,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ## 只编译 cli
 
-在 incubator-iotdb 根目录下执行:
+在 iotdb 根目录下执行:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
@@ -387,3 +387,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 ```
 select * from root.fit.d1
 ```
+
+
+# 常见编译错误
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

@@ -151,8 +151,8 @@ public class FileLoaderManager {
     if (!deviceOwnerFile.exists()) {
       deviceOwnerFile.createNewFile();
     }
-    try (ObjectOutputStream deviceOwnerOutput = new ObjectOutputStream(
-        new FileOutputStream(deviceOwnerFile, false))) {
+    try (FileOutputStream fos = new FileOutputStream(deviceOwnerFile, false);
+        ObjectOutputStream deviceOwnerOutput = new ObjectOutputStream(fos)) {
       deviceOwnerOutput.writeObject(deviceOwnerMap);
     }
   }

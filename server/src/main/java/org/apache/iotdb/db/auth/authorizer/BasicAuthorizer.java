@@ -23,7 +23,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -103,7 +102,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
-    return user != null && user.getPassword().equals(AuthUtils.encryptPassword(password));
+    return user != null && password != null && user.getPassword().equals(AuthUtils.encryptPassword(password));
   }
 
   @Override

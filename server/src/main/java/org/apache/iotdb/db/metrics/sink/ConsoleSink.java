@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metrics.sink;
 
-import java.util.concurrent.TimeUnit;
 import com.codahale.metrics.ConsoleReporter;
 import com.codahale.metrics.MetricRegistry;
+import java.util.concurrent.TimeUnit;
 
 public class ConsoleSink implements Sink {
 

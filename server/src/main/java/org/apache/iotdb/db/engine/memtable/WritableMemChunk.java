@@ -92,7 +92,6 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
-
   @Override
   public void putLong(long t, long v) {
     list.putLong(t, v);
@@ -121,36 +120,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBoolean(long t, boolean v) {
     list.putBoolean(t, v);
-  }
-
-  @Override
-  public void putLongs(long[] t, long[] v) {
-    list.putLongs(t, v);
-  }
-
-  @Override
-  public void putInts(long[] t, int[] v) {
-    list.putInts(t, v);
-  }
-
-  @Override
-  public void putFloats(long[] t, float[] v) {
-    list.putFloats(t, v);
-  }
-
-  @Override
-  public void putDoubles(long[] t, double[] v) {
-    list.putDoubles(t, v);
-  }
-
-  @Override
-  public void putBinaries(long[] t, Binary[] v) {
-    list.putBinaries(t, v);
-  }
-
-  @Override
-  public void putBooleans(long[] t, boolean[] v) {
-    list.putBooleans(t, v);
   }
 
   @Override

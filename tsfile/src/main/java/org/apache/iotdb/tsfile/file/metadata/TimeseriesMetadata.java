@@ -46,6 +46,9 @@ public class TimeseriesMetadata implements Accountable {
 
   private long ramSize;
 
+  // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
+  private boolean isSeq = true;
+
   public TimeseriesMetadata() {
   }
 
@@ -139,7 +142,7 @@ public class TimeseriesMetadata implements Accountable {
   }
 
   public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
-    return chunkMetadataLoader.loadChunkMetadataList();
+    return chunkMetadataLoader.loadChunkMetadataList(this);
   }
 
   public boolean isModified() {
@@ -157,5 +160,13 @@ public class TimeseriesMetadata implements Accountable {
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+  
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
   }
 }

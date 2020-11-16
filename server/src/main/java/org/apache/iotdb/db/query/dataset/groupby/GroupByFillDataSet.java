@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -58,8 +60,13 @@ public class GroupByFillDataSet extends QueryDataSet {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
-    initPreviousParis(context, groupByFillPlan);
-    initLastTimeArray(context, groupByFillPlan);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+    try {
+      initPreviousParis(context, groupByFillPlan);
+      initLastTimeArray(context, groupByFillPlan);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
+    }
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
@@ -67,6 +74,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
     firstNotNullTV = new TimeValuePair[paths.size()];
+
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
@@ -100,9 +108,9 @@ public class GroupByFillDataSet extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
       TimeValuePair lastTimeValuePair;
       lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-          (PartialPath) paths.get(i), dataTypes.get(i), context,
+          (PartialPath) paths.get(i), dataTypes.get(i), context, null,
           groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
-      if (lastTimeValuePair.getValue() != null) {
+      if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }
     }
@@ -122,36 +130,14 @@ public class GroupByFillDataSet extends QueryDataSet {
       Field field = rowRecord.getFields().get(i);
       // current group by result is null
       if (field == null || field.getDataType() == null) {
-        // the previous value is not null
-        // and (fill type is not previous until last or now time is before last time)
-        // and (previous before range is not limited or previous before range contains the previous interval)
         TSDataType tsDataType = dataTypes.get(i);
-        PreviousFill previousFill = (PreviousFill) fillTypes.get(tsDataType);
-        if (previousValue[i] != null
-            && ((fillTypes.containsKey(tsDataType) && !previousFill.isUntilLast())
-            || rowRecord.getTimestamp() <= lastTimeArray[i])
-            && (!fillTypes.containsKey(tsDataType) || previousFill.getBeforeRange() < 0
-            || previousFill.getBeforeRange() >= groupByEngineDataSet.interval)
-            && rowRecord.getTimestamp() >= previousTime[i]) {
+        //for desc query peek previous time and value
+        if (!ascending && !isPeekEnded && !canUseCacheData(rowRecord, tsDataType, i)) {
+          fillCache(i);
+        }
+
+        if (canUseCacheData(rowRecord, tsDataType, i)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-        } else if (!ascending && !isPeekEnded) {
-          Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
-          if (data == null) {
-            isPeekEnded = true;
-            previousTime[i] = Long.MIN_VALUE;
-            previousValue[i] = null;
-            if (firstNotNullTV[i] != null && firstNotNullTV[i].getValue() != null) {
-              rowRecord.getFields().set(i,
-                  Field.getField(firstNotNullTV[i].getValue().getValue(), tsDataType));
-              previousValue[i] = firstNotNullTV[i].getValue().getValue();
-              previousTime[i] = firstNotNullTV[i].getTimestamp();
-            }
-            //data != null
-          } else {
-            rowRecord.getFields().set(i, Field.getField(data.right, tsDataType));
-            previousValue[i] = data.right;
-            previousTime[i] = data.left;
-          }
         }
       } else {
         // use now value update previous value
@@ -160,5 +146,55 @@ public class GroupByFillDataSet extends QueryDataSet {
       }
     }
     return rowRecord;
+  }
+
+  private void fillCache(int i) throws IOException {
+    Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
+    if (data == null) {
+      isPeekEnded = true;
+      previousTime[i] = Long.MIN_VALUE;
+      previousValue[i] = null;
+      if (!firstCacheIsEmpty(i)) {
+        previousValue[i] = firstNotNullTV[i].getValue().getValue();
+        previousTime[i] = firstNotNullTV[i].getTimestamp();
+      }
+    } else {
+      previousValue[i] = data.right;
+      previousTime[i] = data.left;
+    }
+  }
+
+  // the previous value is not null
+  // and (fill type is not previous until last or now time is before last time)
+  // and (previous before range is not limited or previous before range contains the previous interval)
+  private boolean canUseCacheData(RowRecord rowRecord, TSDataType tsDataType, int i) {
+    PreviousFill previousFill = (PreviousFill) fillTypes.get(tsDataType);
+    return !cacheIsEmpty(i)
+        && satisfyTime(rowRecord, tsDataType, previousFill, lastTimeArray[i])
+        && satisfyRange(tsDataType, previousFill)
+        && isIncreasingTime(rowRecord, previousTime[i]);
+  }
+
+  private boolean isIncreasingTime(RowRecord rowRecord, long time) {
+    return rowRecord.getTimestamp() >= time;
+  }
+
+  private boolean satisfyTime(RowRecord rowRecord, TSDataType tsDataType,
+      PreviousFill previousFill, long lastTime) {
+    return (fillTypes.containsKey(tsDataType) && !previousFill.isUntilLast())
+        || rowRecord.getTimestamp() <= lastTime;
+  }
+
+  private boolean satisfyRange(TSDataType tsDataType, PreviousFill previousFill) {
+    return !fillTypes.containsKey(tsDataType) || previousFill.getBeforeRange() < 0
+        || previousFill.getBeforeRange() >= groupByEngineDataSet.interval;
+  }
+
+  private boolean cacheIsEmpty(int i) {
+    return previousValue[i] == null;
+  }
+
+  private boolean firstCacheIsEmpty(int i) {
+    return firstNotNullTV[i] == null || firstNotNullTV[i].getValue() == null;
   }
 }

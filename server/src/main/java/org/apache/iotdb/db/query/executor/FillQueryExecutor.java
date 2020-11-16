@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -64,36 +66,41 @@ public class FillQueryExecutor {
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath path = selectedSeries.get(i);
-      TSDataType dataType = dataTypes.get(i);
-      IFill fill;
-      long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-      if (!typeIFillMap.containsKey(dataType)) {
-        switch (dataType) {
-          case INT32:
-          case INT64:
-          case FLOAT:
-          case DOUBLE:
-          case BOOLEAN:
-          case TEXT:
-            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
-            break;
-          default:
-            throw new UnsupportedDataTypeException("do not support datatype " + dataType);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    try {
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        PartialPath path = selectedSeries.get(i);
+        TSDataType dataType = dataTypes.get(i);
+        IFill fill;
+        long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+        if (!typeIFillMap.containsKey(dataType)) {
+          switch (dataType) {
+            case INT32:
+            case INT64:
+            case FLOAT:
+            case DOUBLE:
+            case BOOLEAN:
+            case TEXT:
+              fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
+              break;
+            default:
+              throw new UnsupportedDataTypeException("do not support datatype " + dataType);
+          }
+        } else {
+          fill = typeIFillMap.get(dataType).copy();
         }
-      } else {
-        fill = typeIFillMap.get(dataType).copy();
-      }
-      fill = configureFill(fill, path, dataType, queryTime,
-          fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
+        fill = configureFill(fill, path, dataType, queryTime,
+            fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
-      TimeValuePair timeValuePair = fill.getFillResult();
-      if (timeValuePair == null || timeValuePair.getValue() == null) {
-        record.addField(null);
-      } else {
-        record.addField(timeValuePair.getValue().getValue(), dataType);
+        TimeValuePair timeValuePair = fill.getFillResult();
+        if (timeValuePair == null || timeValuePair.getValue() == null) {
+          record.addField(null);
+        } else {
+          record.addField(timeValuePair.getValue().getValue(), dataType);
+        }
       }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);

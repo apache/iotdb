@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,10 +50,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public Operator transform(Operator operator) throws LogicalOptimizeException {
+  public Operator transform(Operator operator, int maxDeduplicatedPathNum)
+      throws LogicalOptimizeException, PathNumOverLimitException {
     if (!(operator instanceof SFWOperator)) {
       logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
       return operator;
@@ -86,15 +88,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator)
-          .isLastQuery()) {
-        concatSelect(prefixPaths, select); // concat and remove star
-
-        if (((QueryOperator) operator).hasSlimit()) {
-          int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
-          int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-          slimitTrim(select, seriesLimit, seriesOffset);
-        }
+      if (!((QueryOperator) operator).isAlignByDevice()
+          || ((QueryOperator) operator).isLastQuery()) {
+        // concat paths and remove stars
+        int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
+        int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
+        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -159,8 +158,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * Extract paths from select&from cql, expand them into complete versions, and reassign them to
    * selectOperator's suffixPathList. Treat aggregations similarly.
    */
-  private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator)
-      throws LogicalOptimizeException {
+  private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator, int limit,
+      int offset, int maxDeduplicatedPathNum)
+      throws LogicalOptimizeException, PathNumOverLimitException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
 
     List<PartialPath> allPaths = new ArrayList<>();
@@ -180,46 +180,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
-    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator);
-  }
-
-  /**
-   * Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList and aggregations of the
-   * selectOperator.
-   *
-   * @param seriesLimit  is ensured to be positive integer
-   * @param seriesOffset is ensured to be non-negative integer
-   */
-  private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
-      throws LogicalOptimizeException {
-    List<PartialPath> suffixList = select.getSuffixPaths();
-    List<String> aggregations = select.getAggregations();
-    int size = suffixList.size();
-
-    // check parameter range
-    if (seriesOffset >= size) {
-      throw new LogicalOptimizeException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
-    }
-    int endPosition = seriesOffset + seriesLimit;
-    if (endPosition > size) {
-      endPosition = size;
-    }
-
-    // trim seriesPath list
-    List<PartialPath> trimedSuffixList = new ArrayList<>(suffixList.subList(seriesOffset, endPosition));
-    select.setSuffixPathList(trimedSuffixList);
-
-    // trim aggregations if exists
-    if (aggregations != null && !aggregations.isEmpty()) {
-      List<String> trimedAggregations = new ArrayList<>(
-          aggregations.subList(seriesOffset, endPosition));
-      select.setAggregations(trimedAggregations);
-    }
+    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
+        maxDeduplicatedPathNum);
   }
 
   private FilterOperator concatFilter(List<PartialPath> fromPaths, FilterOperator operator,
-      Set<PartialPath> filterPaths)
-      throws LogicalOptimizeException {
+      Set<PartialPath> filterPaths) throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
@@ -231,7 +197,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     FunctionOperator functionOperator = (FunctionOperator) operator;
     PartialPath filterPath = functionOperator.getSinglePath();
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode()
+        .startsWith(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return operator;
     }
@@ -255,8 +222,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private FilterOperator constructBinaryFilterTreeWithAnd(List<PartialPath> noStarPaths,
-      FilterOperator operator)
-      throws LogicalOptimizeException {
+      FilterOperator operator) throws LogicalOptimizeException {
     FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_AND);
     FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
@@ -282,12 +248,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * @param paths list of paths which may contain stars
    * @return a unique seriesPath list
    */
-  private List<PartialPath> removeStarsInPathWithUnique(List<PartialPath> paths) throws LogicalOptimizeException {
+  private List<PartialPath> removeStarsInPathWithUnique(List<PartialPath> paths)
+      throws LogicalOptimizeException {
     List<PartialPath> retPaths = new ArrayList<>();
     HashSet<PartialPath> pathSet = new HashSet<>();
     try {
       for (PartialPath path : paths) {
-        List<PartialPath> all = removeWildcard(path);
+        List<PartialPath> all = removeWildcard(path, 0, 0).left;
         for (PartialPath subPath : all) {
           if (!pathSet.contains(subPath)) {
             pathSet.add(subPath);
@@ -301,36 +268,68 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return retPaths;
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeStarsInPath(List<PartialPath> paths, List<String> afterConcatAggregations,
-      SelectOperator selectOperator) throws LogicalOptimizeException {
+      SelectOperator selectOperator, int finalLimit, int finalOffset, int maxDeduplicatedPathNum)
+      throws LogicalOptimizeException, PathNumOverLimitException {
+    int offset = finalOffset;
+    int limit = finalLimit == 0 || maxDeduplicatedPathNum < finalLimit
+        ? maxDeduplicatedPathNum + 1 : finalLimit;
+    int consumed = 0;
     List<PartialPath> retPaths = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
+
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<PartialPath> actualPaths = removeWildcard(paths.get(i));
+        Pair<List<PartialPath>, Integer> pair = removeWildcard(paths.get(i), limit, offset);
+
+        List<PartialPath> actualPaths = pair.left;
         if (paths.get(i).getTsAlias() != null) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
           } else if (actualPaths.size() >= 2) {
             throw new LogicalOptimizeException(
-                "alias '" + paths.get(i).getTsAlias() + "' can only be matched with one time series");
+                "alias '" + paths.get(i).getTsAlias()
+                    + "' can only be matched with one time series");
           }
         }
         for (PartialPath actualPath : actualPaths) {
           retPaths.add(actualPath);
-          if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
-            newAggregations.add(afterConcatAggregations.get(i));
+          extendListSafely(afterConcatAggregations, i, newAggregations);
+        }
+
+        consumed += pair.right;
+        if (offset != 0) {
+          int delta = offset - pair.right;
+          offset = Math.max(delta, 0);
+          if (delta < 0) {
+            limit += delta;
           }
+        } else {
+          limit -= pair.right;
+        }
+        if (limit == 0) {
+          if (retPaths.size() == maxDeduplicatedPathNum + 1) {
+            throw new PathNumOverLimitException(maxDeduplicatedPathNum);
+          }
+          break;
         }
       } catch (MetadataException e) {
         throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
       }
     }
+
+    if (consumed == 0 ? finalOffset != 0 : retPaths.isEmpty()) {
+      throw new LogicalOptimizeException(String.format(
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
+          finalOffset, consumed));
+    }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
   }
 
-  protected List<PartialPath> removeWildcard(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path);
+  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
+      throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
 }

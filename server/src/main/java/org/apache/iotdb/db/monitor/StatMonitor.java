@@ -138,7 +138,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
       for (PartialPath storageGroupPath : storageGroupPaths) {
         if (!storageGroupPath.getFullPath().equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
           // for storage group which is not global, only TOTAL_POINTS is registered now
-          PartialPath monitorSeriesPath = getStorageGroupMonitorSeries(storageGroupPath.getFullPath());
+          PartialPath monitorSeriesPath = getStorageGroupMonitorSeries(
+              storageGroupPath.getFullPath());
           TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
           if (timeValuePair != null) {
             storageEngine.getProcessor(storageGroupPath)
@@ -156,8 +157,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
     if (mManager.isPathExist(monitorSeries)) {
       TimeValuePair timeValuePair = LastQueryExecutor
           .calculateLastPairForOneSeriesLocally(monitorSeries, TSDataType.INT64,
-              new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)),
-              Collections.singleton(monitorSeries.getMeasurement()));
+              new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
+              null, Collections.singleton(monitorSeries.getMeasurement()));
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }

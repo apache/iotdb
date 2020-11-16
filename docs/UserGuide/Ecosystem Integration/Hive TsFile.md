@@ -27,8 +27,8 @@
 	- System Requirements
 	- Data Type Correspondence
 	- Add Dependency For Hive
-	- Creating Tsfile-backed Hive tables
-	- Querying from Tsfile-backed Hive tables
+	- Create Tsfile-backed Hive tables
+	- Query from Tsfile-backed Hive tables
 	    - Select Clause Example
 	    - Aggregate Clause Example
 	- What's Next
@@ -52,7 +52,7 @@ With this connector, you can
 |-------------  |------------ | ------------ |------------ |
 | `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
 
-> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
+> Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
 
 ## Data Type Correspondence
 
@@ -70,19 +70,19 @@ With this connector, you can
 
 To use hive-connector in hive, we should add the hive-connector jar into hive.
 
-After downloading the code of iotdb from <https://github.com/apache/incubator-iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
+After downloading the code of iotdb from <https://github.com/apache/iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
 
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 
 ```
-hive> add jar /Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar;
 
-Added [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/incubator-iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.10.0-jar-with-dependencies.jar]
 ```
 
 
-## Creating Tsfile-backed Hive tables
+## Create Tsfile-backed Hive tables
 
 To create a Tsfile-backed table, specify the `serde` as `org.apache.iotdb.hive.TsFileSerDe`, 
 specify the `inputformat` as `org.apache.iotdb.hive.TSFHiveInputFormat`, 
@@ -90,15 +90,15 @@ and the `outputformat` as `org.apache.iotdb.hive.TSFHiveOutputFormat`.
 
 Also provide a schema which only contains two fields: `time_stamp` and `sensor_id` for the table. 
 `time_stamp` is the time value of the time series 
-and `sensor_id` is the name of the sensor you want to extract from the tsfile to hive such as `sensor_1`. 
-The name of the table can be any valid tables names in hive.
+and `sensor_id` is the sensor name to extract from the tsfile to hive such as `sensor_1`. 
+The name of the table can be any valid table names in hive.
 
-Also provide a location from which hive-connector will pull the most current data for the table.
+Also a location provided for hive-connector to pull the most current data for the table.
 
-The location must be a specific directory, it can be on your local file system or HDFS if you have set up Hadoop.
+The location should be a specific directory on your local file system or HDFS to set up Hadoop.
 If it is in your local file system, the location should look like `file:///data/data/sequence/root.baic2.WWS.leftfrontdoor/`
 
-At last, you should set the `device_id` in `TBLPROPERTIES` to the device name you want to analyze.
+Last, set the `device_id` in `TBLPROPERTIES` to the device name you want to analyze.
 
 For example:
 
@@ -113,8 +113,8 @@ STORED AS
 LOCATION '/data/data/sequence/root.baic2.WWS.leftfrontdoor/'
 TBLPROPERTIES ('device_id'='root.baic2.WWS.leftfrontdoor.plc1');
 ```
-In this example we're pulling the data of `root.baic2.WWS.leftfrontdoor.plc1.sensor_1` from the directory of `/data/data/sequence/root.baic2.WWS.leftfrontdoor/`. 
-This table might result in a description as below:
+In this example, the data of `root.baic2.WWS.leftfrontdoor.plc1.sensor_1` is pulled from the directory of `/data/data/sequence/root.baic2.WWS.leftfrontdoor/`. 
+This table results in a description as below:
 
 ```
 hive> describe only_sensor_1;
@@ -125,7 +125,7 @@ Time taken: 0.053 seconds, Fetched: 2 row(s)
 ```
 At this point, the Tsfile-backed table can be worked with in Hive like any other table.
 
-## Querying from Tsfile-backed Hive tables
+## Query from Tsfile-backed Hive tables
 
 Before we do any queries, we should set the `hive.input.format` in hive by executing the following command.
 
@@ -185,6 +185,6 @@ Time taken: 11.334 seconds, Fetched: 1 row(s)
 
 ## What's Next
 
-We're currently only supporting read operation.
-Writing tables to Tsfiles is under development.
+Only read operation is currently supported.
+Write operation is under development.
 

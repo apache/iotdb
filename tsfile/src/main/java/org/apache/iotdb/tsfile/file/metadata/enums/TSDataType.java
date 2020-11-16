@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
   BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
@@ -32,7 +33,12 @@ public enum TSDataType {
    * @return -enum type
    */
   public static TSDataType deserialize(short type) {
-    if (type >= 6) {
+    return getTsDataType(type);
+  }
+
+
+  private static TSDataType getTsDataType(short type) {
+    if (type >= 6 || type < 0) {
       throw new IllegalArgumentException("Invalid input: " + type);
     }
     switch (type) {
@@ -46,11 +52,16 @@ public enum TSDataType {
         return FLOAT;
       case 4:
         return DOUBLE;
-      case 5:
-        return TEXT;
       default:
         return TEXT;
     }
+  }
+
+  public static byte deserializeToByte(short type) {
+    if (type >= 6 || type < 0) {
+      throw new IllegalArgumentException("Invalid input: " + type);
+    }
+    return (byte) type;
   }
 
   /**
@@ -60,25 +71,7 @@ public enum TSDataType {
    * @return data type
    */
   public static TSDataType byteToEnum(byte type) {
-    if (type >= 6) {
-      throw new IllegalArgumentException("Invalid input: " + type);
-    }
-    switch (type) {
-      case 0:
-        return BOOLEAN;
-      case 1:
-        return INT32;
-      case 2:
-        return INT64;
-      case 3:
-        return FLOAT;
-      case 4:
-        return DOUBLE;
-      case 5:
-        return TEXT;
-      default:
-        return TEXT;
-    }
+    return getTsDataType(type);
   }
 
   public static TSDataType deserializeFrom(ByteBuffer buffer) {
@@ -103,21 +96,23 @@ public enum TSDataType {
    * @return -enum type
    */
   public short serialize() {
+    return enumToByte();
+  }
+
+  public int getDataTypeSize() {
     switch (this) {
       case BOOLEAN:
-        return 0;
-      case INT32:
         return 1;
-      case INT64:
-        return 2;
+      case INT32:
       case FLOAT:
-        return 3;
-      case DOUBLE:
         return 4;
+        // For text: return the size of reference here
       case TEXT:
-        return 5;
+      case INT64:
+      case DOUBLE:
+        return 8;
       default:
-        return -1;
+        throw new UnSupportedDataTypeException(this.toString());
     }
   }
 

@@ -163,7 +163,7 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestart() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -187,7 +187,7 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper = null;
@@ -210,7 +210,7 @@ public class SessionPoolTest {
 
   @Test
   public void restart() throws Exception {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null);
     write10Data(pool, true);
     //stop the server.
     EnvironmentUtils.stopDaemon();

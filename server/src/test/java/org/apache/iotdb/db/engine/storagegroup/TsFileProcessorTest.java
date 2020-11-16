@@ -28,7 +28,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -36,9 +35,10 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,6 +58,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "storage_group1";
+  private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
   private String filePath = TestConstant.OUTPUT_DATA_DIR
       .concat("testUnsealedTsFileProcessor.tsfile");
   private String deviceId = "root.vehicle.d0";
@@ -72,7 +73,6 @@ public class TsFileProcessorTest {
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
   }
 
@@ -83,12 +83,18 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndFlush() throws IOException, WriteProcessException, IllegalPathException {
+  public void testWriteAndFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndFlush begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -105,11 +111,10 @@ public class TsFileProcessorTest {
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
-    for (; num <= 100; num++) {
-      for (ReadOnlyMemChunk chunk : memChunks) {
-        IPointReader iterator = chunk.getPointReader();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());
@@ -134,12 +139,18 @@ public class TsFileProcessorTest {
 
   @Test
   public void testWriteAndRestoreMetadata()
-      throws IOException, WriteProcessException, IllegalPathException {
+      throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -211,12 +222,18 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testMultiFlush() throws IOException, WriteProcessException, IllegalPathException {
+  public void testMultiFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
@@ -246,12 +263,18 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndClose() throws IOException, WriteProcessException, IllegalPathException {
+  public void testWriteAndClose() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
-    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+    processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    tsFileProcessorInfo.addTSPMemCost(processor
+        .getTsFileResource().calculateRamSize());
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
@@ -270,11 +293,10 @@ public class TsFileProcessorTest {
         tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
-    for (; num <= 100; num++) {
-      for (ReadOnlyMemChunk chunk : memChunks) {
-        IPointReader iterator = chunk.getPointReader();
+    for (ReadOnlyMemChunk chunk : memChunks) {
+      IPointReader iterator = chunk.getPointReader();
+      for (int num = 1; num <= 100; num++) {
         iterator.hasNextTimeValuePair();
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         assertEquals(num, timeValuePair.getTimestamp());
