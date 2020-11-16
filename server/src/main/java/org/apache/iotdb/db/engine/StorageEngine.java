@@ -408,14 +408,12 @@ public class StorageEngine implements IService {
 
   private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
-    if (!processor.getStorageGroupName().equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
-      int successPointsNum =
-          insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
-      // update to storage group statistics
-      processor.updateMonitorSeriesValue(successPointsNum);
-      // update to global statistics
-      monitor.updateStatGlobalValue(successPointsNum);
-    }
+    int successPointsNum =
+        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    // update to storage group statistics
+    processor.updateMonitorSeriesValue(successPointsNum);
+    // update to global statistics
+    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /**
