@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
@@ -98,7 +100,7 @@ public class FlushManager implements FlushManagerMBean, IService {
       }
       registerTsFileProcessor(tsFileProcessor);
       // update stat monitor cache to system during each flush()
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+      if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
         try {
           StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
         } catch (StorageEngineException | MetadataException e) {

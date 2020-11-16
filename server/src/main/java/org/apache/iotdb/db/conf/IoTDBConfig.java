@@ -371,6 +371,11 @@ public class IoTDBConfig {
   private boolean enableStatMonitor = false;
 
   /**
+   * Set true to enable writing monitor time series.
+   */
+  private boolean enableMonitorSeriesWrite = false;
+
+  /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 300000;
@@ -1069,6 +1074,14 @@ public class IoTDBConfig {
 
   public void setEnableStatMonitor(boolean enableStatMonitor) {
     this.enableStatMonitor = enableStatMonitor;
+  }
+
+  public boolean isEnableMonitorSeriesWrite() {
+    return enableMonitorSeriesWrite;
+  }
+
+  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
+    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
   }
 
   public int getRpcMaxConcurrentClientNum() {

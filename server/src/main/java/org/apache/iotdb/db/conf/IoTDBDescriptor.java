@@ -152,6 +152,10 @@ public class IoTDBDescriptor {
           .parseBoolean(properties.getProperty("enable_stat_monitor",
               Boolean.toString(conf.isEnableStatMonitor()))));
 
+      conf.setEnableMonitorSeriesWrite(Boolean
+          .parseBoolean(properties.getProperty("enable_monitor_series_write",
+              Boolean.toString(conf.isEnableStatMonitor()))));
+
       conf.setEnableMetricService(Boolean.parseBoolean(properties
           .getProperty("enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
 
