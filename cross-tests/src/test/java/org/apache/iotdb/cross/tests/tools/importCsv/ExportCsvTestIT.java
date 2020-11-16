@@ -62,11 +62,11 @@ public class ExportCsvTestIT extends AbstractScript{
         "Starting IoTDB Client Export Script",
         "------------------------------------------",
         "Start to export data from sql statement: select * from root",
-        "Statement [select * from root] has dumped to file ./target/dump0.csv successfully!",
+        "Statement [select * from root] has dumped to file",
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "tools" + File.separator + "export-csv.sh",
+        dir + File.separator + "tools" + File.separator + "export-csv.bat",
         "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-td", "./target",
         "-s", SQL_FILE);
     testOutput(builder, output);
@@ -79,7 +79,7 @@ public class ExportCsvTestIT extends AbstractScript{
         "Starting IoTDB Client Export Script",
         "------------------------------------------",
         "Start to export data from sql statement: select * from root",
-        "Statement [select * from root] has dumped to file ./target/dump0.csv successfully!",
+        "Statement [select * from root] has dumped to file",
     };
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
