@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
@@ -60,6 +59,8 @@ import org.slf4j.LoggerFactory;
 public class SessionPool {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPool.class);
+  public static final String SESSION_POOL_IS_CLOSED = "Session pool is closed";
+  public static final String CLOSE_THE_SESSION_FAILED = "close the session failed.";
   private static int RETRY = 3;
   private ConcurrentLinkedDeque<Session> queue = new ConcurrentLinkedDeque<>();
   //for session whose resultSet is not released.
@@ -108,12 +109,12 @@ public class SessionPool {
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
-  //TODO: we can add a mechanism that if the user waits too long time, throw exception.
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+
+  @SuppressWarnings({"squid:S3776","squid:S2446"}) // Suppress high Cognitive Complexity warning
   private Session getSession() throws IoTDBConnectionException {
     Session session = queue.poll();
     if (closed) {
-      throw new IoTDBConnectionException("Session pool is closed");
+      throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
     }
     if (session != null) {
       return session;
@@ -141,7 +142,7 @@ public class SessionPool {
             if (closed) {
               //have to release the connection...
               session.close();
-              throw new IoTDBConnectionException("Session pool is closed");
+              throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
             } else {
               return session;
             }
@@ -151,6 +152,7 @@ public class SessionPool {
           //Meanwhile, we have to set size--
           synchronized (this) {
             size--;
+            //we do not need to notifyAll as any waited thread can continue to work after waked up.
             this.notify();
             if (logger.isDebugEnabled()) {
               logger.debug("open session failed, reduce the count and notify others...");
@@ -161,10 +163,10 @@ public class SessionPool {
       }
       else {
         while (session == null) {
-          if (closed) {
-            throw new IoTDBConnectionException("Session pool is closed");
-          }
           synchronized (this) {
+            if (closed) {
+              throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+            }
             //we have to wait for someone returns a session.
             try {
               if (logger.isDebugEnabled()) {
@@ -203,9 +205,11 @@ public class SessionPool {
     return occupied.size();
   }
 
+  @SuppressWarnings({"squid:S2446"})
   private void putBack(Session session) {
     queue.push(session);
     synchronized (this) {
+      //we do not need to notifyAll as any waited thread can continue to work after waked up.
       this.notify();
       //comment the following codes as putBack is too frequently called.
 //      if (logger.isTraceEnabled()) {
@@ -227,7 +231,7 @@ public class SessionPool {
         session.close();
       } catch (IoTDBConnectionException e) {
         //do nothing
-        logger.warn("close the session failed.", e);
+        logger.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
     for (Session session : occupied.keySet()) {
@@ -235,7 +239,7 @@ public class SessionPool {
         session.close();
       } catch (IoTDBConnectionException e) {
         //do nothing
-        logger.warn("close the session failed.", e);
+        logger.warn(CLOSE_THE_SESSION_FAILED, e);
       }
     }
     logger.info("closing the session pool, cleaning queues...");
@@ -259,9 +263,11 @@ public class SessionPool {
     }
   }
 
+  @SuppressWarnings({"squid:S2446"})
   private synchronized void removeSession() {
     logger.warn("Remove a broken Session {}, {}, {}", ip, port, user);
     size--;
+    //we do not need to notifyAll as any waited thread can continue to work after waked up.
     this.notify();
     if (logger.isDebugEnabled()) {
         logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
@@ -274,7 +280,7 @@ public class SessionPool {
         session.close();
       } catch (Exception e2) {
         //do nothing. We just want to guarantee the session is closed.
-        logger.warn("close the session failed.", e2);
+        logger.warn(CLOSE_THE_SESSION_FAILED, e2);
       }
     }
   }
