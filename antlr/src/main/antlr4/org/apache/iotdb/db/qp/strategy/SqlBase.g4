@@ -94,7 +94,7 @@ statement
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
     | DROP FUNCTION udfName=ID #dropFunction
-    | SHOW TEMPORARY? FUNCTIONS #showFunctions // not support yet
+    | SHOW TEMPORARY? FUNCTIONS #showFunctions
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
