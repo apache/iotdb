@@ -157,11 +157,11 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT aliasClause tagClause attributeClause?
+    | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
 aliasClause
-    : (ALIAS OPERATOR_EQ ID)?
+    : ALIAS OPERATOR_EQ ID
     ;
 
 attributeClauses
