@@ -166,7 +166,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.error("log serializer build version controller failed", e);
     }
     this.persistLogDeleteExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("persist-log-delete-%d").daemon(true)
+        new BasicThreadFactory.Builder().namingPattern("persist-log-delete-" + logDir).daemon(true)
             .build());
 
     this.persistLogDeleteLogFuture = persistLogDeleteExecutorService
