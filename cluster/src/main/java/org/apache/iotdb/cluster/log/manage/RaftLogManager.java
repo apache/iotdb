@@ -151,7 +151,7 @@ public abstract class RaftLogManager {
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-" + name).daemon(true)
             .build());
 
-    this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
+    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
 
@@ -693,7 +693,7 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
-    this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
+    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
@@ -828,11 +828,16 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    while (!Thread.currentThread().isInterrupted()) {
-      doCheckAppliedLogIndex();
+    try {
+      while (!Thread.currentThread().isInterrupted()) {
+        doCheckAppliedLogIndex();
+      }
+      logger.error("{}, the check-log-applier thread {} is interrupted", name,
+          Thread.currentThread().getName());
+    } catch (Exception e) {
+      logger.error("{}, exception occurred when check the applied log index", name, e);
     }
-    logger.error("{}, the check-log-applier thread {} is interrupted", name,
-        Thread.currentThread().getName());
+
   }
 
   void doCheckAppliedLogIndex() {
