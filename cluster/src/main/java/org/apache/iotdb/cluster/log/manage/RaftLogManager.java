@@ -152,7 +152,7 @@ public abstract class RaftLogManager {
             .build());
 
     this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
-        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true).build());
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true).build());
 
     /**
      * deletion check period of the submitted log
@@ -693,7 +693,7 @@ public abstract class RaftLogManager {
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
     this.checkLogApplierExecutorService = Executors.newFixedThreadPool(1,
-        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true).build());
+        new BasicThreadFactory.Builder().namingPattern("check-log-applier-%d").daemon(true).build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
   }
 
