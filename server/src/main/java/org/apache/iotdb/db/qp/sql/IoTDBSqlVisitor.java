@@ -1565,8 +1565,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     } else {
       // upsert
       alterTimeSeriesOperator.setAlterType(AlterType.UPSERT);
-      parseAliasClause(ctx.aliasClause(), alterTimeSeriesOperator);
-      parseTagClause(ctx.tagClause(), alterTimeSeriesOperator);
+      if(ctx.aliasClause() != null) {
+        parseAliasClause(ctx.aliasClause(), alterTimeSeriesOperator);
+      }
+      if(ctx.tagClause() != null) {
+        parseTagClause(ctx.tagClause(), alterTimeSeriesOperator);
+      }
       if(ctx.attributeClause() != null) {
         parseAttributeClause(ctx.attributeClause(), alterTimeSeriesOperator);
       }
