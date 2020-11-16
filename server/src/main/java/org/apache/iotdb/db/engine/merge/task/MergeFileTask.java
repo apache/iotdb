@@ -95,23 +95,13 @@ class MergeFileTask {
 
       int mergedChunkNum = context.getMergedChunkCnt().getOrDefault(seqFile, 0);
       int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
-      if (mergedChunkNum >= unmergedChunkNum) {
-        // move the unmerged data to the new file
-        if (logger.isInfoEnabled()) {
-          logger.info("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
-                  + "unmerged chunks", taskName, seqFile.getTsFile().getName(), mergedChunkNum,
-              unmergedChunkNum);
-        }
-        moveUnmergedToNew(seqFile);
-      } else {
-        // move the merged data to the old file
-        if (logger.isInfoEnabled()) {
-          logger.info("{} moving merged data of {} to the old file {} merged chunks, {} "
-                  + "unmerged chunks", taskName, seqFile.getTsFile().getName(), mergedChunkNum,
-              unmergedChunkNum);
-        }
-        moveMergedToOld(seqFile);
+
+      if (logger.isInfoEnabled()) {
+        logger.info("{} moving unmerged data of {} to the merged file, {} merged chunks, {} "
+                + "unmerged chunks", taskName, seqFile.getTsFile().getName(), mergedChunkNum,
+            unmergedChunkNum);
       }
+      moveUnmergedToNew(seqFile);
 
       if (Thread.interrupted()) {
         Thread.currentThread().interrupt();
@@ -139,95 +129,6 @@ class MergeFileTask {
         currentMergeIndex + 1, unmergedFiles.size());
   }
 
-  private void moveMergedToOld(TsFileResource seqFile) throws IOException {
-    int mergedChunkNum = context.getMergedChunkCnt().getOrDefault(seqFile, 0);
-    if (mergedChunkNum == 0) {
-      resource.removeFileAndWriter(seqFile);
-      return;
-    }
-
-    seqFile.writeLock();
-    try {
-      ChunkMetadataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-
-      resource.removeFileReader(seqFile);
-      TsFileIOWriter oldFileWriter = getOldFileWriter(seqFile);
-
-      // filter the chunks that have been merged
-      oldFileWriter.filterChunks(new HashMap<>(context.getUnmergedChunkStartTimes().get(seqFile))
-      );
-
-      RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile);
-      newFileWriter.close();
-      try (TsFileSequenceReader newFileReader =
-          new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
-        Map<String, List<ChunkMetadata>> chunkMetadataListInChunkGroups =
-            newFileWriter.getDeviceChunkMetadataMap();
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} find {} merged chunk groups", taskName,
-              chunkMetadataListInChunkGroups.size());
-        }
-        for (Map.Entry<String, List<ChunkMetadata>> entry : chunkMetadataListInChunkGroups
-            .entrySet()) {
-          String deviceId = entry.getKey();
-          List<ChunkMetadata> chunkMetadataList = entry.getValue();
-          writeMergedChunkGroup(chunkMetadataList, deviceId, newFileReader, oldFileWriter);
-
-          if (Thread.interrupted()) {
-            Thread.currentThread().interrupt();
-            oldFileWriter.close();
-            restoreOldFile(seqFile);
-            return;
-          }
-        }
-      }
-      oldFileWriter.endFile();
-
-      updateHistoricalVersions(seqFile);
-      seqFile.serialize();
-      mergeLogger.logFileMergeEnd();
-      logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
-    } catch (Exception e) {
-      restoreOldFile(seqFile);
-      throw e;
-    } finally {
-      seqFile.writeUnlock();
-    }
-  }
-
-  /**
-   * Restore an old seq file which is being written new chunks when exceptions occur or the task is
-   * aborted.
-   */
-  private void restoreOldFile(TsFileResource seqFile) throws IOException {
-    RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
-        seqFile.getTsFile());
-    if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {
-      oldFileRecoverWriter.endFile();
-    } else {
-      oldFileRecoverWriter.close();
-    }
-  }
-
-  /**
-   * Open an appending writer for an old seq file so we can add new chunks to it.
-   */
-  private TsFileIOWriter getOldFileWriter(TsFileResource seqFile) throws IOException {
-    TsFileIOWriter oldFileWriter;
-    try {
-      oldFileWriter = new ForceAppendTsFileWriter(seqFile.getTsFile());
-      mergeLogger.logFileMergeStart(seqFile.getTsFile(),
-          ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
-      logger.debug("{} moving merged chunks of {} to the old file", taskName, seqFile);
-      ((ForceAppendTsFileWriter) oldFileWriter).doTruncate();
-    } catch (TsFileNotCompleteException e) {
-      // this file may already be truncated if this merge is a system reboot merge
-      oldFileWriter = new RestorableTsFileIOWriter(seqFile.getTsFile());
-    }
-    return oldFileWriter;
-  }
-
   private void updateHistoricalVersions(TsFileResource seqFile) {
     // as the new file contains data of other files, track their versions in the new file
     // so that we will be able to compare data across different IoTDBs that share the same file
@@ -240,22 +141,6 @@ class MergeFileTask {
       newHistoricalVersions.addAll(unseqFiles.getHistoricalVersions());
     }
     seqFile.setHistoricalVersions(newHistoricalVersions);
-  }
-
-  private void writeMergedChunkGroup(List<ChunkMetadata> chunkMetadataList, String device,
-      TsFileSequenceReader reader, TsFileIOWriter fileWriter)
-      throws IOException {
-    fileWriter.startChunkGroup(device);
-    long maxVersion = 0;
-    for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-      Chunk chunk = reader.readMemChunk(chunkMetaData);
-      fileWriter.writeChunk(chunk, chunkMetaData);
-      maxVersion =
-          chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
-      context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
-    }
-    fileWriter.writeVersion(maxVersion);
-    fileWriter.endChunkGroup();
   }
 
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
@@ -321,6 +206,7 @@ class MergeFileTask {
         ChunkCache.getInstance().clear();
         ChunkMetadataCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
+        FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       }
       seqFile.writeUnlock();
     }
