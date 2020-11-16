@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package iotdbSession
+package client
 
-const DefaultUser = "root"
-const DefaultPasswd = "root"
-const DefaultZoneId = "Asia/Shanghai"
-const DefaultFetchSize int32 = 10000
+const (
+	DefaultUser            = "root"
+	DefaultPasswd          = "root"
+	DefaultZoneId          = "Asia/Shanghai"
+	DefaultFetchSize int32 = 10000
+)
 
 type Session struct {
 	Host      string
@@ -41,8 +43,8 @@ type FuncOption struct {
 	f func(*Session)
 }
 
-func (funcOption *FuncOption) apply(session *Session) {
-	funcOption.f(session)
+func (O *FuncOption) apply(s *Session) {
+	O.f(s)
 }
 
 func newFuncOption(f func(*Session)) *FuncOption {
@@ -69,7 +71,7 @@ func withFetchSize(fetchSize int32) DialOption {
 	})
 }
 
-//默认参数
+//default parameters
 func defaultOptions() Session {
 	return Session{
 		User:      DefaultUser,
@@ -79,15 +81,15 @@ func defaultOptions() Session {
 	}
 }
 
-type SessionConn struct {
+type Conn struct {
 	session Session
 }
 
 func NewSession(host string, port string, opts ...DialOption) Session {
-	sessionConn := &SessionConn{
+	sessionConn := &Conn{
 		session: defaultOptions(),
 	}
-	//循环调用opts
+	//loop call opts
 	for _, opt := range opts {
 		opt.apply(&sessionConn.session)
 	}
