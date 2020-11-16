@@ -390,4 +390,15 @@ select * from root.fit.d1
 
 
 # 常见编译错误
-see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)
+查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)
+
+# 联系我们
+### QQ群
+
+* Apache IoTDB 交流群：659990460
+
+### Wechat Group
+
+* 添加好友 tietouqiao，我们会邀请您进群
+
+获取更多内容，请查看 [加入社区](https://github.com/apache/iotdb/issues/1995) 
