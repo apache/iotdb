@@ -149,7 +149,7 @@ public class IoTDBConfig {
   /**
    * Flush proportion for system
    */
-  private double flushProportion = 0.3;
+  private double flushProportion = 0.4;
 
   /**
    * Reject proportion for system
@@ -164,12 +164,12 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting this time to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 10;
+  private int waitingTimeWhenInsertBlockedInMs = 0;
 
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
   /**
    * Is the write ahead log enable.
    */
