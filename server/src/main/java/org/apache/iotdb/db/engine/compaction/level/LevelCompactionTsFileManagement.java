@@ -316,9 +316,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
         Set<String> deviceSet = logAnalyzer.getDeviceSet();
-        List<File> sourceFileList = logAnalyzer.getSourceFiles();
+        List<String> sourceFileList = logAnalyzer.getSourceFiles();
         long offset = logAnalyzer.getOffset();
-        File targetFile = logAnalyzer.getTargetFile();
+        String targetFile = logAnalyzer.getTargetFile();
         boolean isMergeFinished = logAnalyzer.isMergeFinished();
         boolean fullMerge = logAnalyzer.isFullMerge();
         boolean isSeq = logAnalyzer.isSeq();
@@ -327,10 +327,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
         if (fullMerge) {
           if (!isMergeFinished) {
-            RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
+            RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(new File(targetFile));
             writer.getIOWriterOut().truncate(offset - 1);
             writer.close();
-            TsFileResource targetTsFileResource = new TsFileResource(targetFile);
+            TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
             long timePartition = targetTsFileResource.getTimePartition();
             CompactionUtils
                 .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
@@ -348,20 +348,20 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             }
           }
         } else {
-          TsFileResource targetResource = new TsFileResource(targetFile);
+          TsFileResource targetResource = getTsFileResource(targetFile, isSeq);
           long timePartition = targetResource.getTimePartition();
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(new File(targetFile));
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (File file : sourceFileList) {
-            sourceTsFileResources.add(new TsFileResource(file));
+          for (String file : sourceFileList) {
+            sourceTsFileResources.add(getTsFileResource(file, isSeq));
           }
           if (sourceFileList.isEmpty()) {
             return;
           }
-          int level = getMergeLevel(sourceFileList.get(0));
+          int level = getMergeLevel(new File(sourceFileList.get(0)));
           if (!isMergeFinished) {
             if (deviceSet.isEmpty()) {
-              Files.delete(targetFile.toPath());
+              Files.delete(new File(targetFile).toPath());
             } else {
               writer.getIOWriterOut().truncate(offset - 1);
               writer.close();
@@ -560,5 +560,33 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
         .replaceAll(TSFILE_SUFFIX, "");
     return Integer.parseInt(mergeLevelStr);
+  }
+
+  private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
+    if (isSeq) {
+      for (List<TreeSet<TsFileResource>> tsFileResourcesWithLevel : sequenceTsFileResources
+          .values()) {
+        for (TreeSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
+          for (TsFileResource tsFileResource : tsFileResources) {
+            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+              return tsFileResource;
+            }
+          }
+        }
+      }
+    } else {
+      for (List<List<TsFileResource>> tsFileResourcesWithLevel : unSequenceTsFileResources
+          .values()) {
+        for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
+          for (TsFileResource tsFileResource : tsFileResources) {
+            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+              return tsFileResource;
+            }
+          }
+        }
+      }
+    }
+    logger.error("cannot get tsfile resource path: {}", filePath);
+    throw new IOException();
   }
 }

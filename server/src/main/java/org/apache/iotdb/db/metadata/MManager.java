@@ -49,6 +49,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -531,8 +533,8 @@ public class MManager {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
+            logger.debug(String.format(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
           if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
@@ -543,8 +545,8 @@ public class MManager {
           }
         } else {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
+            logger.debug(String.format(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
         }
@@ -846,9 +848,20 @@ public class MManager {
 
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert timestamp
     if (plan.isOrderByHeat()) {
-      allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
-          .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-          .reversed().thenComparing(MNode::getFullPath)).collect(toList());
+      List<StorageGroupProcessor> list;
+      try {
+        list = StorageEngine.getInstance()
+            .mergeLock(allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
+        try {
+          allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
+              .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+              .reversed().thenComparing(MNode::getFullPath)).collect(toList());
+        } finally {
+          StorageEngine.getInstance().mergeUnLock(list);
+        }
+      } catch (StorageEngineException e) {
+        throw new MetadataException(e);
+      }
     } else {
       // otherwise, we just sort them by the alphabetical order
       allMatchedNodes = allMatchedNodes.stream().sorted(Comparator.comparing(MNode::getFullPath))
