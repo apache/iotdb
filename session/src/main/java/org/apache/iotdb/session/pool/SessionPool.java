@@ -151,7 +151,7 @@ public class SessionPool {
           //Meanwhile, we have to set size--
           synchronized (this) {
             size--;
-            this.notifyAll();
+            this.notify();
             if (logger.isDebugEnabled()) {
               logger.debug("open session failed, reduce the count and notify others...");
             }
@@ -206,7 +206,7 @@ public class SessionPool {
   private void putBack(Session session) {
     queue.push(session);
     synchronized (this) {
-      this.notifyAll();
+      this.notify();
       //comment the following codes as putBack is too frequently called.
 //      if (logger.isTraceEnabled()) {
 //        logger.trace("put a session back and notify others..., queue.size = {}", queue.size());
@@ -262,7 +262,7 @@ public class SessionPool {
   private synchronized void removeSession() {
     logger.warn("Remove a broken Session {}, {}, {}", ip, port, user);
     size--;
-    this.notifyAll();
+    this.notify();
     if (logger.isDebugEnabled()) {
         logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
     }
