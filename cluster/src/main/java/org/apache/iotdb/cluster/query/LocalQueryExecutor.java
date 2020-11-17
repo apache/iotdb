@@ -651,6 +651,7 @@ public class LocalQueryExecutor {
     return count;
   }
 
+  @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException, IllegalPathException {
     dataGroupMember.syncLeaderWithConsistencyCheck();

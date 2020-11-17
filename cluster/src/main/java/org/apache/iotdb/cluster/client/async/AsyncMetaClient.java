@@ -70,6 +70,7 @@ public class AsyncMetaClient extends AsyncClient {
     }
   }
 
+  @SuppressWarnings("squid:S1135")
   @Override
   public void onError(Exception e) {
     super.onError(e);

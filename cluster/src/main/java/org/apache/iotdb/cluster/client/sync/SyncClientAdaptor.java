@@ -116,7 +116,7 @@ public class SyncClientAdaptor {
       return resultRef.get();
     } catch (NullPointerException e) {
       logger.error("match term null exception", e);
-      throw e;
+      return false;
     }
   }
 
@@ -323,7 +323,8 @@ public class SyncClientAdaptor {
       List<String> pathsToQuery, boolean withAlias)
       throws InterruptedException, TException {
     AtomicReference<GetAllPathsResult> remoteResult = new AtomicReference<>();
-    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(client.getNode(),
+        remoteResult);
 
     client.getAllPaths(header, pathsToQuery, withAlias, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());

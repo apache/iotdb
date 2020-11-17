@@ -296,7 +296,6 @@ public class ClusterPlanRouter {
     return result;
   }
 
-  @SuppressWarnings("SuspiciousSystemArraycopy")
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateMultiTimeSeriesPlan plan)
       throws MetadataException {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
@@ -311,24 +310,7 @@ public class ClusterPlanRouter {
           partitionTable.partitionByPathTime(path, 0);
       CreateMultiTimeSeriesPlan subPlan;
       if (groupHoldPlan.get(partitionGroup) == null) {
-        subPlan = new CreateMultiTimeSeriesPlan();
-        subPlan.setPaths(new ArrayList<>());
-        subPlan.setDataTypes(new ArrayList<>());
-        subPlan.setEncodings(new ArrayList<>());
-        subPlan.setCompressors(new ArrayList<>());
-        if (plan.getAlias() != null) {
-          subPlan.setAlias(new ArrayList<>());
-        }
-        if (plan.getProps() != null) {
-          subPlan.setProps(new ArrayList<>());
-        }
-        if (plan.getTags() != null) {
-          subPlan.setTags(new ArrayList<>());
-        }
-        if (plan.getAttributes() != null) {
-          subPlan.setAttributes(new ArrayList<>());
-        }
-        subPlan.setIndexes(new ArrayList<>());
+        subPlan = createSubPlan(plan);
         groupHoldPlan.put(partitionGroup, subPlan);
       } else {
         subPlan = (CreateMultiTimeSeriesPlan) groupHoldPlan.get(partitionGroup);
@@ -357,5 +339,27 @@ public class ClusterPlanRouter {
       result.put(entry.getValue(), entry.getKey());
     }
     return result;
+  }
+
+  private CreateMultiTimeSeriesPlan createSubPlan(CreateMultiTimeSeriesPlan plan) {
+    CreateMultiTimeSeriesPlan subPlan = new CreateMultiTimeSeriesPlan();
+    subPlan.setPaths(new ArrayList<>());
+    subPlan.setDataTypes(new ArrayList<>());
+    subPlan.setEncodings(new ArrayList<>());
+    subPlan.setCompressors(new ArrayList<>());
+    if (plan.getAlias() != null) {
+      subPlan.setAlias(new ArrayList<>());
+    }
+    if (plan.getProps() != null) {
+      subPlan.setProps(new ArrayList<>());
+    }
+    if (plan.getTags() != null) {
+      subPlan.setTags(new ArrayList<>());
+    }
+    if (plan.getAttributes() != null) {
+      subPlan.setAttributes(new ArrayList<>());
+    }
+    subPlan.setIndexes(new ArrayList<>());
+    return subPlan;
   }
 }

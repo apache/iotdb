@@ -105,8 +105,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private long offsetOfTheCurrentLogDataOutputStream = 0;
 
-  private static final int maxNumberOfLogsPerFetchOnDisk = ClusterDescriptor.getInstance()
+  private static final int MAX_NUMBER_OF_LOGS_PER_FETCH_ON_DISK = ClusterDescriptor.getInstance()
       .getConfig().getMaxNumberOfLogsPerFetchOnDisk();
+
+  private static final String LOG_META = "logMeta";
+  private static final String LOG_META_TMP = "logMeta.tmp";
 
 
   /**
@@ -147,7 +150,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   private List<Long> logIndexOffsetList;
 
-  private static final int logDeleteCheckIntervalSecond = 5;
+  private static final int LOG_DELETE_CHECK_INTERVAL_SECOND = 5;
 
   /**
    * the lock uses when change the log data files or log index files
@@ -170,8 +173,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             .build());
 
     this.persistLogDeleteLogFuture = persistLogDeleteExecutorService
-        .scheduleAtFixedRate(this::checkDeletePersistRaftLog, logDeleteCheckIntervalSecond,
-            logDeleteCheckIntervalSecond,
+        .scheduleAtFixedRate(this::checkDeletePersistRaftLog, LOG_DELETE_CHECK_INTERVAL_SECOND,
+            LOG_DELETE_CHECK_INTERVAL_SECOND,
             TimeUnit.SECONDS);
   }
 
@@ -641,14 +644,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   private void recoverMetaFile() {
-    metaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
+    metaFile = SystemFileFactory.INSTANCE.getFile(logDir + LOG_META);
 
     // build dir
     if (!metaFile.getParentFile().exists()) {
       metaFile.getParentFile().mkdirs();
     }
 
-    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + LOG_META_TMP);
     // if we have temp file
     if (tempMetaFile.exists()) {
       recoverMetaFileFromTemp(tempMetaFile);
@@ -776,7 +779,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   private void serializeMeta(LogManagerMeta meta) {
-    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + LOG_META_TMP);
     tempMetaFile.getParentFile().mkdirs();
     logger.debug("Serializing log meta into {}", tempMetaFile.getPath());
     try (FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile)) {
@@ -867,9 +870,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private void deleteMetaFile() {
     lock.lock();
     try {
-      File tmpMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+      File tmpMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + LOG_META_TMP);
       Files.deleteIfExists(tmpMetaFile.toPath());
-      File localMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
+      File localMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + LOG_META);
       Files.deleteIfExists(localMetaFile.toPath());
     } catch (IOException e) {
       logger.error("{}: delete meta log files failed", this, e);
@@ -997,8 +1000,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
 
     long newEndIndex = endIndex;
-    if (endIndex - startIndex > maxNumberOfLogsPerFetchOnDisk) {
-      newEndIndex = startIndex + maxNumberOfLogsPerFetchOnDisk;
+    if (endIndex - startIndex > MAX_NUMBER_OF_LOGS_PER_FETCH_ON_DISK) {
+      newEndIndex = startIndex + MAX_NUMBER_OF_LOGS_PER_FETCH_ON_DISK;
     }
     logger
         .debug("intend to get logs between[{}, {}], actually get logs between[{},{}]", startIndex,
@@ -1096,7 +1099,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       long endIndex) {
     long startIndexInOneFile = startIndex;
     long endIndexInOneFile = 0;
-    List<Pair<File, Pair<Long, Long>>> fileNameWithStartAndEndOffset = new ArrayList();
+    List<Pair<File, Pair<Long, Long>>> fileNameWithStartAndEndOffset = new ArrayList<>();
     // 1. get the start offset with the startIndex
     long startOffset = getOffsetAccordingToLogIndex(startIndexInOneFile);
     if (startOffset == -1) {
