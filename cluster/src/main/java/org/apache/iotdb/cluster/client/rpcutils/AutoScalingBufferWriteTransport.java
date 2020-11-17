@@ -38,7 +38,7 @@ public class AutoScalingBufferWriteTransport extends TTransport {
 
   @Override
   public void close() {
-    // do nothing, just the method in AutoExpandingBufferWriteTransport
+    // do nothing, just like the method in AutoExpandingBufferWriteTransport
   }
 
   @Override
@@ -48,7 +48,7 @@ public class AutoScalingBufferWriteTransport extends TTransport {
 
   @Override
   public void open() {
-    // do nothing, just the method in AutoExpandingBufferWriteTransport
+    // do nothing, just like the method in AutoExpandingBufferWriteTransport
   }
 
   @Override
