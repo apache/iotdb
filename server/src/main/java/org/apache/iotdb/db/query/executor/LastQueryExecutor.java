@@ -59,7 +59,7 @@ public class LastQueryExecutor {
   private List<PartialPath> selectedSeries;
   private List<TSDataType> dataTypes;
   private IExpression expression;
-  private static final boolean lastCacheEnabled =
+  private static final boolean CACHE_ENABLED =
           IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
@@ -89,7 +89,7 @@ public class LastQueryExecutor {
             selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i).left) {
+      if (Boolean.TRUE.equals(lastPairList.get(i).left)) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -150,10 +150,10 @@ public class LastQueryExecutor {
 
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
-      if (!resultContainer.get(i).left) {
+      if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
         resultContainer.get(i).left = true;
         resultContainer.get(i).right = readerList.get(index++).readLastPoint();
-        if (lastCacheEnabled) {
+        if (CACHE_ENABLED) {
           cacheAccessors.get(i).write(resultContainer.get(i).right);
         }
       }
@@ -164,7 +164,7 @@ public class LastQueryExecutor {
   private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(List<PartialPath> seriesPaths,
           Filter filter, List<LastCacheAccessor> cacheAccessors, List<PartialPath> restPaths) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
-    if (lastCacheEnabled) {
+    if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
         cacheAccessors.add(new LastCacheAccessor(path, filter));
       }
@@ -223,10 +223,10 @@ public class LastQueryExecutor {
     public void write(TimeValuePair pair) {
       IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
     }
-  }
 
-  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-    return filter == null ||
-            filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
+    private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
+      return filter == null ||
+              filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
+    }
   }
 }
