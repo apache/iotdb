@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -150,9 +151,10 @@ public abstract class RaftLogManager {
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-" + name).daemon(true)
             .build());
 
-    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
+    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
+
     /**
      * deletion check period of the submitted log
      */
@@ -691,7 +693,7 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
-    this.checkLogApplierExecutorService = new ScheduledThreadPoolExecutor(1,
+    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
@@ -778,11 +780,15 @@ public abstract class RaftLogManager {
    * check whether delete the committed log
    */
   void checkDeleteLog() {
-    synchronized (this) {
-      if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
-        return;
+    try {
+      synchronized (this) {
+        if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
+          return;
+        }
+        innerDeleteLog(minNumOfLogsInMem);
       }
-      innerDeleteLog(minNumOfLogsInMem);
+    } catch (Exception e) {
+      logger.error("{}, error occurred when checking delete log", name, e);
     }
   }
 
@@ -826,9 +832,15 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    while (!Thread.interrupted()) {
-      doCheckAppliedLogIndex();
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
+        doCheckAppliedLogIndex();
+      } catch (Exception e) {
+        logger.error("{}, an exception occurred when checking the applied log index", name, e);
+      }
     }
+    logger.error("{}, the check-log-applier thread {} is interrupted", name,
+        Thread.currentThread().getName());
   }
 
   void doCheckAppliedLogIndex() {
@@ -842,6 +854,12 @@ public abstract class RaftLogManager {
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
+      if (log == null || log.getCurrLogIndex() != nextToCheckIndex) {
+        logger.warn(
+            "{}, get log error when checking the applied log index, log={}, nextToCheckIndex={}",
+            name, log, nextToCheckIndex);
+        return;
+      }
       synchronized (log) {
         while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
           // wait until the log is applied or a newer snapshot is installed

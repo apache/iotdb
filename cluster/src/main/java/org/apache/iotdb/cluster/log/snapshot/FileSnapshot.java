@@ -290,26 +290,30 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     private void removeRemoteHardLink(RemoteTsFileResource resource) {
       Node sourceNode = resource.getSource();
-      try {
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(sourceNode);
-          if (client != null) {
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(sourceNode);
+        if (client != null) {
+          try {
             client.removeHardLink(resource.getTsFile().getAbsolutePath(),
                 new GenericHandler<>(sourceNode, null));
-          }
-        } else {
-          SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
-          try {
-            client.removeHardLink(resource.getTsFile().getAbsolutePath());
-          } catch (TException te) {
-            client.getInputProtocol().getTransport().close();
-          } finally {
-            ClientUtils.putBackSyncClient(client);
+          } catch (TException e) {
+            logger
+                .error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
+                    sourceNode);
           }
         }
-      } catch (TException e) {
-        logger.error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
-            sourceNode);
+      } else {
+        SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
+        try {
+          client.removeHardLink(resource.getTsFile().getAbsolutePath());
+        } catch (TException te) {
+          client.getInputProtocol().getTransport().close();
+          logger
+              .error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
+                  sourceNode);
+        } finally {
+          ClientUtils.putBackSyncClient(client);
+        }
       }
     }
 
