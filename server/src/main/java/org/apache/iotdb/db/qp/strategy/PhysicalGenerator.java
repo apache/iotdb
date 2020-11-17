@@ -586,7 +586,7 @@ public class PhysicalGenerator {
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
           ((RawDataQueryPlan) queryPlan).setExpression(expression);
         } catch (MetadataException e) {
-          throw new LogicalOptimizeException(e);
+          throw new LogicalOptimizeException(e.getMessage());
         }
       }
     }
