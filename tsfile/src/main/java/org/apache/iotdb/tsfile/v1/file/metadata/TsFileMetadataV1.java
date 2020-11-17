@@ -34,11 +34,6 @@ public class TsFileMetadataV1 {
 
   private Map<String, TsDeviceMetadataIndexV1> deviceIndexMap = new HashMap<>();
 
-  /**
-   * TSFile schema for this file. This schema contains metadata for all the measurements.
-   */
-  private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
-
   // bloom filter
   private BloomFilter bloomFilter;
 
@@ -70,13 +65,9 @@ public class TsFileMetadataV1 {
 
     size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      fileMetaData.measurementSchema = new HashMap<>();
-      String key;
-      MeasurementSchema value;
       for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(buffer);
-        value = MeasurementSchema.deserializeFrom(buffer);
-        fileMetaData.measurementSchema.put(key, value);
+        ReadWriteIOUtils.readString(buffer);
+        MeasurementSchema.deserializeFrom(buffer);
       }
     }
 

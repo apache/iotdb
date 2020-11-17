@@ -85,7 +85,7 @@ public class TsFileRecoverPerformer {
    * writing
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public RestorableTsFileIOWriter recover()
+  public RestorableTsFileIOWriter recover(boolean needRedoWal)
       throws StorageGroupProcessorException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
@@ -123,14 +123,16 @@ public class TsFileRecoverPerformer {
     recoverResourceFromWriter(restorableTsFileIOWriter);
 
     // redo logs
-    redoLogs(restorableTsFileIOWriter);
+    if (needRedoWal) {
+      redoLogs(restorableTsFileIOWriter);
 
-    // clean logs
-    try {
-      MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
-    } catch (IOException e) {
-      throw new StorageGroupProcessorException(e);
+      // clean logs
+      try {
+        MultiFileLogNodeManager.getInstance()
+            .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
+      } catch (IOException e) {
+        throw new StorageGroupProcessorException(e);
+      }
     }
     return restorableTsFileIOWriter;
   }

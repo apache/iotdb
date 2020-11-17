@@ -228,62 +228,63 @@ public class ServerArgument {
   private long[] readWinCpu(final Process proc) throws Exception {
     long[] retn = new long[2];
     proc.getOutputStream().close();
-    InputStreamReader ir = new InputStreamReader(proc.getInputStream());
-    LineNumberReader input = new LineNumberReader(ir);
-    String line = input.readLine();
-    if (line == null || line.length() < 10) {
-      return null;
-    }
-    int capidx = line.indexOf("Caption");
-    int cmdidx = line.indexOf("CommandLine");
-    int rocidx = line.indexOf("ReadOperationCount");
-    int umtidx = line.indexOf("UserModeTime");
-    int kmtidx = line.indexOf("KernelModeTime");
-    int wocidx = line.indexOf("WriteOperationCount");
-    long idletime = 0;
-    long kneltime = 0;
-    long usertime = 0;
-    while ((line = input.readLine()) != null) {
-      if (line.length() < wocidx) {
-        continue;
+    try (InputStreamReader ir = new InputStreamReader(proc.getInputStream());
+         LineNumberReader input = new LineNumberReader(ir);) {
+      String line = input.readLine();
+      if (line == null || line.length() < 10) {
+        return null;
       }
-      String cmd = line.substring(cmdidx, kmtidx).trim();
-      if (cmd.indexOf("wmic.exe") >= 0) {
-        continue;
-      }
-      String caption = line.substring(capidx, cmdidx).trim();
-      String s1 = line.substring(kmtidx, rocidx).trim();
-      String s2 = line.substring(umtidx, wocidx).trim();
-      List<String> digitS1 = new ArrayList<>();
-      List<String> digitS2 = new ArrayList<>();
-      digitS1.add(s1.replaceAll("\\D", ""));
-      digitS2.add(s2.replaceAll("\\D", ""));
-      if (caption.equals("System Idle Process") || caption.equals("System")) {
+      int capidx = line.indexOf("Caption");
+      int cmdidx = line.indexOf("CommandLine");
+      int rocidx = line.indexOf("ReadOperationCount");
+      int umtidx = line.indexOf("UserModeTime");
+      int kmtidx = line.indexOf("KernelModeTime");
+      int wocidx = line.indexOf("WriteOperationCount");
+      long idletime = 0;
+      long kneltime = 0;
+      long usertime = 0;
+      while ((line = input.readLine()) != null) {
+        if (line.length() < wocidx) {
+          continue;
+        }
+        String cmd = line.substring(cmdidx, kmtidx).trim();
+        if (cmd.indexOf("wmic.exe") >= 0) {
+          continue;
+        }
+        String caption = line.substring(capidx, cmdidx).trim();
+        String s1 = line.substring(kmtidx, rocidx).trim();
+        String s2 = line.substring(umtidx, wocidx).trim();
+        List<String> digitS1 = new ArrayList<>();
+        List<String> digitS2 = new ArrayList<>();
+        digitS1.add(s1.replaceAll("\\D", ""));
+        digitS2.add(s2.replaceAll("\\D", ""));
+        if (caption.equals("System Idle Process") || caption.equals("System")) {
+          if (s1.length() > 0) {
+            if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
+              idletime += Long.valueOf(digitS1.get(0)).longValue();
+            }
+          }
+          if (s2.length() > 0) {
+            if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
+              idletime += Long.valueOf(digitS2.get(0)).longValue();
+            }
+          }
+          continue;
+        }
         if (s1.length() > 0) {
           if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-            idletime += Long.valueOf(digitS1.get(0)).longValue();
+            kneltime += Long.valueOf(digitS1.get(0)).longValue();
           }
         }
         if (s2.length() > 0) {
           if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-            idletime += Long.valueOf(digitS2.get(0)).longValue();
+            kneltime += Long.valueOf(digitS2.get(0)).longValue();
           }
         }
-        continue;
       }
-      if (s1.length() > 0) {
-        if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
-          kneltime += Long.valueOf(digitS1.get(0)).longValue();
-        }
-      }
-      if (s2.length() > 0) {
-        if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
-          kneltime += Long.valueOf(digitS2.get(0)).longValue();
-        }
-      }
+      retn[0] = idletime;
+      retn[1] = kneltime + usertime;
     }
-    retn[0] = idletime;
-    retn[1] = kneltime + usertime;
     proc.getInputStream().close();
     return retn;
   }

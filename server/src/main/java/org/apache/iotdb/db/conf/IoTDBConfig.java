@@ -149,7 +149,7 @@ public class IoTDBConfig {
   /**
    * Flush proportion for system
    */
-  private double flushProportion = 0.3;
+  private double flushProportion = 0.4;
 
   /**
    * Reject proportion for system
@@ -164,12 +164,12 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting this time to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 10;
+  private int waitingTimeWhenInsertBlockedInMs = 0;
 
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
   /**
    * Is the write ahead log enable.
    */
@@ -272,6 +272,38 @@ public class IoTDBConfig {
   private boolean enableMemControl = true;
 
   /**
+   * Is the write ahead log enable.
+   */
+  private boolean enableIndex = false;
+
+  /**
+   * How many threads can concurrently build index. When <= 0, use CPU core number.
+   */
+  private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
+   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
+   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
+   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
+   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
+   * will be flushed to the disk file. As a result, data in one series may be divided into more than
+   * one part and indexed separately.
+   */
+  private long indexBufferSize = 128 * 1024 * 1024L;
+
+  /**
+   * the index framework adopts sliding window model to preprocess the original tv list in the
+   * subsequence matching task.
+   */
+  private int defaultIndexWindowRange = 10;
+
+  /**
+   * index directory.
+   */
+  private String indexRootFolder = "data" + File.separator + "index";
+
+  /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
   private long tsFileSizeThreshold = 512 * 1024 * 1024L;
@@ -305,6 +337,12 @@ public class IoTDBConfig {
    * LEVEL_COMPACTION, NO_COMPACTION
    */
   private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+
+  /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION.
+   * Whether to merge unseq files into seq files or not.
+   */
+  private boolean enableUnseqCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION.
@@ -827,6 +865,7 @@ public class IoTDBConfig {
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
+    indexRootFolder = addHomeDir(indexRootFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1442,6 +1481,14 @@ public class IoTDBConfig {
     this.compactionStrategy = compactionStrategy;
   }
 
+  public boolean isEnableUnseqCompaction() {
+    return enableUnseqCompaction;
+  }
+
+  public void setEnableUnseqCompaction(boolean enableUnseqCompaction) {
+    this.enableUnseqCompaction = enableUnseqCompaction;
+  }
+
   public int getSeqFileNumInEachLevel() {
     return seqFileNumInEachLevel;
   }
@@ -2030,5 +2077,45 @@ public class IoTDBConfig {
 
   public void setDebugState(boolean debugState) {
     this.debugState = debugState;
+  }
+
+  public boolean isEnableIndex() {
+    return enableIndex;
+  }
+
+  public void setEnableIndex(boolean enableIndex) {
+    this.enableIndex = enableIndex;
+  }
+
+  void setConcurrentIndexBuildThread(int concurrentIndexBuildThread) {
+    this.concurrentIndexBuildThread = concurrentIndexBuildThread;
+  }
+
+  public int getConcurrentIndexBuildThread() {
+    return concurrentIndexBuildThread;
+  }
+
+  public long getIndexBufferSize() {
+    return indexBufferSize;
+  }
+
+  public void setIndexBufferSize(long indexBufferSize) {
+    this.indexBufferSize = indexBufferSize;
+  }
+
+  public String getIndexRootFolder() {
+    return indexRootFolder;
+  }
+
+  public void setIndexRootFolder(String indexRootFolder) {
+    this.indexRootFolder = indexRootFolder;
+  }
+
+  public int getDefaultIndexWindowRange() {
+    return defaultIndexWindowRange;
+  }
+
+  public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
+    this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 }

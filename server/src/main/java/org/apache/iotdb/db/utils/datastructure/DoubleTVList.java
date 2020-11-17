@@ -219,4 +219,9 @@ public class DoubleTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.DOUBLE;
+  }
 }

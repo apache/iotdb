@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -56,12 +54,7 @@ public abstract class TsFileManagement {
   protected String storageGroupDir;
 
   /**
-   * mergeLock is to be used in the merge process. Concurrent queries, deletions and merges may
-   * result in losing some deletion in the merged new file, so a lock is necessary.
-   */
-  public final ReentrantReadWriteLock mergeLock = new ReentrantReadWriteLock();
-  /**
-   * compactionMergeLock is used to wait for TsFile list change in compaction processor.
+   * Serialize queries, delete resource files, compaction cleanup files
    */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
@@ -192,16 +185,17 @@ public abstract class TsFileManagement {
       }
       return;
     }
-    logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
-        fullMerge);
+    isUnseqMerging = true;
 
     if (seqMergeList.isEmpty()) {
       logger.info("{} no seq files to be merged", storageGroupName);
+      isUnseqMerging = false;
       return;
     }
 
     if (unSeqMergeList.isEmpty()) {
       logger.info("{} no unseq files to be merged", storageGroupName);
+      isUnseqMerging = false;
       return;
     }
 
@@ -215,6 +209,7 @@ public abstract class TsFileManagement {
       if (mergeFiles.length == 0) {
         logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
             budget);
+        isUnseqMerging = false;
         return;
       }
       // avoid pending tasks holds the metadata and streams
@@ -231,6 +226,7 @@ public abstract class TsFileManagement {
         tsFileResource.setMerging(true);
       }
 
+      mergeStartTime = System.currentTimeMillis();
       MergeTask mergeTask = new MergeTask(mergeResource, storageGroupDir,
           this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
           storageGroupName);
@@ -241,8 +237,6 @@ public abstract class TsFileManagement {
         logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
             storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
       }
-      isUnseqMerging = true;
-      mergeStartTime = System.currentTimeMillis();
 
     } catch (MergeException | IOException e) {
       logger.error("{} cannot select file for merge", storageGroupName, e);
@@ -266,22 +260,17 @@ public abstract class TsFileManagement {
    */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
-    boolean mergeLockGot;
     boolean compactionLockGot;
     while (true) {
       fileLockGot = seqFile.tryWriteLock();
-      mergeLockGot = mergeLock.writeLock().tryLock();
       compactionLockGot = tryWriteLock();
 
-      if (fileLockGot && mergeLockGot && compactionLockGot) {
+      if (fileLockGot && compactionLockGot) {
         break;
       } else {
         // did not get all of them, release the gotten one and retry
         if (compactionLockGot) {
           writeUnlock();
-        }
-        if (mergeLockGot) {
-          mergeLock.writeLock().unlock();
         }
         if (fileLockGot) {
           seqFile.writeUnlock();
@@ -295,12 +284,10 @@ public abstract class TsFileManagement {
    */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();
-    mergeLock.writeLock().unlock();
     seqFile.writeUnlock();
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    mergeLock.writeLock().lock();
     writeLock();
     try {
       removeAll(unseqFiles, false);
@@ -312,7 +299,6 @@ public abstract class TsFileManagement {
       }
     } finally {
       writeUnlock();
-      mergeLock.writeLock().unlock();
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
@@ -368,7 +354,6 @@ public abstract class TsFileManagement {
       logger.info("{} a merge task abnormally ends", storageGroupName);
       return;
     }
-
     removeUnseqFiles(unseqFiles);
 
     for (int i = 0; i < seqFiles.size(); i++) {
@@ -391,6 +376,7 @@ public abstract class TsFileManagement {
         doubleWriteUnlock(seqFile);
       }
     }
+
     logger.info("{} a merge task ends", storageGroupName);
   }
 

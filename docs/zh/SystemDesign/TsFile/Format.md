@@ -71,6 +71,12 @@
 
 此文件包括两个设备 d1、d2，每个设备包含两个测点 s1、s2，共 4 个时间序列。每个时间序列包含两个 Chunk。
 
+下图是另一种关于TsFile的结构表示：
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
+
+此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列。每个时间序列包含两个 Chunk。
+
 元数据分为三部分
 
 * 按时间序列组织的 ChunkMetadata 列表

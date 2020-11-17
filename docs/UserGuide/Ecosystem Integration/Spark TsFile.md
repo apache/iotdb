@@ -33,7 +33,7 @@ With this connector, you can
 ## 2. System Requirements
 
 |Spark Version | Scala Version | Java Version | TsFile |
-|------------- | ------------- | ------------ |------------ |
+|:-------------: | :-------------: | :------------: |:------------: |
 | `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
@@ -83,29 +83,16 @@ Note:
 
 The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is listed:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
+
+|Name|Type|Encode|
+|---|---|---|
+|status|Boolean|PLAIN|
+|temperature|Float|RLE|
+|hardware|Text|PLAIN|
 
 The existing data in the TsFile are:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
-
-
+<img width="519" alt="ST 1" src="https://user-images.githubusercontent.com/69114052/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
 
 The corresponding SparkSQL table is:
 
@@ -239,30 +226,20 @@ newDf.show
 
 The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-<span>Basic info of Measurements</span>
-</center>
+
+|Name|Type|Encode|
+|---|---|---|
+|status|Boolean|PLAIN|
+|temperature|Float|RLE|
+|hardware|Text|PLAIN|
+
 
 The existing data in the file are:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
-</table>
-<span>A set of time-series data</span>
-</center>
+<img width="817" alt="ST 2" src="https://user-images.githubusercontent.com/69114052/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
+
+A set of time-series data
+
 There are two ways to show a set of time-series data:
 
 #### the default way
@@ -274,30 +251,28 @@ Two columns are created to store the full path of the device: time(LongType) and
 
 Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is:
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> delta\_object(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf01.wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> root.ln.wf01.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+|time(LongType)| delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|---|---|---|---|---|
+|1| root.ln.wf01.wt01 |True|2.2|null|
+|1| root.ln.wf02.wt02 |True|null|null|
+|2| root.ln.wf01.wt01 |null|2.2|null|
+|2| root.ln.wf02.wt02 |False|null|"aaa"|
+|2| root.sgcc.wf03.wt01 |True|null|null|
+|3| root.ln.wf01.wt01 |True|2.1|null|
+|3| root.sgcc.wf03.wt01 |True|3.3|null|
+|4| root.ln.wf01.wt01 |null|2.0|null|
+|4| root.ln.wf02.wt02 |True|null|"bbb"|
+|4| root.sgcc.wf03.wt01 |True|null|null|
+|5| root.ln.wf01.wt01 |False|null|null|
+|5| root.ln.wf02.wt02 |False|null|null|
+|5| root.sgcc.wf03.wt01 |True|null|null|
+|6| root.ln.wf02.wt02 |null|null|"ccc"|
+|6| root.sgcc.wf03.wt01 |null|6.6|null|
+|7| root.ln.wf01.wt01 |True|null|null|
+|8| root.ln.wf02.wt02 |null|null|"ddd"|
+|8| root.sgcc.wf03.wt01 |null|8.8|null|
+|9| root.sgcc.wf03.wt01 |null|9.9|null|
+
 
 
 #### unfold delta_object column
@@ -306,30 +281,28 @@ Expand the device column by "." into multiple columns, ignoring the root directo
 
 Then SparkSQL Table Structure is as follows:
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> group(StringType)</th><th> field(StringType)</th><th> device(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+|time(LongType)| group(StringType)| field(StringType)| device(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|---|---|---|---|---|---|---|
+|1| ln | wf01 | wt01 |True|2.2|null|
+|1| ln | wf02 | wt02 |True|null|null|
+|2| ln | wf01 | wt01 |null|2.2|null|
+|2| ln | wf02 | wt02 |False|null|"aaa"|
+|2| sgcc | wf03 | wt01 |True|null|null|
+|3| ln | wf01 | wt01 |True|2.1|null|
+|3| sgcc | wf03 | wt01 |True|3.3|null|
+|4| ln | wf01 | wt01 |null|2.0|null|
+|4| ln | wf02 | wt02 |True|null|"bbb"|
+|4| sgcc | wf03 | wt01 |True|null|null|
+|5| ln | wf01 | wt01 |False|null|null|
+|5| ln | wf02 | wt02 |False|null|null|
+|5| sgcc | wf03 | wt01 |True|null|null|
+|6| ln | wf02 | wt02 |null|null|"ccc"|
+|6| sgcc | wf03 | wt01 |null|6.6|null|
+|7| ln | wf01 | wt01 |True|null|null|
+|8| ln | wf02 | wt02 |null|null|"ddd"|
+|8| sgcc | wf03 | wt01 |null|8.8|null|
+|9| sgcc | wf03 | wt01 |null|9.9|null|
+
 
 TsFile-Spark-Connector displays one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name have the same data type by default. Note that if a situation with the same name but different data types exists, TsFile-Spark-Connector does not guarantee the correctness of the results.
 
