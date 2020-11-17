@@ -1307,7 +1307,7 @@ public class RaftLogManagerTest {
       try {
         raftLogManager.commitTo(testLogs1.get(testLogs1.size() - 1).getCurrLogIndex());
       } catch (LogExecutionException e) {
-        assertEquals("why failed?", e.toString());
+        Assert.fail(e.toString());
       }
       // wait log is applied
       long startTime = System.currentTimeMillis();
@@ -1394,7 +1394,7 @@ public class RaftLogManagerTest {
         try {
           raftLogManager.commitTo(i);
         } catch (LogExecutionException e) {
-          assertEquals("why failed?", e.toString());
+          Assert.fail(e.toString());
         }
         while (!testLogs1.get(i).isApplied()) {
           if ((System.currentTimeMillis() - startTime) > 60_000) {

@@ -48,9 +48,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -129,6 +129,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -667,10 +668,8 @@ public class MetaGroupMemberTest extends MemberTest {
       userMap.put("user_2", authorizer.getUser("user_2"));
       userMap.put("user_3", authorizer.getUser("user_3"));
       userMap.put("user_4", authorizer.getUser("user_4"));
-
-
     } catch (AuthException e) {
-      assertEquals("why failed?", e.getMessage());
+      Assert.fail(e.getMessage());
     }
 
     // 4. prepare the partition table
@@ -709,7 +708,7 @@ public class MetaGroupMemberTest extends MemberTest {
       assertEquals(localPartitionTable, partitionTable);
 
     } catch (AuthException e) {
-      assertEquals("why failed?", e.getMessage());
+      Assert.fail(e.getMessage());
     }
   }
 
