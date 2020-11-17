@@ -828,16 +828,15 @@ public abstract class RaftLogManager {
   }
 
   public void checkAppliedLogIndex() {
-    try {
-      while (!Thread.currentThread().isInterrupted()) {
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
         doCheckAppliedLogIndex();
+      } catch (Exception e) {
+        logger.error("{}, an exception occurred when checking the applied log index", name, e);
       }
-      logger.error("{}, the check-log-applier thread {} is interrupted", name,
-          Thread.currentThread().getName());
-    } catch (Exception e) {
-      logger.error("{}, exception occurred when check the applied log index", name, e);
     }
-
+    logger.error("{}, the check-log-applier thread {} is interrupted", name,
+        Thread.currentThread().getName());
   }
 
   void doCheckAppliedLogIndex() {
@@ -851,6 +850,12 @@ public abstract class RaftLogManager {
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
+      if (log == null || log.getCurrLogIndex() != nextToCheckIndex) {
+        logger.warn(
+            "{}, get log error when checking the applied log index, log={}, nextToCheckIndex={}",
+            name, log, nextToCheckIndex);
+        return;
+      }
       synchronized (log) {
         while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
           // wait until the log is applied or a newer snapshot is installed
