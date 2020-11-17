@@ -377,15 +377,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  @Override
-  public void forceFlushLogBuffer() {
+  private void forceFlushLogBufferWithoutCloseFile() {
     if (isClosed) {
       return;
     }
     lock.lock();
     flushLogBuffer();
     serializeMeta(meta);
-    checkCloseCurrentFile(meta.getCommitLogIndex());
     try {
       if (currentLogDataOutputStream != null) {
         currentLogDataOutputStream.getChannel().force(true);
@@ -400,6 +398,21 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } finally {
       lock.unlock();
     }
+  }
+
+  /**
+   * flush the log buffer and check if the file needs to be closed
+   */
+  @Override
+  public void forceFlushLogBuffer() {
+    lock.lock();
+    try {
+      forceFlushLogBufferWithoutCloseFile();
+      checkCloseCurrentFile(meta.getCommitLogIndex());
+    } finally {
+      lock.unlock();
+    }
+
   }
 
   @Override
@@ -1206,7 +1219,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private List<Log> getLogsFromOneLogDataFile(File file, Pair<Long, Long> startAndEndOffset) {
     List<Log> result = new ArrayList<>();
     if (file.getName().equals(getCurrentLogDataFile().getName())) {
-      forceFlushLogBuffer();
+      forceFlushLogBufferWithoutCloseFile();
     }
     try (FileInputStream fileInputStream = new FileInputStream(file);
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
