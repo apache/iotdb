@@ -16,29 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
+import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+/**
+ * this operator is to drop a certain index on some time series.
+ */
+public class DropIndexOperator extends SFWOperator {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+  private IndexType indexType;
 
-import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
-public class LocalFSOutputFactory implements FileOutputFactory {
-
-  private static final Logger logger = LoggerFactory.getLogger(LocalFSOutputFactory.class);
-
-  public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    try {
-      return new LocalTsFileOutput(new FileOutputStream(new File(filePath), append));
-    } catch (IOException e) {
-      logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
-      return null;
-    }
+  public DropIndexOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.DROP_INDEX;
   }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
+  }
+
 }

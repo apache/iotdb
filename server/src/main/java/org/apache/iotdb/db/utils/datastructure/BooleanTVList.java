@@ -215,4 +215,9 @@ public class BooleanTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.BOOLEAN;
+  }
 }
