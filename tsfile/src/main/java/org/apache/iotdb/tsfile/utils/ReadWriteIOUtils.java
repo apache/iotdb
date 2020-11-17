@@ -710,7 +710,10 @@ public class ReadWriteIOUtils {
 
   /**
    * read bytes from an inputStream where the length is specified at the head of the inputStream.
-   * @param inputStream contains a int-type length and a stream
+   * Make sure {@code inputStream} contains an integer numeric (the first 4 bytes) indicating
+   * the length of the following data.
+   *
+   * @param inputStream contains a length and a stream
    * @return bytebuffer
    * @throws IOException if the read length doesn't equal to the self description length.
    */

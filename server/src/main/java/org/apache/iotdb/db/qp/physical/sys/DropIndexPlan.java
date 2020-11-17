@@ -47,6 +47,7 @@ public class DropIndexPlan extends PhysicalPlan {
 
   }
 
+  @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }

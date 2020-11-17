@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
@@ -43,7 +42,6 @@ import org.junit.Test;
 public class IndexLogicalPlanTest {
 
   private ParseDriver parseDriver;
-  private Planner processor = new Planner();
 
   @Before
   public void before() {

@@ -78,6 +78,7 @@ public class CreateIndexPlan extends PhysicalPlan {
     this.props = props;
   }
 
+  @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }

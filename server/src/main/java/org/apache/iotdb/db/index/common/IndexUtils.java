@@ -31,4 +31,6 @@ public class IndexUtils {
     return v.substring(start, end);
   }
 
+  private IndexUtils() {
+  }
 }
