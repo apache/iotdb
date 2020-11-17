@@ -26,8 +26,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -62,7 +65,7 @@ public class AggregationExecutor {
   protected List<TSDataType> dataTypes;
   protected List<String> aggregations;
   protected IExpression expression;
-  protected final boolean ascending;
+  protected boolean ascending;
 
   /**
    * aggregation batch calculation size.
@@ -96,10 +99,17 @@ public class AggregationExecutor {
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap = groupAggregationsBySeries(
         selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
-    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      aggregateOneSeries(entry, aggregateResultList,
-          aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
-          context);
+    // TODO-Cluster: group the paths by storage group to reduce communications
+    List<StorageGroupProcessor> list = StorageEngine.getInstance()
+        .mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+    try {
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+        aggregateOneSeries(entry, aggregateResultList,
+            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
+            context);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -282,14 +292,30 @@ public class AggregationExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-
+    int index = 0;
+    for (; index < aggregations.size(); index++) {
+      String aggregationFunc = aggregations.get(index);
+      if (!aggregationFunc.equals(IoTDBConstant.MAX_TIME) && !aggregationFunc
+          .equals(IoTDBConstant.LAST_VALUE)) {
+        break;
+      }
+    }
+    if (index >= aggregations.size()) {
+      queryPlan.setAscending(false);
+      this.ascending = false;
+    }
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath path = selectedSeries.get(i);
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
-          dataTypes.get(i), context);
-      readersOfSelectedSeries.add(seriesReaderByTimestamp);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    try {
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        PartialPath path = selectedSeries.get(i);
+        IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
+            dataTypes.get(i), context);
+        readersOfSelectedSeries.add(seriesReaderByTimestamp);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     List<AggregateResult> aggregateResults = new ArrayList<>();

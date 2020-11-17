@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -58,6 +59,17 @@ public interface IMemTable {
   long memSize();
 
   /**
+   * only used when mem control enabled
+   */
+  void addTVListRamCost(long cost);
+
+  /**
+   * only used when mem control enabled
+   */
+  long getTVListsRamCost();
+
+  /**
+   * only used when mem control enabled
    * @return whether the average number of points in each WritableChunk reaches the threshold
    */
   boolean reachTotalPointNumThreshold();
@@ -67,7 +79,7 @@ public interface IMemTable {
   long getTotalPointsNum();
 
 
-  void insert(InsertRowPlan insertRowPlan) throws WriteProcessException;
+  void insert(InsertRowPlan insertRowPlan);
 
   /**
    * [start, end)
@@ -77,7 +89,7 @@ public interface IMemTable {
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
       TSEncoding encoding, Map<String, String> props, long timeLowerBound)
-      throws IOException, QueryProcessException;
+      throws IOException, QueryProcessException, MetadataException;
 
   /**
    * putBack all the memory resources.
@@ -119,4 +131,24 @@ public interface IMemTable {
   void setVersion(long version);
 
   void release();
+
+  /**
+   * must guarantee the device exists in the work memtable
+   * only used when mem control enabled
+   */
+  boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
+
+  /**
+   * only used when mem control enabled
+   */
+  int getCurrentChunkPointNum(String deviceId, String measurement);
+
+  /**
+   * only used when mem control enabled
+   */
+  void addTextDataSize(long textDataIncrement);
+
+  long getMaxPlanIndex();
+
+  long getMinPlanIndex();
 }

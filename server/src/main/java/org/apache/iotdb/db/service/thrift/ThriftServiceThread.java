@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -37,7 +38,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ThriftServiceThread extends Thread{
+public class ThriftServiceThread extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(ThriftServiceThread.class);
   private TServerSocket serverTransport;
@@ -54,10 +55,9 @@ public class ThriftServiceThread extends Thread{
       String threadsName,
       String bindAddress, int port, int maxWorkerThreads, int timeoutMs,
       TServerEventHandler serverEventHandler, boolean compress) {
-    if(compress) {
+    if (compress) {
       protocolFactory = new TCompactProtocol.Factory();
-    }
-    else {
+    } else {
       protocolFactory = new TBinaryProtocol.Factory();
     }
     this.serviceName = serviceName;
@@ -66,7 +66,7 @@ public class ThriftServiceThread extends Thread{
       serverTransport = new TServerSocket(new InetSocketAddress(bindAddress, port));
       poolArgs = new TThreadPoolServer.Args(serverTransport)
           .maxWorkerThreads(maxWorkerThreads)
-          .minWorkerThreads(1)
+          .minWorkerThreads(CommonUtils.getCpuCores())
           .stopTimeoutVal(timeoutMs);
       poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
           threadsName);

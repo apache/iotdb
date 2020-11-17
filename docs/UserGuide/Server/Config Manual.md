@@ -272,11 +272,11 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
-* enable\_parameter\_adapter
+* enable\_mem\_control
 
-|Name| enable\_parameter\_adapter |
+|Name| enable\_mem\_control |
 |:---:|:---|
-|Description| enable dynamically adjusting system to avoid OOM|
+|Description| enable memory control to avoid OOM|
 |Type|Bool|
 |Default| true |
 |Effective|After restart system|
@@ -288,7 +288,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max memtable size|
 |Type|Long|
 |Default| 1073741824 |
-|Effective| when enable\_parameter\_adapter is false & After restart system|
+|Effective| when enable\_mem\_control is false & After restart system|
 
 * avg\_series\_point\_number\_threshold
 
@@ -306,7 +306,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max tsfile size|
 |Type|Long|
 |Default| 536870912 |
-|Effective| when enable\_parameter\_adapter is false & After restart system|
+|Effective| After restart system|
 
 * enable\_partition
 
@@ -651,7 +651,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
 
-To enable GC log, just add a paramenter "printgc" when you start the server.
+To enable GC log, just add a parameter "printgc" when you start the server.
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &

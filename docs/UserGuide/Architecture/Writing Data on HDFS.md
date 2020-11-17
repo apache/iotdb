@@ -33,7 +33,7 @@ When you config to store TSFile on HDFS, your data files will be in distributed 
 
 ### Config and usage
 
-If you want to store TSFile and related data files in HDFS, here are the steps:
+To store TSFile and related data files in HDFS, here are the steps:
 
 First, download the source release from website or git clone the repository, the tag of a released version is release/x.x.x
 
@@ -153,7 +153,7 @@ Edit user config in `iotdb-engine.properties`. Related configurations are:
 
 Start server, and Tsfile will be stored on HDFS.
 
-If you'd like to reset storage file system to local, just edit configuration `tsfile_storage_fs` to `LOCAL`. In this situation, if you have already had some data files on HDFS, you should either download them to local and move them to your config data file folder (`../server/target/iotdb-server-0.10.0/data/data` by default), or restart your process and import data to IoTDB.
+To reset storage file system to local, just edit configuration `tsfile_storage_fs` to `LOCAL`. In this situation, if data files are already on HDFS, you should either download them to local and move them to your config data file folder (`../server/target/iotdb-server-0.10.0/data/data` by default), or restart your process and import data to IoTDB.
 
 ### Frequent questions
 

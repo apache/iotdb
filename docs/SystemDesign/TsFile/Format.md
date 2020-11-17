@@ -50,8 +50,9 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
@@ -70,6 +71,12 @@ Here is a graph about the TsFile structure.
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
 This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
+
+Here is another graph:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
+
+This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total. Each timeseries contains 2 Chunks.
 
 There are three parts of metadata
 
@@ -259,7 +266,7 @@ An example on Windows:
 
 ```
 D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-​````````````````````````
+````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
 output save path:IoTDB_data_dir_overview.txt
@@ -310,7 +317,7 @@ An example on Windows:
 
 ```
 D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
@@ -343,11 +350,11 @@ For Linux or MacOs:
 
 An example on macOS:
 
-```console
+```shell
 /iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-​````````````````````````
+````````````````````````
 Starting Printing the TsFile Sketch
-​````````````````````````
+````````````````````````
 TsFile path:test.tsfile
 Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
@@ -558,7 +565,6 @@ file length: 33436
                33436| END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
-
 
 ````````````````````````
 

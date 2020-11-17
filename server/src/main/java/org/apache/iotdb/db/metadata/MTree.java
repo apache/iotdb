@@ -108,8 +108,8 @@ public class MTree implements Serializable {
     } else {
       try {
         last = calculateLastPairForOneSeriesLocally(node.getPartialPath(),
-            node.getSchema().getType(), queryContext, Collections.emptySet());
-        return last.getTimestamp();
+            node.getSchema().getType(), queryContext, null, Collections.emptySet());
+        return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error("Something wrong happened while trying to get last time value pair of {}",
             node.getFullPath(), e);
@@ -746,7 +746,7 @@ public class MTree implements Serializable {
   boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
     MNode cur = root;
-    for (int i = 1; i <= nodes.length; i++) {
+    for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
         return false;
@@ -867,7 +867,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
+  private int getCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
@@ -878,7 +878,7 @@ public class MTree implements Serializable {
           return getCount(next, nodes, idx + 1);
         }
       } else {
-        throw new MetadataException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
+        return 0;
       }
     } else {
       int cnt = 0;

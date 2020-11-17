@@ -20,8 +20,8 @@ package org.apache.iotdb.session;
 
 public class Config {
 
-  public static final String DEFAULT_USER = "user";
-  public static final String DEFAULT_PASSWORD = "password";
+  public static final String DEFAULT_USER = "root";
+  public static final String DEFAULT_PASSWORD = "root";
   public static final int DEFAULT_FETCH_SIZE = 10000;
   public static final int DEFAULT_TIMEOUT_MS = 0;
   public static final int RETRY_NUM = 3;

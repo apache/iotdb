@@ -542,8 +542,7 @@ public class DatetimeUtils {
   }
 
   public static ZonedDateTime convertMillsecondToZonedDateTime(long millisecond) {
-    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond),
-        IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    return ZonedDateTime.ofInstant(Instant.ofEpochMilli(millisecond), ZoneId.systemDefault());
   }
 
   public enum DurationUnit {

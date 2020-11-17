@@ -49,8 +49,9 @@
   - 3: DIFF
   - 4: TS_2DIFF
   - 5: BITMAP
-  - 6: GORILLA
+  - 6: GORILLA_V1
   - 7: REGULAR 
+  - 8: GORILLA 
 - **压缩类型**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
@@ -69,6 +70,12 @@
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
 
 此文件包括两个设备 d1、d2，每个设备包含两个测点 s1、s2，共 4 个时间序列。每个时间序列包含两个 Chunk。
+
+下图是另一种关于TsFile的结构表示：
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
+
+此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列。每个时间序列包含两个 Chunk。
 
 元数据分为三部分
 
@@ -258,8 +265,8 @@ For Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
 output save path:IoTDB_data_dir_overview.txt
@@ -307,8 +314,8 @@ Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-​````````````````````````
+D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
@@ -341,9 +348,9 @@ Linux or MacOs:
 
 在mac系统中的示例:
 
-```console
+```shell
 /iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-​````````````````````````
+````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
 TsFile path:test.tsfile

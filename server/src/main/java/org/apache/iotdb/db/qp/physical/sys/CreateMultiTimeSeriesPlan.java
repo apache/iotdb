@@ -195,6 +195,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     } else {
       stream.write(0);
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -254,6 +256,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     } else {
       buffer.put((byte) 0);
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -299,5 +303,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
         attributes.add(ReadWriteIOUtils.readMap(buffer));
       }
     }
+
+    this.index = buffer.getLong();
   }
 }
