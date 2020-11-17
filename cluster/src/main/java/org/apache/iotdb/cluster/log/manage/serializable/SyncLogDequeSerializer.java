@@ -43,6 +43,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -555,8 +556,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (!success) {
       logger.error("recover log index file failed, clear all logs in disk, {}",
           lastIndexFile.getAbsoluteFile());
-      while (!logIndexFileList.isEmpty()) {
-        deleteTheFirstLogDataAndIndexFile();
+      while (!logDataFileList.isEmpty()) {
+        success = deleteTheFirstLogDataAndIndexFile();
+        if (!success) {
+          forceDeleteAllLogFiles();
+        }
       }
       clearFirstLogIndex();
 
@@ -574,8 +578,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (!success) {
       logger.error("recover log data file failed, clear all logs in disk,{}",
           lastDataFile.getAbsoluteFile());
-      while (!logIndexFileList.isEmpty()) {
-        deleteTheFirstLogDataAndIndexFile();
+      while (!logDataFileList.isEmpty()) {
+        success = deleteTheFirstLogDataAndIndexFile();
+        if (!success) {
+          forceDeleteAllLogFiles();
+        }
       }
       clearFirstLogIndex();
     }
@@ -851,7 +858,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       forceFlushLogBuffer();
       closeCurrentFile(meta.getCommitLogIndex());
       while (!logDataFileList.isEmpty()) {
-        deleteTheFirstLogDataAndIndexFile();
+        boolean success = deleteTheFirstLogDataAndIndexFile();
+        if (!success) {
+          forceDeleteAllLogFiles();
+        }
       }
       deleteMetaFile();
 
@@ -942,9 +952,49 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
-  private void deleteTheFirstLogDataAndIndexFile() {
+  private void forceDeleteAllLogDataFiles() {
+    FileFilter logFilter = pathname -> {
+      String s = pathname.getName();
+      return s.endsWith(LOG_DATA_FILE_SUFFIX);
+    };
+    List<File> logFiles = Arrays.asList(metaFile.getParentFile().listFiles(logFilter));
+    logger.info("get log data files {} when forcing delete all logs", logFiles);
+    for (File logFile : logFiles) {
+      try {
+        FileUtils.forceDelete(logFile);
+      } catch (IOException e) {
+        logger.error("forcing delete log data file={} failed", logFile.getAbsoluteFile(), e);
+      }
+    }
+    logDataFileList.clear();
+  }
+
+  private void forceDeleteAllLogIndexFiles() {
+    FileFilter logIndexFilter = pathname -> {
+      String s = pathname.getName();
+      return s.endsWith(LOG_INDEX_FILE_SUFFIX);
+    };
+
+    List<File> logIndexFiles = Arrays.asList(metaFile.getParentFile().listFiles(logIndexFilter));
+    logger.info("get log index files {} when forcing delete all logs", logIndexFiles);
+    for (File logFile : logIndexFiles) {
+      try {
+        FileUtils.forceDelete(logFile);
+      } catch (IOException e) {
+        logger.error("forcing delete log index file={} failed", logFile.getAbsoluteFile(), e);
+      }
+    }
+    logIndexFileList.clear();
+  }
+
+  private void forceDeleteAllLogFiles() {
+    forceDeleteAllLogDataFiles();
+    forceDeleteAllLogIndexFiles();
+  }
+
+  private boolean deleteTheFirstLogDataAndIndexFile() {
     if (logDataFileList.isEmpty()) {
-      return;
+      return true;
     }
     File logDataFile = null;
     File logIndexFile = null;
@@ -955,7 +1005,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logIndexFile = logIndexFileList.get(0);
       if (logDataFile == null || logIndexFile == null) {
         logger.error("the log data or index file is null, some error occurred");
-        return;
+        return false;
       }
       Files.delete(logDataFile.toPath());
       Files.delete(logIndexFile.toPath());
@@ -965,10 +1015,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logIndexFile.getAbsoluteFile());
     } catch (IOException e) {
       logger.error("delete file failed, data file={}, index file={}",
-          logDataFile.getAbsoluteFile(), logIndexFile.getAbsoluteFile());
+          logDataFile.getAbsoluteFile(), logIndexFile.getAbsoluteFile(), e);
+      return false;
     } finally {
       lock.unlock();
     }
+    return true;
   }
 
   /**
