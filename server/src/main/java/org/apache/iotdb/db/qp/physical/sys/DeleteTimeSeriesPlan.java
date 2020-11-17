@@ -54,6 +54,8 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     for (PartialPath path : deletePathList) {
       putString(stream, path.getFullPath());
     }
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -64,6 +66,8 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     for (PartialPath path : deletePathList) {
       putString(buffer, path.getFullPath());
     }
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -73,5 +77,12 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < pathNumber; i++) {
       deletePathList.add(new PartialPath(readString(buffer)));
     }
+
+    this.index = buffer.getLong();
+  }
+
+  @Override
+  public void setPaths(List<PartialPath> fullPaths) {
+    this.deletePathList = fullPaths;
   }
 }

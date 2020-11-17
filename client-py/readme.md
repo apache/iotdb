@@ -48,3 +48,14 @@ to generate the python library.
 ## Session Client & Example
 We packed up the Thrift interface in `client-py/src/Session.py` (similar with its Java counterpart), also provided 
 an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
+
+## How to Debug
+
+To debug the python API module, run `mvn generate-sources -pl thrift,client-py`
+
+Then, go to target/pypi to get the complete projects.
+
+But !BE CAUTIOUS!
+All your modifications in target/pypi must be copied manually to src/ folder.
+Otherwise once you run `mvn clean`, you will lose all your effort.
+

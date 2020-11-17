@@ -37,6 +37,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -60,7 +61,7 @@ public class MergeManager implements IService, MergeManagerMBean {
   private final String mbeanName = String
       .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
           getID().getJmxName());
-  private final RateLimiter mergeRateLimiter = RateLimiter.create(Double.MAX_VALUE);
+  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
@@ -74,13 +75,13 @@ public class MergeManager implements IService, MergeManagerMBean {
   private MergeManager() {
   }
 
-  public RateLimiter getMergeRateLimiter() {
-    setMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeThroughputMbPerSec());
-    return mergeRateLimiter;
+  public RateLimiter getMergeWriteRateLimiter() {
+    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
+    return mergeWriteRateLimiter;
   }
 
   /**
-   * wait by throughoutMbPerSec limit to avoid continuous Write
+   * wait by throughoutMbPerSec limit to avoid continuous Write Or Read
    */
   public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
     while (bytesLength >= Integer.MAX_VALUE) {
@@ -92,14 +93,14 @@ public class MergeManager implements IService, MergeManagerMBean {
     }
   }
 
-  private void setMergeRate(final double throughoutMbPerSec) {
+  private void setWriteMergeRate(final double throughoutMbPerSec) {
     double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
     // if throughout = 0, disable rate limiting
     if (throughout == 0) {
       throughout = Double.MAX_VALUE;
     }
-    if (mergeRateLimiter.getRate() != throughout) {
-      mergeRateLimiter.setRate(throughout);
+    if (mergeWriteRateLimiter.getRate() != throughout) {
+      mergeWriteRateLimiter.setRate(throughout);
     }
   }
 
@@ -168,9 +169,17 @@ public class MergeManager implements IService, MergeManagerMBean {
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
-        // wait
+        int timeMillis = 0;
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(), e);
+          Thread.currentThread().interrupt();
+        }
+        timeMillis += 200;
         long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
+        if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }
@@ -197,9 +206,17 @@ public class MergeManager implements IService, MergeManagerMBean {
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
-        // wait
+        int timeMillis = 0;
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("CompactionMergeTaskPoolManager {} shutdown",
+              ThreadName.COMPACTION_SERVICE.getName(), e);
+          Thread.currentThread().interrupt();
+        }
+        timeMillis += 200;
         long time = System.currentTimeMillis() - startTime;
-        if (time % 60_000 == 0) {
+        if (timeMillis % 60_000 == 0) {
           logger.warn("MergeManager has wait for {} seconds to stop", time / 1000);
         }
       }

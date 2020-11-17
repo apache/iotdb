@@ -25,7 +25,7 @@
 
 IoTDB official website：https://iotdb.apache.org/
 
-Code library：https://github.com/apache/incubator-iotdb/tree/master
+Code library：https://github.com/apache/iotdb/tree/master
 
 Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
 
@@ -80,6 +80,8 @@ Correspondence between versions and branches on the official website:
 Precautions:
 
 * Images in Markdown can be uploaded to https://github.com/thulab/iotdb/issues/543 for url
+* Do not use special Unicode chars, e.g., U+FF1A 
+* Do not use the character of dollar (as we will use Latex to generate pdf files)
 
 ## Contributing code
 
@@ -108,3 +110,18 @@ Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting
 
 * Storage engine org.apache.iotdb.db.engine.StorageEngine
 * Query engine org.apache.iotdb.db.qp.QueryProcessor
+
+
+## Frequent Questions when Compiling the Source Code
+
+1. I could not download thrift-* tools, like `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+
+It is due to some network problems (especially in China), you can:
+
+* Download the file from the URL manually;
+  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
+  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
+* Put the file to thrift/target/tools/
+* Re-run maven command like `mvn compile`
+

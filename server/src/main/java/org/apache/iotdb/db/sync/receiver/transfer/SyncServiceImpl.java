@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.sync.receiver.transfer;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -43,16 +52,6 @@ import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 public class SyncServiceImpl implements SyncService.Iface {
 
@@ -178,6 +177,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus initSyncData(String filename) throws TException {
     try {
@@ -223,6 +223,7 @@ public class SyncServiceImpl implements SyncService.Iface {
     return getSuccessResult();
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress unclosed resource warning
   @Override
   public SyncStatus checkDataMD5(String md5OfSender) throws TException {
     String md5OfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);

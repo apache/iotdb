@@ -83,9 +83,9 @@ It costs 0.241s
 
 假设您的根目录是:
 
-```
+```shell
 $ pwd
-/workspace/incubator-iotdb
+/workspace/iotdb
 
 $ ls -l
 server/
@@ -95,9 +95,9 @@ Readme.md
 ...
 ```
 
-假如 `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
+假如 `$IOTDB_HOME = /workspace/iotdb/server/target/iotdb-server-{project.version}`
 
-假如 `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/cli/target/iotdb-cli-{project.version}`
+假如 `$IOTDB_CLI_HOME = /workspace/iotdb/cli/target/iotdb-cli-{project.version}`
 
 在默认的设置里，logs 文件夹会被存储在```IOTDB_HOME/logs```。您可以在```IOTDB_HOME/conf```目录下的```logback.xml```文件中修改日志的级别和日志的存储路径。
 
@@ -130,7 +130,7 @@ IoTDB> count timeseries root
 
 ## 可以使用 Hadoop 和 Spark 读取 IoTDB 中的 TsFile 吗？
 
-是的。IoTDB 与开源生态紧密结合。IoTDB 支持 [Hadoop](https://github.com/apache/incubator-iotdb/tree/master/hadoop), [Spark](https://github.com/apache/incubator-iotdb/tree/master/spark) 和 [Grafana](https://github.com/apache/incubator-iotdb/tree/master/grafana) 可视化工具.
+是的。IoTDB 与开源生态紧密结合。IoTDB 支持 [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark) 和 [Grafana](https://github.com/apache/iotdb/tree/master/grafana) 可视化工具.
 
 ## IoTDB如何处理重复的数据点？
 

@@ -45,7 +45,7 @@ public class Config {
   static final String DEFALUT_PASSWORD = "password";
 
   static final int RETRY_NUM = 3;
-  static final long RETRY_INTERVAL = 1000;
+  static final long RETRY_INTERVAL_MS = 1000;
 
   static int fetchSize = 10000;
   static int connectionTimeoutInMs = 0;

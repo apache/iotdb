@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE = config
       .getAllocateMemoryForTimeSeriesMetaDataCache();
@@ -97,6 +98,7 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
+  @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
       throws IOException {
     if (!CACHE_ENABLE) {
@@ -143,6 +145,10 @@ public class TimeSeriesMetadataCache {
           BloomFilter bloomFilter = reader.readBloomFilter();
           if (bloomFilter != null && !bloomFilter
               .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+
+            if (config.isDebugOn()) {
+              DEBUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
+            }
             return null;
           }
           List<TimeseriesMetadata> timeSeriesMetadataList = reader
@@ -161,8 +167,16 @@ public class TimeSeriesMetadataCache {
       }
     }
     if (timeseriesMetadata == null) {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER.info("The file doesn't have this time series " + key);
+      }
       return null;
     } else {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER.info(
+            "Get timeseries: " + key.device + "." + key.measurement + " metadata in file: "
+                + key.filePath + " from cache: " + timeseriesMetadata);
+      }
       return new TimeseriesMetadata(timeseriesMetadata);
     }
   }

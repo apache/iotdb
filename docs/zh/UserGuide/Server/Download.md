@@ -63,7 +63,7 @@ Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
 
 ## 使用源码编译
 
-您可以获取已发布的源码https://iotdb.apache.org/Download/，或者从git仓库获取https://github.com/apache/incubator-iotdb/tree/master
+您可以获取已发布的源码https://iotdb.apache.org/Download/，或者从git仓库获取https://github.com/apache/iotdb/tree/master
 
 源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
 

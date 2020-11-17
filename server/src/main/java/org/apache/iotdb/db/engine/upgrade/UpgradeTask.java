@@ -43,7 +43,7 @@ public class UpgradeTask extends WrappedRunnable {
   private TsFileResource upgradeResource;
   private static final Logger logger = LoggerFactory.getLogger(UpgradeTask.class);
   private static final String COMMA_SEPERATOR = ",";
-  private static final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
+  private static final int maxLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 

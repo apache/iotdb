@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.session;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -33,141 +40,152 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.*;
-
 public class SessionUT {
 
-    private Session session;
+  private Session session;
 
-    @Before
-    public void setUp() {
-        System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
-        EnvironmentUtils.closeStatMonitor();
-        EnvironmentUtils.envSetUp();
-    }
+  @Before
+  public void setUp() {
+    System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
+  }
 
-    @After
-    public void tearDown() throws Exception {
-        session.close();
-        EnvironmentUtils.cleanEnv();
-    }
+  @After
+  public void tearDown() throws Exception {
+    session.close();
+    EnvironmentUtils.cleanEnv();
+  }
 
-    @Test
-    public void testSortTablet() {
-        /*
-        To test sortTablet in Class Session
-        !!!
-        Before testing, change the sortTablet from private method to public method
-        !!!
-         */
-        session = new Session("127.0.0.1", 6667, "root", "root");
-        List<MeasurementSchema> schemaList = new ArrayList<>();
-        schemaList.add(new MeasurementSchema("s1",TSDataType.INT64, TSEncoding.RLE));
-        // insert three rows data
-        Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
+  @Test
+  public void testSortTablet() {
+    /*
+    To test sortTablet in Class Session
+    !!!
+    Before testing, change the sortTablet from private method to public method
+    !!!
+     */
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    // insert three rows data
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
 
-        /*
-        inorder data before inserting
-        timestamp   s1
-        2           0
-        0           1
-        1           2
-         */
-        // inorder timestamps
-        timestamps[0] = 2;
-        timestamps[1] = 0;
-        timestamps[2] = 1;
-        // just one column INT64 data
-        long[] sensor = (long[]) values[0];
-        sensor[0] = 0;
-        sensor[1] = 1;
-        sensor[2] = 2;
-        tablet.rowSize = 3;
+      /*
+      inorder data before inserting
+      timestamp   s1
+      2           0
+      0           1
+      1           2
+       */
+    // inorder timestamps
+    timestamps[0] = 2;
+    timestamps[1] = 0;
+    timestamps[2] = 1;
+    // just one column INT64 data
+    long[] sensor = (long[]) values[0];
+    sensor[0] = 0;
+    sensor[1] = 1;
+    sensor[2] = 2;
+    tablet.rowSize = 3;
 
-        session.sortTablet(tablet);
+    session.sortTablet(tablet);
         
-        /*
-        After sorting, if the tablet data is sorted according to the timestamps,
-        data in tablet will be
-        timestamp   s1
-        0           1
-        1           2
-        2           0
+    /*
+    After sorting, if the tablet data is sorted according to the timestamps,
+    data in tablet will be
+    timestamp   s1
+    0           1
+    1           2
+    2           0
 
-        If the data equal to above tablet, test pass, otherwise test fialed
-         */
-        long[] resTimestamps = tablet.timestamps;
-        long[] resValues = (long[])tablet.values[0];
-        long[] expectedTimestamps = new long[]{0, 1, 2};
-        long[] expectedValues = new long[]{1,2,0};
-        try {
-            assertArrayEquals(expectedTimestamps, resTimestamps);
-            assertArrayEquals(expectedValues, resValues);
-        }
-        catch (Exception e) {
-            fail();
-        }
+    If the data equal to above tablet, test pass, otherwise test fialed
+     */
+    long[] resTimestamps = tablet.timestamps;
+    long[] resValues = (long[]) tablet.values[0];
+    long[] expectedTimestamps = new long[]{0, 1, 2};
+    long[] expectedValues = new long[]{1, 2, 0};
+    try {
+      assertArrayEquals(expectedTimestamps, resTimestamps);
+      assertArrayEquals(expectedValues, resValues);
+    } catch (Exception e) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testInsertByStrAndSelectFailedData()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+
+    session.createTimeseries(deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.UNCOMPRESSED);
+    session.createTimeseries(deviceId + ".s2", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.UNCOMPRESSED);
+    session.createTimeseries(deviceId + ".s3", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.UNCOMPRESSED);
+    session.createTimeseries(deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE,
+        CompressionType.UNCOMPRESSED);
+
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
+
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
+
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+
+    for (long time = 0; time < 10; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+      long[] sensor = (long[]) values[0];
+      sensor[row] = time;
+      double[] sensor2 = (double[]) values[1];
+      sensor2[row] = 0.1 + time;
+      Binary[] sensor3 = (Binary[]) values[2];
+      sensor3[row] = Binary.valueOf("ha" + time);
+      long[] sensor4 = (long[]) values[3];
+      sensor4[row] = time;
     }
 
-    @Test
-    public void testInsertByStrAndSelectFailedData() throws IoTDBConnectionException, StatementExecutionException {
-        session = new Session("127.0.0.1", 6667, "root", "root");
-        session.open();
-
-        String deviceId = "root.sg1.d1";
-
-        session.createTimeseries(deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-        session.createTimeseries(deviceId + ".s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-        session.createTimeseries(deviceId + ".s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-        session.createTimeseries(deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-
-        List<MeasurementSchema> schemaList = new ArrayList<>();
-        schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-        schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
-        schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
-        schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
-
-        Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
-
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
-
-        for (long time = 0; time < 10; time++) {
-            int row = tablet.rowSize++;
-            timestamps[row] = time;
-            long[] sensor = (long[]) values[0];
-            sensor[row] = time;
-            double[] sensor2 = (double[]) values[1];
-            sensor2[row] = 0.1 + time;
-            Binary[] sensor3 = (Binary[]) values[2];
-            sensor3[row] = Binary.valueOf("ha" + time);
-            long[] sensor4 = (long[]) values[3];
-            sensor4[row] = time;
-        }
-
-        try {
-            session.insertTablet(tablet);
-            fail();
-        } catch (StatementExecutionException e) {
-            // ignore
-        }
-
-        SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
-        int i = 0;
-        while (dataSet.hasNext()) {
-            RowRecord record = dataSet.next();
-            System.out.println(record.toString());
-            assertEquals(i, record.getFields().get(0).getLongV());
-            assertTrue(record.getFields().get(1).isNull());
-            assertTrue(record.getFields().get(2).isNull());
-            assertTrue(record.getFields().get(3).isNull());
-            i++;
-        }
+    try {
+      session.insertTablet(tablet);
+      fail();
+    } catch (StatementExecutionException e) {
+      // ignore
     }
 
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    int i = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      int nullCount = 0;
+      for (int j = 0; j < 4; ++j) {
+        if (record.getFields().get(j).isNull()) {
+          ++nullCount;
+        } else {
+          assertEquals(i, record.getFields().get(j).getLongV());
+        }
+      }
+      assertEquals(3, nullCount);
+      i++;
+    }
+  }
+
+  @Test
+  public void testSetTimeZone() throws StatementExecutionException, IoTDBConnectionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+    assertEquals("+05:00", session.getTimeZone());
+    session.setTimeZone("+09:00");
+    assertEquals("+09:00", session.getTimeZone());
+  }
 }

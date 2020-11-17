@@ -58,12 +58,12 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        assertEquals(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getErrorCode());
+        assertEquals(TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(), e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
@@ -143,22 +143,22 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
       String result = doQuery(statement, "SHOW ALL TTL");
-      assertEquals("root.group1,null\n"
-          + "root.group2,null\n", result);
+      assertTrue(result.equals("root.group1,null\n" + "root.group2,null\n")
+          || result.equals("root.group2,null\n" + "root.group1,null\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
 
       statement.execute("SET TTL TO root.group1 10000");
       result = doQuery(statement, "SHOW ALL TTL");
-      assertEquals("root.group1,10000\n"
-          + "root.group2,null\n", result);
+      assertTrue(result.equals("root.group1,10000\n" + "root.group2,null\n")
+          || result.equals("root.group2,null\n" + "root.group1,10000\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,10000\n", result);
 
       statement.execute("UNSET TTL TO root.group1");
       result = doQuery(statement, "SHOW ALL TTL");
-      assertEquals("root.group1,null\n"
-          + "root.group2,null\n", result);
+      assertTrue(result.equals("root.group1,null\n" + "root.group2,null\n")
+          || result.equals("root.group2,null\n" + "root.group1,null\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
     }
@@ -188,8 +188,8 @@ public class IoTDBTtlIT {
       statement.execute("SET STORAGE GROUP TO root.group2");
 
       String result = doQuery(statement, "SHOW ALL TTL");
-      assertEquals("root.group1,10000\n"
-          + "root.group2,10000\n", result);
+      assertTrue(result.equals("root.group1,10000\n" + "root.group2,10000\n")
+          || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
     }

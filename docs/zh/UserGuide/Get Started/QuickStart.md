@@ -57,7 +57,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 
 * 二进制可运行程序：请从Download页面下载最新的安装包，解压后即完成安装。
 
-* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/incubator-iotdb/blob/master/docker/src/main
+* 使用Docker镜像：dockerfile 文件位于 https://github.com/apache/iotdb/blob/master/docker/src/main
 
 ### IoTDB下载
 
@@ -290,7 +290,7 @@ Windows系统停止命令如下：
 
 ## 只建立客户端
 
-在incubator-iotdb的根路径下：
+在iotdb的根路径下：
 
 ```
 > mvn clean package -pl cli -am -DskipTests

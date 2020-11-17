@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA, REGULAR;
+  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR, GORILLA;
 
   /**
    * judge the encoding deserialize type.
@@ -29,12 +29,21 @@ public enum TSEncoding {
    * @return -encoding type
    */
   public static TSEncoding deserialize(short encoding) {
-    if (encoding >= 8) {
+    return getTsEncoding(encoding);
+  }
+
+  public static byte deserializeToByte(short encoding) {
+    if (encoding < 0 || 8 < encoding) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    return (byte) encoding;
+  }
+
+  private static TSEncoding getTsEncoding(short encoding) {
+    if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
     switch (encoding) {
-      case 0:
-        return PLAIN;
       case 1:
         return PLAIN_DICTIONARY;
       case 2:
@@ -46,9 +55,11 @@ public enum TSEncoding {
       case 5:
         return BITMAP;
       case 6:
-        return GORILLA;
+        return GORILLA_V1;
       case 7:
         return REGULAR;
+      case 8:
+        return GORILLA;
       default:
         return PLAIN;
     }
@@ -61,29 +72,7 @@ public enum TSEncoding {
    * @return encoding type
    */
   public static TSEncoding byteToEnum(byte encoding) {
-    if (encoding >= 8) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
-    }
-    switch (encoding) {
-      case 0:
-        return PLAIN;
-      case 1:
-        return PLAIN_DICTIONARY;
-      case 2:
-        return RLE;
-      case 3:
-        return DIFF;
-      case 4:
-        return TS_2DIFF;
-      case 5:
-        return BITMAP;
-      case 6:
-        return GORILLA;
-      case 7:
-        return REGULAR;
-      default:
-        return PLAIN;
-    }
+    return getTsEncoding(encoding);
   }
 
   public static int getSerializedSize() {
@@ -96,26 +85,7 @@ public enum TSEncoding {
    * @return -encoding type
    */
   public short serialize() {
-    switch (this) {
-      case PLAIN:
-        return 0;
-      case PLAIN_DICTIONARY:
-        return 1;
-      case RLE:
-        return 2;
-      case DIFF:
-        return 3;
-      case TS_2DIFF:
-        return 4;
-      case BITMAP:
-        return 5;
-      case GORILLA:
-        return 6;
-      case REGULAR:
-        return 7;
-      default:
-        return 0;
-    }
+    return enumToByte();
   }
 
   /**
@@ -123,8 +93,6 @@ public enum TSEncoding {
    */
   public byte enumToByte() {
     switch (this) {
-      case PLAIN:
-        return 0;
       case PLAIN_DICTIONARY:
         return 1;
       case RLE:
@@ -135,10 +103,12 @@ public enum TSEncoding {
         return 4;
       case BITMAP:
         return 5;
-      case GORILLA:
+      case GORILLA_V1:
         return 6;
       case REGULAR:
         return 7;
+      case GORILLA:
+        return 8;
       default:
         return 0;
     }

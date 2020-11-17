@@ -98,7 +98,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             try {
                 plan.setDeviceId(new PartialPath(event.getDevice()));
                 status = executeNonQuery(plan);
-            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException | IllegalPathException e ) {
+            } catch (Exception e) {
                 LOG.warn(
                     "meet error when inserting device {}, measurements {}, at time {}, because ",
                     event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
