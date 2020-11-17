@@ -930,6 +930,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   }
 
+  @SuppressWarnings("ConstantConditions")
   private void deleteLogDataAndIndexFile(int index) {
     File logDataFile = null;
     File logIndexFile = null;
@@ -945,8 +946,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logIndexFile.getAbsoluteFile());
     } catch (IOException e) {
       logger.error("delete file failed, index={}, data file={}, index file={}", index,
-          logDataFile == null ? null : logDataFile.getAbsoluteFile(),
-          logIndexFile == null ? null : logIndexFile.getAbsoluteFile());
+          logDataFile.getAbsoluteFile(),
+          logIndexFile.getAbsoluteFile());
     } finally {
       lock.unlock();
     }
