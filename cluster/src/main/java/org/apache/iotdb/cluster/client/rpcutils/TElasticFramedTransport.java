@@ -76,11 +76,12 @@ public class TElasticFramedTransport extends TFastFramedTransport {
     }
 
     // Read another frame of data
-    readTheFrame();
+    readFrame();
     return readBuffer.read(buf, off, len);
   }
 
-  private void readTheFrame() throws TTransportException {
+  @SuppressWarnings("java:S2177") // no better name
+  private void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
 

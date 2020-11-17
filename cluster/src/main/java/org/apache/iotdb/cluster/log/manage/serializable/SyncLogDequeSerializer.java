@@ -991,10 +991,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     forceDeleteAllLogIndexFiles();
   }
 
+  @SuppressWarnings("ConstantConditions")
   private boolean deleteTheFirstLogDataAndIndexFile() {
     if (logDataFileList.isEmpty()) {
       return true;
     }
+
     File logDataFile = null;
     File logIndexFile = null;
 
@@ -1014,7 +1016,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logIndexFile.getAbsoluteFile());
     } catch (IOException e) {
       logger.error("delete file failed, data file={}, index file={}",
-          logDataFile.getAbsoluteFile(), logIndexFile.getAbsoluteFile(), e);
+          logDataFile.getAbsoluteFile(),
+          logIndexFile.getAbsoluteFile());
       return false;
     } finally {
       lock.unlock();
