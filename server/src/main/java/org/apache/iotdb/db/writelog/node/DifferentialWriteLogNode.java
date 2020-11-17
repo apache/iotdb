@@ -119,7 +119,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
     for (short i = 0; i < planWindow.size(); i++) {
       PhysicalPlan next = planWindow.get(i);
       if (isPlanSimilarEnough(plan, next)) {
-        return new Pair<>(plan, i);
+        return new Pair<>(next, i);
       }
     }
     return null;

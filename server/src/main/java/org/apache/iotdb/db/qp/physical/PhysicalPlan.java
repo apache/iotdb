@@ -385,7 +385,7 @@ public abstract class PhysicalPlan {
     buffer.put((byte) diffType.ordinal());
     switch (diffType) {
       case INT:
-        buffer.put((byte) TimeDiffType.INT.ordinal());
+        buffer.putInt((int) timeDiff);
         break;
       case BYTE:
         buffer.put((byte) timeDiff);
@@ -397,6 +397,22 @@ public abstract class PhysicalPlan {
       default:
         // NOTICE HERE
         buffer.putLong(time);
+    }
+  }
+
+  protected long getDiffTime(ByteBuffer buffer, long base) {
+    TimeDiffType diffType = TimeDiffType.values()[buffer.get()];
+    switch (diffType) {
+      case INT:
+        return buffer.getInt() + base;
+      case BYTE:
+        return buffer.get() + base;
+      case SHORT:
+        return buffer.getShort() + base;
+      case LONG:
+      default:
+        // NOTICE HERE
+        return buffer.getLong();
     }
   }
 
