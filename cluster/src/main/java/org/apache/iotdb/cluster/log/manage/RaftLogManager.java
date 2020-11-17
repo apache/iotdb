@@ -780,11 +780,15 @@ public abstract class RaftLogManager {
    * check whether delete the committed log
    */
   void checkDeleteLog() {
-    synchronized (this) {
-      if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
-        return;
+    try {
+      synchronized (this) {
+        if (committedEntryManager.getTotalSize() <= minNumOfLogsInMem) {
+          return;
+        }
+        innerDeleteLog(minNumOfLogsInMem);
       }
-      innerDeleteLog(minNumOfLogsInMem);
+    } catch (Exception e) {
+      logger.error("{}, error occurred when checking delete log", name, e);
     }
   }
 
