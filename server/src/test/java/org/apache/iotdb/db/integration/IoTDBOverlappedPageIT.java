@@ -115,15 +115,27 @@ public class IoTDBOverlappedPageIT {
         statement.execute(sql);
       }
       statement.execute("flush");
+
+      for (long time = 11; time <= 20; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+        statement.execute(sql);
+      }
       for (long time = 100; time <= 120; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");
-      for (long time = 1; time <= 20; time++) {
+
+      for (long time = 1; time <= 10; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+        statement.execute(sql);
+      }
+      for (long time = 11; time <= 20; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
         statement.execute(sql);
       }
       statement.execute("flush");

@@ -55,7 +55,7 @@ set as=%system_cpu_cores%
 if ["%system_cpu_cores%"] LSS ["1"] set system_cpu_cores="1"
 
 set liner=0
-for /f  %%b in ('wmic memorychip get capacity') do (
+for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory') do (
 	set /a liner+=1
 	if !liner!==2 set system_memory=%%b
 )

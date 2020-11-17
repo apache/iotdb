@@ -65,9 +65,9 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void testMerge() throws Exception {
     MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
-            , l) -> {
-        }, "test", false, 1, MERGE_TEST_SG);
+        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l) -> {
+            }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();

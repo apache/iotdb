@@ -77,6 +77,9 @@
     <!-- <slot name="bottom"/> -->
     <p style="text-align: center;">Copyright © 2020 The Apache Software Foundation.<br>
        Apache and the Apache feather logo are trademarks of The Apache Software Foundation</p>
+    <p style="text-align: center; margin-top: 10px; color: #444">
+      Contact us: Join QQ Group 659990460 | Add friend <i>tietouqiao</i> and be invited to Wechat Group<br>
+      see <a href="https://github.com/apache/iotdb/issues/1995">Join the community</a> for more</p>
     <!-- <p style="text-align:justify!important;paddingLeft:10px;paddingRight:10px;">
         Disclaimer: Apache IoTDB is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
     </p>

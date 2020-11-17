@@ -1,0 +1,112 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Java CI with Maven
+
+on:
+  push:
+    branches: 
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: 
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+        
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [8, 11.0.x]
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Check Apache Rat
+        run: mvn -B apache-rat:check
+      - name: Test with Maven
+        run:  mvn -B clean integration-test -Dtest.port.closed=true
+
+  build-win:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [8, 11.0.x]
+        os: [windows-latest]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Check Apache Rat
+        run: mvn -B apache-rat:check
+      - name: Download Hadoop Tools if Needed
+        # Using Powershell ...
+        # github action put codes to d:\a
+        run: mkdir D:\a\hadoop\bin ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.exe -OutFile D:\a\hadoop\bin\winutils.exe  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.dll -OutFile C:\windows\system32\hadoop.dll  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop -OutFile D:\a\hadoop\bin\hadoop  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -OutFile D:\a\hadoop\bin\hadoop.cmd  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -OutFile D:\a\hadoop\bin\hadoop.exp  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -OutFile D:\a\hadoop\bin\hadoop.lib  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -OutFile D:\a\hadoop\bin\hadoop.pdb  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -OutFile C:\windows\system32\hdfs.dll  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -OutFile D:\a\hadoop\bin\hdfs  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -OutFile D:\a\hadoop\bin\hdfs.cmd  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.exp -OutFile D:\a\hadoop\bin\hdfs.exp   ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.lib -OutFile D:\a\hadoop\bin\hdfs.lib  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.pdb -OutFile D:\a\hadoop\bin\hdfs.pdb  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs_static.lib -OutFile D:\a\hadoop\bin\hdfs_static.lib  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/libwinutils.lib -OutFile D:\a\hadoop\bin\libwinutils.lib  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred -OutFile D:\a\hadoop\bin\mapred  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/mapred.cmd -OutFile D:\a\hadoop\bin\mapred.cmd  ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/rcc -OutFile D:\a\hadoop\bin\rcc ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/winutils.pdb -OutFile D:\a\hadoop\bin\winutils.pdb ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn -OutFile D:\a\hadoop\bin\yarn ; `
+          Invoke-WebRequest https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/yarn.cmd -OutFile D:\a\hadoop\bin\yarn.cmd ; `
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\hadoop\bin", "User") ; `
+          [Environment]::SetEnvironmentVariable("HADOOP_HOME", "D:\a\hadoop", "User")
+      - name: Add Hadoop Path (Win)
+        shell: bash
+        run: echo 'export PATH=/d/a/hadoop/bin:$PATH' >> ~/.bash_profile && echo 'export HADOOP_HOME=/d/a/hadoop' >> ~/.bash_profile && source ~/.bash_profile
+      - name: Check Hadoop Path (Win)
+        shell: bash
+        run: source ~/.bash_profile && echo $PATH
+      - name: Cache Hadoop packages (Win)
+        uses: actions/cache@v2
+        with:
+          path: D:\a\hadoop
+          key: ${{ runner.os }}-hadoop-files${{ hashFiles('**/*.exe') }}
+          restore-keys: ${{ runner.os }}-hadoop-files
+      - name: Test with Maven
+        shell: bash
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true

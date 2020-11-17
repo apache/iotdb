@@ -855,10 +855,6 @@ public class PlanExecutor implements IPlanExecutor {
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws QueryProcessException {
     try {
-      if (!IoTDB.metaManager.isPathExist(path)) {
-        throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
-      }
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
