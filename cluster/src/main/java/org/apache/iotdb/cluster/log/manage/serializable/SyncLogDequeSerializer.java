@@ -563,7 +563,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         }
       }
       clearFirstLogIndex();
-
       return;
     }
 
