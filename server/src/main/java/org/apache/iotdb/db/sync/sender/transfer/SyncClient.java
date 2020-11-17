@@ -621,9 +621,9 @@ public class SyncClient implements ISyncClient {
         }
 
         // the file is sent successfully
-        String digest5OfSender = (new BigInteger(1, md.digest())).toString(16);
-        SyncStatus status = serviceClient.checkDataDigest(digest5OfSender);
-        if (status.code == SUCCESS_CODE && digest5OfSender.equals(status.msg)) {
+        String digestOfSender = (new BigInteger(1, md.digest())).toString(16);
+        SyncStatus status = serviceClient.checkDataDigest(digestOfSender);
+        if (status.code == SUCCESS_CODE && digestOfSender.equals(status.msg)) {
           logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
         } else {
