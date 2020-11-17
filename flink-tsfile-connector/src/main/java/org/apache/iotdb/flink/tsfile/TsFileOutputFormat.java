@@ -96,13 +96,15 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 	public void close() throws IOException {
 		super.close();
 		try {
+			if (writer != null) {
+				writer.close();
+				writer = null;
+			}
+		} finally {
 			if (fos != null) {
 				fos.close();
 				fos = null;
 			}
-		} finally {
-			writer.close();
-			writer = null;
 		}
 	}
 
