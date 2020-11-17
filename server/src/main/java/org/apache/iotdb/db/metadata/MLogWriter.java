@@ -175,6 +175,7 @@ public class MLogWriter {
   }
 
   public void clear() throws IOException {
+    channel.force(true);
     channel.close();
     fileOutputStream.close();
     Files.delete(logFile.toPath());

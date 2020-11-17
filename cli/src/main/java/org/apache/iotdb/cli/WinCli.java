@@ -99,8 +99,10 @@ public class WinCli extends AbstractCli {
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-        if (maxPrintRowCount < 0) {
-          maxPrintRowCount = Integer.MAX_VALUE;
+        if (maxPrintRowCount <= 0) {
+          println(
+              IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number greater than 0");
+          return false;
         }
       }
     } catch (ParseException e) {
@@ -109,7 +111,7 @@ public class WinCli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number");
       return false;
     }
     return true;

@@ -19,9 +19,11 @@
 package org.apache.iotdb.tsfile.write;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,8 +63,10 @@ public class SameMeasurementsWithDifferentDataTypesTest {
   @After
   public void after() {
     File file = new File(tsfilePath);
-    if (file.exists()) {
-      file.delete();
+    try {
+      Files.deleteIfExists(file.toPath());
+    } catch (IOException e) {
+      fail(e.getMessage());
     }
   }
 
@@ -91,8 +95,10 @@ public class SameMeasurementsWithDifferentDataTypesTest {
 
   private void writeFile(String tsfilePath) throws IOException, WriteProcessException {
     File f = new File(tsfilePath);
-    if (f.exists()) {
-      f.delete();
+    try {
+      Files.deleteIfExists(f.toPath());
+    } catch (IOException e) {
+      fail(e.getMessage());
     }
 
     Schema schema = new Schema();

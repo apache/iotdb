@@ -16,29 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.logical.crud;
 
-package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
+import java.util.Map;
+import org.apache.iotdb.db.index.common.IndexType;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+/**
+ * this operator is to conduct similarity search based on a certain index.
+ */
+public class QueryIndexOperator extends QueryOperator {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+  private Map<String, Object> props;
 
-import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+  private IndexType indexType;
 
-public class LocalFSOutputFactory implements FileOutputFactory {
+  public QueryIndexOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.QUERY_INDEX;
+  }
 
-  private static final Logger logger = LoggerFactory.getLogger(LocalFSOutputFactory.class);
+  public Map<String, Object> getProps() {
+    return props;
+  }
 
-  public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    try {
-      return new LocalTsFileOutput(new FileOutputStream(new File(filePath), append));
-    } catch (IOException e) {
-      logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
-      return null;
-    }
+  public void setProps(Map<String, Object> props) {
+    this.props = props;
+  }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
   }
 }

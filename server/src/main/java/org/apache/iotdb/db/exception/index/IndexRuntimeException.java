@@ -16,29 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.index;
 
-package org.apache.iotdb.tsfile.fileSystem.fileOutputFactory;
+public class IndexRuntimeException extends RuntimeException {
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+  private static final long serialVersionUID = 5946611722012179976L;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+  public IndexRuntimeException(String message, Throwable cause) {
+    super(message, cause);
+  }
 
-import org.apache.iotdb.tsfile.write.writer.LocalTsFileOutput;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
-public class LocalFSOutputFactory implements FileOutputFactory {
-
-  private static final Logger logger = LoggerFactory.getLogger(LocalFSOutputFactory.class);
-
-  public TsFileOutput getTsFileOutput(String filePath, boolean append) {
-    try {
-      return new LocalTsFileOutput(new FileOutputStream(new File(filePath), append));
-    } catch (IOException e) {
-      logger.error("Failed to get TsFile output of file: {}, ", filePath, e);
-      return null;
-    }
+  public IndexRuntimeException(String message) {
+    super(message);
   }
 }
