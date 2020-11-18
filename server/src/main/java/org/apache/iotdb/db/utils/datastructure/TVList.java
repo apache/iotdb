@@ -573,5 +573,10 @@ public abstract class TVList {
     }
   }
 
+  public abstract TSDataType getDataType();
+
+  public long getLastTime() {
+    return getTime(size - 1);
+  }
 
 }
