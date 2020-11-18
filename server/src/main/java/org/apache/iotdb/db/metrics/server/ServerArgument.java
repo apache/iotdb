@@ -229,7 +229,7 @@ public class ServerArgument {
     long[] retn = new long[2];
     proc.getOutputStream().close();
     try (InputStreamReader ir = new InputStreamReader(proc.getInputStream());
-         LineNumberReader input = new LineNumberReader(ir);) {
+         LineNumberReader input = new LineNumberReader(ir)) {
       String line = input.readLine();
       if (line == null || line.length() < 10) {
         return null;

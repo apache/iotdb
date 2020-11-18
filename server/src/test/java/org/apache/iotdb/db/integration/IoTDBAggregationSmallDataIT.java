@@ -312,7 +312,7 @@ public class IoTDBAggregationSmallDataIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
           "SELECT first_value(s0),first_value(s1) FROM root.vehicle.d0 WHERE s2 >= 3.33");
@@ -672,7 +672,7 @@ public class IoTDBAggregationSmallDataIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.getConnection
         (Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
         statement.execute(sql);
