@@ -218,4 +218,9 @@ public class FloatTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.FLOAT;
+  }
 }

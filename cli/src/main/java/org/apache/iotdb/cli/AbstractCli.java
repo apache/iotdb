@@ -46,7 +46,6 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
-import org.apache.thrift.TException;
 
 public abstract class AbstractCli {
 
@@ -306,8 +305,8 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp < 0) {
-      maxPrintRowCount = Integer.MAX_VALUE;
+    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+      throw new NumberFormatException();
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -407,7 +406,7 @@ public abstract class AbstractCli {
     }
 
     if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      setMaxDisplaNum(specialCmd, cmd);
+      setMaxDisplayNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
@@ -506,7 +505,7 @@ public abstract class AbstractCli {
     println("Fetch size has set to " + values[1].trim());
   }
 
-  private static void setMaxDisplaNum(String specialCmd, String cmd) {
+  private static void setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Max display number format error, please input like %s = 10000",
