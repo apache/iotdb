@@ -134,7 +134,7 @@ public class AsyncDataClient extends AsyncClient {
   }
 
   public boolean isReady() {
-    if (___currentMethod != null || hasError()) {
+    if (___currentMethod != null) {
       logger.warn("Client {} is running {} and will timeout at {}", hashCode(), ___currentMethod,
           new Date(___currentMethod.getTimeoutTimestamp()));
     }
