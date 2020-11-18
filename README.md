@@ -358,7 +358,10 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 2,500,world,600,700,800
 3,900,"hello, \"world\"",1000,1100,1200
 ```
-> if you have some special characters like comma in your field, the field should be enclosed by a double quote or single quote. for example, "hello,\"great";
+> Note that the following special characters in fields need to be checked before importing:
+> 1. `,` : fields containing `,` should be quoted by a pair of `"` or a pair of `'`.
+> 2. `"` : `"` in fields should be replaced by `\"` .
+> 3. `'` : `'` in fields should be replaced by `\'` .
 
 ### Run import shell
 ```
