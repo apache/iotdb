@@ -250,6 +250,9 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static void writeMetadata(BufferedWriter bw, List<String> columnNames)
       throws IOException {
+    if (!columnNames.get(0).equals("Time")) {
+      bw.write("Time" + ",");
+    }
     for (int i = 0; i < columnNames.size() - 1; i++) {
       bw.write(columnNames.get(i) + ",");
     }
@@ -306,8 +309,10 @@ public class ExportCsv extends AbstractCsvTool {
         bw.write(",");
       } else {
         if (fields.get(j).getDataType() == TSDataType.TEXT) {
-          if (fields.get(j).getStringValue().contains(",")) {
+          if (value.contains(",") || value.contains("\\")) {
             bw.write("\"" + value + "\",");
+          } else  {
+            bw.write(value + ",");
           }
         } else {
           bw.write(value + ",");
@@ -319,7 +324,7 @@ public class ExportCsv extends AbstractCsvTool {
       bw.write("\n");
     } else {
       if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
-        if (fields.get(fields.size() - 1).getStringValue().contains(",")) {
+        if (lastValue.contains(",") || lastValue.contains("\\")) {
           bw.write("\"" + lastValue + "\"\n");
         } else {
           bw.write(lastValue + "\n");

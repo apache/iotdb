@@ -126,7 +126,7 @@ public class ImportCsvTestIT extends AbstractScript {
         "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
         "1,100,'hello',200,300,400",
         "2,500,'world',600,700,800",
-        "3,900,'IoTDB',1000,1100,1200"};
+        "3,900,'Io\"TDB',1000,1100,1200"};
     BufferedWriter writer;
     try {
       writer = new BufferedWriter(new FileWriter(CSV_FILE));
