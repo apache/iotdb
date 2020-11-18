@@ -214,7 +214,7 @@ public class IoTDBConfig {
    * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
    * is larger than this parameter, then the MetaData operation plan will be rejected by MManager.
    */
-  private int mlogBufferSize = 64 * 1024;
+  private int mlogBufferSize = 1024 * 1024;
 
   /**
    * The cycle when meta log is periodically forced to be written to disk(in milliseconds) If

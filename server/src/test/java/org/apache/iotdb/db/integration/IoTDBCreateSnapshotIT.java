@@ -31,6 +31,7 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -77,7 +78,7 @@ public class IoTDBCreateSnapshotIT {
 
       // create snapshot
       statement.execute("CREATE SNAPSHOT FOR SCHEMA");
-      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot");
+      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot.bin");
 
       // test snapshot file exists
       Assert.assertTrue(snapshotFile.exists());
@@ -100,12 +101,12 @@ public class IoTDBCreateSnapshotIT {
 
       HashSet<PhysicalPlan> d0Plans = new HashSet<>(6);
       for (int i = 0; i < 6; i++) {
-        d0Plans.add(convertFromString(exp[i]));
+        d0Plans.add(MLogWriter.convertFromString(exp[i]));
       }
 
       HashSet<PhysicalPlan> d1Plans = new HashSet<>(6);
       for (int i = 0; i < 6; i++) {
-        d1Plans.add(convertFromString(exp[i+6]));
+        d1Plans.add(MLogWriter.convertFromString(exp[i+6]));
       }
 
       try (MLogReader mLogReader = new MLogReader(snapshotFile)){
@@ -185,22 +186,5 @@ public class IoTDBCreateSnapshotIT {
       }
       Assert.assertEquals(8, cnt);
     }
-  }
-
-  private PhysicalPlan convertFromString(String str) {
-    String[] words = str.split(",");
-    switch (words[0]) {
-      case "2":
-      return new MeasurementMNodePlan(words[1],words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
-        Integer.parseInt(words[words.length - 1]),
-        new MeasurementSchema(words[1], TSDataType.values()[Integer.parseInt(words[3])],
-          TSEncoding.values()[Integer.parseInt(words[4])], CompressionType.values()[Integer.parseInt(words[5])]
-          ));
-      case "1":
-      return new StorageGroupMNodePlan(words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
-      case "0":
-      return new MNodePlan(words[1], Integer.parseInt(words[2]));
-    }
-    return null;
   }
 }

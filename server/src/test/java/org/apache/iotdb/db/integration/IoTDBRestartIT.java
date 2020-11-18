@@ -219,8 +219,6 @@ public class IoTDBRestartIT {
     EnvironmentUtils.cleanEnv();
   }
 
-
-
   @Test
   public void testRestartEndTime()
       throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
@@ -268,6 +266,7 @@ public class IoTDBRestartIT {
       };
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
+        System.out.println(resultSet.toString());
         while (resultSet.next()) {
           String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
           assertEquals(exp[cnt], result);

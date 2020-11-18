@@ -63,6 +63,8 @@ public class StorageGroupMNodePlan extends MNodePlan {
     putString(buffer, name);
     buffer.putLong(dataTTL);
     buffer.putInt(childSize);
+
+    buffer.putLong(index);
   }
 
   @Override
@@ -71,6 +73,8 @@ public class StorageGroupMNodePlan extends MNodePlan {
     putString(stream, name);
     stream.writeLong(dataTTL);
     stream.writeInt(childSize);
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -78,6 +82,7 @@ public class StorageGroupMNodePlan extends MNodePlan {
     name = readString(buffer);
     dataTTL = buffer.getLong();
     childSize = buffer.getInt();
+    index = buffer.getLong();
   }
 
   @Override

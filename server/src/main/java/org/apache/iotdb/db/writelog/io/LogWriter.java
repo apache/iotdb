@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -25,9 +27,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 /**
  * LogWriter writes the binarized logs into a file using FileChannel together with check sums of

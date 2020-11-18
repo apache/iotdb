@@ -33,7 +33,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -186,36 +185,14 @@ public class IoTDBConfigCheck {
             inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading
-    if (!properties.containsKey(IOTDB_VERSION_STRING)
-        || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")
-        || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
-      logger.error("DO NOT UPGRADE IoTDB from v0.11 or lower version NOW");
+    // check whether upgrading from v0.9 to v0.12
+    if (!properties.containsKey(IOTDB_VERSION_STRING) ||
+      properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
+      logger.error("DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.12!"
+          + " Please upgrade to v0.11 first");
       System.exit(-1);
     }
-
-    // check whether upgrading from v0.10 to v0.11
-    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
-      logger.info("Upgrading IoTDB from v0.10 to v0.11, checking files...");
-      checkUnClosedTsFileV2();
-      upgradePropertiesFile();
-      logger.info("Upgrade to IoTDB v0.11 successfully!");
-
-      // upgrade mlog finished, delete old mlog file
-      File mlogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
-        + MetadataConstant.METADATA_LOG);
-      File tmpMLogFile = SystemFileFactory.INSTANCE.getFile(mlogFile.getAbsolutePath()
-        + ".tmp");
-
-      if (!mlogFile.delete()) {
-        throw new IOException("Deleting " + mlogFile + "failed.");
-      }
-      // rename tmpLogFile to mlog
-      FileUtils.moveFile(tmpMLogFile, mlogFile);
-    }
-
-    // upgrade from mlog.txt to mlog.bin
-    MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+    MLogWriter.upgradeMLog();
 
     checkProperties();
   }

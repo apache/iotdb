@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.logfile;
 
-import java.io.*;
-import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.util.*;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -35,14 +29,33 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MLogWriter implements AutoCloseable {
 
@@ -52,6 +65,9 @@ public class MLogWriter implements AutoCloseable {
   private int logNum;
   private ByteBuffer mlogBuffer = ByteBuffer.allocate(
     IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
+
+  // we write log to channel every time, so we need not to call channel.force every time
+  private final long DUMMY_FLUSH_TIME = 100;
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
@@ -64,19 +80,16 @@ public class MLogWriter implements AutoCloseable {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    // always flush
-    logWriter = new LogWriter(logFile, 0L);
+    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
   }
 
   public MLogWriter(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    // always flush
-    logWriter = new LogWriter(logFile, 0L);
+    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
   }
 
   @Override
   public void close() throws IOException {
-    sync();
     logWriter.close();
   }
 
@@ -91,16 +104,13 @@ public class MLogWriter implements AutoCloseable {
   }
 
   private void putLog(PhysicalPlan plan) {
-    mlogBuffer.mark();
     try {
       plan.serialize(mlogBuffer);
-    } catch (BufferOverflowException e) {
-      logger.debug("MLog {} BufferOverflow !", plan.getOperatorType(), e);
-      mlogBuffer.reset();
       sync();
-      plan.serialize(mlogBuffer);
+      logNum ++;
+    } catch (BufferOverflowException e) {
+      logger.warn("MLog {} BufferOverflow !", plan.getOperatorType(), e);
     }
-    logNum ++;
   }
 
   public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
@@ -214,53 +224,63 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+  public static void upgradeTxtToBin(String schemaDir, String oldFileName,
+                                     String newFileName, boolean isSnapshot) throws IOException {
+    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + newFileName);
     File tmpLogFile = SystemFileFactory.INSTANCE.getFile(logFile.getAbsolutePath() + ".tmp");
     File oldLogFile = SystemFileFactory.INSTANCE.getFile(
-        schemaDir + File.separator + MetadataConstant.METADATA_OLD_LOG);
+      schemaDir + File.separator + oldFileName);
+    File tmpOldLogFile = SystemFileFactory.INSTANCE.getFile(oldLogFile.getAbsolutePath()
+      + ".tmp");
 
-    if (oldLogFile.exists()) {
-      try (MLogWriter mLogWriter = new MLogWriter(schemaDir, logFileName + ".tmp");
-        MLogTxtReader MLogTxtReader = new MLogTxtReader(schemaDir, MetadataConstant.METADATA_OLD_LOG)) {
+    if (oldLogFile.exists() || tmpOldLogFile.exists()) {
+
+      if (tmpOldLogFile.exists() && !oldLogFile.exists()) {
+        FileUtils.moveFile(tmpOldLogFile, oldLogFile);
+      }
+
+      try (MLogWriter mLogWriter = new MLogWriter(schemaDir, newFileName + ".tmp");
+           MLogTxtReader MLogTxtReader = new MLogTxtReader(schemaDir, oldFileName)) {
         // upgrade from old character log file to new binary mlog
         while (MLogTxtReader.hasNext()) {
           String cmd = MLogTxtReader.next();
           try {
-            mLogWriter.operation(cmd);
+            mLogWriter.operation(cmd, isSnapshot);
           } catch (MetadataException e) {
             logger.error("failed to upgrade cmd {}.", cmd, e);
           }
         }
       }
     } else if (!logFile.exists() && !tmpLogFile.exists()) {
-      // if both old mlog.bin and mlog.bin.tmp do not exist, nothing to do
+      // if both .bin and .bin.tmp do not exist, nothing to do
     } else if (!logFile.exists() && tmpLogFile.exists()) {
-      // if old mlog.bin doesn't exist but mlog.bin.tmp exists, rename tmp file to mlog
+      // if old .bin doesn't exist but .bin.tmp exists, rename tmp file to .bin
       FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
     } else if (tmpLogFile.exists()) {
-      // if both old mlog.bin and mlog.bin.tmp exist, delete mlog.bin.tmp
+      // if both .bin and .bin.tmp exist, delete .bin.tmp
       if (!tmpLogFile.delete()) {
         throw new IOException("Deleting " + tmpLogFile + "failed.");
       }
     }
 
     // do some clean job
-
-    // remove old mlog.txt and mlog.txt.tmp
-    File tmpOldLogFile = SystemFileFactory.INSTANCE.getFile(oldLogFile.getAbsolutePath()
-      + ".tmp");
-
+    // remove old .txt and .txt.tmp
     if (oldLogFile.exists() && !oldLogFile.delete()) {
       throw new IOException("Deleting old mlog.txt " + oldLogFile + "failed.");
     }
 
-    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
+    if (tmpOldLogFile.exists() && !tmpOldLogFile.delete()) {
       throw new IOException("Deleting old mlog.txt.tmp " + oldLogFile + "failed.");
     }
 
-    // rename mlog.bin.tmp to mlog.bin
-    FileUtils.moveFile(tmpLogFile, logFile);
+    // rename .bin.tmp to .bin
+    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
+  }
+
+  public static void upgradeMLog() throws IOException {
+    String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+    upgradeTxtToBin(schemaDir, MetadataConstant.METADATA_TXT_LOG, MetadataConstant.METADATA_LOG, false);
+    upgradeTxtToBin(schemaDir, MetadataConstant.MTREE_TXT_SNAPSHOT, MetadataConstant.MTREE_SNAPSHOT, true);
   }
 
   public void clear() throws IOException {
@@ -285,6 +305,22 @@ public class MLogWriter implements AutoCloseable {
    */
   public void setLogNum(int number) {
     logNum = number;
+  }
+
+  public void operation(String cmd, boolean isSnapshot) throws IOException, MetadataException {
+    if (!isSnapshot) {
+      operation(cmd);
+    } else {
+      PhysicalPlan plan = convertFromString(cmd);
+      try {
+        if (plan != null) {
+          putLog(plan);
+        }
+      } catch (BufferOverflowException e) {
+        throw new IOException(
+          "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+      }
+    }
   }
 
   /**
@@ -355,5 +391,24 @@ public class MLogWriter implements AutoCloseable {
 
   public void force() throws IOException {
     logWriter.force();
+  }
+
+  public static PhysicalPlan convertFromString(String str) {
+    String[] words = str.split(",");
+    switch (words[0]) {
+      case "2":
+        return new MeasurementMNodePlan(words[1], words[2].equals("") ? null :  words[2], Long.parseLong(words[words.length - 2]),
+          Integer.parseInt(words[words.length - 1]),
+          new MeasurementSchema(words[1], TSDataType.values()[Integer.parseInt(words[3])],
+            TSEncoding.values()[Integer.parseInt(words[4])], CompressionType.values()[Integer.parseInt(words[5])]
+          ));
+      case "1":
+        return new StorageGroupMNodePlan(words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
+      case "0":
+        return new MNodePlan(words[1], Integer.parseInt(words[2]));
+      default:
+        logger.error("unknown cmd {}", str);
+    }
+    return null;
   }
 }

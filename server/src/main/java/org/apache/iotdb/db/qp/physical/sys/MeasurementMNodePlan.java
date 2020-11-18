@@ -22,6 +22,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,21 @@ public class MeasurementMNodePlan extends MNodePlan {
     buffer.putLong(offset);
     buffer.putInt(childSize);
     schema.serializeTo(buffer);
+
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.write((byte) PhysicalPlanType.MEASUREMENT_MNODE.ordinal());
+
+    putString(stream, name);
+    putString(stream, alias);
+    stream.writeLong(offset);
+    stream.writeInt(childSize);
+    schema.serializeTo(stream);
+
+    stream.writeLong(index);
   }
 
   @Override
@@ -69,6 +86,8 @@ public class MeasurementMNodePlan extends MNodePlan {
     offset = buffer.getLong();
     childSize = buffer.getInt();
     schema = MeasurementSchema.deserializeFrom(buffer);
+
+    index = buffer.getLong();
   }
 
   public MeasurementSchema getSchema() {

@@ -29,13 +29,15 @@ public class MetadataConstant {
   private static final String MTREE_VERSION = "1";
 
   public static final String ROOT = "root";
-  public static final String METADATA_OLD_LOG = "mlog.txt";
+  public static final String METADATA_TXT_LOG = "mlog.txt";
   public static final String METADATA_LOG = "mlog.bin";
   public static final String TAG_LOG = "tlog.txt";
+  public static final String MTREE_TXT_SNAPSHOT =
+    "mtree" + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot";
   public static final String MTREE_SNAPSHOT =
-      "mtree" + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot";
+      "mtree" + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin";
   public static final String MTREE_SNAPSHOT_TMP =
-      "mtree" + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.tmp";
+      "mtree" + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
 
 
   public static final short MNODE_TYPE = 0;

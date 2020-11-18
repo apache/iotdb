@@ -206,14 +206,6 @@ public class MManager {
         .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
     }
-
-    if (config.getForceWalPeriodInMs() > 0) {
-      timedForceMLogThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-        "timedForceMLogThread"));
-      timedForceMLogThread
-        .scheduleAtFixedRate(this::forceMlog, config.getForceMlogPeriodInMs(),
-          config.getForceMlogPeriodInMs(), TimeUnit.MILLISECONDS);
-    }
   }
 
   /**
@@ -289,7 +281,7 @@ public class MManager {
             operation(plan);
             idx++;
           } catch (Exception e) {
-            logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
+            logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
           }
         }
         logger.debug("spend {} ms to deserialize mtree from mlog.bin",
@@ -1664,16 +1656,11 @@ public class MManager {
     return null;
   }
 
-  private void forceMlog() {
-    if (logWriter == null || logFile == null) {
-      // the logWriter is not initialized now, we skip the check once.
-      return;
-    }
-    try {
-      logWriter.force();
-    } catch (IOException e) {
-      logger.error("Cannot force mlog, because ", e);
-    }
+  /**
+   * only for test
+   */
+  public void flushAllMlogForTest() throws IOException {
+    logWriter.close();
   }
 
   private void checkMTreeModified() {

@@ -56,4 +56,8 @@ public class StorageGroupMNode extends MNode {
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
     return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
   }
+
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+  }
 }

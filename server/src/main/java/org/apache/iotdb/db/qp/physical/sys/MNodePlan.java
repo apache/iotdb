@@ -74,6 +74,7 @@ public class MNodePlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.MNODE.ordinal());
     putString(buffer, name);
     buffer.putInt(childSize);
+    buffer.putLong(index);
   }
 
   @Override
@@ -81,12 +82,14 @@ public class MNodePlan extends PhysicalPlan {
     stream.write((byte) PhysicalPlanType.MNODE.ordinal());
     putString(stream, name);
     stream.writeInt(childSize);
+    stream.writeLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
     name = readString(buffer);
     childSize = buffer.getInt();
+    index = buffer.getLong();
   }
 
   @Override

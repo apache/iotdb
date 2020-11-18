@@ -241,6 +241,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     } else {
       buffer.put((byte) 0);
     }
+
+    buffer.putLong(index);
   }
 
   @Override

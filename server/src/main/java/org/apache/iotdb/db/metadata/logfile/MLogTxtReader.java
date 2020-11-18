@@ -66,6 +66,7 @@ public class MLogTxtReader implements AutoCloseable {
     }
   }
 
+  @Override
   public void close() {
     try {
       bufferedReader.close();
