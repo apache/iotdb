@@ -355,7 +355,7 @@ IoTDB具有类型推断的能力，因此在数据导入前创建元数据不是
 Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 1,100,hello,200,300,400
 2,500,world,600,700,800
-3,900,IoTDB,1000,1100,1200
+3,900,"hello, \"world\"",1000,1100,1200
 ```
 
 > 如果字段中有一些特殊字符，如逗号，字段应该用双引号或单引号括起来。例如, "hello,\"great";
