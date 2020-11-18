@@ -35,7 +35,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -111,8 +110,10 @@ public class MTree implements Serializable {
       try {
         QueryDataSource dataSource = QueryResourceManager.getInstance().
                 getQueryDataSource(node.getPartialPath(), queryContext, null);
+        Set<String> measurementSet = new HashSet<String>() {{
+          add(node.getPartialPath().getFullPath()); }};
         LastPointReader lastReader = new LastPointReader(node.getPartialPath(),
-                node.getSchema().getType(), Collections.emptySet(), queryContext,
+                node.getSchema().getType(), measurementSet, queryContext,
                 dataSource, Long.MAX_VALUE, null);
         last = lastReader.readLastPoint();
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
