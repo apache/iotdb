@@ -252,7 +252,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // when next query come, it will find the data has been sorted and get reference of the data
     synchronized (memTableMap) {
       IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      chunkCopy = memChunk.getSortedTVListForQuery();
+      chunkCopy = memChunk.getSortedTVList();
       chunkCopy.increaseReferenceCount();
       curSize = chunkCopy.size();
     }
@@ -333,7 +333,10 @@ public abstract class AbstractMemTable implements IMemTable {
   public void release() {
     for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
-        TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
+        TVList list = subEntry.getValue().getTVList();
+        if (list.getReferenceCount() == 0) {
+          TVListAllocator.getInstance().release(list);
+        }
       }
     }
   }

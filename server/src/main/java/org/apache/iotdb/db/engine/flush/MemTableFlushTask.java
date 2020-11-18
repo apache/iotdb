@@ -89,7 +89,7 @@ public class MemTableFlushTask {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
-        TVList tvList = series.getSortedTVListForFlush();
+        TVList tvList = series.getSortedTVList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
       }

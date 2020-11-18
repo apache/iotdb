@@ -87,7 +87,7 @@ public class IoTDBInsertWithQueryIT {
   }
 
   @Test
-  public void insertWithQueryTestUnsequence() throws ClassNotFoundException {
+  public void insertWithQueryUnsequenceTest() throws ClassNotFoundException {
     // insert
     insertData(0, 1000);
 
@@ -108,7 +108,7 @@ public class IoTDBInsertWithQueryIT {
   }
 
   @Test
-  public void insertWithQueryMultiThreadTestUnsequence()
+  public void insertWithQueryMultiThreadUnsequenceTest()
       throws ClassNotFoundException, InterruptedException {
     // insert
     insertData(0, 1000);
@@ -127,6 +127,98 @@ public class IoTDBInsertWithQueryIT {
     // select
     selectWithMultiThread(2500);
   }
+
+  @Test
+  public void insertWithQueryFlushTest() throws ClassNotFoundException {
+    // insert
+    insertData(0, 1000);
+
+    // select
+    selectAndCount(1000);
+
+    flush();
+
+    // insert
+    insertData(1000, 2000);
+
+    // select
+    selectAndCount(2000);
+  }
+
+  @Test
+  public void flushWithQueryTest() throws ClassNotFoundException, InterruptedException {
+    // insert
+    insertData(0, 1000);
+
+    // select with flush
+    selectWithMultiThreadAndFlush(1000);
+
+    // insert
+    insertData(500, 1500);
+
+    // select
+    selectWithMultiThreadAndFlush(1500);
+  }
+
+  @Test
+  public void flushWithQueryUnorderTest() throws ClassNotFoundException, InterruptedException {
+    // insert
+    insertData(0, 100);
+    insertData(500, 600);
+
+    // select
+    selectWithMultiThread(200);
+
+    insertData(200, 400);
+
+    selectWithMultiThreadAndFlush(400);
+
+    insertData(0, 1000);
+
+    selectWithMultiThread(1000);
+  }
+
+  private void selectWithMultiThreadAndFlush(int res) throws InterruptedException {
+    List<Thread> queryThreadList = new ArrayList<>();
+
+    // select with multi thread
+    for (int i = 0; i < 2; i++) {
+      Thread cur = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          try {
+            selectAndCount(res);
+          } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+          }
+        }
+      });
+
+      if(i == 1){
+        Thread flushThread = new Thread(new Runnable() {
+          @Override
+          public void run() {
+            try {
+              flush();
+            } catch (ClassNotFoundException e) {
+              e.printStackTrace();
+            }
+          }
+        });
+
+        flushThread.start();
+        queryThreadList.add(flushThread);
+      }
+
+      queryThreadList.add(cur);
+      cur.start();
+    }
+
+    for (Thread thread : queryThreadList) {
+      thread.join();
+    }
+  }
+
 
   private void selectWithMultiThread(int res) throws InterruptedException {
     List<Thread> queryThreadList = new ArrayList<>();
@@ -172,6 +264,17 @@ public class IoTDBInsertWithQueryIT {
     }
   }
 
+  private void flush() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // insert of data time range : start-end into fans
+      statement.execute("flush");
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
 
   // "select * from root.vehicle" : test select wild data
   private void selectAndCount(int res) throws ClassNotFoundException {
@@ -185,11 +288,13 @@ public class IoTDBInsertWithQueryIT {
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
+        long before = -1;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
-                  .getString("root.fans.d0.s0")
-                  + "," + resultSet.getString("root.fans.d0.s1");
+          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
+          if(cur <= before){
+            fail("time order is wrong");
+          }
+          before = cur;
           cnt++;
         }
         assertEquals(res, cnt);

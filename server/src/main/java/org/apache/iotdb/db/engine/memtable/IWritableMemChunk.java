@@ -62,7 +62,7 @@ public interface IWritableMemChunk {
   MeasurementSchema getSchema();
 
   /**
-   * served for query requests.
+   * served for query and flush requests.
    * <p>
    * if tv list has been sorted, just return reference of it
    * <p>
@@ -75,18 +75,8 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTVListForQuery();
+  TVList getSortedTVList();
 
-  /**
-   * served for flush requests.
-   * <p>
-   * if tv list has reference, copy it. Then sort it
-   * <p>
-   * the mechanism is just like copy on write
-   *
-   * @return sorted tv list
-   */
-  TVList getSortedTVListForFlush();
 
   default TVList getTVList() {
     return null;
