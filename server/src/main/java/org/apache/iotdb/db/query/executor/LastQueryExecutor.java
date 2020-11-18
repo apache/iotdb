@@ -128,8 +128,7 @@ public class LastQueryExecutor {
     List<PartialPath> restPaths = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
             readLastPairsFromCache(seriesPaths, filter, cacheAccessors, restPaths);
-    // If any '>' or '>=' filters are specified, only access cache to get Last result.
-    if (filter != null || restPaths.isEmpty()) {
+    if (restPaths.isEmpty()) {
       return resultContainer;
     }
 
@@ -168,7 +167,7 @@ public class LastQueryExecutor {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
-        cacheAccessors.add(new LastCacheAccessor(path, filter));
+        cacheAccessors.add(new LastCacheAccessor(path));
       }
     } else {
       restPaths.addAll(seriesPaths);
@@ -178,11 +177,13 @@ public class LastQueryExecutor {
     }
     for (int i = 0; i < cacheAccessors.size(); i++) {
       TimeValuePair tvPair = cacheAccessors.get(i).read();
-      if (tvPair != null) {
-        resultContainer.add(new Pair<>(true, tvPair));
-      } else {
+      if (tvPair == null) {
         resultContainer.add(new Pair<>(false, null));
         restPaths.add(seriesPaths.get(i));
+      } else if (!satisfyFilter(filter, tvPair)) {
+        resultContainer.add(new Pair<>(true, null));
+      } else {
+        resultContainer.add(new Pair<>(true, tvPair));
       }
     }
     return resultContainer;
@@ -190,16 +191,10 @@ public class LastQueryExecutor {
 
   private static class LastCacheAccessor {
     private PartialPath path;
-    private Filter filter;
     private MeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
       this.path = seriesPath;
-    }
-
-    LastCacheAccessor(PartialPath seriesPath, Filter filter) {
-      this.path = seriesPath;
-      this.filter = filter;
     }
 
     public TimeValuePair read() {
@@ -207,31 +202,25 @@ public class LastQueryExecutor {
         node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
-        if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
+        if (timeValuePair != null) {
           return timeValuePair;
-        } else if (timeValuePair != null) {
-          return null;
         }
       }
 
-      if (node != null && node.getCachedLast() != null) {
-        TimeValuePair timeValuePair =  node.getCachedLast();
-        if (timeValuePair != null && satisfyFilter(filter, timeValuePair)) {
-          return timeValuePair;
-        } else if (timeValuePair != null) {
-          return null;
-        }
+      if (node == null) {
+        return null;
       }
-      return null;
+      return node.getCachedLast();
     }
 
     public void write(TimeValuePair pair) {
       IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
     }
 
-    private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
-      return filter == null ||
-              filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
-    }
+  }
+
+  private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
+    return filter == null ||
+            filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 }
