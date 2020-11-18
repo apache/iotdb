@@ -46,8 +46,6 @@ public class BasicDaoImplTest {
         assert internal1.equals("");
 
         String internal2 = impl.getInternal(3);
-        System.out.println("123");
-        System.out.println(internal2);
         assert internal2.equals("1m");
 
         String internal3 = impl.getInternal(25);
