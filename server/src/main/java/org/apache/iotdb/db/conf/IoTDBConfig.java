@@ -274,7 +274,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 0L;
+  private long tsFileSizeThreshold = 1L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
