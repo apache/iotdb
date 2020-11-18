@@ -466,15 +466,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     long startTimeMillis = System.currentTimeMillis();
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
-      CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
-          storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
         if (currMaxFileNumInEachLevel <= mergeResources.get(i).size()) {
-          //level is numbered from 0
+          // level is numbered from 0
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to seq file
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {
+            CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
+                storageGroupName);
             for (TsFileResource mergeResource : mergeResources.get(i)) {
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
@@ -513,14 +513,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               writeUnlock();
             }
             deleteLevelFilesInDisk(toMergeTsFiles);
+            compactionLogger.close();
+            File logFile = FSFactoryProducer.getFSFactory()
+                .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
+            if (logFile.exists()) {
+              Files.delete(logFile.toPath());
+            }
           }
         }
-      }
-      compactionLogger.close();
-      File logFile = FSFactoryProducer.getFSFactory()
-          .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
-      if (logFile.exists()) {
-        Files.delete(logFile.toPath());
       }
     } catch (Exception e) {
       logger.error("Error occurred in Compaction Merge thread", e);
