@@ -559,12 +559,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (!success) {
       logger.error("recover log index file failed, clear all logs in disk, {}",
           lastIndexFile.getAbsoluteFile());
-      while (!logDataFileList.isEmpty()) {
-        success = deleteTheFirstLogDataAndIndexFile();
-        if (!success) {
-          forceDeleteAllLogFiles();
-        }
-      }
+      forceDeleteAllLogFiles();
       clearFirstLogIndex();
       return;
     }
@@ -580,12 +575,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (!success) {
       logger.error("recover log data file failed, clear all logs in disk,{}",
           lastDataFile.getAbsoluteFile());
-      while (!logDataFileList.isEmpty()) {
-        success = deleteTheFirstLogDataAndIndexFile();
-        if (!success) {
-          forceDeleteAllLogFiles();
-        }
-      }
+      forceDeleteAllLogFiles();
       clearFirstLogIndex();
     }
   }
@@ -835,16 +825,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       if (persistLogDeleteExecutorService != null) {
         persistLogDeleteExecutorService.shutdownNow();
         persistLogDeleteLogFuture.cancel(true);
-        try {
-          persistLogDeleteExecutorService.awaitTermination(20, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Close persist log delete thread interrupted");
-        }
+        persistLogDeleteExecutorService.awaitTermination(20, TimeUnit.SECONDS);
         persistLogDeleteExecutorService = null;
       }
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Close persist log delete thread interrupted");
     } finally {
       logger.info("{} is closed", this);
       isClosed = true;
@@ -859,12 +847,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // 1. delete
       forceFlushLogBuffer();
       closeCurrentFile(meta.getCommitLogIndex());
-      while (!logDataFileList.isEmpty()) {
-        boolean success = deleteTheFirstLogDataAndIndexFile();
-        if (!success) {
-          forceDeleteAllLogFiles();
-        }
-      }
+      forceDeleteAllLogFiles();
       deleteMetaFile();
 
       logDataFileList.clear();
@@ -990,8 +973,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   private void forceDeleteAllLogFiles() {
-    forceDeleteAllLogDataFiles();
-    forceDeleteAllLogIndexFiles();
+    while (!logDataFileList.isEmpty()) {
+      boolean success = deleteTheFirstLogDataAndIndexFile();
+      if (!success) {
+        forceDeleteAllLogDataFiles();
+        forceDeleteAllLogIndexFiles();
+      }
+    }
   }
 
   @SuppressWarnings("ConstantConditions")
@@ -1301,15 +1289,13 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             currentReadOffset, startAndEndOffset.right);
         int logSize = ReadWriteIOUtils.readInt(bufferedInputStream);
         Log log = null;
-        try {
-          log = parser
-              .parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(bufferedInputStream, logSize)));
-          result.add(log);
-        } catch (UnknownLogTypeException e) {
-          logger.error("Unknown log detected ", e);
-        }
+        log = parser
+            .parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(bufferedInputStream, logSize)));
+        result.add(log);
         currentReadOffset = currentReadOffset + Integer.BYTES + logSize;
       }
+    } catch (UnknownLogTypeException e) {
+      logger.error("Unknown log detected ", e);
     } catch (IOException e) {
       logger.error("Cannot read log from file={} ", file.getAbsoluteFile(), e);
     }
@@ -1319,11 +1305,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   @TestOnly
   public void setLogDataBuffer(ByteBuffer logDataBuffer) {
     this.logDataBuffer = logDataBuffer;
-  }
-
-  @TestOnly
-  public void setMaxRaftLogIndexSizeInMemory(int maxRaftLogIndexSizeInMemory) {
-    this.maxRaftLogIndexSizeInMemory = maxRaftLogIndexSizeInMemory;
   }
 
   @TestOnly
@@ -1337,11 +1318,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @TestOnly
-  public void setMaxPersistRaftLogNumberOnDisk(int maxPersistRaftLogNumberOnDisk) {
-    this.maxPersistRaftLogNumberOnDisk = maxPersistRaftLogNumberOnDisk;
-  }
-
-  @TestOnly
   public List<File> getLogDataFileList() {
     return logDataFileList;
   }
@@ -1349,15 +1325,5 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   @TestOnly
   public List<File> getLogIndexFileList() {
     return logIndexFileList;
-  }
-
-  @TestOnly
-  public long getFirstLogIndex() {
-    return firstLogIndex;
-  }
-
-  @TestOnly
-  public List<Long> getLogIndexOffsetList() {
-    return logIndexOffsetList;
   }
 }

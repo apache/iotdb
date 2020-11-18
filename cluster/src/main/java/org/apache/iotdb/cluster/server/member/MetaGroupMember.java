@@ -1580,12 +1580,10 @@ public class MetaGroupMember extends RaftMember {
             tmpStatus.getCode(), entry.getValue().getHeader(),
             tmpStatus.getMessage(), tmpStatus.subStatus));
       }
-      if (parentPlan instanceof InsertTabletPlan) {
-        if (tmpStatus.isSetRedirectNode() &&
-            ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
-                .getMaxTime()) {
-          endPoint = tmpStatus.getRedirectNode();
-        }
+      if (parentPlan instanceof InsertTabletPlan && tmpStatus.isSetRedirectNode() &&
+          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
+              .getMaxTime()) {
+        endPoint = tmpStatus.getRedirectNode();
       }
     }
 
