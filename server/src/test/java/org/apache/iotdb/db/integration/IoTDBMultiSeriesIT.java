@@ -434,7 +434,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
+          "411: Meet error in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }
