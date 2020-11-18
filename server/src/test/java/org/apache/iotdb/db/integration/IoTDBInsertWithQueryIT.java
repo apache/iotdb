@@ -178,11 +178,179 @@ public class IoTDBInsertWithQueryIT {
     selectWithMultiThread(1000);
   }
 
+  @Test
+  public void flushWithQueryUnorderLargerTest() throws ClassNotFoundException, InterruptedException {
+    // insert
+    insertData(0, 100);
+    insertData(500, 600);
+
+    // select
+    selectWithMultiThread(200);
+
+    insertData(200, 400);
+
+    selectWithMultiThreadAndFlush(400);
+
+    insertData(400, 700);
+//
+    selectWithMultiThreadAndFlush(600);
+
+    insertData(0, 1000);
+
+    selectWithMultiThread(1000);
+//
+    insertData(800, 1500);
+
+    selectWithMultiThreadAndFlush(1500);
+  }
+
+  @Test
+  public void insertWithQueryTogetherTest() throws InterruptedException {
+    // insert
+    List<Thread> queryThreadList = new ArrayList<>();
+
+    // select with multi thread
+    Thread cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          insertData(0, 200);
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          insertData(200, 400);
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          select();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          insertData(100, 200);
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          select();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          insertData(700, 900);
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          select();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          flush();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          insertData(500, 700);
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    cur = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          select();
+        } catch (ClassNotFoundException e) {
+          e.printStackTrace();
+        }
+      }
+    });
+    queryThreadList.add(cur);
+    cur.start();
+
+    for (Thread thread : queryThreadList) {
+      thread.join();
+    }
+  }
+
+
   private void selectWithMultiThreadAndFlush(int res) throws InterruptedException {
     List<Thread> queryThreadList = new ArrayList<>();
 
     // select with multi thread
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 5; i++) {
       Thread cur = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -194,7 +362,7 @@ public class IoTDBInsertWithQueryIT {
         }
       });
 
-      if(i == 1){
+      if(i == 2){
         Thread flushThread = new Thread(new Runnable() {
           @Override
           public void run() {
@@ -276,7 +444,7 @@ public class IoTDBInsertWithQueryIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
+  // test count
   private void selectAndCount(int res) throws ClassNotFoundException {
     String selectSql = "select * from root";
 
@@ -298,6 +466,34 @@ public class IoTDBInsertWithQueryIT {
           cnt++;
         }
         assertEquals(res, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  // test order
+  private void select() throws ClassNotFoundException {
+    String selectSql = "select * from root";
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(selectSql);
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        int cnt = 0;
+        long before = -1;
+        while (resultSet.next()) {
+          long cur = Long.parseLong(resultSet.getString(TestConstant.TIMESTAMP_STR));
+          if(cur <= before){
+            fail("time order is wrong");
+          }
+          before = cur;
+          cnt++;
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
