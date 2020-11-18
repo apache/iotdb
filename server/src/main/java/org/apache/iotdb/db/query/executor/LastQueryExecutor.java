@@ -133,6 +133,7 @@ public class LastQueryExecutor {
       return resultContainer;
     }
 
+    // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(restPaths);
     try {
@@ -148,6 +149,7 @@ public class LastQueryExecutor {
       StorageEngine.getInstance().mergeUnLock(list);
     }
 
+    // Compute Last result for the rest series paths by scanning Tsfiles
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
       if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
@@ -170,6 +172,9 @@ public class LastQueryExecutor {
       }
     } else {
       restPaths.addAll(seriesPaths);
+      for (int i = 0; i < seriesPaths.size(); i++) {
+        resultContainer.add(new Pair<>(false, null));
+      }
     }
     for (int i = 0; i < cacheAccessors.size(); i++) {
       TimeValuePair tvPair = cacheAccessors.get(i).read();

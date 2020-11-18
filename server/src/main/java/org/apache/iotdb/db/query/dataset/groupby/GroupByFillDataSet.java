@@ -109,12 +109,12 @@ public class GroupByFillDataSet extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
       seriesPaths.add((PartialPath) paths.get(i));
     }
-    List<Pair<Boolean, TimeValuePair>> lastContainer =
+    List<Pair<Boolean, TimeValuePair>> lastValueContainer =
             LastQueryExecutor.calculateLastPairForSeriesLocally(
                     seriesPaths, dataTypes, context, null, groupByFillPlan);
-    for (int i = 0; i < lastContainer.size(); i++) {
-      if (Boolean.TRUE.equals(lastContainer.get(i).left)) {
-        lastTimeArray[i] = lastContainer.get(i).right.getTimestamp();
+    for (int i = 0; i < lastValueContainer.size(); i++) {
+      if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
+        lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();
       }
     }
   }
