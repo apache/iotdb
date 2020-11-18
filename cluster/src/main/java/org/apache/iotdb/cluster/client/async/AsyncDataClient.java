@@ -82,6 +82,11 @@ public class AsyncDataClient extends AsyncClient {
     }
   }
 
+  public void close() {
+    ___transport.close();
+    ___currentMethod = null;
+  }
+
   public static class FactoryAsync extends AsyncClientFactory {
 
     public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
@@ -129,11 +134,11 @@ public class AsyncDataClient extends AsyncClient {
   }
 
   public boolean isReady() {
-    if (___currentMethod != null) {
+    if (___currentMethod != null || hasError()) {
       logger.warn("Client {} is running {} and will timeout at {}", hashCode(), ___currentMethod,
           new Date(___currentMethod.getTimeoutTimestamp()));
     }
-    return ___currentMethod == null;
+    return ___currentMethod == null && !hasError();
   }
 
   TAsyncMethodCall<Object> getCurrMethod() {

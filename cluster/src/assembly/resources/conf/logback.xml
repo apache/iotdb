@@ -231,7 +231,10 @@
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>
     </logger>
+    <logger level="info" name="org.apache.iotdb.db.engine.storagegroup.StorageGr oupProcessor"/>
+    <logger level="info" name="org.apache.iotdb.tsfile.write.page.PageWriter"/>
+    <logger level="info" name="org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl"/>
     <logger level="info" name="org.apache.iotdb.cluster.server.heartbeat"/>
     <logger level="error" name="org.apache.thrift.server.AbstractNonblockingServer"/>
-    <logger level="off" name="org.apache.thrift.server.TThreadPoolServer"/>
+    <logger level="warn" name="org.apache.thrift.server.TThreadPoolServer"/>
 </configuration>

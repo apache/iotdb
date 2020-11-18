@@ -100,6 +100,12 @@ public class AsyncMetaClient extends AsyncClient {
         '}';
   }
 
+
+  public void close() {
+    ___transport.close();
+    ___currentMethod = null;
+  }
+
   public Node getNode() {
     return node;
   }
