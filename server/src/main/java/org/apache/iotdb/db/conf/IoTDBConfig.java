@@ -149,7 +149,7 @@ public class IoTDBConfig {
   /**
    * Flush proportion for system
    */
-  private double flushProportion = 0.3;
+  private double flushProportion = 0.4;
 
   /**
    * Reject proportion for system
@@ -164,12 +164,12 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting this time to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 10;
+  private int waitingTimeWhenInsertBlockedInMs = 0;
 
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
   /**
    * Is the write ahead log enable.
    */
@@ -274,7 +274,7 @@ public class IoTDBConfig {
   /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 0L;
+  private long tsFileSizeThreshold = 1L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
