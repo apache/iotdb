@@ -214,4 +214,9 @@ public class IntTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT32;
+  }
 }
