@@ -20,6 +20,7 @@
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedWriter;
@@ -28,7 +29,12 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -92,7 +98,7 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   @Test
-  public void testWithoutCreateSchema() throws IOException {
+  public void testWithoutCreateSchema() throws IOException, ClassNotFoundException {
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateTestCSV());
     if (os.startsWith("windows")) {
@@ -101,8 +107,58 @@ public class ImportCsvTestIT extends AbstractScript {
       testOnUnix();
     }
     File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if(statement.execute("select * from root")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 6,3);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     if (file.exists()) {
       file.delete();
+    }
+  }
+
+  @Test
+  public void testBigCsvFile() throws IOException, ClassNotFoundException {
+    String os = System.getProperty("os.name").toLowerCase();
+    assertTrue(generateBigCsvFile());
+    if (os.startsWith("windows")) {
+      testOnWindows();
+    } else {
+      testOnUnix();
+    }
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if(statement.execute("select s1 from root.fit.d1")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 2,25000);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  private static void testResult(ResultSet resultSet, int expectedColumnNumber, int expectedRowNumber) throws SQLException {
+    if (resultSet != null) {
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int columnCount = metaData.getColumnCount();
+      assertEquals(expectedColumnNumber, columnCount);
+      int actualRowNumber = 0;
+      while (resultSet.next()) {
+        actualRowNumber++;
+      }
+      assertEquals(expectedRowNumber, actualRowNumber);
     }
   }
 
@@ -127,6 +183,29 @@ public class ImportCsvTestIT extends AbstractScript {
         "1,100,'hello',200,300,400",
         "2,500,'world',600,700,800",
         "3,900,'Io\"TDB',1000,1100,1200"};
+    BufferedWriter writer;
+    try {
+      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+      writer.write("");
+      for (String s : csvText) {
+        writer.write(s);
+        writer.newLine();
+      }
+      writer.flush();
+      writer.close();
+      return true;
+    } catch (IOException e) {
+      System.out.println("failed to create test csv");
+    }
+    return false;
+  }
+
+  private boolean generateBigCsvFile() {
+    List<String> csvText = new ArrayList<>();
+    csvText.add("Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1");
+    for(int i = 0; i < 25000; i++) {
+      csvText.add(i+","+i+","+i+","+i);
+    }
     BufferedWriter writer;
     try {
       writer = new BufferedWriter(new FileWriter(CSV_FILE));

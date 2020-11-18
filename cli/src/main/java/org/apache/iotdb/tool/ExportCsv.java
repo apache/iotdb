@@ -309,9 +309,13 @@ public class ExportCsv extends AbstractCsvTool {
         bw.write(",");
       } else {
         if (fields.get(j).getDataType() == TSDataType.TEXT) {
-          if (value.contains(",") || value.contains("\\")) {
+          if (value.contains("'")) {
             bw.write("\"" + value + "\",");
-          } else  {
+          } else if(value.contains("\"")) {
+            bw.write("'" + value + "',");
+          } else if(value.contains(",")) {
+            bw.write("\"" + value + "\",");
+          } else {
             bw.write(value + ",");
           }
         } else {
@@ -324,7 +328,11 @@ public class ExportCsv extends AbstractCsvTool {
       bw.write("\n");
     } else {
       if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
-        if (lastValue.contains(",") || lastValue.contains("\\")) {
+        if (lastValue.contains("'")) {
+          bw.write("\"" + lastValue + "\"\n");
+        } else if(lastValue.contains("\"")) {
+          bw.write("'" + lastValue + "'\n");
+        } else if(lastValue.contains(",")) {
           bw.write("\"" + lastValue + "\"\n");
         } else {
           bw.write(lastValue + "\n");

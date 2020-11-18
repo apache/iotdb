@@ -116,10 +116,11 @@ public class ImportCsv extends AbstractCsvTool {
       for(int i = 1; i < cols.length; i++) {
         splitColToDeviceAndMeasurement(cols[i], devicesToMeasurementsAndPositions, i);
       }
-
+      int lineNumber = 0;
       String line;
       while((line = br.readLine()) != null) {
         cols = splitCsvLine(line);
+        lineNumber++;
         for(Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions: devicesToMeasurementsAndPositions.entrySet()) {
           devices.add(deviceToMeasurementsAndPositions.getKey());
           times.add(Long.parseLong(cols[0]));
@@ -136,6 +137,13 @@ public class ImportCsv extends AbstractCsvTool {
           }
           measurementsList.add(measurements);
           valuesList.add(values);
+        }
+        if(lineNumber % 10000 == 0) {
+          session.insertRecords(devices, times, measurementsList, valuesList);
+          devices = new ArrayList<>();
+          times = new ArrayList<>();
+          measurementsList = new ArrayList<>();
+          valuesList = new ArrayList<>();
         }
       }
       session.insertRecords(devices, times, measurementsList, valuesList);
