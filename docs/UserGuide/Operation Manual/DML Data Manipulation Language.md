@@ -742,12 +742,20 @@ The 'align by device' indicates that the deviceId is considered as a column. The
 The SQL statement is:
 
 ```
-select s1,s2 from root.sg1.* ALIGN BY DEVICE
+select s1,s2 from root.sg1.* align by device
 ```
 
 For more syntax description, please read SQL REFERENCE.
 
-The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
+The 'disable align' indicates that there are 3 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
+
+The SQL statement is:
+
+```
+select * from root.sg1 where time > 10 disable align
+```
+
+For more syntax description, please read SQL REFERENCE.
 
 ####  Error Handling
 
