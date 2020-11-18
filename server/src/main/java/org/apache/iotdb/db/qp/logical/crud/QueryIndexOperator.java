@@ -16,21 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.qp.logical.crud;
 
-public class MetadataOperationType {
+import java.util.Map;
+import org.apache.iotdb.db.index.common.IndexType;
 
-  private MetadataOperationType(){
-    //allowed to do nothing
+/**
+ * this operator is to conduct similarity search based on a certain index.
+ */
+public class QueryIndexOperator extends QueryOperator {
+
+  private Map<String, Object> props;
+
+  private IndexType indexType;
+
+  public QueryIndexOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.QUERY_INDEX;
   }
 
-  public static final String CREATE_TIMESERIES = "0";
-  public static final String DELETE_TIMESERIES = "1";
-  public static final String SET_STORAGE_GROUP = "2";
-  public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP = "11";
-  public static final String CREATE_INDEX = "31";
-  public static final String DROP_INDEX = "32";
-  public static final String CHANGE_OFFSET = "12";
-  public static final String CHANGE_ALIAS = "13";
+  public Map<String, Object> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, Object> props) {
+    this.props = props;
+  }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
+  }
 }
