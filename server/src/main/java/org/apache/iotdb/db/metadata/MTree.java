@@ -110,8 +110,8 @@ public class MTree implements Serializable {
       try {
         QueryDataSource dataSource = QueryResourceManager.getInstance().
                 getQueryDataSource(node.getPartialPath(), queryContext, null);
-        Set<String> measurementSet = new HashSet<String>() {{
-          add(node.getPartialPath().getFullPath()); }};
+        Set<String> measurementSet = new HashSet<>();
+        measurementSet.add(node.getPartialPath().getFullPath());
         LastPointReader lastReader = new LastPointReader(node.getPartialPath(),
                 node.getSchema().getType(), measurementSet, queryContext,
                 dataSource, Long.MAX_VALUE, null);
