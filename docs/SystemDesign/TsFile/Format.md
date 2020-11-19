@@ -315,7 +315,7 @@ For Linux or MacOs:
 
 An example on Windows:
 
-```
+```shell
 D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ````````````````````````
 Starting Printing the TsFileResources
@@ -324,7 +324,7 @@ Starting Printing the TsFileResources
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
 analyzing the resource file finished.
-````````````````````````
+```
 
 #### 1.3.3 TsFile Sketch Tool
 
@@ -566,7 +566,7 @@ file length: 33436
 
 ---------------------------------- TsFile Sketch End ----------------------------------
 
-````````````````````````
+```
 
 #### 1.3.4 TsFileSequenceRead
 

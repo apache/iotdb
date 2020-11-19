@@ -291,7 +291,7 @@ TsFile data dir num:1
 |  |  |--1575813521063-105-0.tsfile.resource
 |  |  |  |--device root.ln.wf01.wt01, start time 10 (1970-01-01T08:00:00.010+08:00[GMT+08:00]), end time 50 (1970-01-01T08:00:00.050+08:00[GMT+08:00])
 |==============================================================
-````````````````````````
+```
 
 #### 1.3.2 TsFileResource 打印工具
 
@@ -322,7 +322,7 @@ Starting Printing the TsFileResources
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
 analyzing the resource file finished.
-````````````````````````
+```
 
 #### 1.3.3 TsFile 描述工具
 
@@ -563,7 +563,7 @@ file length: 33436
                33436| END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
-````````````````````````
+```
 
 #### 1.3.4 TsFileSequenceRead
 
