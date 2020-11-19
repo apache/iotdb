@@ -72,14 +72,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
     - [Stop IoTDB](#stop-iotdb)
   - [Only build server](#only-build-server)
   - [Only build cli](#only-build-cli)
-  - [Usage of import-csv.sh](#usage-of-import-csvsh)
-    - [Create metadata](#create-metadata)
-    - [An example of import csv file](#an-example-of-import-csv-file)
-    - [Run import shell](#run-import-shell)
-    - [Error data file](#error-data-file)
-  - [Usage of export-csv.sh](#usage-of-export-csvsh)
-    - [Run export shell](#run-export-shell)
-    - [Input query](#input-query)
+  - [Usage of CSV Import and Export Tool](#usage-of-csv-import-and-export-tool)
 
 <!-- /TOC -->
 
@@ -332,6 +325,10 @@ Under the root path of iotdb:
 ```
 
 After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
+
+# Usage of CSV Import and Export Tool
+
+see [Usage of CSV Import and Export Tool](docs/UserGuide/System Tools/CSV Tool.md)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

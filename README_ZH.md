@@ -75,9 +75,7 @@ IoTDB的主要特点如下:
     - [从 csv 文件导入数据的示例](#从-csv-文件导入数据的示例)
     - [运行 import shell](#运行-import-shell)
     - [错误的数据文件](#错误的数据文件)
-  - [使用 export-csv.sh](#使用-export-csvsh)
-    - [运行 export shell](#运行-export-shell)
-    - [执行查询](#执行查询)
+  - [导入导出CSV工具](#导入导出CSV工具)
 
 <!-- /TOC -->
 
@@ -332,6 +330,10 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 ```
 
 编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
+
+# 导入导出CSV工具
+
+查看 [导入导出CSV工具](docs/zh/UserGuide/System Tools/CSV Tool.md)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)
