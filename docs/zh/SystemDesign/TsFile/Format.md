@@ -266,9 +266,9 @@ For Linux or MacOs:
 
 ```
 D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-  ````````````````````````
+｜````````````````````````
 Starting Printing the IoTDB Data Directory Overview
-​  ````````````````````````
+​｜````````````````````````
 output save path:IoTDB_data_dir_overview.txt
 TsFile data dir num:1
 21:17:38.841 [main] WARN org.apache.iotdb.tsfile.common.conf.TSFileDescriptor - Failed to find config file iotdb-engine.properties at classpath, use default configuration
@@ -313,11 +313,11 @@ Linux or MacOs:
 
 在Windows系统中的示例:
 
-```shell
+```
 D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
-````````````````````````
+｜````````````````````````
 Starting Printing the TsFileResources
-​````````````````````````
+​｜````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
@@ -350,9 +350,9 @@ Linux or MacOs:
 
 ```shell
 /iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
-````````````````````````
+｜````````````````````````
 Starting Printing the TsFile Sketch
-​````````````````````````
+｜​````````````````````````
 TsFile path:test.tsfile
 Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
