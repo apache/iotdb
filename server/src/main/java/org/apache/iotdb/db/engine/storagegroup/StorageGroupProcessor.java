@@ -1045,7 +1045,7 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::updateLatestFlushTimeCallback, true);
+          this::updateLatestFlushTimeCallback, true, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -1057,7 +1057,7 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::unsequenceFlushCallback, false);
+          this::unsequenceFlushCallback, false, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
