@@ -942,7 +942,7 @@ public class Session {
 
 
   /**
-   * execure query sql
+   * execute query sql
    *
    * @param sql query statement
    * @return result set

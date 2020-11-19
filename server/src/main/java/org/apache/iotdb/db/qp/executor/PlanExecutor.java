@@ -94,6 +94,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -270,6 +271,10 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
+      case CREATE_INDEX:
+        throw new QueryProcessException("Create index hasn't been supported yet");
+      case DROP_INDEX:
+        throw new QueryProcessException("Drop index hasn't been supported yet");
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -358,6 +363,8 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
+      } else if (queryPlan instanceof QueryIndexPlan) {
+        throw new QueryProcessException("Query index hasn't been supported yet");
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);
@@ -850,10 +857,6 @@ public class PlanExecutor implements IPlanExecutor {
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws QueryProcessException {
     try {
-      if (!IoTDB.metaManager.isPathExist(path)) {
-        throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
-      }
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);

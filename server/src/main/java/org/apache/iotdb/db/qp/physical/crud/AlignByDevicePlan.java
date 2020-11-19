@@ -145,6 +145,6 @@ public class AlignByDevicePlan extends QueryPlan {
    * The data type is considered as String and the value is the measurement name.
    */
   public enum MeasurementType {
-    Exist, NonExist, Constant;
+    Exist, NonExist, Constant
   }
 }

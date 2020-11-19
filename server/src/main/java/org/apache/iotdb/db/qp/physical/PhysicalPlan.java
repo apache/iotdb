@@ -33,10 +33,12 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -211,6 +213,14 @@ public abstract class PhysicalPlan {
           plan = new DeleteTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case CREATE_INDEX:
+          plan = new CreateIndexPlan();
+          plan.deserialize(buffer);
+          break;
+        case DROP_INDEX:
+          plan = new DropIndexPlan();
+          plan.deserialize(buffer);
+          break;
         case TTL:
           plan = new SetTTLPlan();
           plan.deserialize(buffer);
@@ -299,7 +309,7 @@ public abstract class PhysicalPlan {
     REVOKE_WATERMARK_EMBEDDING, CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE,
     REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
     DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, MULTI_CREATE_TIMESERIES,
-    ALTER_TIMESERIES, FLUSH
+    ALTER_TIMESERIES, FLUSH, CREATE_INDEX, DROP_INDEX,
   }
 
   public long getIndex() {

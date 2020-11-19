@@ -53,7 +53,7 @@ public class IoTDBDeleteStorageGroupIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement();) {
+         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt02");
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt03");
@@ -84,7 +84,7 @@ public class IoTDBDeleteStorageGroupIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement();) {
+         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt01");
       statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt02");
       statement.execute("SET STORAGE GROUP TO root.ln1.wf02.wt03");
@@ -114,7 +114,7 @@ public class IoTDBDeleteStorageGroupIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement();) {
+         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln2.wf01.wt01");
       statement.execute("DELETE STORAGE GROUP root.ln2.wf01.wt02");
     }
@@ -125,7 +125,7 @@ public class IoTDBDeleteStorageGroupIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
       statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt02");
       statement.execute("SET STORAGE GROUP TO root.ln3.wf02.wt03");
@@ -155,7 +155,7 @@ public class IoTDBDeleteStorageGroupIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt01");
       statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt02");
       statement.execute("SET STORAGE GROUP TO root.ln4.wf02.wt03");
