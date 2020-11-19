@@ -26,7 +26,7 @@ public interface StatMonitorMBean {
 
   long getGlobalReqFailNum();
 
-  Long getStorageGroupTotalPointsNum(String storageGroupName);
+  long getStorageGroupTotalPointsNum(String storageGroupName);
 
   String getSystemDirectory();
 

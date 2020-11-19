@@ -211,12 +211,12 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
   @Override
-  public Long getStorageGroupTotalPointsNum(String storageGroupName) {
+  public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
       return storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue();
     } catch (StorageEngineException | IllegalPathException e) {
       logger.error(e.getMessage());
-      return null;
+      return -1;
     }
   }
 
