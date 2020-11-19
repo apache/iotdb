@@ -333,64 +333,6 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
-## 使用 import-csv.sh
-
-### 创建元数据（可选）
-
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-IoTDB具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用CSV导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
-
-### 从 csv 文件导入数据的示例
-
-```
-Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,hello,200,300,400
-2,500,world,600,700,800
-3,900,"hello, \"world\"",1000,1100,1200
-```
-
-> 注意，在导入数据前，需要特殊处理下列的字符：
-> 1. `,` : 包含`,`的字段需要使用单引号或者双引号括起来
-> 2. `"` : "字段中的`"`需要被替换成转义字符`\"`
-> 3. `'` : "字段中的`'`需要被替换成转义字符`\'`
-
-### 运行 import shell
-```
-# Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-
-# Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-```
-
-## 使用 export-csv.sh
-
-### 运行 export shell
-
-```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-```
-
-### 执行查询
-
-```
-select * from root.fit.d1
-```
-
-
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)
 
