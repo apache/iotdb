@@ -309,11 +309,14 @@ public class ExportCsv extends AbstractCsvTool {
         bw.write(",");
       } else {
         if (fields.get(j).getDataType() == TSDataType.TEXT) {
-          if (value.contains("'")) {
-            bw.write("\"" + value + "\",");
-          } else if(value.contains("\"")) {
-            bw.write("'" + value + "',");
-          } else if(value.contains(",")) {
+          int location = value.indexOf("\"");
+          if (location > -1) {
+            if (value.charAt(location - 1) != '\\') {
+              bw.write("\"" + value.replace("\"", "\\\"") + "\",");
+            } else {
+              bw.write("\"" + value + "\",");
+            }
+          } else if (value.contains(",")) {
             bw.write("\"" + value + "\",");
           } else {
             bw.write(value + ",");
@@ -328,11 +331,14 @@ public class ExportCsv extends AbstractCsvTool {
       bw.write("\n");
     } else {
       if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
-        if (lastValue.contains("'")) {
-          bw.write("\"" + lastValue + "\"\n");
-        } else if(lastValue.contains("\"")) {
-          bw.write("'" + lastValue + "'\n");
-        } else if(lastValue.contains(",")) {
+        int location = lastValue.indexOf("\"");
+        if (location > -1) {
+          if (lastValue.charAt(location - 1) != '\\') {
+            bw.write("\"" + lastValue.replace("\"", "\\\"") + "\"\n");
+          } else {
+            bw.write("\"" + lastValue + "\"\n");
+          }
+        } else if (lastValue.contains(",")) {
           bw.write("\"" + lastValue + "\"\n");
         } else {
           bw.write(lastValue + "\n");

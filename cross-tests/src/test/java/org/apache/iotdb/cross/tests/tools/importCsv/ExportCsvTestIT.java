@@ -110,7 +110,7 @@ public class ExportCsvTestIT extends AbstractScript{
   @Test
   public void testRawDataQuery() throws IOException, StatementExecutionException, IoTDBConnectionException {
     final String[] expectCsv = new String[]{"Time,root.sg1.d1.s1,root.sg1.d1.s2",
-        "1.0,'abc\",aa'"};
+        "1.0,\"abc\\\",aa\""};
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     String[] sql = {"select * from root"};

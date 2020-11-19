@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
  * read a CSV formatted data File and insert all the data into IoTDB.
  */
 public class ImportCsv extends AbstractCsvTool {
+
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
   private static final String FILE_SUFFIX = "csv";
@@ -97,13 +98,13 @@ public class ImportCsv extends AbstractCsvTool {
       return;
     }
     System.out.println("Start to import data from: " + file.getName());
-    try(BufferedReader br = new BufferedReader(new FileReader(file));
+    try (BufferedReader br = new BufferedReader(new FileReader(file));
         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();
       String[] cols = splitCsvLine(header);
       if (cols.length <= 1) {
-        System.out.println("The CSV file "+ file.getName() +" illegal, please check first line");
+        System.out.println("The CSV file " + file.getName() + " illegal, please check first line");
         return;
       }
 
@@ -113,32 +114,48 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> valuesList = new ArrayList<>();
       Map<String, Map<String, Integer>> devicesToMeasurementsAndPositions = new HashMap<>();
 
-      for(int i = 1; i < cols.length; i++) {
+      for (int i = 1; i < cols.length; i++) {
         splitColToDeviceAndMeasurement(cols[i], devicesToMeasurementsAndPositions, i);
       }
+
+      Map<String, List<String>> devicesToMeasurements = new HashMap<>();
+      for (Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions : devicesToMeasurementsAndPositions
+          .entrySet()) {
+        List<String> measurements = new ArrayList<>();
+        Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.getValue();
+        for (Entry<String, Integer> measurementAndPosition : measurementsAndPositions.entrySet()) {
+          measurements.add(measurementAndPosition.getKey());
+        }
+        devicesToMeasurements.put(deviceToMeasurementsAndPositions.getKey(), measurements);
+      }
+
       int lineNumber = 0;
       String line;
-      while((line = br.readLine()) != null) {
+      while ((line = br.readLine()) != null) {
         cols = splitCsvLine(line);
         lineNumber++;
-        for(Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions: devicesToMeasurementsAndPositions.entrySet()) {
-          devices.add(deviceToMeasurementsAndPositions.getKey());
+        for (Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions : devicesToMeasurementsAndPositions
+            .entrySet()) {
+          String device = deviceToMeasurementsAndPositions.getKey();
+          devices.add(device);
+
           times.add(Long.parseLong(cols[0]));
-          Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.getValue();
-          List<String> measurements = new ArrayList<>();
+
           List<String> values = new ArrayList<>();
-          for(Entry<String, Integer> measurementAndPosition : measurementsAndPositions.entrySet()) {
-            measurements.add(measurementAndPosition.getKey());
-            if(cols[measurementAndPosition.getValue()].equals("") && cols[measurementAndPosition.getValue()].equals("null")) {
+          for (Entry<String, Integer> measurementAndPosition : deviceToMeasurementsAndPositions
+              .getValue().entrySet()) {
+            if (cols[measurementAndPosition.getValue()].equals("") && cols[measurementAndPosition
+                .getValue()].equals("null")) {
               values.add(null);
             } else {
               values.add(cols[measurementAndPosition.getValue()]);
             }
           }
-          measurementsList.add(measurements);
           valuesList.add(values);
+
+          measurementsList.add(devicesToMeasurements.get(device));
         }
-        if(lineNumber % 10000 == 0) {
+        if (lineNumber % 10000 == 0) {
           session.insertRecords(devices, times, measurementsList, valuesList);
           devices = new ArrayList<>();
           times = new ArrayList<>();
@@ -150,7 +167,7 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
     } catch (FileNotFoundException e) {
-      System.out.println("Cannot find " + file.getName() + " because: "+e.getMessage());
+      System.out.println("Cannot find " + file.getName() + " because: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("CSV file read exception because: " + e.getMessage());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -218,7 +235,7 @@ public class ImportCsv extends AbstractCsvTool {
 
   public static void importCsvFromFile(String ip, String port, String username,
       String password, String filename,
-      String timeZone){
+      String timeZone) {
     try {
       session = new Session(ip, Integer.parseInt(port), username, password);
       session.open(false);
@@ -234,13 +251,15 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (IoTDBConnectionException e) {
       System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
     } catch (StatementExecutionException e) {
-      System.out.println("Encounter an error when executing the statement, because " + e.getMessage());
+      System.out
+          .println("Encounter an error when executing the statement, because " + e.getMessage());
     } finally {
       if (session != null) {
         try {
           session.close();
         } catch (IoTDBConnectionException e) {
-          System.out.println("Encounter an error when closing the connection, because " + e.getMessage());
+          System.out
+              .println("Encounter an error when closing the connection, because " + e.getMessage());
         }
       }
     }
@@ -250,7 +269,8 @@ public class ImportCsv extends AbstractCsvTool {
     if (file.getName().endsWith(FILE_SUFFIX)) {
       loadDataFromCSV(file);
     } else {
-      System.out.println("File "+ file.getName() +"  should ends with '.csv' if you want to import");
+      System.out
+          .println("File " + file.getName() + "  should ends with '.csv' if you want to import");
     }
   }
 
@@ -265,7 +285,8 @@ public class ImportCsv extends AbstractCsvTool {
         if (subFile.getName().endsWith(FILE_SUFFIX)) {
           loadDataFromCSV(subFile);
         } else {
-          System.out.println("File " + file.getName() + " should ends with '.csv' if you want to import");
+          System.out
+              .println("File " + file.getName() + " should ends with '.csv' if you want to import");
         }
       }
     }
@@ -283,7 +304,8 @@ public class ImportCsv extends AbstractCsvTool {
     return line;
   }
 
-  private static void splitColToDeviceAndMeasurement(String col, Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
+  private static void splitColToDeviceAndMeasurement(String col,
+      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
     if (col.length() > 0) {
       if (col.charAt(col.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
         int endIndex = col.lastIndexOf('"', col.length() - 2);
@@ -292,7 +314,8 @@ public class ImportCsv extends AbstractCsvTool {
           endIndex = col.lastIndexOf('"', endIndex - 2);
         }
         if (endIndex != -1 && (endIndex == 0 || col.charAt(endIndex - 1) == '.')) {
-          putDeviceAndMeasurement(col.substring(0, endIndex - 1), col.substring(endIndex), deviceToMeasurementsAndPositions, position);
+          putDeviceAndMeasurement(col.substring(0, endIndex - 1), col.substring(endIndex),
+              deviceToMeasurementsAndPositions, position);
         } else {
           throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
         }
@@ -302,7 +325,8 @@ public class ImportCsv extends AbstractCsvTool {
         if (endIndex < 0) {
           putDeviceAndMeasurement("", col, deviceToMeasurementsAndPositions, position);
         } else {
-          putDeviceAndMeasurement(col.substring(0, endIndex), col.substring(endIndex + 1), deviceToMeasurementsAndPositions, position);
+          putDeviceAndMeasurement(col.substring(0, endIndex), col.substring(endIndex + 1),
+              deviceToMeasurementsAndPositions, position);
         }
       } else {
         throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
@@ -312,8 +336,9 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static void putDeviceAndMeasurement(String device, String measurement, Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
-    if(deviceToMeasurementsAndPositions.get(device) == null) {
+  private static void putDeviceAndMeasurement(String device, String measurement,
+      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
+    if (deviceToMeasurementsAndPositions.get(device) == null) {
       Map<String, Integer> measurementsAndPositions = new HashMap<>();
       measurementsAndPositions.put(measurement, position);
       deviceToMeasurementsAndPositions.put(device, measurementsAndPositions);
