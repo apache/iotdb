@@ -171,12 +171,20 @@ IoTDB支持另外两种结果返回形式: 按设备时间对齐 'align by devic
 'align by device' 对齐方式下，设备ID会单独作为一列出现。在 select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL形如:
 
 ```
-select s1,s2 from root.sg1.* GROUP BY DEVICE
+select s1,s2 from root.sg1.* align by device
 ```
 
-更多语法请参照 SQL REFERENCE.
+更多语法请参照 SQL REFERENCE。
 
-'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
+'disable align' 意味着每条时序就有3列存在。Disable Align只能用于查询语句句尾，不能用于聚合查询、Fill语句、Group by或Group by device语句，但可用于Limit语句。结果显示若无数据显示为空白。
+
+SQL形如:
+
+```
+select * from root.sg1 where time > 10 disable align
+```
+
+更多语法请参照 SQL REFERENCE。
 
 ### 聚合查询
 本章节主要介绍聚合查询的相关示例，
@@ -418,10 +426,12 @@ SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL
 SQL语法：
 
 ```
-select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <DISABLE ALIGN>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
 其含义是：查询时间序列prefixPath.path中最近时间戳的数据
+
+\<WhereClause\>中当前只支持含有'>'或'>='的时间过滤条件，任何其他过滤条件都将会返回异常。
 
 结果集为三列的结构
 
@@ -439,10 +449,10 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 |  5   | root.ln.wf01.wt01.speed | 100   |
 ```
 
-示例 2：查询 root.ln.wf01.wt01 下 speed，status，temperature 的最新数据点
+示例 2：查询 root.ln.wf01.wt01 下 speed，status，temperature 时间戳大于等于5的最新数据点。
 
 ```
-> select last speed, status, temperature from root.ln.wf01
+> select last speed, status, temperature from root.ln.wf01  where time >= 5
 
 | Time | Path                         | Value |
 | ---  | ---------------------------- | ----- |

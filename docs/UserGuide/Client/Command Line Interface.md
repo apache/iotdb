@@ -28,19 +28,19 @@
   - Cli/Shell Parameters
   - Cli/shell tool with -e parameter
 
-IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document will show how Cli/shell tool works and what does it parameters mean.
+IoTDB provides Cli/shell tools for users to interact with IoTDB server in command lines. This document shows how Cli/shell tool works and the meaning of its parameters.
 
 > Note: In this document, \$IOTDB\_HOME represents the path of the IoTDB installation directory.
 
 ## Build cli from source code
 
-Under the root path of incubator-iotdb:
+Under the root path of iotdb:
 
 ```
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB cli will be at the folder "cli/target/iotdb-cli-{project.version}".
+After build, the IoTDB cli will be in the folder "cli/target/iotdb-cli-{project.version}".
 
 ## Running Cli/Shell
 
@@ -83,7 +83,7 @@ Enter ```quit``` or `exit` can exit Cli. The cli will shows `quit normally`
 
 |Parameter name|Parameter type|Required| Description| Example |
 |:---|:---|:---|:---|:---|
-|-disableIS08601 |No parameters | No |If this parameter is set, IoTDB will print the timestamp in digital form|-disableIS08601|
+|-disableISO8601 |No parameters | No |If this parameter is set, IoTDB will print the timestamp in digital form|-disableISO8601|
 |-h <`host`> |string, no quotation marks|Yes|The IP address of the IoTDB server|-h 10.129.187.21|
 |-help|No parameters|No|Print help information for IoTDB|-help|
 |-p <`rpcPort`>|int|Yes|The rpc port number of the IoTDB server. IoTDB runs on rpc port 6667 by default|-p 6667|
@@ -98,12 +98,12 @@ Following is a cli command which connects the host with IP
 The Linux and MacOS system startup commands are as follows:
 
 ```
-  Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 The Windows system startup commands are as follows:
 
 ```
-  Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableISO8601 -maxPRC 10
 ```
 
 ### Note on using the CLI with OpenID Connect Auth enabled on Server side

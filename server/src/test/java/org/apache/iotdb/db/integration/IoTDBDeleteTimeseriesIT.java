@@ -25,7 +25,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -36,7 +36,7 @@ import org.junit.Test;
 public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
-  private TsFileManagementStrategy tsFileManagementStrategy;
+  private CompactionStrategy tsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
@@ -45,16 +45,16 @@ public class IoTDBDeleteTimeseriesIT {
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
     tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig()
-        .getTsFileManagementStrategy();
+        .getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(tsFileManagementStrategy);
+        .setCompactionStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 

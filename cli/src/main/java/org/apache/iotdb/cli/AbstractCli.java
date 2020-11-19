@@ -46,7 +46,6 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
-import org.apache.thrift.TException;
 
 public abstract class AbstractCli {
 
@@ -306,8 +305,8 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp < 0) {
-      maxPrintRowCount = Integer.MAX_VALUE;
+    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+      throw new NumberFormatException();
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -407,7 +406,7 @@ public abstract class AbstractCli {
     }
 
     if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      setMaxDisplaNum(specialCmd, cmd);
+      setMaxDisplayNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
@@ -467,6 +466,13 @@ public abstract class AbstractCli {
     println("Time display type has set to " + cmd.split("=")[1].trim());
   }
 
+  /**
+   * if cli has not specified a zondId, it will be set to cli's system timezone by default
+   * otherwise for insert and query accuracy cli should set timezone the same for all sessions
+   * @param specialCmd
+   * @param cmd
+   * @param connection
+   */
   private static void setTimeZone(String specialCmd, String cmd, IoTDBConnection connection) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
@@ -499,7 +505,7 @@ public abstract class AbstractCli {
     println("Fetch size has set to " + values[1].trim());
   }
 
-  private static void setMaxDisplaNum(String specialCmd, String cmd) {
+  private static void setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Max display number format error, please input like %s = 10000",
@@ -537,8 +543,6 @@ public abstract class AbstractCli {
     } catch (SQLException e) {
       println(String.format("Failed to import from %s because %s",
           cmd.split(" ")[1], e.getMessage()));
-    } catch (TException e) {
-      println("Cannot connect to server");
     }
   }
 

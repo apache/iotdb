@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -86,10 +86,10 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getChunkMergePointThreshold();
+        .getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
     // test result of IBatchReader should not cross partition
@@ -114,11 +114,11 @@ public class IoTDBSeriesReaderIT {
 
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()
-        .setChunkMergePointThreshold(prevChunkMergePointThreshold);
+        .setMergeChunkPointNumberThreshold(prevChunkMergePointThreshold);
   }
 
   private static void insertData() throws ClassNotFoundException {
@@ -278,7 +278,8 @@ public class IoTDBSeriesReaderIT {
     pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
@@ -308,7 +309,8 @@ public class IoTDBSeriesReaderIT {
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
         ValueFilter.gtEq(20));
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
@@ -335,7 +337,7 @@ public class IoTDBSeriesReaderIT {
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 1);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
@@ -373,7 +375,8 @@ public class IoTDBSeriesReaderIT {
     dataTypes.add(TSDataType.INT64);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(path1,

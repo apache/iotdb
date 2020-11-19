@@ -21,7 +21,7 @@
 
 # 0.10.x (version-2) -> 0.11.x (version-3)
 
-Last Updated on 2020-07-08 by Wei Shao.
+Last Updated on 2020-10-27 by Xiangwei Wei.
 
 
 ## 1. Delete Old
@@ -45,7 +45,7 @@ Last Updated on 2020-07-08 by Wei Shao.
 | Add sub-status in TSStatus  | Tian Jiang  |
 | Change the result of executeBatchStatement  as   TSStatus    | Tian Jiang  |
 | Change TSDeleteDataReq, delete timestamp and add startTime and endTime   | Wei Shao   |
-
+| Add zoneId in TSOpenSessionReq | Xiangwei Wei |
 
 
 # 0.9.x (version-1) -> 0.10.x (version-2)

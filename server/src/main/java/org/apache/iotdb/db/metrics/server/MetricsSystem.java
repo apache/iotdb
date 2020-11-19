@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metrics.server;
 
+import com.codahale.metrics.MetricRegistry;
 import java.util.ArrayList;
 import org.apache.iotdb.db.metrics.sink.MetricsServletSink;
 import org.apache.iotdb.db.metrics.sink.Sink;
 import org.apache.iotdb.db.metrics.source.MetricsSource;
 import org.apache.iotdb.db.metrics.source.Source;
 import org.eclipse.jetty.servlet.ServletContextHandler;
-import com.codahale.metrics.MetricRegistry;
 
 public class MetricsSystem {
 
@@ -59,15 +59,15 @@ public class MetricsSystem {
   public void start() {
     registerSource();
     registerSinks();
-    sinks.forEach(sink -> sink.start());
+    sinks.forEach(Sink::start);
   }
 
   public void stop() {
-    sinks.forEach(sink -> sink.stop());
+    sinks.forEach(Sink::stop);
   }
 
   public void report() {
-    sinks.forEach(sink -> sink.report());
+    sinks.forEach(Sink::report);
   }
 
   public void registerSource() {

@@ -84,7 +84,7 @@ Suppose your root directory is:
 
 ```
 $ pwd
-/workspace/incubator-iotdb
+/workspace/iotdb
 
 $ ls -l
 server/
@@ -94,9 +94,9 @@ Readme.md
 ...
 ```
 
-Let `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
+Let `$IOTDB_HOME = /workspace/iotdb/server/target/iotdb-server-{project.version}`
 
-Let `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/cli/target/iotdb-cli-{project.version}`
+Let `$IOTDB_CLI_HOME = /workspace/iotdb/cli/target/iotdb-cli-{project.version}`
 
 By default settings, the logs are stored under ```IOTDB_HOME/logs```. You can change log level and storage path by configuring ```logback.xml``` under ```IOTDB_HOME/conf```.
 
@@ -112,7 +112,7 @@ Use IoTDB's Command Line Interface:
 IoTDB> show timeseries root
 ```
 
-In the result, there will be a statement shows `Total timeseries number`, this number is the timeseries number in IoTDB.
+In the result, there is a statement shows `Total timeseries number`, this number is the timeseries number in IoTDB.
 
 In the current version, IoTDB supports querying the number of time series. Use IoTDB's Command Line Interface:
 
@@ -129,11 +129,11 @@ If you are using Linux, you can use the following shell command:
 
 ## Can I use Hadoop and Spark to read TsFile in IoTDB?
 
-Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/incubator-iotdb/tree/master/hadoop), [Spark](https://github.com/apache/incubator-iotdb/tree/master/spark) and [Grafana](https://github.com/apache/incubator-iotdb/tree/master/grafana) visualization tool.
+Yes. IoTDB has intense integration with Open Source Ecosystem. IoTDB supports [Hadoop](https://github.com/apache/iotdb/tree/master/hadoop), [Spark](https://github.com/apache/iotdb/tree/master/spark) and [Grafana](https://github.com/apache/iotdb/tree/master/grafana) visualization tool.
 
 ## How does IoTDB handle duplicate points?
 
-A data point is uniquely identified by a full time series path (e.g. ```root.vehicle.d0.s0```) and timestamp. If you submit a new point with the same path and timestamp as an existing point, IoTDB will update the value of this point instead of inserting a new point. 
+A data point is uniquely identified by a full time series path (e.g. ```root.vehicle.d0.s0```) and timestamp. If you submit a new point with the same path and timestamp as an existing point, IoTDB updates the value of this point instead of inserting a new point. 
 
 ## How can I tell what type of the specific timeseries?
 
@@ -159,9 +159,9 @@ IoTDB> show timeseries root.fit.d1.*
 
 ## How can I change IoTDB's Cli time display format?
 
-The default IoTDB's Cli time display format is human readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableIS08601``` in start command:
+The default IoTDB's Cli time display format is readable (e.g. ```1970-01-01T08:00:00.001```), if you want to display time in timestamp type or other readable format, add parameter ```-disableISO8601``` in start command:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableISO8601
 ```
 

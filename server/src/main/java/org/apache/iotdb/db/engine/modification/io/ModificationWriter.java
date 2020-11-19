@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.modification.io;
 
 import java.io.IOException;
-
 import org.apache.iotdb.db.engine.modification.Modification;
 
 /**

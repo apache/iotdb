@@ -134,18 +134,12 @@ public class MManagerImproveTest {
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
     MNode node = null;
-    try {
-      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(new PartialPath(deviceId));
-      for (String s : measurementList) {
-        assertTrue(node.hasChild(s));
-        MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
-        TSDataType dataType = measurementNode.getSchema().getType();
-        assertEquals(TSDataType.TEXT, dataType);
-      }
-    } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
+    node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+    for (String s : measurementList) {
+      assertTrue(node.hasChild(s));
+      MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
+      TSDataType dataType = measurementNode.getSchema().getType();
+      assertEquals(TSDataType.TEXT, dataType);
     }
   }
 

@@ -23,15 +23,19 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -43,7 +47,6 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,19 +113,21 @@ public class LogReplayer {
       try {
         modFile.close();
       } catch (IOException e) {
-        logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
+        logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
   }
 
-  private void replayDelete(DeletePlan deletePlan) throws IOException {
+  private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {
     List<PartialPath> paths = deletePlan.getPaths();
     for (PartialPath path : paths) {
-      recoverMemTable
-          .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
-              deletePlan.getDeleteEndTime());
+      for (PartialPath device : IoTDB.metaManager.getDevices(path.getDevicePath())) {
+        recoverMemTable
+            .delete(path, device, deletePlan.getDeleteStartTime(),
+                deletePlan.getDeleteEndTime());
+      }
       modFile
           .write(
               new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
@@ -156,27 +161,20 @@ public class LogReplayer {
         tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
       }
     }
-    MeasurementSchema[] schemas;
+    MeasurementMNode[] mNodes;
     try {
-      schemas = IoTDB.metaManager.getSchemas(plan.getDeviceId(), plan
-          .getMeasurements());
+      mNodes = IoTDB.metaManager.getMNodes(plan.getDeviceId(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
+    //set measurementMNodes, WAL already serializes the real data type, so no need to infer type
+    plan.setMeasurementMNodes(mNodes);
+    //mark failed plan manually
+    checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      //only infer type when users pass a String value
-      //WAL already serializes the real data type, so no need to infer type
-      ((InsertRowPlan) plan).setNeedInferType(false);
-      tPlan.setSchemasAndTransferType(schemas);
-      //mark failed plan manually 
-      checkDataTypeAndMarkFailed(schemas, tPlan);
-      recoverMemTable.insert(tPlan);
+      recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      InsertTabletPlan tPlan = (InsertTabletPlan) plan;
-      tPlan.setSchemas(schemas);
-      checkDataTypeAndMarkFailed(schemas, tPlan);
-      recoverMemTable.insertTablet(tPlan, 0, tPlan.getRowCount());
+      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 
@@ -186,10 +184,16 @@ public class LogReplayer {
     throw new UnsupportedOperationException("Update not supported");
   }
 
-  private void checkDataTypeAndMarkFailed(final MeasurementSchema[] schemas, InsertPlan tPlan) {
-    for (int i = 0; i < schemas.length; i++) {
-      if (schemas[i] == null || schemas[i].getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i);
+  private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
+    for (int i = 0; i < mNodes.length; i++) {
+      if (mNodes[i] == null) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new PathNotExistException(tPlan.getDeviceId().getFullPath() +
+                IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new DataTypeMismatchException(mNodes[i].getName(), tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getType()));
       }
     }
   }

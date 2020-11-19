@@ -21,7 +21,7 @@
 
 # Single Node Setup
 
-Users can start IoTDB by the start-server script under the sbin folder.
+Users are able to start IoTDB through the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
@@ -35,4 +35,4 @@ or
 - "-c" and "-rpc_port" are optional.
 - option "-c" specifies the system configuration file directory.
 - option "-rpc_port" specifies the rpc port.
-- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
+- if both option specified, the *rpc_port* will override the rpc_port in *conf_path*.

@@ -31,11 +31,11 @@
 
 * JIRA issue: https://issues.apache.org/jira/projects/IOTDB/issues
 
-* Github issue: https://github.com/apache/incubator-iotdb/issues
+* Github issue: https://github.com/apache/iotdb/issues
 
 * Twitter: https://twitter.com/apacheiotdb
 
-* 我们非常期待您分享您使用IoTDB的经验: [调研问卷](https://github.com/apache/incubator-iotdb/issues/748)
+* 我们非常期待您分享您使用IoTDB的经验: [调研问卷](https://github.com/apache/iotdb/issues/748)
 
 * 对中文用户，欢迎关注微信公众号，IoTDB漫游指南
 

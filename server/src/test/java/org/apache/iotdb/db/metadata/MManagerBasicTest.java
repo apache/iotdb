@@ -18,7 +18,19 @@
  */
 package org.apache.iotdb.db.metadata;
 
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,26 +45,18 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.*;
-
-import static org.junit.Assert.*;
-
 public class MManagerBasicTest {
 
   private CompressionType compressionType;
-  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
 
   @Before
   public void setUp() throws Exception {
-    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(canAdjust);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -222,6 +226,60 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testRecover() {
+
+    MManager manager = IoTDB.metaManager;
+
+    try {
+
+      manager.setStorageGroup(new PartialPath("root.laptop.d1"));
+      manager.setStorageGroup(new PartialPath("root.laptop.d2"));
+      manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null);
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      Set<String> devices = new TreeSet<String>(){{
+        add("root.laptop.d1");
+        add("root.laptop.d2");
+      }};
+      // prefix with *
+      assertEquals(devices, manager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::getFullPath).collect(
+          Collectors.toSet()));
+
+
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop.d2")));
+      assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
+      devices.remove("root.laptop.d2");
+      // prefix with *
+      assertEquals(devices, manager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::getFullPath).collect(
+          Collectors.toSet()));
+
+      MManager recoverManager = new MManager();
+      recoverManager.init();
+
+      assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d3")));
+      assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
+      // prefix with *
+      assertEquals(devices, recoverManager.getDevices(new PartialPath("root.*")).stream().map(PartialPath::getFullPath).collect(
+          Collectors.toSet()));
+
+      recoverManager.clear();
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testGetAllFileNamesByPath() {
 
     MManager manager = IoTDB.metaManager;
@@ -273,28 +331,6 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-  }
-
-  @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.laptop"));
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.vehicle"));
-    manager.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 
   @Test

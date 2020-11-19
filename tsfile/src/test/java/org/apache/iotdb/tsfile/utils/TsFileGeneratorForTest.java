@@ -27,15 +27,7 @@ import java.util.Scanner;
 
 import org.junit.Assert;
 import org.junit.Ignore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -190,7 +182,7 @@ public class TsFileGeneratorForTest {
     schema.registerTimeseries(new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
     schema.registerTimeseries(new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE,
         CompressionType.SNAPPY, Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
-    schema.registerTimeseries(new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA));
+    schema.registerTimeseries(new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
     schema.registerTimeseries(new Path("d2", "s1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(new Path("d2", "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
