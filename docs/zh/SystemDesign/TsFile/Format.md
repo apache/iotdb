@@ -266,7 +266,6 @@ For Linux or MacOs:
 
 ```
 D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-
 \````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​\````````````````````````
