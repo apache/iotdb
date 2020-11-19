@@ -264,11 +264,12 @@ For Linux or MacOs:
 
 在Windows系统中的示例:
 
-```shell
+```
 D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
-````````````````````````
+
+\````````````````````````
 Starting Printing the IoTDB Data Directory Overview
-​````````````````````````
+​\````````````````````````
 output save path:IoTDB_data_dir_overview.txt
 TsFile data dir num:1
 21:17:38.841 [main] WARN org.apache.iotdb.tsfile.common.conf.TSFileDescriptor - Failed to find config file iotdb-engine.properties at classpath, use default configuration
