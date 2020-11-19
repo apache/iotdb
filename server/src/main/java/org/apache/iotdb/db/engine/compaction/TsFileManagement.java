@@ -355,6 +355,7 @@ public abstract class TsFileManagement {
       return;
     }
     removeUnseqFiles(unseqFiles);
+    unseqFiles.clear();
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);

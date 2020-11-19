@@ -411,18 +411,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     forkTsFileList(
         forkedSequenceTsFileResources,
         sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-        seqLevelNum, seqFileNumInEachLevel);
+        seqLevelNum);
     // we have to copy all unseq file
     forkTsFileList(
         forkedUnSequenceTsFileResources,
         unSequenceTsFileResources
             .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
-        unseqLevelNum + 1, unseqFileNumInEachLevel);
+        unseqLevelNum + 1);
   }
 
   private void forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
-      List rawTsFileResources, int currMaxLevel, int currFileNumInEachLevel) {
+      List rawTsFileResources, int currMaxLevel) {
     forkedTsFileResources.clear();
     for (int i = 0; i < currMaxLevel - 1; i++) {
       List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
@@ -442,7 +442,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     // whether execute merge chunk in this task
     boolean isMerge = merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
         seqFileNumInEachLevel);
-    if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
+    if (enableUnseqCompaction && unseqLevelNum <= 1
+        && forkedUnSequenceTsFileResources.get(0).size() > 0) {
       isMerge = true;
       merge(isForceFullMerge, getTsFileList(true), forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
@@ -524,6 +525,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               writeUnlock();
             }
             deleteLevelFilesInDisk(currLevelTsFileResource);
+            currLevelTsFileResource.clear();
             compactionLogger.close();
             File logFile = FSFactoryProducer.getFSFactory()
                 .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);

@@ -376,7 +376,7 @@ public class StorageGroupProcessor {
       compactionMergeWorking = true;
       logger.info("{} submit a compaction merge task", storageGroupName);
       try {
-        // find the first file in list to execute compactions task
+        // find the first file in list to execute compaction task
         long timeRangeId = seqTsFileResources.get(0).getTimePartition();
         tsFileManagement.forkCurrentFileList(timeRangeId);
         CompactionMergeTaskPoolManager.getInstance().submitTask(
