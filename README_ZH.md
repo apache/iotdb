@@ -70,11 +70,6 @@ IoTDB的主要特点如下:
     - [停止 IoTDB](#停止-iotdb)
   - [只编译 server](#只编译-server)
   - [只编译 cli](#只编译-cli)
-  - [使用 import-csv.sh](#使用-import-csvsh)
-    - [创建元数据](#创建元数据)
-    - [从 csv 文件导入数据的示例](#从-csv-文件导入数据的示例)
-    - [运行 import shell](#运行-import-shell)
-    - [错误的数据文件](#错误的数据文件)
   - [导入导出CSV工具](#导入导出CSV工具)
 
 <!-- /TOC -->

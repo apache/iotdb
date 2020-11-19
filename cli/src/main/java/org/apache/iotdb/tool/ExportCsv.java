@@ -310,7 +310,7 @@ public class ExportCsv extends AbstractCsvTool {
       } else {
         if (fields.get(j).getDataType() == TSDataType.TEXT) {
           int location = value.indexOf("\"");
-          if (location > -1) {
+          if (location > 0) {
             if (value.charAt(location - 1) != '\\') {
               bw.write("\"" + value.replace("\"", "\\\"") + "\",");
             } else {
