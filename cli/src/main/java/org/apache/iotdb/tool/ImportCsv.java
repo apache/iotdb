@@ -133,11 +133,7 @@ public class ImportCsv extends AbstractCsvTool {
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
-            if (cols[position].equals("") || cols[position].equals("null")) {
-              values.add(null);
-            } else {
-              values.add(cols[position]);
-            }
+            values.add(cols[position]);
           }
           valuesList.add(values);
 
