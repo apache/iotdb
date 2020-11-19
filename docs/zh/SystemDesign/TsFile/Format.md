@@ -313,7 +313,7 @@ Linux or MacOs:
 
 在Windows系统中的示例:
 
-```
+```shell
 D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ````````````````````````
 Starting Printing the TsFileResources
