@@ -311,6 +311,10 @@ public class IoTDBDescriptor {
           properties.getProperty("enable_unseq_compaction",
               Boolean.toString(conf.isEnableUnseqCompaction()))));
 
+      conf.setEnableContinuousCompaction(Boolean.parseBoolean(
+          properties.getProperty("enable_continuous_compaction",
+              Boolean.toString(conf.isEnableContinuousCompaction()))));
+
       conf.setSeqLevelNum(Integer.parseInt(properties
           .getProperty("seq_level_num",
               Integer.toString(conf.getSeqLevelNum()))));
