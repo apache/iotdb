@@ -112,21 +112,11 @@ public class ImportCsv extends AbstractCsvTool {
       List<Long> times = new ArrayList<>();
       List<List<String>> measurementsList = new ArrayList<>();
       List<List<String>> valuesList = new ArrayList<>();
-      Map<String, Map<String, Integer>> devicesToMeasurementsAndPositions = new HashMap<>();
+      Map<String, List<Integer>> devicesToPositions = new HashMap<>();
+      Map<String, List<String>> devicesToMeasurements = new HashMap<>();
 
       for (int i = 1; i < cols.length; i++) {
-        splitColToDeviceAndMeasurement(cols[i], devicesToMeasurementsAndPositions, i);
-      }
-
-      Map<String, List<String>> devicesToMeasurements = new HashMap<>();
-      for (Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions : devicesToMeasurementsAndPositions
-          .entrySet()) {
-        List<String> measurements = new ArrayList<>();
-        Map<String, Integer> measurementsAndPositions = deviceToMeasurementsAndPositions.getValue();
-        for (Entry<String, Integer> measurementAndPosition : measurementsAndPositions.entrySet()) {
-          measurements.add(measurementAndPosition.getKey());
-        }
-        devicesToMeasurements.put(deviceToMeasurementsAndPositions.getKey(), measurements);
+        splitColToDeviceAndMeasurement(cols[i], devicesToPositions, devicesToMeasurements, i);
       }
 
       int lineNumber = 0;
@@ -134,21 +124,19 @@ public class ImportCsv extends AbstractCsvTool {
       while ((line = br.readLine()) != null) {
         cols = splitCsvLine(line);
         lineNumber++;
-        for (Entry<String, Map<String, Integer>> deviceToMeasurementsAndPositions : devicesToMeasurementsAndPositions
+        for (Entry<String, List<Integer>> deviceToPositions : devicesToPositions
             .entrySet()) {
-          String device = deviceToMeasurementsAndPositions.getKey();
+          String device = deviceToPositions.getKey();
           devices.add(device);
 
           times.add(Long.parseLong(cols[0]));
 
           List<String> values = new ArrayList<>();
-          for (Entry<String, Integer> measurementAndPosition : deviceToMeasurementsAndPositions
-              .getValue().entrySet()) {
-            if (cols[measurementAndPosition.getValue()].equals("") && cols[measurementAndPosition
-                .getValue()].equals("null")) {
+          for (int position : deviceToPositions.getValue()) {
+            if (cols[position].equals("") && cols[position].equals("null")) {
               values.add(null);
             } else {
-              values.add(cols[measurementAndPosition.getValue()]);
+              values.add(cols[position]);
             }
           }
           valuesList.add(values);
@@ -304,8 +292,7 @@ public class ImportCsv extends AbstractCsvTool {
     return line;
   }
 
-  private static void splitColToDeviceAndMeasurement(String col,
-      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
+  private static void splitColToDeviceAndMeasurement(String col, Map<String, List<Integer>> devicesToPositions, Map<String, List<String>> devicesToMeasurements, int position) {
     if (col.length() > 0) {
       if (col.charAt(col.length() - 1) == TsFileConstant.DOUBLE_QUOTE) {
         int endIndex = col.lastIndexOf('"', col.length() - 2);
@@ -315,7 +302,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
         if (endIndex != -1 && (endIndex == 0 || col.charAt(endIndex - 1) == '.')) {
           putDeviceAndMeasurement(col.substring(0, endIndex - 1), col.substring(endIndex),
-              deviceToMeasurementsAndPositions, position);
+              devicesToPositions, devicesToMeasurements, position);
         } else {
           throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
         }
@@ -323,27 +310,30 @@ public class ImportCsv extends AbstractCsvTool {
           && col.charAt(col.length() - 1) != TsFileConstant.PATH_SEPARATOR_CHAR) {
         int endIndex = col.lastIndexOf(TsFileConstant.PATH_SEPARATOR_CHAR);
         if (endIndex < 0) {
-          putDeviceAndMeasurement("", col, deviceToMeasurementsAndPositions, position);
+          putDeviceAndMeasurement("", col, devicesToPositions, devicesToMeasurements, position);
         } else {
           putDeviceAndMeasurement(col.substring(0, endIndex), col.substring(endIndex + 1),
-              deviceToMeasurementsAndPositions, position);
+              devicesToPositions, devicesToMeasurements, position);
         }
       } else {
         throw new IllegalArgumentException(ILLEGAL_PATH_ARGUMENT);
       }
     } else {
-      putDeviceAndMeasurement("", col, deviceToMeasurementsAndPositions, position);
+      putDeviceAndMeasurement("", col, devicesToPositions, devicesToMeasurements, position);
     }
   }
 
-  private static void putDeviceAndMeasurement(String device, String measurement,
-      Map<String, Map<String, Integer>> deviceToMeasurementsAndPositions, int position) {
-    if (deviceToMeasurementsAndPositions.get(device) == null) {
-      Map<String, Integer> measurementsAndPositions = new HashMap<>();
-      measurementsAndPositions.put(measurement, position);
-      deviceToMeasurementsAndPositions.put(device, measurementsAndPositions);
+  private static void putDeviceAndMeasurement(String device, String measurement, Map<String, List<Integer>> devicesToPositions, Map<String, List<String>> devicesToMeasurements, int position) {
+    if (devicesToMeasurements.get(device) == null && devicesToPositions.get(device) == null) {
+      List<String> measurements = new ArrayList<>();
+      measurements.add(measurement);
+      devicesToMeasurements.put(device, measurements);
+      List<Integer> positions = new ArrayList<>();
+      positions.add(position);
+      devicesToPositions.put(device, positions);
     } else {
-      deviceToMeasurementsAndPositions.get(device).put(measurement, position);
+      devicesToMeasurements.get(device).add(measurement);
+      devicesToPositions.get(device).add(position);
     }
   }
 
