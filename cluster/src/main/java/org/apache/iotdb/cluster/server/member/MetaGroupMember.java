@@ -1536,6 +1536,7 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param planGroupMap sub-plan -> data group pairs
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
       PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
