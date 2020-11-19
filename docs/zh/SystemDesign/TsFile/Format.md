@@ -348,7 +348,7 @@ Linux or MacOs:
 
 在mac系统中的示例:
 
-```shell
+```
 /iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ｜````````````````````````
 Starting Printing the TsFile Sketch
