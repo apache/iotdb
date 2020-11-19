@@ -214,4 +214,9 @@ public class BinaryTVList extends TVList {
       }
     }
   }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.TEXT;
+  }
 }

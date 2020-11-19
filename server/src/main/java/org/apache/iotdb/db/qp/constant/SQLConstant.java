@@ -237,6 +237,11 @@ public class SQLConstant {
     tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
+
+    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
+    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
+    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
+
   }
 
   static {
