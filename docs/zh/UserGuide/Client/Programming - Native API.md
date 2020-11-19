@@ -148,6 +148,24 @@
   ```
 
 
+* 原始数据查询。时间间隔包含开始时间，不包含结束时间
+
+  ```
+  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ```
+
+* 执行查询语句
+
+  ```
+  SessionDataSet executeQueryStatement(String sql)
+  ```
+  
+* 执行非查询语句
+
+  ```
+  void executeNonQueryStatement(String sql)
+  ```
+
 ## 测试客户端逻辑+网络传输代价的接口
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
