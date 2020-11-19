@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +33,10 @@ import java.util.Objects;
 import java.util.Set;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.index.common.IndexUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -52,12 +56,14 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
@@ -93,6 +99,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
@@ -102,6 +109,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeletePartitionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FillClauseContext;
@@ -125,6 +133,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByLevelStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByTimeStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
@@ -319,6 +328,65 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
     deleteStorageGroupOperator.setDeletePathList(deletePaths);
     return deleteStorageGroupOperator;
+  }
+
+  @Override
+  public Operator visitCreateIndex(CreateIndexContext ctx) {
+    CreateIndexOperator createIndexOp = new CreateIndexOperator(SQLConstant.TOK_CREATE_INDEX);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    List<PrefixPathContext> prefixPaths = Collections.singletonList(ctx.prefixPath());
+    for (PrefixPathContext prefixPath : prefixPaths) {
+      PartialPath path = parsePrefixPath(prefixPath);
+      selectOp.addSelectPath(path);
+    }
+    createIndexOp.setSelectOperator(selectOp);
+    parseIndexWithClause(ctx.indexWithClause(), createIndexOp);
+    FilterOperator whereOp;
+    if(ctx.whereClause() != null) {
+      whereOp = (FilterOperator) visit(ctx.whereClause());
+      createIndexOp.setFilterOperator(whereOp.getChildren().get(0));
+    }
+    return createIndexOp;
+  }
+
+  public void parseIndexWithClause(IndexWithClauseContext ctx, CreateIndexOperator createIndexOp) {
+    IndexType indexType;
+    try {
+      indexType = IndexType.getIndexType(ctx.indexName.getText());
+    } catch (UnsupportedIndexTypeException e) {
+      throw new SQLParserException(ctx.indexName.getText());
+    }
+
+    List<PropertyContext> properties = ctx.property();
+    Map<String, String> props = new HashMap<>(properties.size(), 1);
+    if (ctx.property(0) != null) {
+      for (PropertyContext property : properties) {
+        String k = property.ID().getText().toUpperCase();
+        String v = property.propertyValue().getText().toUpperCase();
+        v = IndexUtils.removeQuotation(v);
+        props.put(k, v);
+      }
+    }
+    createIndexOp.setIndexType(indexType);
+    createIndexOp.setProps(props);
+  }
+
+  @Override
+  public Operator visitDropIndex(DropIndexContext ctx) {
+    DropIndexOperator dropIndexOperator = new DropIndexOperator(SQLConstant.TOK_DROP_INDEX);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    List<PrefixPathContext> prefixPaths = Collections.singletonList(ctx.prefixPath());
+    for (PrefixPathContext prefixPath : prefixPaths) {
+      PartialPath path = parsePrefixPath(prefixPath);
+      selectOp.addSelectPath(path);
+    }
+    dropIndexOperator.setSelectOperator(selectOp);
+    try {
+      dropIndexOperator.setIndexType(IndexType.getIndexType(ctx.indexName.getText()));
+    } catch (UnsupportedIndexTypeException e) {
+      throw new SQLParserException(ctx.indexName.getText());
+    }
+    return dropIndexOperator;
   }
 
   @Override

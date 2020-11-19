@@ -42,7 +42,6 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON prefixPath whereClause? indexWithClause #createIndex //not support yet
     | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
-
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
@@ -189,7 +188,7 @@ setClause
     ;
 
 whereClause
-    : WHERE orExpression
+    : WHERE (orExpression | indexPredicateClause)
     ;
 
 showWhereClause
@@ -210,7 +209,6 @@ andExpression
 predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
-    | (suffixPath | fullPath) indexPredicateClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
@@ -332,9 +330,8 @@ topClause
     ;
 
 indexPredicateClause
-    : LIKE sequenceClause
-    | CONTAIN sequenceClause WITH TOLERANCE constant
-    (CONCAT sequenceClause WITH TOLERANCE constant)*
+    : (suffixPath | fullPath) LIKE sequenceClause
+    | (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
     ;
 
 
