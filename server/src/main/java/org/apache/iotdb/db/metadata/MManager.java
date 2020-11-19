@@ -461,7 +461,7 @@ public class MManager {
       leafMNode.setOffset(offset);
 
     } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
+      throw new MetadataException(e);
     }
   }
 

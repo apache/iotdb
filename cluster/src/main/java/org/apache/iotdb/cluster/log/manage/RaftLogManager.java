@@ -848,7 +848,7 @@ public abstract class RaftLogManager {
         logger.error("{}, an exception occurred when checking the applied log index", name, e);
       }
     }
-    logger.error("{}, the check-log-applier thread {} is interrupted", name,
+    logger.info("{}, the check-log-applier thread {} is interrupted", name,
         Thread.currentThread().getName());
   }
 

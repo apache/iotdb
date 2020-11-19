@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -96,8 +98,11 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
-          e);
+      if (!(e.getCause() instanceof ClosedByInterruptException) &&
+          !(e.getCause() instanceof ClosedChannelException)) {
+        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
+            e);
+      }
     }
   }
 

@@ -698,7 +698,9 @@ public abstract class RaftMember {
       }
     }
     logger.info("{}: Start to make {} catch up", name, follower);
-    catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
+    if (!catchUpService.isShutdown()) {
+      catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
+    }
   }
 
   /**
