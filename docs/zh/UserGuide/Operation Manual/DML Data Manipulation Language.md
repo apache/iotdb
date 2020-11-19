@@ -174,9 +174,9 @@ IoTDB支持另外两种结果返回形式: 按设备时间对齐 'align by devic
 select s1,s2 from root.sg1.* GROUP BY DEVICE
 ```
 
-更多语法请参照 SQL REFERENCE.
+更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
-'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
+'disable align' 意味着每条时序就有3列存在。更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
 ### 聚合查询
 本章节主要介绍聚合查询的相关示例，
@@ -792,9 +792,9 @@ select s1,s2 from root.sg1.* ALIGN BY DEVICE
 
 ```
 
-有关更多语法描述，请阅读SQL REFERENCE。
+更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
-“禁用对齐”指示结果集中每个时间序列都有3列。 有关更多语法描述，请阅读SQL REFERENCE。
+“禁用对齐”指示结果集中每个时间序列都有3列。 有关更多语法描述，更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
 #### 错误处理
 

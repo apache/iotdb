@@ -745,9 +745,9 @@ The SQL statement is:
 select s1,s2 from root.sg1.* ALIGN BY DEVICE
 ```
 
-For more syntax description, please read SQL REFERENCE.
+For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
-The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read SQL REFERENCE.
+The 'disable align' indicaes that there are 3 columns for each time series in the resultset. For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 ####  Error Handling
 
