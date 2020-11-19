@@ -588,10 +588,19 @@ public abstract class RaftLogManager {
       startTime = Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.getOperationStartTime();
       applyEntries(entries);
       Statistic.RAFT_SENDER_COMMIT_APPLY_LOGS.calOperationCostTimeFromStart(startTime);
+
+      long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
+      if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
+        logger.debug("There are too many unapplied logs [{}], wait for a while to avoid memory "
+            + "overflow", unappliedLogSize);
+        Thread.sleep(unappliedLogSize);
+      }
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     } catch (IOException e) {
       throw new LogExecutionException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -797,7 +806,7 @@ public abstract class RaftLogManager {
     long compactIndex = Math
         .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {
-      logger.info(
+      logger.debug(
           "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize "
               + "{}, maxAppliedLog {}",
           name, getFirstIndex(), getLastLogIndex(), compactIndex, removeSize,
@@ -806,7 +815,7 @@ public abstract class RaftLogManager {
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
         getStableEntryManager().removeCompactedEntries(compactIndex);
       }
-      logger.info("{}: After compaction index {}-{}, committedLogSize {}", name,
+      logger.debug("{}: After compaction index {}-{}, committedLogSize {}", name,
           getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
     } catch (EntryUnavailableException e) {
       logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
