@@ -101,7 +101,7 @@ public class Cli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number and greater than 0");
       return false;
     }
     return true;

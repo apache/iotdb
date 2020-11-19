@@ -57,6 +57,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -323,7 +324,8 @@ public class SyncClientAdaptor {
       List<String> pathsToQuery, boolean withAlias)
       throws InterruptedException, TException {
     AtomicReference<GetAllPathsResult> remoteResult = new AtomicReference<>();
-    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(client.getNode(),
+        remoteResult);
 
     client.getAllPaths(header, pathsToQuery, withAlias, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
@@ -430,12 +432,15 @@ public class SyncClientAdaptor {
     return snapshotRef.get();
   }
 
-  public static ByteBuffer last(AsyncDataClient client, Path seriesPath,
-      TSDataType dataType, QueryContext context, Set<String> deviceMeasurements, Node header)
+  public static ByteBuffer last(AsyncDataClient client, List<PartialPath> seriesPaths,
+      List<Integer> dataTypeOrdinals, QueryContext context,
+      Map<String, Set<String>> deviceMeasurements,
+      Node header)
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
-    LastQueryRequest request = new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
+    LastQueryRequest request = new LastQueryRequest(PartialPath.toStringList(seriesPaths),
+        dataTypeOrdinals,
         context.getQueryId(), deviceMeasurements, header, client.getNode());
 
     client.last(request, handler);

@@ -68,6 +68,8 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -657,16 +659,30 @@ public class LocalQueryExecutor {
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
-    PartialPath path = new PartialPath(request.getPath());
-    ClusterQueryUtils.checkPathExistence(path);
-    // TODO-Cluster: support expression in last
-    TimeValuePair timeValuePair = LastQueryExecutor
-        .calculateLastPairForOneSeriesLocally(path,
-            TSDataType.values()[request.getDataTypeOrdinal()], queryContext, null,
+    List<PartialPath> partialPaths = new ArrayList<>();
+    for (String path : request.getPaths()) {
+      partialPaths.add(new PartialPath(path));
+    }
+    List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
+    for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
+      dataTypes.add(TSDataType.values()[dataTypeOrdinal]);
+    }
+    ClusterQueryUtils.checkPathExistence(partialPaths);
+    IExpression expression = null;
+    if (request.isSetFilterBytes()) {
+      Filter filter = FilterFactory.deserialize(request.filterBytes);
+      expression = new GlobalTimeExpression(filter);
+    }
+
+    List<Pair<Boolean, TimeValuePair>> timeValuePairs = LastQueryExecutor
+        .calculateLastPairForSeriesLocally(partialPaths,
+            dataTypes, queryContext, expression,
             request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+    for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {
+      SerializeUtils.serializeTVPair(timeValuePair.right, dataOutputStream);
+    }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 

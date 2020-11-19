@@ -356,8 +356,10 @@ public class SyncClientAdaptorTest {
             return new SimpleSnapshot(0, 0);
           }
         }));
-    assertEquals(lastResult, SyncClientAdaptor.last(dataClient, new Path("1"), TSDataType.INT64,
-        new QueryContext(), Collections.emptySet(), TestUtils.getNode(0)));
+    assertEquals(lastResult, SyncClientAdaptor.last(dataClient,
+        Collections.singletonList(new PartialPath("1")),
+        Collections.singletonList(TSDataType.INT64.ordinal()),
+        new QueryContext(), Collections.emptyMap(), TestUtils.getNode(0)));
     assertTrue(SyncClientAdaptor.onSnapshotApplied(dataClient, TestUtils.getNode(0),
         Arrays.asList(0, 1, 2)));
   }

@@ -161,6 +161,10 @@ public class DirectoryManager {
     return IoTDBDescriptor.getInstance().getConfig().getWalDir();
   }
 
+  public String getIndexRootFolder() {
+    return IoTDBDescriptor.getInstance().getConfig().getIndexRootFolder();
+  }
+
   public String getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {
     return getUnSequenceFileFolder(getNextFolderIndexForUnSequenceFile());
   }
