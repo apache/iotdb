@@ -210,7 +210,7 @@ public class IoTDBAuthorizationIT {
 
       try (Connection userCon = DriverManager
               .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
-           Statement userStmt = userCon.createStatement();) {
+           Statement userStmt = userCon.createStatement()) {
 
         // grant a non-existing user
         boolean caught = false;

@@ -180,6 +180,11 @@ public class LongTVList extends TVList {
   }
 
   @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
+  }
+
+  @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }

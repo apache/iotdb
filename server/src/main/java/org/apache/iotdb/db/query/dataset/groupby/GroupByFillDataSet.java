@@ -105,13 +105,16 @@ public class GroupByFillDataSet extends QueryDataSet {
       throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
+    List<PartialPath> seriesPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      TimeValuePair lastTimeValuePair;
-      lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-          (PartialPath) paths.get(i), dataTypes.get(i), context, null,
-          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
-      if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
-        lastTimeArray[i] = lastTimeValuePair.getTimestamp();
+      seriesPaths.add((PartialPath) paths.get(i));
+    }
+    List<Pair<Boolean, TimeValuePair>> lastValueContainer =
+            LastQueryExecutor.calculateLastPairForSeriesLocally(
+                    seriesPaths, dataTypes, context, null, groupByFillPlan);
+    for (int i = 0; i < lastValueContainer.size(); i++) {
+      if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
+        lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();
       }
     }
   }

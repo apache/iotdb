@@ -107,7 +107,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     private static JSONObject getProviderRSAJWK(InputStream is) throws ParseException {
         // Read all data from stream
         StringBuilder sb = new StringBuilder();
-        try (Scanner scanner = new Scanner(is);) {
+        try (Scanner scanner = new Scanner(is)) {
             while (scanner.hasNext()) {
                 sb.append(scanner.next());
             }
