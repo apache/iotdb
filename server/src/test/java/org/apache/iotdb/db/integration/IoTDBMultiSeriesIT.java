@@ -329,7 +329,7 @@ public class IoTDBMultiSeriesIT {
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {

@@ -130,7 +130,7 @@ public class IoTDBAggregationIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
@@ -144,7 +144,7 @@ public class IoTDBAggregationIT {
       hasResultSet = statement.execute(
           "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
@@ -203,7 +203,7 @@ public class IoTDBAggregationIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
@@ -234,7 +234,7 @@ public class IoTDBAggregationIT {
       hasResultSet = statement.execute("SELECT count(s0),count(s1),count(s2),count(s3) " +
           "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 order by time desc");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
