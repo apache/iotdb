@@ -332,7 +332,7 @@ public class ExportCsv extends AbstractCsvTool {
     } else {
       if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
         int location = lastValue.indexOf("\"");
-        if (location > -1) {
+        if (location > 0) {
           if (lastValue.charAt(location - 1) != '\\') {
             bw.write("\"" + lastValue.replace("\"", "\\\"") + "\"\n");
           } else {
