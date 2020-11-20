@@ -109,8 +109,8 @@ public class ExportCsvTestIT extends AbstractScript{
 
   @Test
   public void testRawDataQuery() throws IOException, StatementExecutionException, IoTDBConnectionException {
-    final String[] expectCsv = new String[]{"Time,root.sg1.d1.s1,root.sg1.d1.s2",
-        "1.0,\"abc\\\",aa\""};
+    final String[] expectCsv = new String[]{"Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2",
+        "abbe's,1.0,\"abc\\\",aa\""};
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     String[] sql = {"select * from root"};
@@ -142,8 +142,8 @@ public class ExportCsvTestIT extends AbstractScript{
 
   @Test
   public void testAggregationQuery() throws StatementExecutionException, IoTDBConnectionException, IOException {
-    final String[] expectCsv = new String[]{"Time,count(root.sg1.d1.s1),count(root.sg1.d1.s2)",
-            "1,1"};
+    final String[] expectCsv = new String[]{"Time,count(root.sg1.d1.s3),count(root.sg1.d1.s1),count(root.sg1.d1.s2)",
+            "1,1,1"};
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     String[] sql = {"select count(*) from root"};
@@ -181,10 +181,12 @@ public class ExportCsvTestIT extends AbstractScript{
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
+    measurements.add("s3");
 
     List<String> values = new ArrayList<>();
     values.add("1.0");
     values.add("abc\",aa");
+    values.add("abbe's");
     session.insertRecord(deviceId, 1L, measurements, values);
   }
 
