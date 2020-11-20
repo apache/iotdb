@@ -27,21 +27,36 @@
         <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>zeppelin-interpreter</artifactId>
-    <name>Zeppelin-interpreter</name>
+    <artifactId>iotdb-zeppelin-interpreter</artifactId>
+    <name>IoTDB Zeppelin Interpreter</name>
     <url>http://www.apache.org</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <zeppelin.version>0.7.0</zeppelin.version>
+        <zeppelin.version>0.8.2</zeppelin.version>
         <junit.version>4.11</junit.version>
+        <!--        <value>org.apache.zeppelin.spark.SparkInterpreter,org.apache.zeppelin.spark.PySparkInterpreter,org.apache.zeppelin.spark.SparkSqlInterpreter,org.apache.zeppelin.spark.DepInterpreter,org.apache.zeppelin.markdown.Markdown,org.apache.zeppelin.shell.ShellInterpreter,org.apache.zeppelin.hive.HiveInterpreter,org.apache.zeppelin.iotdb.IoTDBInterpreter</value>-->
     </properties>
     <dependencies>
         <dependency>
             <groupId>org.apache.zeppelin</groupId>
             <artifactId>zeppelin-interpreter</artifactId>
             <version>0.8.2</version>
-            <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.zeppelin</groupId>
+            <artifactId>zeppelin-zengine</artifactId>
+            <version>0.8.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.zeppelin</groupId>
+            <artifactId>zeppelin-server</artifactId>
+            <version>0.8.2</version>
+        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.apache.zeppelin</groupId>-->
+        <!--            <artifactId>zeppelin-web</artifactId>-->
+        <!--            <version>0.8.2</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-cli</artifactId>
@@ -71,32 +86,41 @@
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
             </plugin>
-            <!-- <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.3</version>
-                <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
-                </configuration>
-            </plugin>
+            <!--            <plugin>-->
+            <!--                <artifactId>maven-compiler-plugin</artifactId>-->
+            <!--                <version>3.3</version>-->
+            <!--                <configuration>-->
+            <!--                    <source>1.7</source>-->
+            <!--                    <target>1.7</target>-->
+            <!--                </configuration>-->
+            <!--            </plugin>-->
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>2.6</version>
-                <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
+                <version>${maven.assembly.version}</version>
                 <executions>
+                    <!-- Package binaries-->
                     <execution>
-                        <id>make-assembly</id>
+                        <id>interpreter-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/zeppelin-site.xml</descriptor>
+                            </descriptors>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <archive>
+                                <manifest>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                </manifest>
+                            </archive>
+                        </configuration>
                     </execution>
                 </executions>
-            </plugin> -->
+            </plugin>
         </plugins>
     </build>
 </project>

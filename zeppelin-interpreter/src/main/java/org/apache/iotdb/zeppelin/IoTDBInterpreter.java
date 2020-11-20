@@ -52,6 +52,16 @@ public class IoTDBInterpreter extends Interpreter {
 		super(property);
 	}
 
+	public static IoTDBInterpreter getInstance() {
+		return zeppelinHolder.INSTANCE;
+	}
+
+	public static void main(String[] args) {
+
+		IoTDBInterpreter interpreter = IoTDBInterpreter.getInstance();
+		interpreter.open();
+	}
+
 	@Override
 	public void open() {
 		session = new Session("127.0.0.1", 6667, "root", "root");
@@ -147,6 +157,17 @@ public class IoTDBInterpreter extends Interpreter {
 			sortedMap.put(entry.getKey(), entry.getValue());
 		}
     return sortedMap;
+	}
+
+	private static class zeppelinHolder {
+
+		private static Properties properties = new Properties();
+
+		private static final IoTDBInterpreter INSTANCE = new IoTDBInterpreter(properties);
+
+		private zeppelinHolder() {
+
+		}
 	}
 
 }

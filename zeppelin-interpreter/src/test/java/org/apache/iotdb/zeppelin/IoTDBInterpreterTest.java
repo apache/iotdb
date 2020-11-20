@@ -40,15 +40,15 @@ public class IoTDBInterpreterTest {
 	@Test
 	public void testNonQuery() {
 		for(int i = 0; i < 100; i++) {
-			String script = String.format("INSERT INTO root.sg1.d1.test(timestamp,temperature) VALUES(%d,%f)",i,Math.random()*10);
-			InterpreterResult interpreterResult = interpreter.interpret(script,null);
+			String script = String.format("INSERT INTO root.sg1.d1.test(timestamp,temperature) VALUES(%d,%f)", i, Math.random() * 10);
+			InterpreterResult interpreterResult = interpreter.interpret(script, null);
 			System.out.println(interpreterResult.message());
 		}
 	}
 
 	@Test
 	public void testQuery() {
-		InterpreterResult interpreterResult = interpreter.interpret("select * from root.sg1.d1.test",null);
+		InterpreterResult interpreterResult = interpreter.interpret("select * from root.sg1.d1.test", null);
 		System.out.print(interpreterResult.message().get(0).getData());
 	}
 
@@ -59,17 +59,17 @@ public class IoTDBInterpreterTest {
 
 		wrongSql = "select * from";
 		System.out.println("input: " + wrongSql);
-		interpreterResult = interpreter.interpret(wrongSql,null);
+		interpreterResult = interpreter.interpret(wrongSql, null);
 		System.out.println(interpreterResult.message().get(0).getData());
 
 		wrongSql = "select * from a";
 		System.out.println("input: " + wrongSql);
-		interpreterResult = interpreter.interpret(wrongSql,null);
+		interpreterResult = interpreter.interpret(wrongSql, null);
 		System.out.println(interpreterResult.message().get(0).getData());
 
 		wrongSql = "select * from root a";
 		System.out.println("input: " + wrongSql);
-		interpreterResult = interpreter.interpret(wrongSql,null);
+		interpreterResult = interpreter.interpret(wrongSql, null);
 		System.out.println(interpreterResult.message().get(0).getData());
 	}
 }
