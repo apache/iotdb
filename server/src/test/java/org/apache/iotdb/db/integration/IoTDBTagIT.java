@@ -52,8 +52,8 @@ public class IoTDBTagIT {
 
   @Test
   public void createOneTimeseriesTest() throws ClassNotFoundException {
-    List<String> ret = Arrays.asList("root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
+    List<String> ret = Collections.singletonList("root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -250,8 +250,8 @@ public class IoTDBTagIT {
 
   @Test
   public void queryWithAliasTest() throws ClassNotFoundException {
-    List<String> ret = Arrays.asList("root.turbine.d6.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
+    List<String> ret = Collections.singletonList("root.turbine.d6.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
     String sql = "create timeseries root.turbine.d6.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -332,8 +332,8 @@ public class IoTDBTagIT {
             "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,{\"tag2\""
                 + ":\"t2\",\"tag3\":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
     );
-    List<String> ret2 = Arrays.asList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
+    List<String> ret2 = Collections.singletonList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
 
     String sql1 = "create timeseries root.turbine.d7.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
@@ -399,8 +399,8 @@ public class IoTDBTagIT {
         "root.turbine.d7.s2,status,root.turbine,INT32,RLE,SNAPPY,"
             + "{\"tag2\":\"t2\",\"tag3\":\"t3\"},{\"attr4\":\"a4\",\"attr3\":\"a3\"}"
     );
-    List<String> ret2 = Arrays.asList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
-        + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
+    List<String> ret2 = Collections.singletonList("root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+            + "{\"tag1\":\"t1\",\"tag2\":\"t2\"},{\"attr2\":\"a2\",\"attr1\":\"a1\"}");
 
     String sql1 = "create timeseries root.turbine.d7.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=t1, tag2=t2) attributes(attr1=a1, attr2=a2)";
