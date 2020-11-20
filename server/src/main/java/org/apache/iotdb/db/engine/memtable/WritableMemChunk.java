@@ -163,6 +163,8 @@ public class WritableMemChunk implements IWritableMemChunk {
       list.sort();
     }
 
+    list.increaseReferenceCount();
+
     return list;
   }
 

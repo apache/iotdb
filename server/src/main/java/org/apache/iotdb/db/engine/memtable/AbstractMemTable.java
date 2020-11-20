@@ -246,16 +246,10 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     List<TimeRange> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
 
-    TVList chunkCopy = null;
-    int curSize = 0;
-    // synchronize memtable map to get and sort
-    // when next query come, it will find the data has been sorted and get reference of the data
-    synchronized (memTableMap) {
-      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      chunkCopy = memChunk.getSortedTVList();
-      chunkCopy.increaseReferenceCount();
-      curSize = chunkCopy.size();
-    }
+    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
+    // get sorted tv list is synchronized so different query can get right sorted list reference
+    TVList chunkCopy = memChunk.getSortedTVList();
+    int curSize = chunkCopy.size();
 
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion(),
         curSize, deletionList);
