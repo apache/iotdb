@@ -18,22 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.rescon.CachedStringPool;
+
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the

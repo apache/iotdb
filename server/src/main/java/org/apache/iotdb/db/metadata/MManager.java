@@ -97,7 +97,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -270,7 +269,6 @@ public class MManager {
     if (logFile.exists()) {
       int idx = 0;
       try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);) {
-
         while (mLogReader.hasNext()) {
           PhysicalPlan plan = null;
           try {

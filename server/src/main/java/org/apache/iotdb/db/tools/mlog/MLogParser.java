@@ -39,14 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.channels.FileChannel;
 import java.util.List;
 
 /**
@@ -163,8 +156,8 @@ public class MLogParser {
             break;
           case DELETE_TIMESERIES: {
             List<PartialPath> pathList = plan.getPaths();
-            for (int i = 0; i < pathList.size(); i++) {
-              mLogTxtWriter.deleteTimeseries(pathList.get(i).getFullPath());
+            for (PartialPath partialPath : pathList) {
+              mLogTxtWriter.deleteTimeseries(partialPath.getFullPath());
             }
           }
             break;
@@ -173,8 +166,8 @@ public class MLogParser {
             break;
           case DELETE_STORAGE_GROUP: {
             List<PartialPath> pathList = plan.getPaths();
-            for (int i = 0; i < pathList.size(); i++) {
-              mLogTxtWriter.deleteStorageGroup(pathList.get(i).getFullPath());
+            for (PartialPath partialPath : pathList) {
+              mLogTxtWriter.deleteStorageGroup(partialPath.getFullPath());
             }
           }
           break;

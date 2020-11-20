@@ -67,7 +67,8 @@ public class MLogWriter implements AutoCloseable {
     IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
 
   // we write log to channel every time, so we need not to call channel.force every time
-  private final long DUMMY_FLUSH_TIME = 100;
+  private static final long DUMMY_FLUSH_TIME = 100;
+  private static final String LOG_TOO_LARGE_INFO = "Log cannot fit into buffer, please increase mlog_buffer_size";
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
@@ -118,7 +119,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(createTimeSeriesPlan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -127,7 +128,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(deleteTimeSeriesPlan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -137,7 +138,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -147,7 +148,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -157,7 +158,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -167,7 +168,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -177,7 +178,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -191,7 +192,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -206,7 +207,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -220,7 +221,7 @@ public class MLogWriter implements AutoCloseable {
       putLog(plan);
     } catch (BufferOverflowException e) {
       throw new IOException(
-        "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+        LOG_TOO_LARGE_INFO, e);
     }
   }
 
@@ -240,10 +241,10 @@ public class MLogWriter implements AutoCloseable {
       }
 
       try (MLogWriter mLogWriter = new MLogWriter(schemaDir, newFileName + ".tmp");
-           MLogTxtReader MLogTxtReader = new MLogTxtReader(schemaDir, oldFileName)) {
+           MLogTxtReader mLogTxtReader = new MLogTxtReader(schemaDir, oldFileName)) {
         // upgrade from old character log file to new binary mlog
-        while (MLogTxtReader.hasNext()) {
-          String cmd = MLogTxtReader.next();
+        while (mLogTxtReader.hasNext()) {
+          String cmd = mLogTxtReader.next();
           try {
             mLogWriter.operation(cmd, isSnapshot);
           } catch (MetadataException e) {
@@ -256,11 +257,9 @@ public class MLogWriter implements AutoCloseable {
     } else if (!logFile.exists() && tmpLogFile.exists()) {
       // if old .bin doesn't exist but .bin.tmp exists, rename tmp file to .bin
       FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
-    } else if (tmpLogFile.exists()) {
+    } else if (tmpLogFile.exists() && !tmpLogFile.delete()) {
       // if both .bin and .bin.tmp exist, delete .bin.tmp
-      if (!tmpLogFile.delete()) {
-        throw new IOException("Deleting " + tmpLogFile + "failed.");
-      }
+      throw new IOException("Deleting " + tmpLogFile + "failed.");
     }
 
     // do some clean job
@@ -287,10 +286,8 @@ public class MLogWriter implements AutoCloseable {
     sync();
     logWriter.close();
     mlogBuffer.clear();
-    if (logFile != null) {
-      if (logFile.exists()) {
-        Files.delete(logFile.toPath());
-      }
+    if (logFile != null && logFile.exists()) {
+      Files.delete(logFile.toPath());
     }
     logNum = 0;
     logWriter = new LogWriter(logFile, 0L);
@@ -318,7 +315,7 @@ public class MLogWriter implements AutoCloseable {
         }
       } catch (BufferOverflowException e) {
         throw new IOException(
-          "Log cannot fit into buffer, please increase mlog_buffer_size", e);
+          LOG_TOO_LARGE_INFO, e);
       }
     }
   }

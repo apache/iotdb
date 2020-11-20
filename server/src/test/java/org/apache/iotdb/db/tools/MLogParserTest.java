@@ -117,7 +117,7 @@ public class MLogParserTest {
       while (reader.readLine() != null) {
         lineNum++;
       }
-      Assert.assertEquals(lineNum, 108);
+      Assert.assertEquals(108, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
@@ -142,7 +142,7 @@ public class MLogParserTest {
       while (reader.readLine() != null) {
         lineNum++;
       }
-      Assert.assertEquals(lineNum, 113);
+      Assert.assertEquals(113, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
