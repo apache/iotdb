@@ -25,7 +25,7 @@
 
 UDF（User Defined Function）即用户自定义函数。IoTDB提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
-根据此文档，您将会很快学习UDF的编写、注册、使用等操作。
+根据此文档，您将会很快学会UDF的编写、注册、使用等操作。
 
 
 
@@ -42,7 +42,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 ## UDF依赖
 
-如果您使用[Maven](http://search.maven.org/)，可以从[Maven库](http://search.maven.org/)中搜索下面示例中的依赖。请注意选择和目标IoTDB服务器相同的依赖版本。
+如果您使用[Maven](http://search.maven.org/)，可以从[Maven库](http://search.maven.org/)中搜索下面示例中的依赖。请注意选择和目标IoTDB服务器版本相同的依赖版本。
 
 ``` xml
 <dependency>
@@ -86,6 +86,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 1. 帮助用户解析SQL语句中的UDF参数
 2. 配置UDF运行时必要的信息，即指定UDF访问原始数据时采取的策略和输出结果序列的类型
+3. 创建资源，比如建立外部链接，打开文件等。
 
 
 
@@ -156,10 +157,18 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 `OneByOneAccessStrategy`的构造不需要任何参数。
 
-`SlidingTimeWindowAccessStrategy`有2种构造方法，每种构造方法需要提供4个参数：时间轴显示时间窗开始和结束时间、划分时间轴的时间间隔参数（必须为正数）和滑动步长（不要求大于等于时间间隔，但是必须为正数）。4个参数的关系可见下图。策略的构造方法详见Javadoc。注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为0的情况，这种情况框架也会为该窗口调用一次`transform`方法。
+`SlidingTimeWindowAccessStrategy`有2种构造方法，每种构造方法需要提供3类参数：
 
+1. 时间轴显示时间窗开始和结束时间
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png"></center>
+2. 划分时间轴的时间间隔参数（必须为正数）
+3. 滑动步长（不要求大于等于时间间隔，但是必须为正数）。
+
+3类参数的关系可见下图。策略的构造方法详见Javadoc。
+
+<div style="text-align: center;"><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/30497621/99787878-47b51480-2b5b-11eb-8ed3-84088c5c30f7.png"></div>
+
+注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为0的情况，这种情况框架也会为该窗口调用一次`transform`方法。
 
 `TumblingWindowAccessStrategy`的构造需要提供1个参数。该参数指定了一个数据处理窗口包含的数据行数。注意，最后一个窗口的数据行数可能少于规定的数据行数。
 
@@ -169,14 +178,14 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 注意，您在此处设定的输出结果序列的类型，决定了`transform`方法中`PointCollector`实际能够接收的数据类型。`setOutputDataType`中设定的输出类型和`PointCollector`实际能够接收的数据输出类型关系如下：
 
-| `setOutputDataType`中设定的输出类型 | `PointCollector`实际能够接收的输出类型 |
-| :---------------------------------- | :------------------------------------- |
-| `INT32`                             | `int`                                  |
-| `INT64`                             | `long`                                 |
-| `FLOAT`                             | `float`                                |
-| `DOUBLE`                            | `double`                               |
-| `BOOLEAN`                           | `boolean`                              |
-| `TEXT`                              | `java.lang.String`                     |
+| `setOutputDataType`中设定的输出类型 | `PointCollector`实际能够接收的输出类型                       |
+| :---------------------------------- | :----------------------------------------------------------- |
+| `INT32`                             | `int`                                                        |
+| `INT64`                             | `long`                                                       |
+| `FLOAT`                             | `float`                                                      |
+| `DOUBLE`                            | `double`                                                     |
+| `BOOLEAN`                           | `boolean`                                                    |
+| `TEXT`                              | `java.lang.String` 和 `org.apache.iotdb.tsfile.utils.Binary` |
 
 
 
@@ -258,7 +267,7 @@ public class Counter implements UDTF {
   }
 
   @Override
-  public void transform(RowWindow rowWindow, PointCollector collector) throws IOException {
+  public void transform(RowWindow rowWindow, PointCollector collector) {
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
     }
@@ -319,9 +328,9 @@ DROP FUNCTION example
 
 
 
-## UDF使用
+## UDF查询
 
-UDF的使用方法与普通的内建函数类似。
+UDF的使用方法与普通内建函数的类似。
 
 
 
@@ -387,5 +396,5 @@ SHOW FUNCTIONS
 
 ## 配置项
 
-在SQL语句中使用自定义函数时，可能提示内存不足。这是由于计算的数据量过大并且存在倾斜，导致任务超出默认分配的内存。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
+在SQL语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
