@@ -22,8 +22,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.Arrays;
+import java.util.Map;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
+import org.apache.iotdb.tsfile.encoding.encoder.SdtEncoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -77,6 +80,15 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private Statistics<?> statistics;
 
+  private boolean isSdtEncoding;
+
+  private SdtEncoder sdtEncoder;
+
+  /**
+   * do not re-execute SDT compression when merging chunks
+   */
+  private boolean isMerging;
+
   /**
    * @param schema schema of this measurement
    */
@@ -97,18 +109,93 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.pageWriter = new PageWriter(measurementSchema);
     this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
     this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
+
+    //check if the measurement schema uses SDT
+    checkSdtEncoding();
+  }
+
+  public ChunkWriterImpl(MeasurementSchema schema, boolean isMerging) {
+    this(schema);
+    this.isMerging = isMerging;
+  }
+
+  private void checkSdtEncoding() {
+    if (measurementSchema.getProps() != null && !isMerging) {
+      for (Map.Entry<String, String> entry : measurementSchema.getProps().entrySet()) {
+        //check if is sdt encoding
+        if (entry.getKey().toLowerCase().equals("loss") && entry.getValue().toLowerCase()
+            .equals("sdt")) {
+          isSdtEncoding = true;
+          sdtEncoder = new SdtEncoder();
+        }
+
+        //set compression deviation
+        else if (isSdtEncoding &&
+            entry.getKey().toLowerCase().equals("cd")) {
+          try {
+            sdtEncoder.setCompDeviation(Double.parseDouble(entry.getValue()));
+          } catch (NumberFormatException e) {
+            logger.error("meet error when formatting SDT compression deviation");
+          }
+          if (sdtEncoder.getCompDeviation() < 0) {
+            logger
+                .error("SDT compression deviation cannot be negative. SDT encoding is turned off.");
+            isSdtEncoding = false;
+          }
+        }
+
+        //set compression minimum
+        else if (isSdtEncoding &&
+            entry.getKey().toLowerCase().equals("compmin")) {
+          try {
+            sdtEncoder.setCompMin(Double.parseDouble(entry.getValue()));
+          } catch (NumberFormatException e) {
+            logger.error("meet error when formatting SDT compression minimum");
+          }
+        }
+
+        //set compression maximum
+        else if (isSdtEncoding &&
+            entry.getKey().toLowerCase().equals("compmax")) {
+          try {
+            sdtEncoder.setCompMax(Double.parseDouble(entry.getValue()));
+          } catch (NumberFormatException e) {
+            logger.error("meet error when formatting SDT compression maximum");
+          }
+        }
+      }
+
+      if (isSdtEncoding && sdtEncoder.getCompMax() <= sdtEncoder.getCompMin()) {
+        logger
+            .error("SDT compression maximum needs to be greater than compression minimum. SDT encoding is turned off");
+        isSdtEncoding = false;
+      }
+    }
   }
 
   @Override
   public void write(long time, long value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
+    if (!isSdtEncoding || sdtEncoder.encode(time, value)) {
+      if (isSdtEncoding) {
+        //store last read time and value
+        time = sdtEncoder.getTime();
+        value = (long) sdtEncoder.getValue();
+      }
+      pageWriter.write(time, value);
+      checkPageSizeAndMayOpenANewPage();
+    }
   }
 
   @Override
   public void write(long time, int value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
+    if (!isSdtEncoding || sdtEncoder.encode(time, value)) {
+      if (isSdtEncoding) {
+        time = sdtEncoder.getTime();
+        value = (int) sdtEncoder.getValue();
+      }
+      pageWriter.write(time, value);
+      checkPageSizeAndMayOpenANewPage();
+    }
   }
 
   @Override
@@ -119,14 +206,26 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, float value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
+    if (!isSdtEncoding || sdtEncoder.encode(time, value)) {
+      if (isSdtEncoding) {
+        time = sdtEncoder.getTime();
+        value = (float) sdtEncoder.getValue();
+      }
+      pageWriter.write(time, value);
+      checkPageSizeAndMayOpenANewPage();
+    }
   }
 
   @Override
   public void write(long time, double value) {
-    pageWriter.write(time, value);
-    checkPageSizeAndMayOpenANewPage();
+    if (!isSdtEncoding || sdtEncoder.encode(time, value)) {
+      if (isSdtEncoding) {
+        time = sdtEncoder.getTime();
+        value = sdtEncoder.getValue();
+      }
+      pageWriter.write(time, value);
+      checkPageSizeAndMayOpenANewPage();
+    }
   }
 
   @Override
@@ -137,12 +236,24 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
+    if (isSdtEncoding) {
+      sdtEncoder.encode(timestamps, values);
+      timestamps = sdtEncoder.getTimestamps();
+      values = Arrays.stream(sdtEncoder.getValues()).mapToInt(i -> (int) i).toArray();
+      batchSize = Math.min(timestamps.length, batchSize);
+    }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
+    if (isSdtEncoding) {
+      sdtEncoder.encode(timestamps, values);
+      timestamps = sdtEncoder.getTimestamps();
+      values = Arrays.stream(sdtEncoder.getValues()).mapToLong(i -> (int) i).toArray();
+      batchSize = Math.min(timestamps.length, batchSize);
+    }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
@@ -155,6 +266,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
+    if (isSdtEncoding) {
+      sdtEncoder.encode(timestamps, values);
+      timestamps = sdtEncoder.getTimestamps();
+      values = sdtEncoder.getFloatValues();
+      batchSize = Math.min(timestamps.length, batchSize);
+    }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
   }
@@ -331,5 +448,11 @@ public class ChunkWriterImpl implements IChunkWriter {
         pageWriter.getStatistics().getSerializedSize());
   }
 
+  public void setIsMerging(boolean isMerging) {
+    this.isMerging = isMerging;
+  }
 
+  public boolean isMerging() {
+    return isMerging;
+  }
 }

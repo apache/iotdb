@@ -169,7 +169,6 @@ compressor
     | SNAPPY
     | GZIP
     | LZO
-    | SDT
     | PAA
     | PLA
     | LZ4
@@ -638,6 +637,7 @@ dateFormat
 constant
     : dateExpression
     | NaN
+    | SDT
     | MINUS? realLiteral
     | MINUS? INT
     | stringLiteral
@@ -1144,10 +1144,6 @@ LZO
     : L Z O
     ;
 
-SDT
-    : S D T
-    ;
-
 PAA
     : P A A
     ;
@@ -1268,6 +1264,8 @@ R_BRACKET : '}';
 UNDERLINE : '_';
 
 NaN : 'NaN';
+
+SDT : 'SDT';
 
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL
