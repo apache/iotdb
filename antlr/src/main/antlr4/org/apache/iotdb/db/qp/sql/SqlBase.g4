@@ -637,7 +637,6 @@ dateFormat
 constant
     : dateExpression
     | NaN
-    | SDT
     | MINUS? realLiteral
     | MINUS? INT
     | stringLiteral
@@ -1264,8 +1263,6 @@ R_BRACKET : '}';
 UNDERLINE : '_';
 
 NaN : 'NaN';
-
-SDT : 'SDT';
 
 stringLiteral
    : SINGLE_QUOTE_STRING_LITERAL

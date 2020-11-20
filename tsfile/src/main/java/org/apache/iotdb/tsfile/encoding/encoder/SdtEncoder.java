@@ -21,24 +21,31 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class SdtEncoder {
 
   /**
-   * the last read pair <time, value></>
+   * the last read time and value
    * if upperDoor >= lowerDoor meaning out of compDeviation range, will store lastReadPair
    */
-  private Pair<Long, Double> lastReadPair;
-
+  private long lastReadTimestamp;
+  private long lastReadLong;
+  private double lastReadDouble;
+  private int lastReadInt;
+  private float lastReadFloat;
+  
   /**
-   * the last stored pair <time, value></>
+   * the last stored time and vlaue
    * we compare current point against lastStoredPair
    */
-  private Pair<Long, Double> lastStoredPair;
-
+  private long lastStoredTimestamp;
+  private long lastStoredLong;
+  private double lastStoredDouble;
+  private int lastStoredInt;
+  private float lastStoredFloat;
+  
   /**
    * the maximum curUpperSlope between the lastStoredPoint to the current point
    * upperDoor can only open up
@@ -52,7 +59,9 @@ public class SdtEncoder {
   private double lowerDoor;
 
   private List<Long> timestamps;
-  private List<Double> values;
+  private List<Double> doubleValues;
+  private List<Long> longValues;
+  private List<Integer> intValues;
   private List<Float> floatValues;
 
   /**
@@ -76,108 +85,304 @@ public class SdtEncoder {
    */
   private double compMax;
 
-  public SdtEncoder () {
-    lastReadPair = new Pair<>(null, null);
-    lastStoredPair = new Pair<>(null, null);
+  TSDataType dataType;
+
+  private boolean isFirstValue;
+
+  public SdtEncoder(TSDataType dataType) {
+    timestamps = new ArrayList<>();
     upperDoor = Integer.MIN_VALUE;
     lowerDoor = Integer.MAX_VALUE;
     compDeviation = -1;
     compMin = Integer.MIN_VALUE;
     compMax = Integer.MAX_VALUE;
-    timestamps = new ArrayList<>();
-    values = new ArrayList<>();
-    floatValues = new ArrayList<>();
+    isFirstValue = true;
+    this.dataType = dataType;
+
+    switch (dataType) {
+      case INT32:
+        intValues = new ArrayList<>();
+        break;
+      case INT64:
+        longValues = new ArrayList<>();
+        break;
+      case DOUBLE:
+        doubleValues = new ArrayList<>();
+        break;
+      case FLOAT:
+        floatValues = new ArrayList<>();
+        break;
+    }
   }
 
-
-  public boolean encode(long time, double value) {
+  public boolean encodeFloat(long time, float value) {
     // store the first time and value pair
-    if (firstPair(time, value)) {
+    if (isFirtValue(time, value)) {
       return true;
     }
 
     // if current point to the last stored point's time distance is within compMin,
     // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredPair.left <= compMin) {
+    if (time - lastStoredTimestamp <= compMin) {
       return false;
     }
 
     // if current point to the last stored point's time distance is larger than compMax,
     // will reset two doors, and store current point;
-    if (time - lastStoredPair.left >= compMax) {
+    if (time - lastStoredTimestamp >= compMax) {
       reset(time, value);
       return true;
     }
 
-    double curUpperSlope = (value - lastStoredPair.right - compDeviation) / (time - lastStoredPair.left);
+    double curUpperSlope = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
     }
 
-    double curLowerSlope = (value - lastStoredPair.right + compDeviation) / (time - lastStoredPair.left);
+    double curLowerSlope = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
     }
 
     // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
     if (upperDoor >= lowerDoor) {
-      lastStoredPair = lastReadPair;
-      upperDoor = (value - lastStoredPair.right - compDeviation) / (time - lastStoredPair.left);
-      lowerDoor = (value - lastStoredPair.right + compDeviation) / (time - lastStoredPair.left);
-      lastReadPair = new Pair<>(time, value);
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredFloat = lastReadFloat;
+      upperDoor = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
+      lastReadFloat = value;
+      lastReadTimestamp = time;
       return true;
     }
 
-    lastReadPair = new Pair<>(time, value);
+    lastReadFloat = value;
+    lastReadTimestamp = time;
     return false;
   }
 
+  public boolean encodeLong(long time, long value) {
+    // store the first time and value pair
+    if (isFirtValue(time, value)) {
+      return true;
+    }
 
-  public boolean encode(long time, long value) {
-    return encode(time, (double) value);
+    // if current point to the last stored point's time distance is within compMin,
+    // will not check two doors nor store any point within the compMin time range
+    if (time - lastStoredTimestamp <= compMin) {
+      return false;
+    }
+
+    // if current point to the last stored point's time distance is larger than compMax,
+    // will reset two doors, and store current point;
+    if (time - lastStoredTimestamp >= compMax) {
+      reset(time, value);
+      return true;
+    }
+
+    double curUpperSlope = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
+    if (curUpperSlope > upperDoor) {
+      upperDoor = curUpperSlope;
+    }
+
+    double curLowerSlope = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
+    if (curLowerSlope < lowerDoor) {
+      lowerDoor = curLowerSlope;
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredLong = lastReadLong;
+      lastStoredTimestamp = lastReadTimestamp;
+      upperDoor = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
+      lastReadLong = value;
+      lastReadTimestamp = time;
+      return true;
+    }
+
+    lastReadLong = value;
+    lastReadTimestamp = time;
+    return false;
   }
 
-  public boolean encode(long time, int value) {
-    return encode(time, (double) value);
+  public boolean encodeInt(long time, int value) {
+    // store the first time and value pair
+    if (isFirtValue(time, value)) {
+      return true;
+    }
+
+    // if current point to the last stored point's time distance is within compMin,
+    // will not check two doors nor store any point within the compMin time range
+    if (time - lastStoredTimestamp <= compMin) {
+      return false;
+    }
+
+    // if current point to the last stored point's time distance is larger than compMax,
+    // will reset two doors, and store current point;
+    if (time - lastStoredTimestamp >= compMax) {
+      reset(time, value);
+      return true;
+    }
+
+    double curUpperSlope = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
+    if (curUpperSlope > upperDoor) {
+      upperDoor = curUpperSlope;
+    }
+
+    double curLowerSlope = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
+    if (curLowerSlope < lowerDoor) {
+      lowerDoor = curLowerSlope;
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredInt = lastReadInt;
+      upperDoor = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
+      lastReadInt = value;
+      lastReadTimestamp = time;
+      return true;
+    }
+
+    lastReadInt = value;
+    lastReadTimestamp = time;
+    return false;
   }
 
-  public boolean encode(long time, float value) {
-    return encode(time, (double) value);
+  public boolean encodeDouble(long time, double value) {
+    // store the first time and value pair
+    if (isFirtValue(time, value)) {
+      return true;
+    }
+
+    // if current point to the last stored point's time distance is within compMin,
+    // will not check two doors nor store any point within the compMin time range
+    if (time - lastStoredTimestamp <= compMin) {
+      return false;
+    }
+
+    // if current point to the last stored point's time distance is larger than compMax,
+    // will reset two doors, and store current point;
+    if (time - lastStoredTimestamp >= compMax) {
+      reset(time, value);
+      return true;
+    }
+
+    double curUpperSlope = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
+    if (curUpperSlope > upperDoor) {
+      upperDoor = curUpperSlope;
+    }
+
+    double curLowerSlope = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
+    if (curLowerSlope < lowerDoor) {
+      lowerDoor = curLowerSlope;
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredDouble = lastReadDouble;
+      upperDoor = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
+      lastReadDouble = value;
+      lastReadTimestamp = time;
+      return true;
+    }
+
+    lastReadDouble = value;
+    lastReadTimestamp = time;
+    return false;
   }
 
   public void encode(long[] timestamps, double[] values) {
     for (int i = 0; i < timestamps.length; i++) {
-      if (encode(timestamps[i], values[i])) {
+      if (encodeDouble(timestamps[i], values[i])) {
         this.timestamps.add(getTime());
-        this.values.add(getValue());
+        doubleValues.add((double) getValue());
       }
     }
   }
 
   public void encode(long[] timestamps, int[] values) {
-    encode(timestamps, Arrays.stream(values).mapToDouble(i -> i).toArray());
-  }
-
-  public void encode(long[] timestamps, long[] values) {
-    encode(timestamps, Arrays.stream(values).mapToDouble(i -> i).toArray());
-  }
-
-  public void encode(long[] timestamps, float[] values) {
     for (int i = 0; i < timestamps.length; i++) {
-      if (encode(timestamps[i], values[i])) {
+      if (encodeInt(timestamps[i], values[i])) {
         this.timestamps.add(getTime());
-        this.floatValues.add((float) getValue());
+        intValues.add((int) getValue());
       }
     }
   }
 
-  private boolean firstPair(long time, double value) {
-    if (lastReadPair.left == null && lastReadPair.right == null) {
-      lastReadPair = new Pair<>(time, value);
-      lastStoredPair = lastReadPair;
+  public void encode(long[] timestamps, long[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      if (encodeLong(timestamps[i], values[i])) {
+        this.timestamps.add(getTime());
+        longValues.add((long) getValue());
+      }
+    }
+  }
+
+  public void encode(long[] timestamps, float[] values) {
+    for (int i = 0; i < timestamps.length; i++) {
+      if (encodeFloat(timestamps[i], values[i])) {
+        this.timestamps.add(getTime());
+        floatValues.add((float) getValue());
+      }
+    }
+  }
+
+  private boolean isFirtValue(long time, float value) {
+    if (isFirstValue) {
+      isFirstValue = false;
+      lastReadTimestamp = time;
+      lastReadFloat = value;
+      lastStoredTimestamp = time;
+      lastStoredFloat = value;
       return true;
     }
     return false;
+  }
+
+  private boolean isFirtValue(long time, long value) {
+    if (isFirstValue) {
+      isFirstValue = false;
+      lastReadTimestamp = time;
+      lastReadLong = value;
+      lastStoredTimestamp = time;
+      lastStoredLong = value;
+      return true;
+    }
+    return false;
+  }
+
+  private boolean isFirtValue(long time, int value) {
+    if (isFirstValue) {
+      isFirstValue = false;
+      lastReadTimestamp = time;
+      lastReadInt = value;
+      lastStoredTimestamp = time;
+      lastStoredInt = value;
+      return true;
+    }
+    return false;
+  }
+
+  private boolean isFirtValue(long time, double value) {
+    if (isFirstValue) {
+      isFirstValue = false;
+      lastReadTimestamp = time;
+      lastReadDouble = value;
+      lastStoredTimestamp = time;
+      lastStoredDouble = value;
+      return true;
+    }
+    return false;
+  }
+
+  private void reset() {
+    upperDoor = Integer.MIN_VALUE;
+    lowerDoor = Integer.MAX_VALUE;
+    isFirstValue = true;
   }
 
   /**
@@ -186,13 +391,28 @@ public class SdtEncoder {
    * @param time current time
    * @param value current value
    */
+  private void reset(long time, long value) {
+    reset();
+    lastStoredTimestamp = time;
+    lastStoredLong = value;
+  }
+
   private void reset(long time, double value) {
-    // lastStoredPair is set to current time, value for getValue(), getTime()
-    // will be reset when next time using encode()
-    lastStoredPair = new Pair<>(time, value);
-    upperDoor = Integer.MIN_VALUE;
-    lowerDoor = Integer.MAX_VALUE;
-    lastReadPair = new Pair<>(null, null);
+    reset();
+    lastStoredTimestamp = time;
+    lastStoredDouble = value;
+  }
+
+  private void reset(long time, int value) {
+    reset();
+    lastStoredTimestamp = time;
+    lastStoredInt = value;
+  }
+
+  private void reset(long time, float value) {
+    reset();
+    lastStoredTimestamp = time;
+    lastStoredFloat = value;
   }
 
   public void setCompDeviation(double compDeviation) {
@@ -220,19 +440,38 @@ public class SdtEncoder {
   }
 
   public long getTime() {
-    return lastStoredPair.left;
+    return lastStoredTimestamp;
   }
 
-  public double getValue() {
-    return lastStoredPair.right;
+  public Object getValue() {
+    switch (dataType) {
+      case INT32:
+        return lastStoredInt;
+      case INT64:
+        return lastStoredLong;
+      case DOUBLE:
+        return lastStoredDouble;
+      case FLOAT:
+        return lastStoredFloat;
+      default:
+        return null;
+    }
   }
 
   public long[] getTimestamps() {
     return timestamps.stream().mapToLong(i -> i).toArray();
   }
 
-  public double[] getValues() {
-    return values.stream().mapToDouble(i -> i).toArray();
+  public double[] getDoubleValues() {
+    return doubleValues.stream().mapToDouble(i -> i).toArray();
+  }
+
+  public long[] getLongValues() {
+    return longValues.stream().mapToLong(i -> i).toArray();
+  }
+
+  public int[] getIntValues() {
+    return intValues.stream().mapToInt(i -> i).toArray();
   }
 
   public float[] getFloatValues() {
