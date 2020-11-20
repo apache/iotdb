@@ -45,6 +45,6 @@ service SyncService{
 	SyncStatus syncDeletedFileName(1:string fileName)
 	SyncStatus initSyncData(1:string filename)
 	SyncStatus syncData(1:binary buff)
-	SyncStatus checkDataMD5(1:string md5)
+	SyncStatus checkDataDigest(1:string md5)
 	SyncStatus endSync()
 }
