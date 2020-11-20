@@ -319,7 +319,7 @@ public class ClusterUtils {
       // the storage group is not found locally, but may be found in the leader, retry after
       // synchronizing with the leader
       try {
-        metaGroupMember.syncLeaderWithConsistencyCheck();
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
       } catch (CheckConsistencyException checkConsistencyException) {
         throw new MetadataException(checkConsistencyException.getMessage());
       }

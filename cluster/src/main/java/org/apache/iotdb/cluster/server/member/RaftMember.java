@@ -572,7 +572,7 @@ public abstract class RaftMember {
     return getSyncClient(syncHeartbeatClientPool, node);
   }
 
-  private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
+  public void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
       AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
       Peer peer) {
     AsyncClient client = getSendLogAsyncClient(node);
@@ -740,27 +740,34 @@ public abstract class RaftMember {
 
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and
-   * throws exception when failed
+   * throws exception when failed.Note that the write request will always try to sync leader
    */
-  public void syncLeaderWithConsistencyCheck() throws CheckConsistencyException {
-    switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
-      case STRONG_CONSISTENCY:
-        if (!syncLeader()) {
-          throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
-        }
-        return;
-      case MID_CONSISTENCY:
-        // do not care success or not
-        syncLeader();
-        return;
-      case WEAK_CONSISTENCY:
-        // do nothing
-        return;
-      default:
-        // this should not happen in theory
-        throw new CheckConsistencyException(
-            "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
-                .getConsistencyLevel().name());
+  public void syncLeaderWithConsistencyCheck(boolean isWriteRequest)
+      throws CheckConsistencyException {
+    if (isWriteRequest) {
+      if (!syncLeader()) {
+        throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+      }
+    } else {
+      switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
+        case STRONG_CONSISTENCY:
+          if (!syncLeader()) {
+            throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+          }
+          return;
+        case MID_CONSISTENCY:
+          // do not care success or not
+          syncLeader();
+          return;
+        case WEAK_CONSISTENCY:
+          // do nothing
+          return;
+        default:
+          // this should not happen in theory
+          throw new CheckConsistencyException(
+              "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
+                  .getConsistencyLevel().name());
+      }
     }
   }
 
@@ -1616,9 +1623,7 @@ public abstract class RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
     } else {
-      startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
-      Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
     }
   }
 

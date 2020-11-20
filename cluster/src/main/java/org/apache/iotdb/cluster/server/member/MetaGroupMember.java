@@ -1412,7 +1412,7 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     try {
-      syncLeaderWithConsistencyCheck();
+      syncLeaderWithConsistencyCheck(true);
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
       logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
       return forwardPlan(globalGroups, plan);
@@ -1475,7 +1475,7 @@ public class MetaGroupMember extends RaftMember {
       planGroupMap = router.splitAndRoutePlan(plan);
     } catch (StorageGroupNotSetException e) {
       // synchronize with the leader to see if this node has unpulled storage groups
-      syncLeaderWithConsistencyCheck();
+      syncLeaderWithConsistencyCheck(true);
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
       } catch (MetadataException ex) {
@@ -1529,6 +1529,10 @@ public class MetaGroupMember extends RaftMember {
       } else {
         logger.error("{}, Cannot auto create timeseries.", thisNode);
       }
+    }
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && status
+        .isSetRedirectNode()) {
+        status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;

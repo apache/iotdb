@@ -20,7 +20,18 @@
 package org.apache.iotdb.cluster.log;
 
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -29,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -39,18 +51,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A LogDispatcher servers a raft leader by queuing logs that the leader wants to send to the
@@ -69,11 +69,15 @@ public class LogDispatcher {
       new ArrayList<>();
   private ExecutorService executorService;
   private ExecutorService serializationService;
+  private ExecutorService thriftReadSelectorService;
+  private ExecutorService thriftWriteSelectorService;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
     executorService = Executors.newCachedThreadPool();
     serializationService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    thriftReadSelectorService = Executors.newCachedThreadPool();
+    thriftWriteSelectorService = Executors.newCachedThreadPool();
     for (Node node : member.getAllNodes()) {
       if (!node.equals(member.getThisNode())) {
         nodeLogQueues.add(createQueueAndBindingThread(node));
@@ -87,6 +91,10 @@ public class LogDispatcher {
     executorService.awaitTermination(10, TimeUnit.SECONDS);
     serializationService.shutdownNow();
     serializationService.awaitTermination(10, TimeUnit.SECONDS);
+    thriftReadSelectorService.shutdownNow();
+    thriftReadSelectorService.awaitTermination(10, TimeUnit.SECONDS);
+    thriftWriteSelectorService.shutdownNow();
+    thriftWriteSelectorService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
   public void offer(SendLogRequest log) {
@@ -207,12 +215,160 @@ public class LogDispatcher {
     }
   }
 
+  abstract class BaseWriteEvent {
+
+    protected Client client;
+    protected AsyncMethodCallback<Long> handler;
+  }
+
+
+  class BatchWriteEvent extends BaseWriteEvent {
+
+    protected AppendEntriesRequest appendEntriesRequest;
+
+    public BatchWriteEvent(
+        AppendEntriesRequest appendEntriesRequest,
+        Client client,
+        AsyncMethodCallback<Long> handler) {
+      this.appendEntriesRequest = appendEntriesRequest;
+      this.client = client;
+      this.handler = handler;
+    }
+  }
+
+  class SingleWriteEvent extends BaseWriteEvent {
+
+    protected AppendEntryRequest appendEntryRequest;
+
+    public SingleWriteEvent(AppendEntryRequest appendEntryRequest,
+        Client client,
+        AsyncMethodCallback<Long> handler) {
+      this.appendEntryRequest = appendEntryRequest;
+      this.client = client;
+      this.handler = handler;
+    }
+  }
+
+  class SyncThriftWriteSelectorThread implements Runnable {
+
+    protected BlockingQueue<BaseWriteEvent> queue = new ArrayBlockingQueue<>(8);
+    protected SyncThriftReadSelectorThread readThread;
+    private Node receiver;
+
+    public SyncThriftWriteSelectorThread(Node receiver) {
+      this.readThread = new SyncThriftReadSelectorThread(receiver);
+      this.receiver = receiver;
+      thriftReadSelectorService.submit(readThread);
+    }
+
+    public void offer(BaseWriteEvent event) {
+      while (!queue.offer(event)) {
+        //busy wait
+      }
+    }
+
+    @Override
+    public void run() {
+      Thread.currentThread()
+          .setName("ThriftWriteSelector-" + member.getName() + "-" + receiver);
+      try {
+        while (!Thread.interrupted()) {
+          BaseWriteEvent event = queue.take();
+          if (event instanceof SingleWriteEvent) {
+            long startTime = Statistic.RAFT_SENDER_SEND_LOG_SYNC_WRITE.getOperationStartTime();
+            ((SingleWriteEvent) event).client
+                .send_appendEntry(((SingleWriteEvent) event).appendEntryRequest);
+            Statistic.RAFT_SENDER_SEND_LOG_SYNC_WRITE.calOperationCostTimeFromStart(startTime);
+          } else {
+            long startTime = Statistic.RAFT_SENDER_SEND_LOG_SYNC_BATCH_WRITE
+                .getOperationStartTime();
+            ((BatchWriteEvent) event).client
+                .send_appendEntries(((BatchWriteEvent) event).appendEntriesRequest);
+            Statistic.RAFT_SENDER_SEND_LOG_SYNC_BATCH_WRITE
+                .calOperationCostTimeFromStart(startTime);
+          }
+          readThread.offer(event);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        logger.error("Unexpected error in thrift write selector", e);
+      }
+      logger.info("Thrift write selector exits");
+    }
+  }
+
+  class SyncThriftReadSelectorThread implements Runnable {
+
+    protected BlockingQueue<BaseWriteEvent> queue = new ArrayBlockingQueue<>(8);
+    protected Node receiver;
+
+    public SyncThriftReadSelectorThread(Node receiver) {
+      this.receiver = receiver;
+    }
+
+    public void offer(BaseWriteEvent event) {
+      while (!queue.offer(event)) {
+        //busy wait
+      }
+    }
+
+    public void singleEventRead(SingleWriteEvent event) {
+      long startTime = Statistic.RAFT_SENDER_SEND_LOG_SYNC_READ.getOperationStartTime();
+      try {
+        Long result = event.client.recv_appendEntry();
+        event.handler.onComplete(result);
+      } catch (TException e) {
+        event.handler.onError(e);
+      } finally {
+        ClientUtils.putBackSyncClient(event.client);
+      }
+      Statistic.RAFT_SENDER_SEND_LOG_SYNC_READ.calOperationCostTimeFromStart(startTime);
+    }
+
+    public void batchEventRead(BatchWriteEvent event) {
+      long startTime = Statistic.RAFT_SENDER_SEND_LOG_SYNC_BATCH_READ.getOperationStartTime();
+      try {
+        Long result = event.client.recv_appendEntries();
+        event.handler.onComplete(result);
+      } catch (TException e) {
+        event.handler.onError(e);
+      } finally {
+        ClientUtils.putBackSyncClient(event.client);
+      }
+      Statistic.RAFT_SENDER_SEND_LOG_SYNC_BATCH_READ.calOperationCostTimeFromStart(startTime);
+    }
+
+
+    @Override
+    public void run() {
+      Thread.currentThread()
+          .setName("ThriftReadSelector-" + member.getName() + "-" + receiver);
+      try {
+        while (!Thread.interrupted()) {
+          BaseWriteEvent event = queue.take();
+          if (event instanceof SingleWriteEvent) {
+            singleEventRead(((SingleWriteEvent) event));
+          } else {
+            batchEventRead(((BatchWriteEvent) event));
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (Exception e) {
+        logger.error("Unexpected error in thrift read selector", e);
+      }
+      logger.info("Thrift read selector exits");
+    }
+  }
+
   class DispatcherThread implements Runnable {
 
     private Node receiver;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
     private Peer peer;
+    private SyncThriftWriteSelectorThread writeSelectorThread;
 
     DispatcherThread(Node receiver,
         BlockingQueue<SendLogRequest> logBlockingDeque) {
@@ -220,6 +376,8 @@ public class LogDispatcher {
       this.logBlockingDeque = logBlockingDeque;
       this.peer = member.getPeerMap().computeIfAbsent(receiver,
           r -> new Peer(member.getLogManager().getLastLogIndex()));
+      this.writeSelectorThread = new SyncThriftWriteSelectorThread(receiver);
+      thriftWriteSelectorService.submit(writeSelectorThread);
     }
 
     @Override
@@ -233,9 +391,11 @@ public class LogDispatcher {
           if (logger.isDebugEnabled()) {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
+          long operationStartTime = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
           for (SendLogRequest request : currBatch) {
             request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
           }
+          Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(operationStartTime);
           sendBatchLogs(currBatch);
           currBatch.clear();
         }
@@ -261,7 +421,7 @@ public class LogDispatcher {
       }
     }
 
-    private void appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request,
+    private void appendEntriesSync(AppendEntriesRequest request,
         List<SendLogRequest> currBatch) {
 
       long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
@@ -274,22 +434,9 @@ public class LogDispatcher {
 
       Client client = member.getSyncClient(receiver);
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
-      startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
-      try {
-        long result = client.appendEntries(request);
-        Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
-        if (result != -1 && logger.isInfoEnabled()) {
-          logger.info("{}: Append {} logs to {}, resp: {}", member.getName(), logList.size(),
-              receiver, result);
-        }
-        handler.onComplete(result);
-      } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        handler.onError(e);
-        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
-      } finally {
-        ClientUtils.putBackSyncClient(client);
-      }
+
+      BatchWriteEvent event = new BatchWriteEvent(request, client, handler);
+      writeSelectorThread.offer(event);
     }
 
     private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList,
@@ -341,7 +488,7 @@ public class LogDispatcher {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         } else {
-          appendEntriesSync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
+          appendEntriesSync(appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         }
         for (; prevIndex < logIndex; prevIndex++) {
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
@@ -367,11 +514,19 @@ public class LogDispatcher {
     private void sendLog(SendLogRequest logRequest) {
       Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE
           .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
-      member.sendLogToFollower(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
-          logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest());
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
-          .calOperationCostTimeFromStart(logRequest.getLog().getCreateTime());
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        member.sendLogAsync(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
+            logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(),
+            logRequest.appendEntryRequest, peer);
+      } else {
+        AppendNodeEntryHandler handler = member
+            .getAppendNodeEntryHandler(logRequest.getLog(), logRequest.getVoteCounter(), receiver,
+                logRequest.getLeaderShipStale(), logRequest.getNewLeaderTerm(), peer);
+        Client client = member.getSyncClient(receiver);
+        SingleWriteEvent event = new SingleWriteEvent(logRequest.appendEntryRequest, client,
+            handler);
+        writeSelectorThread.offer(event);
+      }
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<Long> {

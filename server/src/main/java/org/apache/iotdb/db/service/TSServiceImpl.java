@@ -56,6 +56,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -1507,30 +1508,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      List<TSStatus> statusList = new ArrayList<>();
+      List<TSStatus> statusList = insertTabletsInternal(req);
       boolean isAllSuccessful = true;
-      for (int i = 0; i < req.deviceIds.size(); i++) {
-        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
-            new PartialPath(req.deviceIds.get(i)),
-            req.measurementsList.get(i));
-        insertTabletPlan.setTimes(
-            QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
-        insertTabletPlan.setColumns(
-            QueryDataSetUtils.readValuesFromBuffer(
-                req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(),
-                req.sizeList.get(i)));
-        insertTabletPlan.setRowCount(req.sizeList.get(i));
-        insertTabletPlan.setDataTypes(req.typesList.get(i));
-
-        TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
-        if (status == null) {
-          status = executeNonQueryPlan(insertTabletPlan);
-          isAllSuccessful =
-              ((status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                  && isAllSuccessful);
-        }
-        statusList.add(status);
+      for (TSStatus subStatus : statusList) {
+        isAllSuccessful =
+            ((subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
+                && isAllSuccessful);
       }
+
       if (!isAllSuccessful) {
         return RpcUtils.getStatus(statusList);
       }
@@ -1542,6 +1527,31 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
+  }
+
+  public List<TSStatus> insertTabletsInternal(TSInsertTabletsReq req) throws IllegalPathException {
+    List<TSStatus> statusList = new ArrayList<>();
+
+    for (int i = 0; i < req.deviceIds.size(); i++) {
+      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
+          new PartialPath(req.deviceIds.get(i)),
+          req.measurementsList.get(i));
+      insertTabletPlan.setTimes(
+          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+      insertTabletPlan.setColumns(
+          QueryDataSetUtils.readValuesFromBuffer(
+              req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(),
+              req.sizeList.get(i)));
+      insertTabletPlan.setRowCount(req.sizeList.get(i));
+      insertTabletPlan.setDataTypes(req.typesList.get(i));
+
+      TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
+      if (status == null) {
+        status = executeNonQueryPlan(insertTabletPlan);
+      }
+      statusList.add(status);
+    }
+    return statusList;
   }
 
   @Override

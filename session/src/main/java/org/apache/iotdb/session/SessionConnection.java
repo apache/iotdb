@@ -66,7 +66,8 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
-  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId) throws IoTDBConnectionException {
+  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
+      throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
@@ -434,7 +435,7 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertTablets(request));
+      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
     } catch (TException e) {
       if (reconnect()) {
         try {

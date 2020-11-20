@@ -57,13 +57,11 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -101,14 +99,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof ShowPlan) {
       try {
-        metaGroupMember.syncLeaderWithConsistencyCheck();
+        metaGroupMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
       return processShowQuery((ShowPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
       try {
-        metaGroupMember.syncLeaderWithConsistencyCheck();
+        metaGroupMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
@@ -132,7 +130,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
     // make sure this node knows all storage groups
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -180,7 +178,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember.getLocalDataMember(partitionGroup.getHeader())
-            .syncLeaderWithConsistencyCheck();
+            .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalPathCount(pathUnderSG, level);
         logger.debug("{}: get path count of {} locally, result {}", metaGroupMember.getName(),
             partitionGroup, localResult);
@@ -341,7 +339,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       int level) throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeaderWithConsistencyCheck();
+    localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getNodesList(schemaPattern, level,
           new SlotSgFilter(
@@ -449,7 +447,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeaderWithConsistencyCheck();
+    localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
@@ -489,53 +487,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     }
     return nextChildren;
-  }
-
-  @Override
-  protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    String[] measurementList = insertPlan.getMeasurements();
-    PartialPath deviceId = insertPlan.getDeviceId();
-
-    if (getSeriesSchemas(deviceId, measurementList)) {
-      return super.getSeriesSchemas(insertPlan);
-    }
-
-    // some schemas does not exist locally, fetch them from the remote side
-    pullSeriesSchemas(deviceId, measurementList);
-
-    // we have pulled schemas as much as we can, those not pulled will depend on whether
-    // auto-creation is enabled
-    return super.getSeriesSchemas(insertPlan);
-  }
-
-  private boolean getSeriesSchemas(PartialPath deviceId, String[] measurementList)
-      throws MetadataException {
-    MNode node = null;
-    boolean allSeriesExists = true;
-    try {
-      node = IoTDB.metaManager.getDeviceNodeWithAutoCreate(deviceId);
-    } catch (PathNotExistException e) {
-      allSeriesExists = false;
-    }
-
-    if (node != null) {
-      for (String measurement : measurementList) {
-        if (!node.hasChild(measurement)) {
-          allSeriesExists = false;
-          break;
-        }
-      }
-    }
-    return allSeriesExists;
-  }
-
-  private void pullSeriesSchemas(PartialPath deviceId, String[] measurementList)
-      throws MetadataException {
-    List<PartialPath> schemasToPull = new ArrayList<>();
-    for (String s : measurementList) {
-      schemasToPull.add(deviceId.concatNode(s));
-    }
-    ((CMManager) IoTDB.metaManager).pullTimeSeriesSchemas(schemasToPull, null);
   }
 
   @Override

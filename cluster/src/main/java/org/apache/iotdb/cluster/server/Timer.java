@@ -23,6 +23,7 @@ package org.apache.iotdb.cluster.server;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
 public class Timer {
@@ -86,8 +87,25 @@ public class Timer {
     RAFT_SENDER_WAIT_FOR_PREV_LOG(
         RAFT_MEMBER_SENDER, "sender wait for prev log", TIME_SCALE, true,
         RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
-    RAFT_SENDER_SEND_LOG(
-        RAFT_MEMBER_SENDER, "send log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SERIALIZE_LOG(
+        RAFT_MEMBER_SENDER, "serialize logs", TIME_SCALE, true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG_SYNC_WRITE(
+        RAFT_MEMBER_SENDER, "send log sync write", TIME_SCALE,
+        !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG_SYNC_READ(
+        RAFT_MEMBER_SENDER, "send log sync read", TIME_SCALE,
+        !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG_ASYNC(
+        RAFT_MEMBER_SENDER, "send log async", TIME_SCALE,
+        ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG_SYNC_BATCH_WRITE(
+        RAFT_MEMBER_SENDER, "send log batch write", TIME_SCALE, !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(), RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
+    RAFT_SENDER_SEND_LOG_SYNC_BATCH_READ(
+        RAFT_MEMBER_SENDER, "send log batch read", TIME_SCALE, !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(), RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_SENDER_VOTE_COUNTER(
         RAFT_MEMBER_SENDER, "wait for votes", TIME_SCALE, true,
         RaftMember.USE_LOG_DISPATCHER ? DATA_GROUP_MEMBER_LOCAL_EXECUTION
@@ -136,11 +154,12 @@ public class Timer {
         RaftMember.USE_LOG_DISPATCHER, DATA_GROUP_MEMBER_LOCAL_EXECUTION),
     // raft member - receiver
     RAFT_RECEIVER_LOG_PARSE(
-        RAFT_MEMBER_RECEIVER, "log parse", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+        RAFT_MEMBER_RECEIVER, "log parse", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_RECEIVER_WAIT_FOR_PREV_LOG(
-        RAFT_MEMBER_RECEIVER, "receiver wait for prev log", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+        RAFT_MEMBER_RECEIVER, "receiver wait for prev log", TIME_SCALE, true,
+        RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_RECEIVER_APPEND_ENTRY(
-        RAFT_MEMBER_RECEIVER, "append entrys", TIME_SCALE, true, RAFT_SENDER_SEND_LOG),
+        RAFT_MEMBER_RECEIVER, "append entrys", TIME_SCALE, true, RAFT_SENDER_SEND_LOG_TO_FOLLOWERS),
     RAFT_RECEIVER_INDEX_DIFF(
         RAFT_MEMBER_RECEIVER, "index diff", 1.0, true, ROOT),
     // log dispatcher

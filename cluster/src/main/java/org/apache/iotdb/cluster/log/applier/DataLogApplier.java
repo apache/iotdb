@@ -27,8 +27,10 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -76,7 +78,10 @@ public class DataLogApplier extends BaseApplier {
         logger.error("Unsupported log: {}", log);
       }
     } catch (Exception e) {
-      logger.debug("Exception occured when applying {}", log, e);
+      Throwable rootCause = IOUtils.getRootCause(e);
+      if (!(rootCause instanceof PathNotExistException)) {
+        logger.debug("Exception occured when applying {}", log, e);
+      }
       log.setException(e);
     } finally {
       log.setApplied(true);
@@ -94,7 +99,7 @@ public class DataLogApplier extends BaseApplier {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
       try {
-        metaGroupMember.syncLeaderWithConsistencyCheck();
+        metaGroupMember.syncLeaderWithConsistencyCheck(true);
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
