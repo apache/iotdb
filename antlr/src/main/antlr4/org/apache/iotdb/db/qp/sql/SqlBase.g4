@@ -33,7 +33,7 @@ statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
@@ -348,7 +348,7 @@ comparisonOperator
     | type = OPERATOR_NEQ
     ;
 
-insertColumnSpec
+insertColumnsSpec
     : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 

@@ -138,7 +138,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByTimeStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexPredicateClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnSpecContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnsSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LastClauseContext;
@@ -273,7 +273,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     selectOp.addSelectPath(parsePrefixPath(ctx.prefixPath()));
     insertOp.setSelectOperator(selectOp);
-    parseInsertColumnSpec(ctx.insertColumnSpec(), insertOp);
+    parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp);
     return insertOp;
   }
@@ -1093,7 +1093,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseIndexPredicate(IndexPredicateClauseContext ctx) {
-    Map<String, Object> props = null;
+    Map<String, Object> props;
     PartialPath path;
     if(ctx.suffixPath() != null) {
       path = parseSuffixPath(ctx.suffixPath());
@@ -1678,7 +1678,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
-  private void parseInsertColumnSpec(InsertColumnSpecContext ctx, InsertOperator insertOp) {
+  private void parseInsertColumnSpec(InsertColumnsSpecContext ctx, InsertOperator insertOp) {
     List<NodeNameWithoutStarContext> nodeNamesWithoutStar = ctx.nodeNameWithoutStar();
     List<String> measurementList = new ArrayList<>();
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
