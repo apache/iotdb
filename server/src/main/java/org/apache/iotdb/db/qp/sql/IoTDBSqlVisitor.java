@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
+import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
+import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
+import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 
 import java.io.File;
@@ -133,6 +136,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByLevelStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GroupByTimeStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexPredicateClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
@@ -173,6 +177,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.RevokeWatermarkEmbeddingContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.RootOrIdContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SequenceClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
@@ -345,8 +350,29 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if(ctx.whereClause() != null) {
       whereOp = (FilterOperator) visit(ctx.whereClause());
       createIndexOp.setFilterOperator(whereOp.getChildren().get(0));
+      long indexTime = parseCreateIndexFilter(createIndexOp);
+      createIndexOp.setTime(indexTime);
     }
     return createIndexOp;
+  }
+
+  /**
+   * for create index command, time should only have an end time.
+   *
+   * @param operator create index plan
+   */
+  private long parseCreateIndexFilter(CreateIndexOperator operator) {
+    FilterOperator filterOperator = operator.getFilterOperator();
+    if (filterOperator.getTokenIntType() != SQLConstant.GREATERTHAN
+        && filterOperator.getTokenIntType() != SQLConstant.GREATERTHANOREQUALTO) {
+      throw new SQLParserException(
+          "For create index command, where clause must be like : time > XXX or time >= XXX");
+    }
+    long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
+    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
+      time = time - 1;
+    }
+    return time;
   }
 
   public void parseIndexWithClause(IndexWithClauseContext ctx, CreateIndexOperator createIndexOp) {
@@ -835,9 +861,21 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     queryOp.setSelectOperator(selectOp);
     FromOperator fromOp = (FromOperator) visit(ctx.fromClause());
     queryOp.setFromOperator(fromOp);
+    if(ctx.topClause() != null) {
+      Map<String, Object> props = new HashMap<>();
+      int top = Integer.parseInt(ctx.topClause().INT().getText());
+      if(top < 0) {
+        throw new SQLParserException("TOP <N>: N should be greater than 0.");
+      }
+      props.put(TOP_K, top);
+      queryOp.setProps(props);
+    }
     if(ctx.whereClause() != null) {
-      FilterOperator whereOp = (FilterOperator) visit(ctx.whereClause());
-      queryOp.setFilterOperator(whereOp.getChildren().get(0));
+      Operator operator = visit(ctx.whereClause());
+      if(operator instanceof FilterOperator) {
+        FilterOperator whereOp = (FilterOperator) operator;
+        queryOp.setFilterOperator(whereOp.getChildren().get(0));
+      }
     }
     if(ctx.specialClause() != null) {
       visit(ctx.specialClause());
@@ -1052,6 +1090,64 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       fromOp.addPrefixTablePath(path);
     }
     return fromOp;
+  }
+
+  private void parseIndexPredicate(IndexPredicateClauseContext ctx) {
+    Map<String, Object> props = null;
+    PartialPath path;
+    if(ctx.suffixPath() != null) {
+      path = parseSuffixPath(ctx.suffixPath());
+    } else {
+      path = parseFullPath(ctx.fullPath());
+    }
+    if (ctx.LIKE() != null) {
+      // whole matching case
+      if (queryOp.getSelectedPaths().size() != 1) {
+        throw new SQLParserException("Index query statement allows only one select path");
+      }
+      if (!path.equals(queryOp.getSelectedPaths().get(0))) {
+        throw new SQLParserException("In the index query statement, "
+            + "the path in select element and the index predicate should be same");
+      }
+      if(queryOp.getProps() != null) {
+        props = queryOp.getProps();
+      } else {
+        props = new HashMap<>();
+      }
+      props.put(PATTERN, parseSequence(ctx.sequenceClause(0)));
+      queryOp.setIndexType(IndexType.RTREE_PAA);
+    } else if (ctx.CONTAIN() != null) {
+      // subsequence matching case
+      List<double[]> compositePattern = new ArrayList<>();
+      List<Double> thresholds = new ArrayList<>();
+      for (int i = 0; i < ctx.sequenceClause().size(); i++) {
+        compositePattern.add(parseSequence(ctx.sequenceClause(i)));
+        thresholds.add(Double.parseDouble(ctx.constant(i).getText()));
+      }
+      if(queryOp.getProps() != null) {
+        props = queryOp.getProps();
+      } else {
+        props = new HashMap<>();
+      }
+      List<PartialPath> suffixPaths = new ArrayList<>();
+      suffixPaths.add(path);
+      queryOp.getSelectOperator().setSuffixPathList(suffixPaths);
+      props.put(PATTERN, compositePattern);
+      props.put(THRESHOLD, thresholds);
+      queryOp.setIndexType(IndexType.ELB_INDEX);
+    } else {
+      throw new SQLParserException("Unknown index predicate: " + ctx);
+    }
+    queryOp.setProps(props);
+  }
+
+  private double[] parseSequence(SequenceClauseContext ctx) {
+    int seqLen = ctx.constant().size();
+    double[] sequence = new double[seqLen];
+    for (int i = 0; i < seqLen; i++) {
+      sequence[i] = Double.parseDouble(ctx.constant(i).getText());
+    }
+    return sequence;
   }
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, QueryOperator queryOp) {
@@ -1401,6 +1497,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitWhereClause(WhereClauseContext ctx) {
+    if(ctx.indexPredicateClause() != null) {
+      parseIndexPredicate(ctx.indexPredicateClause());
+      return queryOp;
+    }
     FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
     return whereOp;

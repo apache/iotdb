@@ -41,7 +41,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -215,9 +214,6 @@ public class PhysicalGenerator {
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
-      case QUERY_INDEX:
-        QueryIndexOperator queryIndexOp = (QueryIndexOperator) operator;
-        return transformQuery(queryIndexOp, fetchSize);
       case TTL:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
@@ -398,7 +394,7 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
-    } else if (queryOperator instanceof QueryIndexOperator) {
+    } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
     } else {
       queryPlan = new RawDataQueryPlan();
@@ -608,9 +604,11 @@ public class PhysicalGenerator {
         }
       }
     }
-    if(queryOperator instanceof QueryIndexOperator) {
-      ((QueryIndexPlan) queryPlan).setIndexType(((QueryIndexOperator) queryOperator).getIndexType());
-      ((QueryIndexPlan) queryPlan).setProps(((QueryIndexOperator) queryOperator).getProps());
+    if(queryOperator.getIndexType() != null) {
+      if(queryPlan instanceof QueryIndexPlan) {
+        ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
+        ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
+      }
       return queryPlan;
     }
     try {
