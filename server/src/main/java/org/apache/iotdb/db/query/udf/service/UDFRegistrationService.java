@@ -47,7 +47,7 @@ public class UDFRegistrationService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(UDFRegistrationService.class);
 
-  private static final String LOG_FILE_DIR = IoTDBDescriptor.getInstance().getConfig().getQueryDir()
+  private static final String LOG_FILE_DIR = IoTDBDescriptor.getInstance().getConfig().getSystemDir()
       + File.separator + "udf" + File.separator;
   private static final String LOG_FILE_NAME = LOG_FILE_DIR + "ulog.txt";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";

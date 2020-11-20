@@ -41,7 +41,7 @@ public class TemporaryQueryDataFileService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(TemporaryQueryDataFileService.class);
 
   private static final String TEMPORARY_FILE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getQueryDir()
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
           + File.separator + "udf" + File.separator + "tmp" + File.separator;
 
   private final AtomicLong uniqueDataId;
