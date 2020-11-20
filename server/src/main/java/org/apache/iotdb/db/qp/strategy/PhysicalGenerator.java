@@ -379,13 +379,7 @@ public class PhysicalGenerator {
         }
       } else {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-        if (queryOperator.getLevel() >= 0) {
-          for (String aggregation : queryPlan.getAggregations()) {
-            if (!SQLConstant.COUNT.equals(aggregation)) {
-              throw new QueryProcessException("group by level only support count now.");
-            }
-          }
-        }
+
       }
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -59,14 +60,20 @@ public class GroupByTimeDataSet extends QueryDataSet {
     }
 
     Map<Integer, String> pathIndex = new HashMap<>();
-    Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths(), plan.getLevel(), pathIndex);
+    Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
       logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
     }
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex);
+      RowRecord curRecord = new RowRecord(0);
+      List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
+              plan, dataSet.nextWithoutConstraint(), finalPaths, pathIndex);
+      for (AggregateResult resultData : mergedAggResults) {
+        TSDataType dataType = resultData.getResultDataType();
+        curRecord.addField(resultData.getResult(), dataType);
+      }
       if (curRecord != null) {
         records.add(curRecord);
       }
