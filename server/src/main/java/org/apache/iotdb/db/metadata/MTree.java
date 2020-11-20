@@ -1268,7 +1268,7 @@ public class MTree implements Serializable {
             nodeStack.push(node);
           }
         } catch (Exception e) {
-          logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
+          logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
         }
       }
       return new MTree(node);

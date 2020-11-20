@@ -133,9 +133,6 @@ public class MLogParser {
     inputFile = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
     outputFile = commandLine.getOptionValue(OUT_ARGS);
 
-    if (inputFile == null) {
-      inputFile = reader.readLine("please input your mlog path:", '\0');
-    }
     if (outputFile == null) {
       outputFile = "tmp.txt";
     }
