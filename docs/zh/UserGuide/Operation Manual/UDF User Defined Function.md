@@ -279,7 +279,7 @@ public class Counter implements UDTF {
 
 ## 完整Maven项目示例
 
-如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目。您可以在……找到它。
+如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目**udf-example**。您可以在[这里](https://github.com/apache/iotdb/tree/master/example/udf)找到它。
 
 
 

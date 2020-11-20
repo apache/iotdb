@@ -280,7 +280,7 @@ public class Counter implements UDTF {
 
 ## Maven Project Example
 
-If you use Maven, you can build your UDF project referring to our ... module. You can find the project in ...
+If you use Maven, you can build your own UDF project referring to our **udf-example** module. You can find the project [here](https://github.com/apache/iotdb/tree/master/example/udf).
 
 
 
