@@ -310,8 +310,8 @@ public class ExportCsv extends AbstractCsvTool {
       } else {
         if (fields.get(j).getDataType() == TSDataType.TEXT) {
           int location = value.indexOf("\"");
-          if (location > 0) {
-            if (value.charAt(location - 1) != '\\') {
+          if (location > -1) {
+            if (location == 0 || value.charAt(location - 1) != '\\') {
               bw.write("\"" + value.replace("\"", "\\\"") + "\",");
             } else {
               bw.write("\"" + value + "\",");
@@ -332,8 +332,8 @@ public class ExportCsv extends AbstractCsvTool {
     } else {
       if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
         int location = lastValue.indexOf("\"");
-        if (location > 0) {
-          if (lastValue.charAt(location - 1) != '\\') {
+        if (location > -1) {
+          if (location == 0 || lastValue.charAt(location - 1) != '\\') {
             bw.write("\"" + lastValue.replace("\"", "\\\"") + "\"\n");
           } else {
             bw.write("\"" + lastValue + "\"\n");
