@@ -567,7 +567,7 @@ public final class RamUsageEstimator {
 
     cachedInfo = new ClassCache(
             alignObjectSize(shallowInstanceSize),
-            referenceFields.toArray(new Field[referenceFields.size()]));
+            referenceFields.toArray(new Field[0]));
     return cachedInfo;
   }
 
