@@ -75,9 +75,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
         TSDataType dataType = resultData.getResultDataType();
         curRecord.addField(resultData.getResult(), dataType);
       }
-      if (curRecord != null) {
-        records.add(curRecord);
-      }
+      records.add(curRecord);
     }
 
     this.dataTypes = new ArrayList<>();

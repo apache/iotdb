@@ -20,6 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class FilePathUtils {
@@ -127,7 +127,7 @@ public class FilePathUtils {
           AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths,
           Map<Integer, String> pathIndex) {
     if (newRecord.getFields().size() < finalPaths.size()) {
-      return null;
+      return Collections.emptyList();
     }
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < newRecord.getFields().size(); i++) {
@@ -165,7 +165,7 @@ public class FilePathUtils {
           List<AggregateResult> aggResults, Map<String, AggregateResult> finalPaths,
           Map<Integer, String> pathIndex) {
     if (aggResults.size() < finalPaths.size()) {
-      return null;
+      return Collections.emptyList();
     }
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
       entry.getValue().reset();
