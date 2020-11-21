@@ -155,13 +155,5 @@ public class GroupByLevelDataSetTest {
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
 
-    // not count
-    try {
-      queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
-      fail();
-    } catch (Exception e) {
-      assertEquals("group by level only support count now.", e.getMessage());
-    }
   }
 }
