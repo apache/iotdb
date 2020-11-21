@@ -126,8 +126,6 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION = 66;
 
   public static final int TOK_FLUSH_TASK_INFO = 67;
-  public static final int TOK_DYNAMIC_PARAMETER = 68;
-
   public static final int TOK_LOAD_FILES = 69;
   public static final int TOK_REMOVE_FILE = 70;
   public static final int TOK_MOVE_FILE = 71;
@@ -234,7 +232,6 @@ public class SQLConstant {
 
     tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
     tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
-    tokenNames.put(TOK_DYNAMIC_PARAMETER, "TOK_DYNAMIC_PARAMETER");
 
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
@@ -248,6 +245,10 @@ public class SQLConstant {
     tokenNames.put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE");
     tokenNames.put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP");
     tokenNames.put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS");
+
+    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
+    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
+    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
   }
 
   static {

@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -498,6 +497,6 @@ public class MTreeTest {
     }
 
     assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
-        Arrays.asList(new PartialPath(sgPath1)));
+        Collections.singletonList(new PartialPath(sgPath1)));
   }
 }

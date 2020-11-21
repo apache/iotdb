@@ -128,12 +128,12 @@ matrix:
         - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
       after_success:
         - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
-    # - os: linux
-    #   name: linux-website checker
-    #   dist: xenial
-    #   jdk: openjdk8
-    #   script:
-    #     - mvn -P site clean package -pl site
+#     - os: linux
+#       name: linux-website checker
+#       dist: xenial
+#       jdk: openjdk8
+#       script:
+#         - mvn -P site clean package -pl site
     # - os: windows
     #   name: windows-website checker
     #   language: c
@@ -174,7 +174,7 @@ script:
     - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test
+    - mvn -B clean test integration-test -Dtest.port.closed=true
     # Killing background sleep loop
     - kill %1
 

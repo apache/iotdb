@@ -677,7 +677,7 @@ public class IoTDBSessionComplexIT {
     }
   }
 
-  public void deleteStorageGroupTest() throws ClassNotFoundException, SQLException,
+  private void deleteStorageGroupTest() throws ClassNotFoundException, SQLException,
       IoTDBConnectionException, StatementExecutionException {
     try {
       session.deleteStorageGroup("root.sg1.d1.s1");

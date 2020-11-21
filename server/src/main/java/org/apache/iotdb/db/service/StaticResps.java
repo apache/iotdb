@@ -29,7 +29,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -69,10 +68,6 @@ class StaticResps {
       Arrays.asList(COLUMN_ITEM, COLUMN_VALUE),
       Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
 
-  static final TSExecuteStatementResp DYNAMIC_PARAMETER_RESP = getNoTimeExecuteResp(
-      Arrays.asList(COLUMN_PARAMETER, COLUMN_VALUE),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
-
   static final TSExecuteStatementResp SHOW_VERSION_RESP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_VERSION),
       Collections.singletonList(TSDataType.TEXT.toString()));
@@ -104,7 +99,7 @@ class StaticResps {
 
   static final TSExecuteStatementResp COUNT_NODE_TIMESERIES = getNoTimeExecuteResp(
       Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
-      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.INT32.toString()));
 
   static final TSExecuteStatementResp COUNT_DEVICES = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_COUNT),

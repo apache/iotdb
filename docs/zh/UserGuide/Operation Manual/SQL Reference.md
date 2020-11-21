@@ -52,7 +52,8 @@ Note: FullPath can not include `*`
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: FullPath can not include `*`
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * 创建时间序列语句
@@ -595,14 +596,13 @@ TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 Eg. SELECT LAST s1 FROM root.sg.d1
 Eg. SELECT LAST s1, s2 FROM root.sg.d1
 Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
-Eg. SELECT LAST s1 FROM root.sg.d1 where time < 100
-Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time > 100 and time <= 500
-Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time < 300 or time > 1000
+Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 规则:
 1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
 
-2. SELECT LAST 语句不支持值过滤条件.
+2. 当前SELECT LAST 语句只支持包含'>'或'>='的时间过滤条件
 
 3. 结果集以三列的表格的固定形式返回。
 例如 "select last s1, s2 from root.sg.d1, root.sg.d2", 结果集返回如下：
@@ -971,19 +971,6 @@ TRACING OFF   //关闭性能追踪
 ```
 
 # 参考
-
-## 关键字
-
-```
-Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, USER, USING, VALUE, VALUES, WHERE, WITH
-
-Keywords with special meanings (case insensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF
-* Compression Methods: UNCOMPRESSED, SNAPPY
-* Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
-```
 
 ## 标识符
 

@@ -23,7 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -85,11 +88,19 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = (PartialPath) paths.get(i);
-      allDataReaderList
-          .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+
+    List<StorageGroupProcessor> list = StorageEngine.getInstance()
+        .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    try {
+      for (int i = 0; i < paths.size(); i++) {
+        PartialPath path = (PartialPath) paths.get(i);
+        allDataReaderList
+            .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
+
   }
 
   protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context,

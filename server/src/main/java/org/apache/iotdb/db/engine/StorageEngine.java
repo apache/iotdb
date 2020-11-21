@@ -21,12 +21,14 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -36,6 +38,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -265,16 +268,25 @@ public class StorageEngine implements IService {
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
       try {
-        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+        ttlCheckThread.awaitTermination(60, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("TTL check thread still doesn't exit after 30s");
+        logger.warn("TTL check thread still doesn't exit after 60s");
         Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException("StorageEngine failed to stop.", e);
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "ttlCheckThread.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
     if (!recoverAllSgThreadPool.isShutdown()) {
       recoverAllSgThreadPool.shutdownNow();
+      try {
+        recoverAllSgThreadPool.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("recoverAllSgThreadPool thread still doesn't exit after 60s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to stop because of "
+            + "recoverAllSgThreadPool.", e);
+      }
     }
     this.reset();
   }
@@ -402,7 +414,8 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq,
+      boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
       return;
@@ -429,7 +442,7 @@ public class StorageEngine implements IService {
       } else {
         // to avoid concurrent modification problem, we need a new array list
         for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-            processor.getWorkUnsequenceTsFileProcessor())) {
+            processor.getWorkUnsequenceTsFileProcessors())) {
           if (isSync) {
             processor.syncCloseOneTsFileProcessor(false, tsfileProcessor);
           } else {
@@ -449,7 +462,8 @@ public class StorageEngine implements IService {
    * @param isSync           close tsfile synchronously or asynchronously
    * @throws StorageGroupNotSetException
    */
-  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId,
+      boolean isSeq,
       boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
@@ -460,7 +474,7 @@ public class StorageEngine implements IService {
       // to avoid concurrent modification problem, we need a new array list
       List<TsFileProcessor> processors = isSeq ?
           new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
+          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
       try {
         for (TsFileProcessor tsfileProcessor : processors) {
           if (tsfileProcessor.getTimeRangeId() == partitionId) {
@@ -489,7 +503,7 @@ public class StorageEngine implements IService {
   }
 
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
-          throws StorageEngineException {
+      throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
@@ -733,8 +747,9 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * Get a map indicating which storage groups have working TsFileProcessors and its associated partitionId and whether
-   * it is sequence or not.
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated
+   * partitionId and whether it is sequence or not.
+   *
    * @return storage group -> a list of partitionId-isSequence pairs
    */
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
@@ -747,7 +762,7 @@ public class StorageEngine implements IService {
         partitionIdList.add(tmpPair);
       }
 
-      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
         Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
         partitionIdList.add(tmpPair);
       }
@@ -770,6 +785,7 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
+   *
    * @param listener
    */
   public void registerFlushListener(FlushListener listener) {
@@ -779,9 +795,33 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen file close events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
+   *
    * @param listener
    */
   public void registerCloseFileListener(CloseFileListener listener) {
     customCloseFileListeners.add(listener);
+  }
+
+  /**
+   * get all merge lock of the storage group processor related to the query
+   */
+  public List<StorageGroupProcessor> mergeLock(List<PartialPath> pathList)
+      throws StorageEngineException {
+    Set<StorageGroupProcessor> set = new HashSet<>();
+    for (PartialPath path : pathList) {
+      set.add(getProcessor(path));
+    }
+    List<StorageGroupProcessor> list = set.stream()
+        .sorted(Comparator.comparing(StorageGroupProcessor::getStorageGroupName))
+        .collect(Collectors.toList());
+    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readLock());
+    return list;
+  }
+
+  /**
+   * unlock all merge lock of the storage group processor related to the query
+   */
+  public void mergeUnLock(List<StorageGroupProcessor> list) {
+    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
   }
 }

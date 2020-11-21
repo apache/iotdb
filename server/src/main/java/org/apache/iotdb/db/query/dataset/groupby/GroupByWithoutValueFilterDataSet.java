@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -84,21 +87,27 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       timeFilter = ((GlobalTimeExpression) expression).getFilter();
     }
 
-    // init resultIndexes, group result indexes by path
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = (PartialPath) paths.get(i);
-      if (!pathExecutors.containsKey(path)) {
-        //init GroupByExecutor
-        pathExecutors.put(path,
-            getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAscending()));
-        resultIndexes.put(path, new ArrayList<>());
+    List<StorageGroupProcessor> list = StorageEngine.getInstance()
+        .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    try {
+      // init resultIndexes, group result indexes by path
+      for (int i = 0; i < paths.size(); i++) {
+        PartialPath path = (PartialPath) paths.get(i);
+        if (!pathExecutors.containsKey(path)) {
+          //init GroupByExecutor
+          pathExecutors.put(path,
+              getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                  dataTypes.get(i), context, timeFilter, null, groupByTimePlan.isAscending()));
+          resultIndexes.put(path, new ArrayList<>());
+        }
+        resultIndexes.get(path).add(i);
+        AggregateResult aggrResult = AggregateResultFactory
+            .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
+                dataTypes.get(i), ascending);
+        pathExecutors.get(path).addAggregateResult(aggrResult);
       }
-      resultIndexes.get(path).add(i);
-      AggregateResult aggrResult = AggregateResultFactory
-          .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
-              dataTypes.get(i), ascending);
-      pathExecutors.get(path).addAggregateResult(aggrResult);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
   }
 

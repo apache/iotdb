@@ -461,7 +461,6 @@ var config = {
 						title: 'System Tools',
 						children: [
 							['System Tools/Sync Tool','Sync Tool'],
-							['System Tools/Memory Estimation Tool','Memory Estimation Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
@@ -983,7 +982,6 @@ var config = {
 						title: '系统工具',
 						children: [
 							['System Tools/Sync Tool','同步工具'],
-							['System Tools/Memory Estimation Tool','内存预估'],
 							['System Tools/JMX Tool','JMX工具'],
 							['System Tools/Watermark Tool','水印工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
@@ -1071,7 +1069,8 @@ var config = {
 							['DataQuery/LastQuery','最近时间戳 Last 查询'],
 							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
 							['DataQuery/FillFunction','空值填充'],
-		                    ['DataQuery/GroupByFillQuery', '降采样补空值查询']
+		                                        ['DataQuery/GroupByFillQuery', '降采样补空值查询'],
+							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
 						]
 					},
 					{

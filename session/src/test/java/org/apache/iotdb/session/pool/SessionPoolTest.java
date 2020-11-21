@@ -33,6 +33,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -235,6 +236,23 @@ public class SessionPoolTest {
         }
       }
     }
+  }
+
+  @Test
+  public void testClose() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null);
+    pool.close();
+    try {
+      pool.insertRecord("root.sg1.d1", 1, Collections.singletonList("s1" ),
+          Collections.singletonList(TSDataType.INT64),
+          Collections.singletonList(1L));
+    } catch (IoTDBConnectionException e) {
+      Assert.assertEquals("Session pool is closed", e.getMessage());
+    } catch (StatementExecutionException e) {
+      fail();
+    }
+    //some other test cases are not covered:
+    //e.g., thread A created a new session, but not returned; thread B close the pool; A get the session.
   }
 
 }

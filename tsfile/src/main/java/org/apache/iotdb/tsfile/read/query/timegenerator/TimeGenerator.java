@@ -41,7 +41,7 @@ import java.util.*;
 public abstract class TimeGenerator {
 
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
-  private Node operatorNode;
+  protected Node operatorNode;
   private boolean hasOrNode;
 
   public boolean hasNext() throws IOException {
@@ -70,7 +70,7 @@ public abstract class TimeGenerator {
   /**
    * construct the tree that generate timestamp.
    */
-  private Node construct(IExpression expression) throws IOException {
+  protected Node construct(IExpression expression) throws IOException {
 
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression singleSeriesExp = (SingleSeriesExpression) expression;

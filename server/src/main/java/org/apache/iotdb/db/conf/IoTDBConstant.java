@@ -54,11 +54,11 @@ public class IoTDBConstant {
   public static final String PROFILE_SUFFIX = ".profile";
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
+  public static final String LAST_VALUE = "last_value";
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
   // show info
   public static final String COLUMN_ITEM = "                             item";
-  public static final String COLUMN_PARAMETER = "                                          parameter";
   public static final String COLUMN_VALUE = "value";
   public static final String COLUMN_VERSION = "        version";
   public static final String COLUMN_TIMESERIES = "timeseries";

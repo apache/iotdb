@@ -100,7 +100,9 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   @Override
   public void stop() {
     JMXService.deregisterMBean(mbeanName);
-    tvListCache.clear();
+    for (Queue<TVList> queue : tvListCache.values()) {
+      queue.clear();
+    }
   }
 
   @Override
