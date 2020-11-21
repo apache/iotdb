@@ -131,7 +131,7 @@ public class FilePathUtils {
     }
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < newRecord.getFields().size(); i++) {
-      TSDataType dataType = plan.getDeduplicatedDataTypes().get(i);
+      TSDataType dataType = newRecord.getFields().get(i).getDataType();
       AggregateResult aggRet = AggregateResultFactory.getAggrResultByName(
               plan.getAggregations().get(i), dataType);
       switch (dataType) {
@@ -166,6 +166,9 @@ public class FilePathUtils {
           Map<Integer, String> pathIndex) {
     if (aggResults.size() < finalPaths.size()) {
       return null;
+    }
+    for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+      entry.getValue().reset();
     }
 
     List<AggregateResult> resultSet = new ArrayList<>();

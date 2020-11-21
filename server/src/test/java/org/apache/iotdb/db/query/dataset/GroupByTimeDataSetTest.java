@@ -181,14 +181,6 @@ public class GroupByTimeDataSetTest {
     assertTrue(dataSet.hasNext());
     assertEquals("10\t1", dataSet.next().toString());
 
-    // not count
-    try {
-      processor.parseSQLToPhysicalPlan(
-          "select sum(s0) from root.test.* group by ([0,200), 1ms), level=6");
-      fail();
-    } catch (Exception e) {
-      assertEquals("group by level only support count now.", e.getMessage());
-    }
   }
 
   @Test
