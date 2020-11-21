@@ -376,9 +376,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void flushLogBuffer() {
-    System.out.println("come in the flushLogBuffer");
     if (isClosed) {
-      System.out.println("come in the flushLogBuffer, close");
       return;
     }
 
@@ -386,7 +384,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       try {
         logDataBuffer.switchFlushingBufferToIdling();
         logIndexBuffer.switchFlushingBufferToIdling();
-        System.out.println("end of the flushLogBuffer");
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("flush log buffer interrupted", e);
@@ -891,12 +888,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   @Override
   public void close() {
     if (isClosed) {
-      System.out.println("come in the flushLogBuffer, close");
       return;
     }
     logger.info("{} is closing", this);
-    logger.debug("{}, logDataBuffer=" + logDataBuffer.toString(), this);
-    logger.debug("{}, logIndexBuffer=" + logIndexBuffer.toString(), this);
     forceFlushLogBuffer();
     fileLock.lock();
     try {

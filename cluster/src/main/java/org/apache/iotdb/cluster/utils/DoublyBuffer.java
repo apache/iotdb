@@ -38,7 +38,7 @@ public class DoublyBuffer {
 
   public void switchWorkingBufferToFlushing() throws InterruptedException {
     logger
-        .debug("{} has start to do switchWorkingBufferToFlushing",
+        .debug("{} start to do switchWorkingBufferToFlushing",
             Thread.currentThread().getName());
     synchronized (switchBufferCondition) {
 
@@ -56,8 +56,7 @@ public class DoublyBuffer {
 
   public void switchFlushingBufferToIdling() throws InterruptedException {
     logger
-        .debug("{} has start to do switchFlushingBufferToIdling, flushingBuffer={}",
-            Thread.currentThread().getName(), flushingBuffer);
+        .debug("{} start to do switchFlushingBufferToIdling", Thread.currentThread().getName());
     synchronized (switchBufferCondition) {
       while (idlingBuffer != null) {
         switchBufferCondition.wait();
@@ -67,15 +66,14 @@ public class DoublyBuffer {
       flushingBuffer = null;
       switchBufferCondition.notifyAll();
       logger
-          .debug("{} has done in switchFlushingBufferToIdling, flushingBuffer={}",
-              Thread.currentThread().getName(), flushingBuffer);
+          .debug("{} has done in switchFlushingBufferToIdling", Thread.currentThread().getName());
 
     }
   }
 
   public void switchIdlingBufferToWorking() throws InterruptedException {
     logger
-        .debug("{} has start to do switchIdlingBufferToWorking", Thread.currentThread().getName());
+        .debug("{} start to do switchIdlingBufferToWorking", Thread.currentThread().getName());
     synchronized (switchBufferCondition) {
       while (idlingBuffer == null) {
         switchBufferCondition.wait();
@@ -94,15 +92,5 @@ public class DoublyBuffer {
 
   public ByteBuffer getFlushingBuffer() {
     return flushingBuffer;
-  }
-
-  @Override
-  public String toString() {
-    return "DoublyBuffer{"
-        + " workingBuffer=" + workingBuffer
-        + ", idlingBuffer=" + idlingBuffer
-        + ", flushingBuffer=" + flushingBuffer
-        + ", switchBufferCondition=" + switchBufferCondition
-        + "}";
   }
 }

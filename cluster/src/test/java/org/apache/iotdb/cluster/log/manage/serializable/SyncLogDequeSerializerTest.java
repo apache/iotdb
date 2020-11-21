@@ -62,7 +62,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       int dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
       while (dataFileListSize != 2) {
         dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
-        System.out.println("dataFileListSize=" + dataFileListSize);
         if ((System.currentTimeMillis() - startTime) > waitingTimeMs) {
           Assert.fail(WAITING_FILES_TO_BE_CREATED_FAILED);
           break;
