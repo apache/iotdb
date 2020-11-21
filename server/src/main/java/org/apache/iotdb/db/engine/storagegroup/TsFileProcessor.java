@@ -129,7 +129,7 @@ public class TsFileProcessor {
       StorageGroupInfo storageGroupInfo,
       VersionController versionController,
       CloseFileListener closeTsFileCallback,
-      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence, long fileVersion)
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this);

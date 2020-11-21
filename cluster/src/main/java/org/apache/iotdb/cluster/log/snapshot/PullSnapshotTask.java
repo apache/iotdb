@@ -181,7 +181,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when pulling slot {}", descriptor.getSlots(), e);
         finished = true;
       } catch (TException e) {
         if (logger.isDebugEnabled()) {

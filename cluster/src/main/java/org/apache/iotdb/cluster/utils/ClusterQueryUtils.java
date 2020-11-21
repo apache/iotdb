@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.utils;
 
 import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -55,6 +56,13 @@ public class ClusterQueryUtils {
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }
+    }
+  }
+
+  public static void checkPathExistence(List<PartialPath> paths)
+      throws QueryProcessException {
+    for (PartialPath path : paths) {
+      checkPathExistence(path);
     }
   }
 }

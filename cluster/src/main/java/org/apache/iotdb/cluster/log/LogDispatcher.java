@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 
+import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -67,10 +68,12 @@ public class LogDispatcher {
   private List<BlockingQueue<SendLogRequest>> nodeLogQueues =
       new ArrayList<>();
   private ExecutorService executorService;
+  private ExecutorService serializationService;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
     executorService = Executors.newCachedThreadPool();
+    serializationService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     for (Node node : member.getAllNodes()) {
       if (!node.equals(member.getThisNode())) {
         nodeLogQueues.add(createQueueAndBindingThread(node));
@@ -82,9 +85,13 @@ public class LogDispatcher {
   public void close() throws InterruptedException {
     executorService.shutdownNow();
     executorService.awaitTermination(10, TimeUnit.SECONDS);
+    serializationService.shutdownNow();
+    serializationService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
   public void offer(SendLogRequest log) {
+    // do serialization here to avoid taking LogManager for too long
+    log.serializedLogFuture = serializationService.submit(() -> log.getLog().serialize());
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
       try {
@@ -120,6 +127,7 @@ public class LogDispatcher {
     private AtomicLong newLeaderTerm;
     private AppendEntryRequest appendEntryRequest;
     private long enqueueTime;
+    private Future<ByteBuffer> serializedLogFuture;
 
     public SendLogRequest(Log log, AtomicInteger voteCounter,
         AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
@@ -215,8 +223,7 @@ public class LogDispatcher {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
           for (SendLogRequest request : currBatch) {
-            // do serialization here to avoid taking LogManager for too long
-            request.getAppendEntryRequest().setEntry(request.getLog().serialize());
+            request.getAppendEntryRequest().setEntry(request.serializedLogFuture.get());
           }
           sendBatchLogs(currBatch);
           currBatch.clear();

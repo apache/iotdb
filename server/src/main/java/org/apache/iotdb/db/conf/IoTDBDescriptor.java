@@ -345,6 +345,28 @@ public class IoTDBDescriptor {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
 
+      // start: index parameter setting
+      conf.setIndexRootFolder(properties.getProperty("index_root_dir", conf.getIndexRootFolder()));
+
+      conf.setEnableIndex(Boolean.parseBoolean(properties.getProperty("enable_index",
+          Boolean.toString(conf.isEnableIndex()))));
+
+      conf.setConcurrentIndexBuildThread(Integer
+          .parseInt(properties.getProperty("concurrent_index_build_thread",
+              Integer.toString(conf.getConcurrentIndexBuildThread()))));
+      if (conf.getConcurrentIndexBuildThread() <= 0) {
+        conf.setConcurrentIndexBuildThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setDefaultIndexWindowRange(Integer
+          .parseInt(properties.getProperty("default_index_window_range",
+              Integer.toString(conf.getDefaultIndexWindowRange()))));
+
+      conf.setIndexBufferSize(Long
+          .parseLong(properties.getProperty("index_buffer_size",
+              Long.toString(conf.getIndexBufferSize()))));
+      // end: index parameter setting
+
       conf.setConcurrentQueryThread(Integer
           .parseInt(properties.getProperty("concurrent_query_thread",
               Integer.toString(conf.getConcurrentQueryThread()))));

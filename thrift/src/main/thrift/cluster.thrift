@@ -222,12 +222,13 @@ struct GroupByRequest {
 }
 
 struct LastQueryRequest {
-  1: required string path
-  2: required int dataTypeOrdinal
+  1: required list<string> paths
+  2: required list<int> dataTypeOrdinals
   3: required long queryId
-  4: required set<string> deviceMeasurements
-  5: required Node header
-  6: required Node requestor
+  4: required map<string, set<string>> deviceMeasurements
+  5: optional binary filterBytes
+  6: required Node header
+  7: required Node requestor
 }
 
 struct GetAllPathsResult {
