@@ -146,10 +146,14 @@ public abstract class TsFileManagement {
 
   public void writeLock() {
     compactionMergeLock.writeLock().lock();
+    logger.info("qihouliang, {} has write-locked {}, stack trace {}",
+        Thread.currentThread().getName(), compactionMergeLock, new Exception());
   }
 
   public void writeUnlock() {
     compactionMergeLock.writeLock().unlock();
+    logger.info("qihouliang, {} has write-unlocked {}, stack trace {}",
+        Thread.currentThread().getName(), compactionMergeLock, new Exception());
   }
 
   public boolean tryWriteLock() {

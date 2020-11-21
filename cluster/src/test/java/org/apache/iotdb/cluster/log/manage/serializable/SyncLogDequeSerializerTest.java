@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
-import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Properties;
 import org.apache.iotdb.cluster.common.IoTDBTest;
@@ -31,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.utils.DoublyBuffer;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
@@ -38,9 +38,10 @@ import org.junit.Test;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {
 
-  private int testIdentifier = 1;
+  private final int testIdentifier = 1;
   int maxPersistLogFileNumber = 3;
   List<Log> testLogs1 = TestUtils.prepareNodeLogs(40);
+  private static final String WAITING_FILES_TO_BE_CREATED_FAILED = "waiting files to be created failed";
 
   public void prepareFiles(SyncLogDequeSerializer syncLogDequeSerializer) {
     try {
@@ -50,11 +51,23 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       // set max log file number
       syncLogDequeSerializer.setMaxNumberOfPersistRaftLogFiles(maxPersistLogFileNumber);
       // make sure every put should check the file size
-      ByteBuffer buffer = ByteBuffer.allocate(oneLogSize + 10);
+      DoublyBuffer buffer = new DoublyBuffer(oneLogSize + 10);
       syncLogDequeSerializer.setLogDataBuffer(buffer);
+      long waitingTimeMs = 60_000;
+      long startTime = 0;
 
       //file1: 0-8
       syncLogDequeSerializer.append(testLogs1.subList(0, 10), 0);
+      startTime = System.currentTimeMillis();
+      int dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
+      while (dataFileListSize != 2) {
+        dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
+        System.out.println("dataFileListSize=" + dataFileListSize);
+        if ((System.currentTimeMillis() - startTime) > waitingTimeMs) {
+          Assert.fail(WAITING_FILES_TO_BE_CREATED_FAILED);
+          break;
+        }
+      }
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(2, syncLogDequeSerializer.getLogDataFileList().size());
       File file = syncLogDequeSerializer.getLogDataFileList()
@@ -65,6 +78,14 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
       //file2: 9-17
       syncLogDequeSerializer.append(testLogs1.subList(10, 20), 0);
+      startTime = System.currentTimeMillis();
+      while (dataFileListSize != 3) {
+        dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
+        if ((System.currentTimeMillis() - startTime) > waitingTimeMs) {
+          Assert.fail(WAITING_FILES_TO_BE_CREATED_FAILED);
+          break;
+        }
+      }
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(3, syncLogDequeSerializer.getLogDataFileList().size());
       file = syncLogDequeSerializer.getLogDataFileList()
@@ -75,6 +96,15 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
       //file3: 18-26
       syncLogDequeSerializer.append(testLogs1.subList(20, 30), 0);
+      startTime = System.currentTimeMillis();
+      while (dataFileListSize != 4) {
+        dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
+        if ((System.currentTimeMillis() - startTime) > waitingTimeMs) {
+          Assert.fail(WAITING_FILES_TO_BE_CREATED_FAILED);
+          break;
+        }
+      }
+
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(4, syncLogDequeSerializer.getLogDataFileList().size());
       file = syncLogDequeSerializer.getLogDataFileList()
@@ -85,6 +115,14 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
       //file4:  27-35
       syncLogDequeSerializer.append(testLogs1.subList(30, 40), 0);
+      startTime = System.currentTimeMillis();
+      while (dataFileListSize != 5) {
+        dataFileListSize = syncLogDequeSerializer.getLogDataFileList().size();
+        if ((System.currentTimeMillis() - startTime) > waitingTimeMs) {
+          Assert.fail(WAITING_FILES_TO_BE_CREATED_FAILED);
+          break;
+        }
+      }
       testLogDataAndLogIndexEqual(syncLogDequeSerializer);
       Assert.assertEquals(5, syncLogDequeSerializer.getLogDataFileList().size());
       file = syncLogDequeSerializer.getLogDataFileList()
@@ -135,7 +173,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
           .split(FILE_NAME_SEPARATOR);
       String[] logIndexSplits = syncLogDequeSerializer.getLogIndexFileList().get(i).getName()
           .split(FILE_NAME_SEPARATOR);
-
       Assert.assertEquals(logDataSplits.length, logIndexSplits.length);
 
       // start log index
@@ -237,7 +274,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
   }
 
-
   @Test
   public void testGetLogDataFile() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
@@ -333,7 +369,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     } finally {
       syncLogDequeSerializer.close();
     }
-
     // recovery
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     try {
@@ -349,6 +384,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     } finally {
       syncLogDequeSerializer.close();
     }
+
   }
 
 

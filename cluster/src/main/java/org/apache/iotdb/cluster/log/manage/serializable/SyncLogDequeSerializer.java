@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.log.manage.serializable;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileFilter;
@@ -37,6 +38,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -51,6 +54,7 @@ import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.StableEntryManager;
+import org.apache.iotdb.cluster.utils.DoublyBuffer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
@@ -99,16 +103,19 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private VersionController versionController;
 
-  private ByteBuffer logDataBuffer = ByteBuffer
-      .allocate(ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize());
-  private ByteBuffer logIndexBuffer = ByteBuffer
-      .allocate(ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize());
+  private DoublyBuffer logDataBuffer = new DoublyBuffer(
+      ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize() / 2);
+  private DoublyBuffer logIndexBuffer = new DoublyBuffer(
+      ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize() / 2);
 
   private long offsetOfTheCurrentLogDataOutputStream = 0;
 
   private static final int maxNumberOfLogsPerFetchOnDisk = ClusterDescriptor.getInstance()
       .getConfig().getMaxNumberOfLogsPerFetchOnDisk();
 
+  private static final ExecutorService FLUSH_BUFFER_THREAD_POOL = Executors.newSingleThreadExecutor(
+      new ThreadFactoryBuilder().setNameFormat("Flush-Raft-Log-Thread-%d").setDaemon(true)
+          .build());
 
   /**
    * file name pattern:
@@ -151,9 +158,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private static final int logDeleteCheckIntervalSecond = 5;
 
   /**
-   * the lock uses when change the log data files or log index files
+   * the lock uses when change the log data buffer or log index buffer
    */
-  private final Lock lock = new ReentrantLock();
+  private final Lock bufferLock = new ReentrantLock();
+
+  /**
+   * the lock uses when close/flush/open the log data file or log index file
+   */
+  private final Lock fileLock = new ReentrantLock();
+
 
   private volatile boolean isClosed = false;
 
@@ -236,7 +249,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void append(List<Log> entries, long maxHaveAppliedCommitIndex) throws IOException {
-    lock.lock();
+    bufferLock.lock();
     try {
       putLogs(entries);
       Log entry = entries.get(entries.size() - 1);
@@ -245,15 +258,18 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       meta.setLastLogIndex(entry.getCurrLogIndex());
       meta.setLastLogTerm(entry.getCurrLogTerm());
       meta.setMaxHaveAppliedCommitIndex(maxHaveAppliedCommitIndex);
-      logger.debug("maxHaveAppliedCommitIndex={}, commitLogIndex={},lastLogIndex={}",
+      logger.debug("maxHaveAppliedCommitIndex={}, commitLogIndex={}, lastLogIndex={}",
           maxHaveAppliedCommitIndex, meta.getCommitLogIndex(), meta.getLastLogIndex());
     } catch (BufferOverflowException e) {
       throw new IOException(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "otherwise, please increase the JVM memory", e
       );
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("append logs was interrupted, logs size={}", entries.size(), e);
     } finally {
-      lock.unlock();
+      bufferLock.unlock();
     }
   }
 
@@ -263,42 +279,57 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    *
    * @param entries logs to put to buffer
    */
-  private void putLogs(List<Log> entries) {
+  private void putLogs(List<Log> entries) throws InterruptedException {
     for (Log log : entries) {
-      logDataBuffer.mark();
-      logIndexBuffer.mark();
+      logDataBuffer.getWorkingBuffer().mark();
+      logIndexBuffer.getWorkingBuffer().mark();
       ByteBuffer logData = log.serialize();
       int size = logData.capacity() + Integer.BYTES;
       try {
-        logDataBuffer.putInt(logData.capacity());
-        logDataBuffer.put(logData);
-        logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
+        logDataBuffer.getWorkingBuffer().putInt(logData.capacity());
+        logDataBuffer.getWorkingBuffer().put(logData);
+        logIndexBuffer.getWorkingBuffer().putLong(offsetOfTheCurrentLogDataOutputStream);
         logIndexOffsetList.add(offsetOfTheCurrentLogDataOutputStream);
         offsetOfTheCurrentLogDataOutputStream += size;
       } catch (BufferOverflowException e) {
-        logger.info("Raft log buffer overflow!");
-        logDataBuffer.reset();
-        logIndexBuffer.reset();
-        flushLogBuffer();
-        checkCloseCurrentFile(log.getCurrLogIndex() - 1);
-        logDataBuffer.putInt(logData.capacity());
-        logDataBuffer.put(logData);
-        logIndexBuffer.putLong(offsetOfTheCurrentLogDataOutputStream);
+        logger.debug("Raft log buffer overflow!");
+        logDataBuffer.getWorkingBuffer().reset();
+        logIndexBuffer.getWorkingBuffer().reset();
+
+        logDataBuffer.switchWorkingBufferToFlushing();
+        logIndexBuffer.switchWorkingBufferToFlushing();
+
+        if (offsetOfTheCurrentLogDataOutputStream > maxRaftLogPersistDataSizePerFile) {
+          FLUSH_BUFFER_THREAD_POOL
+              .submit(() -> flushBufferAndCloseFile(log.getCurrLogIndex() - 1));
+          offsetOfTheCurrentLogDataOutputStream = 0;
+        } else {
+          FLUSH_BUFFER_THREAD_POOL.submit(this::flushLogBuffer);
+        }
+
+        logDataBuffer.switchIdlingBufferToWorking();
+        logIndexBuffer.switchIdlingBufferToWorking();
+
+        logDataBuffer.getWorkingBuffer().putInt(logData.capacity());
+        logDataBuffer.getWorkingBuffer().put(logData);
+        logIndexBuffer.getWorkingBuffer().putLong(offsetOfTheCurrentLogDataOutputStream);
         logIndexOffsetList.add(offsetOfTheCurrentLogDataOutputStream);
         offsetOfTheCurrentLogDataOutputStream += size;
       }
     }
   }
 
-  private void checkCloseCurrentFile(long commitIndex) {
-    if (offsetOfTheCurrentLogDataOutputStream > maxRaftLogPersistDataSizePerFile) {
-      try {
-        closeCurrentFile(commitIndex);
-        serializeMeta(meta);
-        createNewLogFile(logDir, commitIndex + 1);
-      } catch (IOException e) {
-        logger.error("check close current file failed", e);
-      }
+  private void flushBufferAndCloseFile(long commitIndex) {
+    fileLock.lock();
+    try {
+      flushLogBuffer();
+      closeCurrentFile(commitIndex);
+      serializeMeta(meta);
+      createNewLogFile(logDir, commitIndex + 1);
+    } catch (Exception e) {
+      logger.error("flush buffer and check close current file exception", e);
+    } finally {
+      fileLock.unlock();
     }
   }
 
@@ -341,26 +372,41 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       logIndexFileList.set(logIndexFileList.size() - 1, newCurrentLogIndexFile);
     }
-
-    offsetOfTheCurrentLogDataOutputStream = 0;
   }
 
   @Override
   public void flushLogBuffer() {
-    if (isClosed || logDataBuffer.position() == 0) {
+    System.out.println("come in the flushLogBuffer");
+    if (isClosed) {
+      System.out.println("come in the flushLogBuffer, close");
       return;
     }
-    lock.lock();
+
+    if (logDataBuffer.getFlushingBuffer().position() == 0) {
+      try {
+        logDataBuffer.switchFlushingBufferToIdling();
+        logIndexBuffer.switchFlushingBufferToIdling();
+        System.out.println("end of the flushLogBuffer");
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("flush log buffer interrupted", e);
+      }
+      return;
+    }
+
+    fileLock.lock();
     try {
       // write into disk
       try {
         checkStream();
         // 1. write to the log data file
         ReadWriteIOUtils
-            .writeWithoutSize(logDataBuffer, 0, logDataBuffer.position(),
+            .writeWithoutSize(logDataBuffer.getFlushingBuffer(), 0,
+                logDataBuffer.getFlushingBuffer().position(),
                 currentLogDataOutputStream);
         ReadWriteIOUtils
-            .writeWithoutSize(logIndexBuffer, 0, logIndexBuffer.position(),
+            .writeWithoutSize(logIndexBuffer.getFlushingBuffer(), 0,
+                logIndexBuffer.getFlushingBuffer().position(),
                 currentLogIndexOutputStream);
         if (ClusterDescriptor.getInstance().getConfig().getFlushRaftLogThreshold() == 0) {
           currentLogDataOutputStream.getChannel().force(true);
@@ -368,13 +414,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         }
       } catch (IOException e) {
         logger.error("Error in logs serialization: ", e);
-        return;
       }
-      logDataBuffer.clear();
-      logIndexBuffer.clear();
-      logger.debug("End flushing log buffer.");
     } finally {
-      lock.unlock();
+      try {
+        logDataBuffer.switchFlushingBufferToIdling();
+        logIndexBuffer.switchFlushingBufferToIdling();
+        logger.debug("End flushing log buffer.");
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("flush log buffer interrupted", e);
+      }
+      fileLock.unlock();
     }
   }
 
@@ -382,9 +432,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (isClosed) {
       return;
     }
-    lock.lock();
+
     flushLogBuffer();
     serializeMeta(meta);
+    fileLock.lock();
     try {
       if (currentLogDataOutputStream != null) {
         currentLogDataOutputStream.getChannel().force(true);
@@ -397,7 +448,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } catch (IOException e) {
       logger.error("Error when force flushing logs serialization: ", e);
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
@@ -406,14 +457,29 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    */
   @Override
   public void forceFlushLogBuffer() {
-    lock.lock();
+    bufferLock.lock();
     try {
-      forceFlushLogBufferWithoutCloseFile();
-      checkCloseCurrentFile(meta.getCommitLogIndex());
-    } finally {
-      lock.unlock();
-    }
+      logDataBuffer.switchWorkingBufferToFlushing();
+      logIndexBuffer.switchWorkingBufferToFlushing();
 
+      logDataBuffer.switchIdlingBufferToWorking();
+      logIndexBuffer.switchIdlingBufferToWorking();
+
+      if (offsetOfTheCurrentLogDataOutputStream > maxRaftLogPersistDataSizePerFile) {
+        forceFlushLogBufferWithoutCloseFile();
+        closeCurrentFile(meta.getCommitLogIndex());
+        offsetOfTheCurrentLogDataOutputStream = 0;
+      } else {
+        forceFlushLogBufferWithoutCloseFile();
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("force flush log buffer thread is interrupted", e);
+    } catch (IOException e) {
+      logger.error("force flush log buffer error", e);
+    } finally {
+      bufferLock.unlock();
+    }
   }
 
   @Override
@@ -724,7 +790,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * for unclosed file, the file name is ${startIndex}-${Long.MAX_VALUE}-{version}
    */
   private void createNewLogFile(String dirName, long startLogIndex) throws IOException {
-    lock.lock();
+    fileLock.lock();
     try {
       long nextVersion = versionController.nextVersion();
       long endLogIndex = Long.MAX_VALUE;
@@ -747,7 +813,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logDataFileList.add(logDataFile);
       logIndexFileList.add(logIndexFile);
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
@@ -824,9 +890,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   @Override
   public void close() {
+    if (isClosed) {
+      System.out.println("come in the flushLogBuffer, close");
+      return;
+    }
     logger.info("{} is closing", this);
-    lock.lock();
+    logger.debug("{}, logDataBuffer=" + logDataBuffer.toString(), this);
+    logger.debug("{}, logIndexBuffer=" + logIndexBuffer.toString(), this);
     forceFlushLogBuffer();
+    fileLock.lock();
     try {
       closeCurrentFile(meta.getCommitLogIndex());
       if (persistLogDeleteExecutorService != null) {
@@ -843,15 +915,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
     } finally {
+      fileLock.unlock();
       logger.info("{} is closed", this);
       isClosed = true;
-      lock.unlock();
     }
   }
 
   @Override
   public void clearAllLogs(long commitIndex) {
-    lock.lock();
+    fileLock.lock();
     try {
       // 1. delete
       forceFlushLogBuffer();
@@ -882,12 +954,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } catch (IOException e) {
       logger.error("clear all logs failed,", e);
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
   private void deleteMetaFile() {
-    lock.lock();
+    fileLock.lock();
     try {
       File tmpMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
       Files.deleteIfExists(tmpMetaFile.toPath());
@@ -896,7 +968,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     } catch (IOException e) {
       logger.error("{}: delete meta log files failed", this, e);
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
@@ -913,7 +985,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   public void checkDeletePersistRaftLog() {
     // 1. check the log index offset list size
-    lock.lock();
+    bufferLock.lock();
     try {
       if (logIndexOffsetList.size() > maxRaftLogIndexSizeInMemory) {
         int compactIndex = logIndexOffsetList.size() - maxRaftLogIndexSizeInMemory;
@@ -921,21 +993,21 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         firstLogIndex += compactIndex;
       }
     } finally {
-      lock.unlock();
+      bufferLock.unlock();
     }
 
     // 2. check the persist log file number
-    lock.lock();
+    fileLock.lock();
     try {
       while (logDataFileList.size() > maxNumberOfPersistRaftLogFiles) {
         deleteTheFirstLogDataAndIndexFile();
       }
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
 
     // 3. check the persist log index number
-    lock.lock();
+    fileLock.lock();
     try {
       while (logDataFileList.size() > 1) {
         File firstFile = logDataFileList.get(0);
@@ -947,7 +1019,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         }
       }
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
@@ -1000,7 +1072,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     File logDataFile = null;
     File logIndexFile = null;
 
-    lock.lock();
+    fileLock.lock();
     try {
       logDataFile = logDataFileList.get(0);
       logIndexFile = logIndexFileList.get(0);
@@ -1020,7 +1092,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logIndexFile.getAbsoluteFile());
       return false;
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
     return true;
   }
@@ -1080,7 +1152,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     // use lock for two reasons:
     // 1.if the log file to read is the last log file, we need to get write lock to flush logBuffer,
     // 2.prevent these log files from being deleted
-    lock.lock();
+    fileLock.lock();
     try {
       List<Pair<File, Pair<Long, Long>>> logDataFileAndOffsetList = getLogDataFileAndOffset(
           startIndex, newEndIndex);
@@ -1095,7 +1167,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       return result;
     } finally {
-      lock.unlock();
+      fileLock.unlock();
     }
   }
 
@@ -1273,6 +1345,17 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private List<Log> getLogsFromOneLogDataFile(File file, Pair<Long, Long> startAndEndOffset) {
     List<Log> result = new ArrayList<>();
     if (file.getName().equals(getCurrentLogDataFile().getName())) {
+      try {
+        logDataBuffer.switchWorkingBufferToFlushing();
+        logIndexBuffer.switchWorkingBufferToFlushing();
+
+        logDataBuffer.switchIdlingBufferToWorking();
+        logIndexBuffer.switchIdlingBufferToWorking();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("append logs from one log data file was interrupted, file={}",
+            file.getAbsoluteFile(), e);
+      }
       forceFlushLogBufferWithoutCloseFile();
     }
     try (FileInputStream fileInputStream = new FileInputStream(file);
@@ -1294,8 +1377,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // which means, the last offset's value should be still read, in other words,
       // the first log index of the offset starting with startAndEndOffset.right also needs to be read.
       while (currentReadOffset <= startAndEndOffset.right) {
-        logger.debug("read file={}, currentReadOffset={}, end offset={}", file.getAbsoluteFile(),
-            currentReadOffset, startAndEndOffset.right);
+        logger.debug("read file={}, currentReadOffset={}, end offset={}, file length={}",
+            file.getAbsoluteFile(), currentReadOffset, startAndEndOffset.right, file.length());
         int logSize = ReadWriteIOUtils.readInt(bufferedInputStream);
         Log log = null;
         try {
@@ -1314,7 +1397,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   @TestOnly
-  public void setLogDataBuffer(ByteBuffer logDataBuffer) {
+  public void setLogDataBuffer(DoublyBuffer logDataBuffer) {
     this.logDataBuffer = logDataBuffer;
   }
 
