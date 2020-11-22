@@ -321,8 +321,7 @@ public class StorageEngine implements IService {
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupPath);
+      StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {

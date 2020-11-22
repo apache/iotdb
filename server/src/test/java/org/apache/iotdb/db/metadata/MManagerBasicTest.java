@@ -336,7 +336,6 @@ public class MManagerBasicTest {
   @Test
   public void testGetStorageGroupNameByAutoLevel() {
     int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
-    boolean caughtException;
 
     try {
       assertEquals("root.laptop",
@@ -346,7 +345,7 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    caughtException = false;
+    boolean caughtException = false;
     try {
       MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
     } catch (MetadataException e) {

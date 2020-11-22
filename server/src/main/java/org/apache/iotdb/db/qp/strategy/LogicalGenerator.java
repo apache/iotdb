@@ -1656,8 +1656,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    * DataTimeFormat time. <p> eg. now() + 1d - 2h </p>
    */
   private Long parseDateExpression(DateExpressionContext ctx) {
-    long time;
-    time = parseTimeFormat(ctx.getChild(0).getText());
+    long time = parseTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if (ctx.getChild(i).getText().equals("+")) {
         time += parseDuration(ctx.getChild(i + 1).getText());
