@@ -34,9 +34,9 @@ public interface IService {
    */
   void stop();
 
-  default void waitAndStop(long millseconds) {stop();}
+  default void waitAndStop(long milliseconds) {stop();}
 
-  default void shutdown(long millseconds) throws ShutdownException {waitAndStop(millseconds);}
+  default void shutdown(long milliseconds) throws ShutdownException {waitAndStop(milliseconds);}
 
   /**
    * Get the name of the the service.
