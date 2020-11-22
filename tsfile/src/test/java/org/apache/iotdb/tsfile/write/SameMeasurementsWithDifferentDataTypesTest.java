@@ -105,10 +105,10 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(TEMPLATE_1, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
-    
+
     schema.extendTemplate(TEMPLATE_2, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.extendTemplate(TEMPLATE_2, new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    
+
     schema.registerDevice("d1", TEMPLATE_1);
     schema.registerDevice("d2", TEMPLATE_2);
 
@@ -118,7 +118,6 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     TSRecord tsRecord = new TSRecord(1, "d1");
     DataPoint dPoint1 = new FloatDataPoint("s1", 1.2f);
     DataPoint dPoint2 = new IntDataPoint("s2", 20);
-    DataPoint dPoint3;
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
 
@@ -127,7 +126,7 @@ public class SameMeasurementsWithDifferentDataTypesTest {
 
     tsRecord = new TSRecord(2, "d1");
     dPoint2 = new IntDataPoint("s2", 20);
-    dPoint3 = new IntDataPoint("s3", 50);
+    DataPoint dPoint3 = new IntDataPoint("s3", 50);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
     tsFileWriter.write(tsRecord);
@@ -174,7 +173,7 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
     tsFileWriter.write(tsRecord);
-    
+
     tsRecord = new TSRecord(1, "d2");
     dPoint1 = new LongDataPoint("s1", 2000L);
     dPoint2 = new LongDataPoint("s2", 210L);

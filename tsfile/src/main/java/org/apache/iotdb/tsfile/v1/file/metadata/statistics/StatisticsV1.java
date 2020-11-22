@@ -83,11 +83,11 @@ public abstract class StatisticsV1<T> {
     statistics.deserialize(buffer);
     return statistics;
   }
-  
+
   /**
    * For upgrading 0.9.x/v1 -> 0.10/v2
    */
-  public static Statistics upgradeOldStatistics(StatisticsV1<?> oldstatistics, 
+  public static Statistics upgradeOldStatistics(StatisticsV1<?> oldstatistics,
       TSDataType dataType, int numOfValues, long maxTimestamp, long minTimestamp) {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
     statistics.setStartTime(minTimestamp);
@@ -97,16 +97,16 @@ public abstract class StatisticsV1<T> {
     switch (dataType) {
       case INT32:
         ((IntegerStatistics) statistics)
-        .initializeStats(((IntegerStatisticsV1) oldstatistics).getMin(), 
-            ((IntegerStatisticsV1) oldstatistics).getMax(), 
+        .initializeStats(((IntegerStatisticsV1) oldstatistics).getMin(),
+            ((IntegerStatisticsV1) oldstatistics).getMax(),
             ((IntegerStatisticsV1) oldstatistics).getFirst(),
             ((IntegerStatisticsV1) oldstatistics).getLast(),
             ((IntegerStatisticsV1) oldstatistics).getSum());
         break;
       case INT64:
         ((LongStatistics) statistics)
-        .initializeStats(((LongStatisticsV1) oldstatistics).getMin(), 
-            ((LongStatisticsV1) oldstatistics).getMax(), 
+        .initializeStats(((LongStatisticsV1) oldstatistics).getMin(),
+            ((LongStatisticsV1) oldstatistics).getMax(),
             ((LongStatisticsV1) oldstatistics).getFirst(),
             ((LongStatisticsV1) oldstatistics).getLast(),
             ((LongStatisticsV1) oldstatistics).getSum());
@@ -123,16 +123,16 @@ public abstract class StatisticsV1<T> {
         break;
       case DOUBLE:
         ((DoubleStatistics) statistics)
-        .initializeStats(((DoubleStatisticsV1) oldstatistics).getMin(), 
-            ((DoubleStatisticsV1) oldstatistics).getMax(), 
+        .initializeStats(((DoubleStatisticsV1) oldstatistics).getMin(),
+            ((DoubleStatisticsV1) oldstatistics).getMax(),
             ((DoubleStatisticsV1) oldstatistics).getFirst(),
             ((DoubleStatisticsV1) oldstatistics).getLast(),
             ((DoubleStatisticsV1) oldstatistics).getSum());
         break;
       case FLOAT:
         ((FloatStatistics) statistics)
-        .initializeStats(((FloatStatisticsV1) oldstatistics).getMin(), 
-            ((FloatStatisticsV1) oldstatistics).getMax(), 
+        .initializeStats(((FloatStatisticsV1) oldstatistics).getMin(),
+            ((FloatStatisticsV1) oldstatistics).getMax(),
             ((FloatStatisticsV1) oldstatistics).getFirst(),
             ((FloatStatisticsV1) oldstatistics).getLast(),
             ((FloatStatisticsV1) oldstatistics).getSum());
@@ -148,8 +148,7 @@ public abstract class StatisticsV1<T> {
    * For upgrading 0.9.x/v1 -> 0.10.x/v2
    */
   public static Statistics constructStatisticsFromOldChunkMetadata(ChunkMetadataV1 oldChunkMetadata) {
-    Statistics<?> statistics;
-    statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
+    Statistics<?> statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
     statistics.setStartTime(oldChunkMetadata.getStartTime());
     statistics.setEndTime(oldChunkMetadata.getEndTime());
     statistics.setCount(oldChunkMetadata.getNumOfPoints());
@@ -159,16 +158,16 @@ public abstract class StatisticsV1<T> {
     switch (statistics.getType()) {
       case INT32:
         ((IntegerStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readInt(buffers[0]), 
-            ReadWriteIOUtils.readInt(buffers[1]), 
+        .initializeStats(ReadWriteIOUtils.readInt(buffers[0]),
+            ReadWriteIOUtils.readInt(buffers[1]),
             ReadWriteIOUtils.readInt(buffers[2]),
             ReadWriteIOUtils.readInt(buffers[3]),
             ReadWriteIOUtils.readDouble(buffers[4]));
         break;
       case INT64:
         ((LongStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readLong(buffers[0]), 
-            ReadWriteIOUtils.readLong(buffers[1]), 
+        .initializeStats(ReadWriteIOUtils.readLong(buffers[0]),
+            ReadWriteIOUtils.readLong(buffers[1]),
             ReadWriteIOUtils.readLong(buffers[2]),
             ReadWriteIOUtils.readLong(buffers[3]),
             ReadWriteIOUtils.readDouble(buffers[4]));
@@ -185,16 +184,16 @@ public abstract class StatisticsV1<T> {
         break;
       case DOUBLE:
         ((DoubleStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readDouble(buffers[0]), 
-            ReadWriteIOUtils.readDouble(buffers[1]), 
+        .initializeStats(ReadWriteIOUtils.readDouble(buffers[0]),
+            ReadWriteIOUtils.readDouble(buffers[1]),
             ReadWriteIOUtils.readDouble(buffers[2]),
             ReadWriteIOUtils.readDouble(buffers[3]),
             ReadWriteIOUtils.readDouble(buffers[4]));
         break;
       case FLOAT:
         ((FloatStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readFloat(buffers[0]), 
-            ReadWriteIOUtils.readFloat(buffers[1]), 
+        .initializeStats(ReadWriteIOUtils.readFloat(buffers[0]),
+            ReadWriteIOUtils.readFloat(buffers[1]),
             ReadWriteIOUtils.readFloat(buffers[2]),
             ReadWriteIOUtils.readFloat(buffers[3]),
             ReadWriteIOUtils.readDouble(buffers[4]));

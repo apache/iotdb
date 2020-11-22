@@ -1146,8 +1146,7 @@ public class MTree implements Serializable {
           }
         }
       } else if (idx == length) {
-        String nodeName;
-        nodeName = node.getName();
+        String nodeName = node.getName();
         res.add(parent + nodeName);
       }
     }

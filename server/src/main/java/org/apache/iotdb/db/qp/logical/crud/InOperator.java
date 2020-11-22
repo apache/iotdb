@@ -152,8 +152,7 @@ public class InOperator extends FunctionOperator {
 
   @Override
   public InOperator copy() {
-    InOperator ret;
-    ret = new InOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), not, new HashSet<>(values));
+    InOperator ret = new InOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), not, new HashSet<>(values));
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
