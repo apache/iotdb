@@ -679,7 +679,7 @@ public class StorageGroupProcessor {
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertRowPlan, isSequence);
+      insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
 
     } finally {
       writeUnlock();
@@ -866,10 +866,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence)
+  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
       throws WriteProcessException {
-    long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
-
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
     if (tsFileProcessor == null) {
