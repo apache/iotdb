@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -54,10 +55,13 @@ public class IoTDBUDFWindowQueryIT {
   public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
   public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
 
-  protected final static int ITERATION_TIMES = 10_000;
+  protected final static int ITERATION_TIMES = 100_000;
 
   @BeforeClass
   public static void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -105,6 +109,9 @@ public class IoTDBUDFWindowQueryIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
   }
 
   @Test

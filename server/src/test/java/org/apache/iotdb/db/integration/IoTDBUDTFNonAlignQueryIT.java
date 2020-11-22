@@ -31,6 +31,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -45,7 +46,7 @@ import org.junit.Test;
 
 public class IoTDBUDTFNonAlignQueryIT {
 
-  protected final static int ITERATION_TIMES = 1_000_000;
+  protected final static int ITERATION_TIMES = 10_000;
 
   protected final static int ADDEND = 500_000_000;
 
@@ -57,6 +58,9 @@ public class IoTDBUDTFNonAlignQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -109,6 +113,9 @@ public class IoTDBUDTFNonAlignQueryIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
   }
 
   @Test

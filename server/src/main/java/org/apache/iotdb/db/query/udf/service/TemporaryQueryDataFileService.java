@@ -42,7 +42,7 @@ public class TemporaryQueryDataFileService implements IService {
 
   private static final String TEMPORARY_FILE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator + "udf" + File.separator + "tmp" + File.separator;
+          + File.separator + "udf" + File.separator + "tmp";
 
   private final AtomicLong uniqueDataId;
   private final Map<Long, List<SerializationRecorder>> recorders;
