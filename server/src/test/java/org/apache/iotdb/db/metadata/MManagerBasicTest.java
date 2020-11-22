@@ -371,7 +371,8 @@ public class MManagerBasicTest {
         "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
         "[root.laptop.b1.d1, root.laptop.b1.d2]",
         "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
-        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]"
+        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]",
+        "[]"
     };
 
     try {
@@ -407,6 +408,7 @@ public class MManagerBasicTest {
       assertEquals(res[5], manager.getChildNodePathInNextLevel("root.l*.b1").toString());
       assertEquals(res[6], manager.getChildNodePathInNextLevel("root.v*.*").toString());
       assertEquals(res[7], manager.getChildNodePathInNextLevel("root.l*.b*.*").toString());
+      assertEquals(res[8], manager.getChildNodePathInNextLevel("root.laptopp").toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
