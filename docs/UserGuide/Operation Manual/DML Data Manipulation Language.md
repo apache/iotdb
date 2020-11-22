@@ -735,7 +735,7 @@ The result set is：
 
 #### Other ResultSet Format
 
-disable align'.
+In addition, IoTDB supports two other results set format: 'align by device' and 'disable align'.
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
