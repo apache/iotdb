@@ -798,7 +798,6 @@ select s1,s2 from root.sg1.* ALIGN BY DEVICE
 
 ```
 
-更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
 “禁用对齐”指示结果集中每个时间序列都有3列。 有关更多语法描述，更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
