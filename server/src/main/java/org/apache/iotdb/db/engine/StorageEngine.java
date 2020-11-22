@@ -380,8 +380,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
