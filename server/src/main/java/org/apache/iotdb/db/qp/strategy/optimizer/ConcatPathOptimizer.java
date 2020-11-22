@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -93,7 +94,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         // concat paths and remove stars
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum);
+        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum,
+            !(operator instanceof QueryIndexOperator));
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -159,7 +161,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * selectOperator's suffixPathList. Treat aggregations similarly.
    */
   private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator, int limit,
-      int offset, int maxDeduplicatedPathNum)
+      int offset, int maxDeduplicatedPathNum, boolean needRemoveStar)
       throws LogicalOptimizeException, PathNumOverLimitException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
 
@@ -179,9 +181,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
-
-    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
-        maxDeduplicatedPathNum);
+    if (needRemoveStar)
+      removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
+          maxDeduplicatedPathNum);
+    else{
+      selectOperator.setSuffixPathList(allPaths);
+    }
   }
 
   private FilterOperator concatFilter(List<PartialPath> fromPaths, FilterOperator operator,

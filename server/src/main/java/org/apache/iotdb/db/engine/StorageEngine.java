@@ -292,7 +292,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) throws ShutdownException {
+  public void shutdown(long milliseconds) throws ShutdownException {
     try {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {

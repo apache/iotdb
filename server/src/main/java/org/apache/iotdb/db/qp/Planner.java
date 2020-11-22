@@ -65,7 +65,6 @@ public class Planner {
   @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
   }
 
@@ -161,8 +160,6 @@ public class Planner {
       case ALTER_TIMESERIES:
       case LOADDATA:
       case INSERT:
-      case INDEX:
-      case INDEXQUERY:
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
       case TTL:
@@ -183,6 +180,9 @@ public class Planner {
       case QUERY:
       case UPDATE:
       case DELETE:
+      case CREATE_INDEX:
+      case DROP_INDEX:
+      case QUERY_INDEX:
         SFWOperator root = (SFWOperator) operator;
         return optimizeSFWOperator(root, maxDeduplicatedPathNum);
       default:
