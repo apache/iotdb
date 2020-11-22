@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -185,9 +184,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+      futures.add(recoveryThreadPool.submit(() -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
@@ -204,7 +203,7 @@ public class StorageEngine implements IService {
         return null;
       }));
     }
-    for (Future future : futures) {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (ExecutionException e) {
