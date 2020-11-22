@@ -1124,6 +1124,9 @@ public class MTree implements Serializable {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodePathInNextLevel(
       MNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+    if (node == null) {
+      return;
+    }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (idx == length) {
