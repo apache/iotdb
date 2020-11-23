@@ -377,7 +377,7 @@ public class PhysicalGenerator {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
-      } else if (queryOperator.isGroupByLevel()){
+      } else {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
         try {
           if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
@@ -816,7 +816,7 @@ public class PhysicalGenerator {
         return true;
     }
   }
-
+  
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
