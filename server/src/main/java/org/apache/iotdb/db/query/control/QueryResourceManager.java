@@ -146,8 +146,7 @@ public class QueryResourceManager {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource;
-    queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
