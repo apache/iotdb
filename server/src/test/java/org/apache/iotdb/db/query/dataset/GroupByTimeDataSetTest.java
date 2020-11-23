@@ -160,15 +160,7 @@ public class GroupByTimeDataSetTest {
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
-
-    // with multi result
-    queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan(
-            "select count(s1), count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t1", dataSet.next().toString());
+    
 
     // with double quotation mark
     queryPlan = (QueryPlan) processor
