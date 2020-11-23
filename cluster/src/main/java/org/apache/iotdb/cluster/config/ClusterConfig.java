@@ -87,7 +87,8 @@ public class ClusterConfig {
    * ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
    * clients.
    */
-  private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() / 3;
+  private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() / 3 > 0 ?
+      Runtime.getRuntime().availableProcessors() / 3 : 1;
 
   /**
    * Whether creating schema automatically is enabled, this will replace the one in
