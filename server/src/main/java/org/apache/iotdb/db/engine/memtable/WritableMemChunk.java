@@ -172,9 +172,9 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public synchronized TVList getSortedTVListForFlush() {
     // check reference count
-    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
-      list = list.clone();
-    }
+    //if ((list.getReferenceCount() > 0 && !list.isSorted())) {
+    list = list.clone();
+    //}
 
     if (!list.isSorted()) {
       list.sort();
