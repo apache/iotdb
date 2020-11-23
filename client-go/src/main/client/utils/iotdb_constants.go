@@ -26,6 +26,7 @@ const (
 	FLOAT   int32 = 3
 	DOUBLE  int32 = 4
 	TEXT    int32 = 5
+	INT     int32 = 6
 )
 
 const (

@@ -25,7 +25,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/yanhongwangg/go-thrift/rpc"
 	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client/utils"
 	"net"
@@ -36,33 +36,22 @@ import (
 
 const protocolVersion = rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3
 
-var (
-	client             *rpc.TSIServiceClient
-	sessionId          int64
-	trans              thrift.TTransport
-	err                error
-	requestStatementId int64
-	ts                 string
-	sg                 string
-	dv                 string
-	Log                = logrus.New()
-)
-
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) {
 	dir, _ := os.Getwd()
 	os.Mkdir(dir+"\\logs", os.ModePerm)
 	logFile, _ := os.OpenFile(dir+"\\logs\\all.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
-	Log.SetOutput(logFile)
+	log.SetOutput(logFile)
+	log.SetLevel(log.InfoLevel)
 	var protocolFactory thrift.TProtocolFactory
-	trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.Host, s.Port), time.Duration(connectionTimeoutInMs))
-	if err != nil {
-		Log.WithError(err).Error("connect failed")
+	s.trans, s.err = thrift.NewTSocketTimeout(net.JoinHostPort(s.Host, s.Port), time.Duration(connectionTimeoutInMs))
+	if s.err != nil {
+		log.WithError(s.err).Error("connect failed")
 	}
-	trans = thrift.NewTFramedTransport(trans)
-	if !trans.IsOpen() {
-		err = trans.Open()
-		if err != nil {
-			Log.WithError(err).Error("open the conn failed")
+	s.trans = thrift.NewTFramedTransport(s.trans)
+	if !s.trans.IsOpen() {
+		s.err = s.trans.Open()
+		if s.err != nil {
+			log.WithError(s.err).Error("open the conn failed")
 		}
 	}
 	if enableRPCCompression {
@@ -70,23 +59,23 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) {
 	} else {
 		protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
 	}
-	iProtocol := protocolFactory.GetProtocol(trans)
-	oProtocol := protocolFactory.GetProtocol(trans)
-	client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iProtocol, oProtocol))
+	iProtocol := protocolFactory.GetProtocol(s.trans)
+	oProtocol := protocolFactory.GetProtocol(s.trans)
+	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iProtocol, oProtocol))
 	s.ZoneId = DefaultZoneId
 	tSOpenSessionReq := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.ZoneId, Username: &s.User,
 		Password: &s.Passwd}
-	tSOpenSessionResp, err := client.OpenSession(context.Background(), &tSOpenSessionReq)
+	tSOpenSessionResp, err := s.client.OpenSession(context.Background(), &tSOpenSessionReq)
 	if err != nil {
-		Log.WithError(err).Error("open session failed")
+		log.WithError(err).Error("open session failed")
 	} else {
-		Log.WithField("code", tSOpenSessionResp.GetStatus().Code).Info("open session success")
+		log.WithField("code", tSOpenSessionResp.GetStatus().Code).Debug("open session success")
 	}
-	sessionId = tSOpenSessionResp.GetSessionId()
-	requestStatementId, err = client.RequestStatementId(context.Background(), sessionId)
+	s.sessionId = tSOpenSessionResp.GetSessionId()
+	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
 	s.FetchSize = DefaultFetchSize
 	if err != nil {
-		Log.WithError(err).Error("request StatementId failed")
+		log.WithError(err).Error("request StatementId failed")
 	}
 	if s.ZoneId != "" {
 		s.SetTimeZone(s.ZoneId)
@@ -102,18 +91,16 @@ func (s *Session) CheckTimeseriesExists(path string) bool {
 	return result
 }
 
-func (s *Session) Close() error {
+func (s *Session) Close() {
 	tSCloseSessionReq := rpc.NewTSCloseSessionReq()
-	tSCloseSessionReq.SessionId = sessionId
-	status, err := client.CloseSession(context.Background(), tSCloseSessionReq)
+	tSCloseSessionReq.SessionId = s.sessionId
+	status, err := s.client.CloseSession(context.Background(), tSCloseSessionReq)
 	if err != nil {
-		Log.WithError(err).Error("Error occurs when closing session at server. Maybe server is down. Error message")
-		return err
+		log.WithError(err).Error("Error occurs when closing session at server. Maybe server is down.")
 	} else {
-		Log.WithField("code", status.Code).Info("close session success")
+		log.WithField("code", status.Code).Debug("close session success")
 	}
-	trans.Close()
-	return nil
+	s.trans.Close()
 }
 
 /*
@@ -122,20 +109,17 @@ func (s *Session) Close() error {
  *param
  *storageGroupId: string, storage group name (starts from root)
  *
- *return
- *error: correctness of operation
  */
-func (s *Session) SetStorageGroup(storageGroupId string) error {
-	status, err := client.SetStorageGroup(context.Background(), sessionId, storageGroupId)
+func (s *Session) SetStorageGroup(storageGroupId string) {
+	status, err := s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
 	if err != nil {
-		Log.WithError(err).Error("setting storage group failed")
+		log.WithError(err).Error("setting storage group failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"sg":   storageGroupId,
 			"code": status.Code,
-		}).Info("setting storage group success")
+		}).Debug("setting storage group success")
 	}
-	return err
 }
 
 /*
@@ -144,18 +128,16 @@ func (s *Session) SetStorageGroup(storageGroupId string) error {
  *param
  *storageGroupId: string, storage group name (starts from root)
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) DeleteStorageGroup(storageGroupId string) {
-	status, err := client.DeleteStorageGroups(context.Background(), sessionId, []string{storageGroupId})
+	status, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
 	if err != nil {
-		Log.WithError(err).Error("delete storage group failed")
+		log.WithError(err).Error("delete storage group failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"sg":   storageGroupId,
 			"code": status.Code,
-		}).Info("delete storage group success")
+		}).Debug("delete storage group success")
 	}
 }
 
@@ -165,19 +147,17 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) {
  *param
  *storageGroupIds: []string, paths of the target storage groups
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) DeleteStorageGroups(storageGroupIds []string) {
-	status, err := client.DeleteStorageGroups(context.Background(), sessionId, storageGroupIds)
-	sg = strings.Replace(strings.Trim(fmt.Sprint(storageGroupIds), "[]"), " ", ",", -1)
+	status, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
+	s.sg = strings.Replace(strings.Trim(fmt.Sprint(storageGroupIds), "[]"), " ", ",", -1)
 	if err != nil {
-		Log.WithError(err).Error("delete storage groups failed")
+		log.WithError(err).Error("delete storage groups failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"sg":   sg,
+		log.WithFields(log.Fields{
+			"sg":   s.sg,
 			"code": status.Code,
-		}).Info("delete storage groups success")
+		}).Debug("delete storage groups success")
 	}
 }
 
@@ -190,20 +170,18 @@ func (s *Session) DeleteStorageGroups(storageGroupIds []string) {
  *encoding: int32, data type for this time series
  *compressor: int32, compressing type for this time series
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, compressor int32) {
-	request := rpc.TSCreateTimeseriesReq{SessionId: sessionId, Path: path, DataType: dataType, Encoding: encoding,
+	request := rpc.TSCreateTimeseriesReq{SessionId: s.sessionId, Path: path, DataType: dataType, Encoding: encoding,
 		Compressor: compressor}
-	status, err := client.CreateTimeseries(context.Background(), &request)
+	status, err := s.client.CreateTimeseries(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("creating time series failed")
+		log.WithError(err).Error("creating time series failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"ts":   path,
 			"code": status.Code,
-		}).Info("creating time series success")
+		}).Debug("creating time series success")
 	}
 }
 
@@ -216,21 +194,19 @@ func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, 
  *encodings: []int32, encodings for time series
  *compressors: []int32, compressing types for time series
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encodings []int32, compressors []int32) {
-	request := rpc.TSCreateMultiTimeseriesReq{SessionId: sessionId, Paths: paths, DataTypes: dataTypes,
+	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: dataTypes,
 		Encodings: encodings, Compressors: compressors}
-	status, err := client.CreateMultiTimeseries(context.Background(), &request)
-	ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
+	status, err := s.client.CreateMultiTimeseries(context.Background(), &request)
+	s.ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
 	if err != nil {
-		Log.WithError(err).Error("creating multi time series failed")
+		log.WithError(err).Error("creating multi time series failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"ts":   ts,
+		log.WithFields(log.Fields{
+			"ts":   s.ts,
 			"code": status.Code,
-		}).Info("creating multi time series success")
+		}).Debug("creating multi time series success")
 	}
 }
 
@@ -240,19 +216,17 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
  *params
  *paths: []string, time series paths, which should be complete (starts from root)
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) DeleteTimeseries(paths []string) {
-	status, err := client.DeleteTimeseries(context.Background(), sessionId, paths)
+	status, err := s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
 	var ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
 	if err != nil {
-		Log.WithError(err).Error("delete time series failed")
+		log.WithError(err).Error("delete time series failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"ts":   ts,
 			"code": status.Code,
-		}).Info("delete time series success")
+		}).Debug("delete time series success")
 	}
 }
 
@@ -264,20 +238,18 @@ func (s *Session) DeleteTimeseries(paths []string) {
  *startTime: int64, start time of deletion range
  *endTime: int64, end time of deletion range
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) {
-	request := rpc.TSDeleteDataReq{SessionId: sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
-	status, err := client.DeleteData(context.Background(), &request)
-	ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
+	request := rpc.TSDeleteDataReq{SessionId: s.sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
+	status, err := s.client.DeleteData(context.Background(), &request)
+	s.ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
 	if err != nil {
-		Log.WithError(err).Error("delete data failed")
+		log.WithError(err).Error("delete data failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"ts":   ts,
+		log.WithFields(log.Fields{
+			"ts":   s.ts,
 			"code": status.Code,
-		}).Info("delete data success")
+		}).Debug("delete data success")
 	}
 }
 
@@ -290,34 +262,32 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) {
  *values: []string, values to be inserted, for each sensor
  *timestamp: int64, indicate the timestamp of the row of data
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) {
-	request := rpc.TSInsertStringRecordReq{SessionId: sessionId, DeviceId: deviceId, Measurements: measurements,
+	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
 		Values: values, Timestamp: timestamp}
-	status, err := client.InsertStringRecord(context.Background(), &request)
+	status, err := s.client.InsertStringRecord(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("insert one string record failed")
+		log.WithError(err).Error("insert one string record failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"dv":   deviceId,
 			"code": status.Code,
-		}).Info("insert one string record success")
+		}).Debug("insert one string record success")
 	}
 }
 
 func (s *Session) TestInsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) {
-	request := rpc.TSInsertStringRecordReq{SessionId: sessionId, DeviceId: deviceId, Measurements: measurements,
+	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
 		Values: values, Timestamp: timestamp}
-	status, err := client.TestInsertStringRecord(context.Background(), &request)
+	status, err := s.client.TestInsertStringRecord(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("insert one string record failed")
+		log.WithError(err).Error("insert one string record failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"dv":   deviceId,
 			"code": status.Code,
-		}).Info("insert one string record success")
+		}).Debug("insert one string record success")
 	}
 }
 
@@ -330,38 +300,36 @@ func (s *Session) TestInsertStringRecord(deviceId string, measurements []string,
  *values: [][]interface{}, values to be inserted, for each device
  *timestamps: []int64, timestamps for records
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertStringRecords(deviceIds []string, measurements [][]string, values [][]string,
 	timestamps []int64) {
-	request := rpc.TSInsertStringRecordsReq{SessionId: sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
+	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
 		ValuesList: values, Timestamps: timestamps}
-	dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
-	status, err := client.InsertStringRecords(context.Background(), &request)
+	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
+	status, err := s.client.InsertStringRecords(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("insert multi string records failed")
+		log.WithError(err).Error("insert multi string records failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"dv":   dv,
+		log.WithFields(log.Fields{
+			"dv":   s.dv,
 			"code": status.Code,
-		}).Info("insert multi string records success")
+		}).Debug("insert multi string records success")
 	}
 }
 
 func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]string, values [][]string,
 	timestamps []int64) {
-	request := rpc.TSInsertStringRecordsReq{SessionId: sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
+	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
 		ValuesList: values, Timestamps: timestamps}
-	dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
-	status, err := client.TestInsertStringRecords(context.Background(), &request)
+	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
+	status, err := s.client.TestInsertStringRecords(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("insert multi string records failed")
+		log.WithError(err).Error("insert multi string records failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"dv":   dv,
+		log.WithFields(log.Fields{
+			"dv":   s.dv,
 			"code": status.Code,
-		}).Info("insert multi string records success")
+		}).Debug("insert multi string records success")
 	}
 }
 
@@ -375,40 +343,38 @@ func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]s
  *values: []interface{}, values to be inserted, for each sensor
  *timestamp: int64, indicate the timestamp of the row of data
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) {
-	request := genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
-	status, err := client.InsertRecord(context.Background(), request)
+	request := s.genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
+	status, err := s.client.InsertRecord(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert one record failed")
+		log.WithError(err).Error("insert one record failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"dv":   deviceId,
 			"code": status.Code,
-		}).Info("insert one record success")
+		}).Debug("insert one record success")
 	}
 }
 
 func (s *Session) TestInsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) {
-	request := genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
-	status, err := client.TestInsertRecord(context.Background(), request)
+	request := s.genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
+	status, err := s.client.TestInsertRecord(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert one record failed")
+		log.WithError(err).Error("insert one record failed")
 	} else {
-		Log.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"dv":   deviceId,
 			"code": status.Code,
-		}).Info("insert one record success")
+		}).Debug("insert one record success")
 	}
 }
 
-func genInsertRecordReq(deviceId string, measurements []string, dataTypes []int32, values []interface{},
+func (s *Session) genInsertRecordReq(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) *rpc.TSInsertRecordReq {
-	request := rpc.TSInsertRecordReq{SessionId: sessionId, DeviceId: deviceId, Measurements: measurements,
+	request := rpc.TSInsertRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
 		Timestamp: timestamp}
 	request.Values = valuesToBytes(dataTypes, values)
 	return &request
@@ -425,47 +391,45 @@ func genInsertRecordReq(deviceId string, measurements []string, dataTypes []int3
  *values: [][]interface{}, values to be inserted, for each device
  *timestamps: []int64, timestamps for records
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
 	timestamps []int64) {
-	dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
-	request := genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
-	status, err := client.InsertRecords(context.Background(), request)
+	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
+	request := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
+	status, err := s.client.InsertRecords(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert multiple records failed")
+		log.WithError(err).Error("insert multiple records failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"dv":   dv,
+		log.WithFields(log.Fields{
+			"dv":   s.dv,
 			"code": status.Code,
-		}).Info("insert multiple records success")
+		}).Debug("insert multiple records success")
 	}
 }
 
 func (s *Session) TestInsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
 	timestamps []int64) {
-	dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
-	request := genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
-	status, err := client.TestInsertRecords(context.Background(), request)
+	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
+	request := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
+	status, err := s.client.TestInsertRecords(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert multiple records failed")
+		log.WithError(err).Error("insert multiple records failed")
 	} else {
-		Log.WithFields(logrus.Fields{
-			"dv":   dv,
+		log.WithFields(log.Fields{
+			"dv":   s.dv,
 			"code": status.Code,
-		}).Info("insert multiple records success")
+		}).Debug("insert multiple records success")
 	}
 }
 
-func genInsertRecordsReq(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
+func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
 	timestamps []int64) *rpc.TSInsertRecordsReq {
 	length := len(deviceIds)
 	if length != len(timestamps) || length != len(measurements) || length != len(values) {
-		Log.Error("deviceIds, times, measurementsList and valuesList's size should be equal")
+		log.Error("deviceIds, times, measurementsList and valuesList's size should be equal")
 		return nil
 	}
-	request := rpc.TSInsertRecordsReq{SessionId: sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
+	request := rpc.TSInsertRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
 		Timestamps: timestamps}
 	v := make([][]byte, length)
 	for i := 0; i < len(measurements); i++ {
@@ -481,33 +445,31 @@ func genInsertRecordsReq(deviceIds []string, measurements [][]string, dataTypes 
  *params
  *tablet: utils.Tablet, a tablet specified above
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertTablet(tablet utils.Tablet) {
 	tablet.SortTablet()
-	request := genInsertTabletReq(tablet)
-	status, err := client.InsertTablet(context.Background(), request)
+	request := s.genInsertTabletReq(tablet)
+	status, err := s.client.InsertTablet(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert tablet failed")
+		log.WithError(err).Error("insert tablet failed")
 	} else {
-		Log.WithField("code", status.Code).Info("insert tablet success")
+		log.WithField("code", status.Code).Debug("insert tablet success")
 	}
 }
 
 func (s *Session) TestInsertTablet(tablet utils.Tablet) {
 	tablet.SortTablet()
-	request := genInsertTabletReq(tablet)
-	status, err := client.TestInsertTablet(context.Background(), request)
+	request := s.genInsertTabletReq(tablet)
+	status, err := s.client.TestInsertTablet(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert tablet failed")
+		log.WithError(err).Error("insert tablet failed")
 	} else {
-		Log.WithField("code", status.Code).Info("insert tablet success")
+		log.WithField("code", status.Code).Debug("insert tablet success")
 	}
 }
 
-func genInsertTabletReq(tablet utils.Tablet) *rpc.TSInsertTabletReq {
-	request := rpc.TSInsertTabletReq{SessionId: sessionId, DeviceId: tablet.GetDeviceId(), Types: tablet.GetTypes(),
+func (s *Session) genInsertTabletReq(tablet utils.Tablet) *rpc.TSInsertTabletReq {
+	request := rpc.TSInsertTabletReq{SessionId: s.sessionId, DeviceId: tablet.GetDeviceId(), Types: tablet.GetTypes(),
 		Measurements: tablet.Measurements, Values: tablet.GetBinaryValues(), Timestamps: tablet.GetBinaryTimestamps(),
 		Size: tablet.GetRowNumber()}
 	return &request
@@ -519,19 +481,17 @@ func genInsertTabletReq(tablet utils.Tablet) *rpc.TSInsertTabletReq {
  *params
  *tablets: []utils.Tablet, list of tablets
  *
- *return
- *error: correctness of operation
  */
 func (s *Session) InsertTablets(tablets []utils.Tablet) {
 	for index := range tablets {
 		tablets[index].SortTablet()
 	}
-	request := genInsertTabletsReq(tablets)
-	status, err := client.InsertTablets(context.Background(), request)
+	request := s.genInsertTabletsReq(tablets)
+	status, err := s.client.InsertTablets(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert tablets failed")
+		log.WithError(err).Error("insert tablets failed")
 	} else {
-		Log.WithField("code", status.Code).Info("insert tablets success")
+		log.WithField("code", status.Code).Debug("insert tablets success")
 	}
 }
 
@@ -539,16 +499,16 @@ func (s *Session) TestInsertTablets(tablets []utils.Tablet) {
 	for index := range tablets {
 		tablets[index].SortTablet()
 	}
-	request := genInsertTabletsReq(tablets)
-	status, err := client.TestInsertTablets(context.Background(), request)
+	request := s.genInsertTabletsReq(tablets)
+	status, err := s.client.TestInsertTablets(context.Background(), request)
 	if err != nil {
-		Log.WithError(err).Error("insert tablets failed")
+		log.WithError(err).Error("insert tablets failed")
 	} else {
-		Log.WithField("code", status.Code).Info("insert tablets success")
+		log.WithField("code", status.Code).Debug("insert tablets success")
 	}
 }
 
-func genInsertTabletsReq(tablets []utils.Tablet) *rpc.TSInsertTabletsReq {
+func (s *Session) genInsertTabletsReq(tablets []utils.Tablet) *rpc.TSInsertTabletsReq {
 	var (
 		length           = len(tablets)
 		deviceIds        = make([]string, length)
@@ -566,7 +526,7 @@ func genInsertTabletsReq(tablets []utils.Tablet) *rpc.TSInsertTabletsReq {
 		typesList[index] = tablet.GetTypes()
 		sizeList[index] = tablet.GetRowNumber()
 	}
-	request := rpc.TSInsertTabletsReq{SessionId: sessionId, DeviceIds: deviceIds, TypesList: typesList,
+	request := rpc.TSInsertTabletsReq{SessionId: s.sessionId, DeviceIds: deviceIds, TypesList: typesList,
 		MeasurementsList: measurementsList, ValuesList: valuesList, TimestampsList: timestampsList,
 		SizeList: sizeList}
 	return &request
@@ -612,9 +572,9 @@ func valuesToBytes(dataTypes []int32, values []interface{}) []byte {
 }
 
 func (s *Session) ExecuteStatement(sql string) *utils.SessionDataSet {
-	request := rpc.TSExecuteStatementReq{SessionId: sessionId, Statement: sql, StatementId: requestStatementId,
+	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.FetchSize}
-	resp, _ := client.ExecuteStatement(context.Background(), &request)
+	resp, _ := s.client.ExecuteStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := utils.NewSessionDataSet(dataSet)
 	return sessionDataSet
@@ -627,27 +587,27 @@ func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *util
 		ColumnTypeList:  resp.GetDataTypeList(),
 		ColumnNameIndex: resp.GetColumnNameIndexMap(),
 		QueryId:         resp.GetQueryId(),
-		SessionId:       sessionId,
+		SessionId:       s.sessionId,
 		IgnoreTimeStamp: resp.GetIgnoreTimeStamp(),
-		Client:          client,
+		Client:          s.client,
 		QueryDataSet:    resp.GetQueryDataSet(),
 	}
 	return &dataSet
 }
 
 func (s *Session) ExecuteQueryStatement(sql string) *utils.SessionDataSet {
-	request := rpc.TSExecuteStatementReq{SessionId: sessionId, Statement: sql, StatementId: requestStatementId,
+	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.FetchSize}
-	resp, _ := client.ExecuteQueryStatement(context.Background(), &request)
+	resp, _ := s.client.ExecuteQueryStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := utils.NewSessionDataSet(dataSet)
 	return sessionDataSet
 }
 
 func (s *Session) ExecuteUpdateStatement(sql string) *utils.SessionDataSet {
-	request := rpc.TSExecuteStatementReq{SessionId: sessionId, Statement: sql, StatementId: requestStatementId,
+	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.FetchSize}
-	resp, _ := client.ExecuteUpdateStatement(context.Background(), &request)
+	resp, _ := s.client.ExecuteUpdateStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := utils.NewSessionDataSet(dataSet)
 	return sessionDataSet
@@ -655,27 +615,27 @@ func (s *Session) ExecuteUpdateStatement(sql string) *utils.SessionDataSet {
 
 func (s *Session) ExecuteBatchStatement(inserts []string) {
 	request := rpc.TSExecuteBatchStatementReq{
-		SessionId:  sessionId,
+		SessionId:  s.sessionId,
 		Statements: inserts,
 	}
-	status, err := client.ExecuteBatchStatement(context.Background(), &request)
+	status, err := s.client.ExecuteBatchStatement(context.Background(), &request)
 	if err != nil {
-		Log.WithError(err).Error("insert batch data failed")
+		log.WithError(err).Error("insert batch data failed")
 	} else {
-		Log.WithField("code", status.Code).Info("insert batch data success")
+		log.WithField("code", status.Code).Debug("insert batch data success")
 	}
 }
 
 func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime int64) *utils.SessionDataSet {
 	request := rpc.TSRawDataQueryReq{
-		SessionId:   sessionId,
+		SessionId:   s.sessionId,
 		Paths:       paths,
 		FetchSize:   &s.FetchSize,
 		StartTime:   startTime,
 		EndTime:     endTime,
-		StatementId: requestStatementId,
+		StatementId: s.requestStatementId,
 	}
-	resp, _ := client.ExecuteRawDataQuery(context.Background(), &request)
+	resp, _ := s.client.ExecuteRawDataQuery(context.Background(), &request)
 	dataSet := s.genDataSet("", resp)
 	sessionDataSet := utils.NewSessionDataSet(dataSet)
 	return sessionDataSet
@@ -685,24 +645,23 @@ func (s *Session) GetTimeZone() string {
 	if s.ZoneId != "" {
 		return s.ZoneId
 	} else {
-		resp, err := client.GetTimeZone(context.Background(), sessionId)
+		resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 		if err != nil {
-			Log.Error("get timezone failed ", err)
+			log.Error("get timezone failed ", err)
 		} else {
-			Log.Info("get timezone success")
+			log.Debug("get timezone success")
 		}
 		return resp.TimeZone
 	}
 }
 
-func (s *Session) SetTimeZone(timeZone string) error {
-	request := rpc.TSSetTimeZoneReq{SessionId: sessionId, TimeZone: timeZone}
-	status, err := client.SetTimeZone(context.Background(), &request)
+func (s *Session) SetTimeZone(timeZone string) {
+	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
+	status, err := s.client.SetTimeZone(context.Background(), &request)
 	s.ZoneId = timeZone
 	if err != nil {
-		Log.Error("set timeZone as ", timeZone, " failed ", err)
+		log.Error("set timeZone as ", timeZone, " failed ", err)
 	} else {
-		Log.Info("set timeZone as ", timeZone, " success ", status.Code)
+		log.Debug("set timeZone as ", timeZone, " success ", status.Code)
 	}
-	return err
 }

@@ -19,10 +19,6 @@
 
 package utils
 
-import (
-	"strconv"
-)
-
 type RowRecord struct {
 	Timestamp int64
 	Fields    []Field
@@ -31,38 +27,3 @@ type RowRecord struct {
 func (r *RowRecord) AddField(field Field) {
 	r.Fields[len(r.Fields)] = field
 }
-
-func (r *RowRecord) String() string {
-	res := strconv.Itoa(int(r.Timestamp))
-	for i := 0; i < len(r.Fields); i++ {
-		res += "\t"
-		if r.Fields[i].DataType == "" {
-			res += "null"
-			continue
-		}
-		objValue := r.Fields[i].GetObjectValue(r.Fields[i].DataType)
-		switch r.Fields[i].DataType {
-		case "BOOLEAN":
-			res += strconv.FormatBool(objValue.(bool))
-			break
-		case "INT32":
-			res += strconv.FormatInt(int64(objValue.(int32)), 10)
-			break
-		case "INT64":
-			res += strconv.FormatInt(objValue.(int64), 10)
-			break
-		case "FLOAT":
-
-			res += strconv.FormatFloat(float64(objValue.(float32)), 'f', 1, 32)
-			break
-		case "DOUBLE":
-			res += strconv.FormatFloat(objValue.(float64), 'f', -1, 64)
-			break
-		case "TEXT":
-			res += objValue.(string)
-			break
-		}
-	}
-	return res
-}
-

@@ -19,6 +19,11 @@
 
 package client
 
+import (
+	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/yanhongwangg/go-thrift/rpc"
+)
+
 const (
 	DefaultUser            = "root"
 	DefaultPasswd          = "root"
@@ -27,12 +32,20 @@ const (
 )
 
 type Session struct {
-	Host      string
-	Port      string
-	User      string
-	Passwd    string
-	FetchSize int32
-	ZoneId    string
+	Host               string
+	Port               string
+	User               string
+	Passwd             string
+	FetchSize          int32
+	ZoneId             string
+	client             *rpc.TSIServiceClient
+	sessionId          int64
+	trans              thrift.TTransport
+	requestStatementId int64
+	ts                 string
+	sg                 string
+	dv                 string
+	err                error
 }
 
 type DialOption interface {
