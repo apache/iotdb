@@ -965,6 +965,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     parseTimeInterval(ctx.timeInterval());
 
     if (ctx.INT() != null) {
+      queryOp.setGroupByLevel(true);
       queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
     }
   }

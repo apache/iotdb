@@ -377,7 +377,7 @@ public class PhysicalGenerator {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
-      } else {
+      } else if (queryOperator.isGroupByLevel()) {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
         try {
           if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
