@@ -128,8 +128,8 @@ public class AsyncClientPool {
         this.wait(WAIT_CLIENT_TIMEOUT_MS);
         if (clientStack.isEmpty()
             && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
-          logger.warn("Cannot get an available client after {}ms, create a new one",
-              WAIT_CLIENT_TIMEOUT_MS);
+          logger.warn("Cannot get an available client after {}ms, create a new one, factory {} now is {}",
+              WAIT_CLIENT_TIMEOUT_MS, asyncClientFactory, nodeClientNum);
           nodeClientNumMap.put(node, nodeClientNum + 1);
           return asyncClientFactory.getAsyncClient(node, this);
         }
@@ -174,6 +174,14 @@ public class AsyncClientPool {
     synchronized (this) {
       Deque<AsyncClient> clientStack = clientCaches
           .computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+      while (!clientStack.isEmpty()) {
+        AsyncClient client = clientStack.pop();
+        if (client instanceof AsyncDataClient) {
+          ((AsyncDataClient) client).close();
+        } else if (client instanceof AsyncMetaClient) {
+          ((AsyncMetaClient) client).close();
+        }
+      }
       clientStack.clear();
       nodeClientNumMap.put(clusterNode, 0);
       this.notifyAll();

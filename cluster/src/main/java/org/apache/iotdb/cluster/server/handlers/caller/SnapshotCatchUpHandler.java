@@ -54,7 +54,7 @@ public class SnapshotCatchUpHandler implements AsyncMethodCallback<Void> {
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot send snapshot {} to {}", snapshot, receiver);
+    logger.error("Cannot send snapshot {} to {}", snapshot, receiver, exception);
     synchronized (succeed) {
       succeed.notifyAll();
     }
