@@ -1396,6 +1396,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       } else {
         selectOp.addSelectPath(new PartialPath(
             new String[]{tableCallContext.SINGLE_QUOTE_STRING_LITERAL().getText()}));
+        selectOp.addUdf(null);
       }
     }
 
