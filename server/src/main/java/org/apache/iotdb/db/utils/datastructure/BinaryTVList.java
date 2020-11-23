@@ -47,7 +47,7 @@ public class BinaryTVList extends TVList {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
-    minTime = minTime <= timestamp ? minTime : timestamp;
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     size++;

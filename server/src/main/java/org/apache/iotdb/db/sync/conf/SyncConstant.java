@@ -31,7 +31,7 @@ public class SyncConstant {
 
   public static final String SYNC_RECEIVER = "sync-receiver";
 
-  public static final String MESSAGE_DIGIT_NAME = "MD5";
+  public static final String MESSAGE_DIGIT_NAME = "SHA-256";
 
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 

@@ -52,9 +52,6 @@ public class WinCli extends AbstractCli {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     commandLine = null;
 
-    String[] newArgs;
-    String[] newArgs2;
-
     if (args == null || args.length == 0) {
       println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
@@ -62,8 +59,8 @@ public class WinCli extends AbstractCli {
     }
 
     init();
-    newArgs = removePasswordArgs(args);
-    newArgs2 = processExecuteArgs(newArgs);
+    String[] newArgs = removePasswordArgs(args);
+    String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;

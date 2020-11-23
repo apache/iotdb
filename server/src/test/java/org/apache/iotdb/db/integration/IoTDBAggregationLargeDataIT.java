@@ -131,7 +131,7 @@ public class IoTDBAggregationLargeDataIT {
     insertSQL();
 
     try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");) {
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root")) {
       lastValueAggreWithSingleFilterTest();
       avgAggreWithSingleFilterTest();
       sumAggreWithSingleFilterTest();
@@ -337,7 +337,7 @@ public class IoTDBAggregationLargeDataIT {
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
           "select avg(s0),avg(s1),avg(s2) from root.vehicle.d0 where s1 >= 0");
