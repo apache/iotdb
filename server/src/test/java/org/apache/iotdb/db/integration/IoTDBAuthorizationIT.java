@@ -596,9 +596,8 @@ public class IoTDBAuthorizationIT {
 
         int insertCnt = 20000;
         int batchSize = 500;
-        long time;
 
-        time = System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         for (int i = 0; i < insertCnt; ) {
           for (int j = 0; j < batchSize; j++) {
             userStmt.addBatch(

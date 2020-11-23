@@ -32,12 +32,10 @@ public class StartupChecks {
   public static final StartupCheck checkJMXPort = () -> {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      if (jmxPort == null) {
-        logger.warn("{} missing from {}.sh(Unix or OS X, if you use Windows,"
-                + " check conf/{}.bat)",
-            IoTDBConstant.IOTDB_JMX_PORT, IoTDBConstant.ENV_FILE_NAME,
-            IoTDBConstant.ENV_FILE_NAME);
-      }
+      logger.warn("{} missing from {}.sh(Unix or OS X, if you use Windows,"
+              + " check conf/{}.bat)",
+          IoTDBConstant.IOTDB_JMX_PORT, IoTDBConstant.ENV_FILE_NAME,
+          IoTDBConstant.ENV_FILE_NAME);
     } else {
       logger.info("JMX is enabled to receive remote connection on port {}", jmxPort);
     }

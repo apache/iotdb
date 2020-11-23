@@ -59,8 +59,7 @@ public class BasicOperator extends FilterOperator {
 
   @Override
   public BasicOperator clone() {
-    BasicOperator ret;
-    ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
+    BasicOperator ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
