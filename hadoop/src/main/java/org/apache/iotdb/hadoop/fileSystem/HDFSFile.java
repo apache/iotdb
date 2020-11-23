@@ -122,7 +122,7 @@ public class HDFSFile extends File {
         Path filePath = fileStatus.getPath();
         files.add(new HDFSFile(filePath.toUri().toString()));
       }
-      return files.toArray(new HDFSFile[files.size()]);
+      return files.toArray(new HDFSFile[0]);
     } catch (IOException e) {
       logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
       return null;
@@ -258,13 +258,13 @@ public class HDFSFile extends File {
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     PathFilter pathFilter = path -> path.toUri().toString().endsWith(suffix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     PathFilter pathFilter = path -> path.toUri().toString().startsWith(prefix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   private List<HDFSFile> listFiles(String fileFolder, PathFilter pathFilter) {

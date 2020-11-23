@@ -292,7 +292,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) throws ShutdownException {
+  public void shutdown(long milliseconds) throws ShutdownException {
     try {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -321,8 +321,7 @@ public class StorageEngine implements IService {
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupPath);
+      StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
@@ -380,8 +379,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
