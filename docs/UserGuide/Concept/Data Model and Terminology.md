@@ -118,6 +118,7 @@ Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (incl
 
 <center>**Supported formats of DATETIME-INPUT type timestamp**
 
+
 |Format|
 |:---:|
 |yyyy-MM-dd HH:mm:ss|
@@ -147,6 +148,7 @@ Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (incl
 |ISO8601 standard time format|
 
 </center>
+
 
 IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in the table below:
 

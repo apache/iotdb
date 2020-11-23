@@ -70,7 +70,7 @@ With this connector, you can
 
 To use hive-connector in hive, we should add the hive-connector jar into hive.
 
-After downloading the code of iotdb from <https://github.com/apache/incubator-iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
+After downloading the code of iotdb from <https://github.com/apache/iotdb>, you can use the command of `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true` to get a `hive-connector-X.X.X-jar-with-dependencies.jar`.
 
 Then in hive, use the command of `add jar XXX` to add the dependency. For example:
 

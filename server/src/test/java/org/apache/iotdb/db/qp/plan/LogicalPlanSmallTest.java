@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.plan;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -185,7 +184,7 @@ public class LogicalPlanSmallTest {
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator, 1000);
     IoTDB.metaManager.clear();
-    // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
+    // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.
   }
 
   @Test
@@ -248,7 +247,7 @@ public class LogicalPlanSmallTest {
               + "CONFIGURATION.DESCRIBE.SLIMIT.LIMIT.UNLINK.OFFSET.SOFFSET.FILL.LINEAR.PREVIOUS.PREVIOUSUNTILLAST."
               + "METADATA.TIMESERIES.TIMESTAMP.PROPERTY.WITH.DATATYPE.COMPRESSOR.STORAGE.GROUP.LABEL.ADD."
               + "UPSERT.VALUES.NOW.LINK.INDEX.USING.ON.DROP.MERGE.LIST.USER.PRIVILEGES.ROLE.ALL.OF."
-              + "ALTER.PASSWORD.REVOKE.LOAD.WATERMARK_EMBEDDING.UNSET.TTL.FLUSH.TASK.INFO.DYNAMIC.PARAMETER.VERSION."
+              + "ALTER.PASSWORD.REVOKE.LOAD.WATERMARK_EMBEDDING.UNSET.TTL.FLUSH.TASK.INFO.VERSION."
               + "REMOVE.MOVE.CHILD.PATHS.DEVICES.COUNT.NODES.LEVEL.MIN_TIME.MAX_TIME.MIN_VALUE.MAX_VALUE.AVG."
               + "FIRST_VALUE.SUM.LAST_VALUE.LAST.DISABLE.ALIGN.COMPRESSION.TIME.ATTRIBUTES.TAGS.RENAME.FULL.CLEAR.CACHE."
               + "SNAPSHOT.FOR.SCHEMA.TRACING.OFF where time>=1 and time < 3";
@@ -256,7 +255,6 @@ public class LogicalPlanSmallTest {
       Operator op = parseDriver.parse(sql, ZoneId.systemDefault());
       Assert.assertEquals(DeleteDataOperator.class, op.getClass());
     } catch (ParseCancellationException ignored) {
-
     }
   }
 

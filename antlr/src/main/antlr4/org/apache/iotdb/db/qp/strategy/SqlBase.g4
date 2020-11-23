@@ -40,8 +40,9 @@ statement
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
+    | CREATE INDEX ON prefixPath whereClause? indexWithClause #createIndex //not support yet
+    | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
+
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
@@ -73,7 +74,6 @@ statement
     | SHOW TTL ON prefixPath (COMMA prefixPath)* #showTTLStatement
     | SHOW ALL TTL #showAllTTLStatement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
-    | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
@@ -92,15 +92,7 @@ statement
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
-    | SELECT INDEX func=ID //not support yet
-    LR_BRACKET
-    p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
-    epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
-    RR_BRACKET
-    fromClause
-    whereClause?
-    specialClause? #selectIndexStatement
-    | SELECT selectElements
+    | SELECT topClause? selectElements
     fromClause
     whereClause?
     specialClause? #selectStatement
@@ -218,6 +210,7 @@ andExpression
 predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
+    | (suffixPath | fullPath) indexPredicateClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
@@ -331,13 +324,23 @@ previousUntilLastClause
     ;
 
 indexWithClause
-    : WITH indexValue (COMMA indexValue)?
+    : WITH INDEX OPERATOR_EQ indexName=ID (COMMA property)*
     ;
 
-indexValue
-    : ID OPERATOR_EQ INT
+topClause
+    : TOP INT
     ;
 
+indexPredicateClause
+    : LIKE sequenceClause
+    | CONTAIN sequenceClause WITH TOLERANCE constant
+    (CONCAT sequenceClause WITH TOLERANCE constant)*
+    ;
+
+
+sequenceClause
+    : LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 comparisonOperator
     : type = OPERATOR_GT
@@ -473,8 +476,6 @@ nodeName
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -510,6 +511,10 @@ nodeName
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 nodeNameWithoutStar
@@ -583,8 +588,6 @@ nodeNameWithoutStar
     | FLUSH
     | TASK
     | INFO
-    | DYNAMIC
-    | PARAMETER
     | VERSION
     | REMOVE
     | MOVE
@@ -620,6 +623,10 @@ nodeNameWithoutStar
     | OFF
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     | compressor
+    | GLOBAL
+    | PARTITION
+    | DESC
+    | ASC
     ;
 
 dataType
@@ -996,15 +1003,6 @@ INFO
     : I N F O
     ;
 
-DYNAMIC
-    : D Y N A M I C
-    ;
-
-PARAMETER
-    : P A R A M E T E R
-    ;
-
-
 VERSION
     : V E R S I O N
     ;
@@ -1190,6 +1188,26 @@ DESC
     ;
 ASC
     : A S C
+    ;
+
+TOP
+    : T O P
+    ;
+
+CONTAIN
+    : C O N T A I N
+    ;
+
+CONCAT
+    : C O N C A T
+    ;
+
+LIKE
+    : L I K E
+    ;
+
+TOLERANCE
+    : T O L E R A N C E
     ;
 //============================
 // End of the keywords list

@@ -131,6 +131,7 @@ Then the binary version (including both server and cli) can be found at **distri
 
 > NOTE: Directories "thrift/target/generated-sources/thrift" and "antlr/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
+
 ### Configurations
 
 configuration files are under "conf" folder
@@ -384,3 +385,18 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 ```
 select * from root.fit.d1
 ```
+
+
+# Frequent Questions for Compiling
+see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
+
+# Contact Us
+### QQ Group
+
+* Apache IoTDB User Group: 659990460
+
+### Wechat Group
+
+* Add friend: tietouqiao, and then we'll invite you to the group.
+
+see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

@@ -26,7 +26,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -58,8 +57,6 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.CompressionRatio;
-import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -95,6 +92,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -271,6 +269,10 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
+      case CREATE_INDEX:
+        throw new QueryProcessException("Create index hasn't been supported yet");
+      case DROP_INDEX:
+        throw new QueryProcessException("Drop index hasn't been supported yet");
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -359,6 +361,8 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
+      } else if (queryPlan instanceof QueryIndexPlan) {
+        throw new QueryProcessException("Query index hasn't been supported yet");
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);
@@ -386,8 +390,6 @@ public class PlanExecutor implements IPlanExecutor {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
-      case DYNAMIC_PARAMETER:
-        return processShowDynamicParameterQuery();
       case FLUSH_TASK_INFO:
         return processShowFlushTaskInfo();
       case VERSION:
@@ -438,14 +440,14 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_COLUMN, false),
                 new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.TEXT);
+      Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
+      field1.setIntV(getPathsNum(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -636,52 +638,6 @@ public class PlanExecutor implements IPlanExecutor {
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);
     return singleDataSet;
-  }
-
-  private QueryDataSet processShowDynamicParameterQuery() {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Arrays.asList(new PartialPath(COLUMN_PARAMETER, false),
-                new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
-
-    int timestamp = 0;
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "memtable number",
-        IoTDBDescriptor.getInstance().getConfig().getMaxMemtableNumber() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "tsfile size threshold",
-        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold() + "B");
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "compression ratio",
-        Double.toString(CompressionRatio.getInstance().getRatio()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "storage group number",
-        Integer.toString(IoTDB.metaManager.getAllStorageGroupPaths().size()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp++,
-        "timeseries number",
-        Integer.toString(IoTDBConfigDynamicAdapter.getInstance().getTotalTimeseries()));
-    addRowRecordForShowQuery(
-        listDataSet,
-        timestamp,
-        "maximal timeseries number among storage groups",
-        Long.toString(IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()));
-    return listDataSet;
   }
 
   private QueryDataSet processShowFlushTaskInfo() {
@@ -899,20 +855,14 @@ public class PlanExecutor implements IPlanExecutor {
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws QueryProcessException {
     try {
-      if (!IoTDB.metaManager.isPathExist(path)) {
-        throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
-      }
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
   }
 
-  private MNode getSeriesSchemas(InsertPlan insertPlan)
-      throws MetadataException {
-    return IoTDB.metaManager
-        .getSeriesSchemasAndReadLockDevice(insertPlan);
+  private MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
   @Override
@@ -922,13 +872,6 @@ public class PlanExecutor implements IPlanExecutor {
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
-
-      //check insert plan
-      if (insertRowPlan.getValues().length == 0) {
-        logger.warn("Can't insert row with only time/timestamp");
-        return;
-      }
-
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
         // check if all path not exist exceptions
