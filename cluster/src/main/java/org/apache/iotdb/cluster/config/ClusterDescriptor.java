@@ -158,7 +158,7 @@ public class ClusterDescriptor {
       boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
       if (!isInvalidSeedIp) {
         String newSeedIP = hostnameToIP(seedIP);
-        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2]+ ":" + splits[3]);
+        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2] + ":" + splits[3]);
       } else {
         newSeedUrls.add(seedUrl);
       }
@@ -196,13 +196,13 @@ public class ClusterDescriptor {
     }
     config.setClusterRpcIp(properties.getProperty("cluster_rpc_ip", config.getClusterRpcIp()));
 
-    config.setInternalMetaPort(Integer.parseInt(properties.getProperty("internal_meta_port",
+    config.setInternalMetaPort(Integer.parseInt(properties.getProperty(OPTION_INTERVAL_META_PORT,
         String.valueOf(config.getInternalMetaPort()))));
 
-    config.setInternalDataPort(Integer.parseInt(properties.getProperty("internal_data_port",
+    config.setInternalDataPort(Integer.parseInt(properties.getProperty(OPTION_INTERVAL_DATA_PORT,
         Integer.toString(config.getInternalDataPort()))));
 
-    config.setClusterRpcPort(Integer.parseInt(properties.getProperty("cluster_rpc_port",
+    config.setClusterRpcPort(Integer.parseInt(properties.getProperty(OPTION_CLUSTER_RPC_PORT,
         Integer.toString(config.getClusterRpcPort()))));
 
     config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(

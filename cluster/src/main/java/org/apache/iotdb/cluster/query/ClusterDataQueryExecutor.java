@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;

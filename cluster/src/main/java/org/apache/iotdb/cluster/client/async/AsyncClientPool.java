@@ -202,6 +202,7 @@ public class AsyncClientPool {
     }
   }
 
+  @SuppressWarnings("squid:S1135")
   void onComplete(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     // TODO: if the heartbeat client pool completes, also unblock another pool
