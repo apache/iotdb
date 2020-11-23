@@ -255,7 +255,7 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     String deviceId = insertRowPlan.getDeviceId().getFullPath();
-    long unsealedResourceIncrement = 
+    long unsealedResourceIncrement =
         tsFileResource.estimateRamIncrement(deviceId);
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -521,8 +521,8 @@ public class TsFileProcessor {
 
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0 
-          ? new NotifyFlushMemTable() 
+      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
+          ? new NotifyFlushMemTable()
           : workMemTable;
 
       try {
@@ -709,15 +709,13 @@ public class TsFileProcessor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void flushOneMemTable() {
-    IMemTable memTableToFlush;
-    memTableToFlush = flushingMemTables.getFirst();
+    IMemTable memTableToFlush = flushingMemTables.getFirst();
 
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
       try {
-        MemTableFlushTask flushTask;
         writer.mark();
-        flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+        MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         if (writer == null) {

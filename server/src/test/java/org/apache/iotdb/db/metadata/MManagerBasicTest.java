@@ -336,7 +336,6 @@ public class MManagerBasicTest {
   @Test
   public void testGetStorageGroupNameByAutoLevel() {
     int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
-    boolean caughtException;
 
     try {
       assertEquals("root.laptop",
@@ -346,7 +345,7 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    caughtException = false;
+    boolean caughtException = false;
     try {
       MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
     } catch (MetadataException e) {
@@ -405,7 +404,8 @@ public class MManagerBasicTest {
         "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
         "[root.laptop.b1.d1, root.laptop.b1.d2]",
         "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
-        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]"
+        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]",
+        "[]"
     };
 
     try {
@@ -441,6 +441,7 @@ public class MManagerBasicTest {
       assertEquals(res[5], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b1")).toString());
       assertEquals(res[6], manager.getChildNodePathInNextLevel(new PartialPath("root.v*.*")).toString());
       assertEquals(res[7], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
+      assertEquals(res[8], manager.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

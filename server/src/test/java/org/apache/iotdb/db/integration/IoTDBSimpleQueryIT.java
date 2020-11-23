@@ -594,7 +594,8 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testUseSameStatement() throws SQLException {
+  public void testUseSameStatement() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

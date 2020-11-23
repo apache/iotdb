@@ -735,7 +735,7 @@ The result set is：
 
 #### Other ResultSet Format
 
-In addition, IoTDB supports two other result set format: 'align by device' and 'disable align'.
+In addition, IoTDB supports two other results set format: 'align by device' and 'disable align'.
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
@@ -745,9 +745,9 @@ The SQL statement is:
 select s1,s2 from root.sg1.* align by device
 ```
 
-For more syntax description, please read SQL REFERENCE.
+For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
-The 'disable align' indicates that there are 3 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
+The 'disable align' indicates that there are 2 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
 The SQL statement is:
 
@@ -755,7 +755,7 @@ The SQL statement is:
 select * from root.sg1 where time > 10 disable align
 ```
 
-For more syntax description, please read SQL REFERENCE.
+For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 ####  Error Handling
 
