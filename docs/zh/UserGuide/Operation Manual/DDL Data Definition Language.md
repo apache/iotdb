@@ -32,7 +32,7 @@ IoTDB > set storage group to root.sgcc
 
 根据以上两条SQL语句，我们可以创建出两个存储组。
 
-需要注意的是，当系统中已经存在某个存储组或存储组的父亲节点或者孩子节点被设置为存储组的情况下，用户不可创建存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
+需要注意的是，存储组的父子节点都不能再设置存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
 
 ```
 IoTDB> set storage group to root.ln.wf01
