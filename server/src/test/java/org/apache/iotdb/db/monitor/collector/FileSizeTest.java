@@ -51,8 +51,6 @@ public class FileSizeTest {
   @Ignore
   @Test
   public void testGetFileSizesInByte() {
-    long dataSizeBefore;
-    long dataSizeAfter;
     boolean isWriteSuccess = true;
     File testFile = new File(TEST_FILE_PATH);
     if (testFile.exists()) {
@@ -71,7 +69,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
 
-    dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
+    long dataSizeBefore = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
     byte[] contentInBytes = TEST_FILE_CONTENT.getBytes();
     // insert something into the test file under data dir
     try (FileOutputStream fileOutputStream = new FileOutputStream(testFile)) {
@@ -82,7 +80,7 @@ public class FileSizeTest {
       e.printStackTrace();
     }
     // calculate the delta of data dir file size
-    dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
+    long dataSizeAfter = FileSize.getInstance().getFileSizesInByte().get(FileSizeConstants.SYS);
     long deltaSize = dataSizeAfter - dataSizeBefore;
 
     if (isWriteSuccess) {

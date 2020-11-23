@@ -656,8 +656,7 @@ public abstract class AbstractCli {
     } else {
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
-          String tmp;
-          tmp = resultSet.getString(i);
+          String tmp = resultSet.getString(i);
           if (tmp == null) {
             tmp = NULL;
           }

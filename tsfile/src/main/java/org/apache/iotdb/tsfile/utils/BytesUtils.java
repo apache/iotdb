@@ -857,11 +857,10 @@ public class BytesUtils {
    * @return short number
    */
   public static short bytesToShort(byte[] b) {
-    short s = 0;
     short s0 = (short) (b[1] & 0xff);
     short s1 = (short) (b[0] & 0xff);
     s1 <<= 8;
-    s = (short) (s0 | s1);
+    short s = (short) (s0 | s1);
     return s;
   }
 
