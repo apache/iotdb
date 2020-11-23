@@ -131,32 +131,37 @@ public class FilePathUtils {
     }
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     for (int i = 0; i < newRecord.getFields().size(); i++) {
-      TSDataType dataType = newRecord.getFields().get(i).getDataType();
-      AggregateResult aggRet = AggregateResultFactory.getAggrResultByName(
-              plan.getAggregations().get(i), dataType);
-      switch (dataType) {
-        case TEXT:
-          aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
-          break;
-        case INT32:
-          aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
-          break;
-        case INT64:
-          aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
-          break;
-        case FLOAT:
-          aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
-          break;
-        case DOUBLE:
-          aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
-          break;
-        case BOOLEAN:
-          aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataType.toString());
+      if (newRecord.getFields().get(i) == null) {
+        aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
+            plan.getAggregations().get(i), plan.getDeduplicatedDataTypes().get(i)));
+      } else {
+        TSDataType dataType = newRecord.getFields().get(i).getDataType();
+        AggregateResult aggRet = AggregateResultFactory.getAggrResultByName(
+            plan.getAggregations().get(i), dataType);
+        switch (dataType) {
+          case TEXT:
+            aggRet.setBinaryValue(newRecord.getFields().get(i).getBinaryV());
+            break;
+          case INT32:
+            aggRet.setIntValue(newRecord.getFields().get(i).getIntV());
+            break;
+          case INT64:
+            aggRet.setLongValue(newRecord.getFields().get(i).getLongV());
+            break;
+          case FLOAT:
+            aggRet.setFloatValue(newRecord.getFields().get(i).getFloatV());
+            break;
+          case DOUBLE:
+            aggRet.setDoubleValue(newRecord.getFields().get(i).getDoubleV());
+            break;
+          case BOOLEAN:
+            aggRet.setBooleanValue(newRecord.getFields().get(i).getBoolV());
+            break;
+          default:
+            throw new UnSupportedDataTypeException(dataType.toString());
+        }
+        aggregateResultList.add(aggRet);
       }
-      aggregateResultList.add(aggRet);
     }
     return mergeRecordByPath(aggregateResultList, finalPaths, pathIndex);
   }

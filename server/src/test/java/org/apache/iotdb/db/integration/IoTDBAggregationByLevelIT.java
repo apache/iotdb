@@ -227,6 +227,52 @@ public class IoTDBAggregationByLevelIT {
   }
 
   @Test
+  public void groupByLevelWithTimeIntervalTest() throws Exception {
+    String[] retArray1 = new String[]{
+        "0.0",
+        "88.24",
+        "105.5",
+        "0.0",
+        "0.0",
+        "125.5",
+    };
+    String[] retArray2 = new String[]{
+        "null,null",
+        "null,100",
+        "200,200",
+        "300,null",
+        "null,null",
+        "null,500",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+
+      statement.execute("select sum(temperature) from root.sg2.* GROUP BY ([0, 600), 100ms), level=1");
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2) ;
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
+      cnt = 0;
+      statement.execute("select max_time(temperature) from root.*.* GROUP BY ([0, 600), 100ms), level=1");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(2) + "," +
+              resultSet.getString(3);
+          Assert.assertEquals(retArray2[cnt], ans);
+          cnt++;
+        }
+      }
+    }
+
+  }
+
+  @Test
   public void mismatchedFuncGroupByLevelTest() throws Exception {
     String[] retArray = new String[]{
         "true",
@@ -250,6 +296,12 @@ public class IoTDBAggregationByLevelIT {
         processor.parseSQLToPhysicalPlan("select avg(status) from root.sg2.* GROUP BY level=1");
       } catch (Exception e) {
         Assert.assertEquals("Aggregate among unmatched data types", e.getMessage());
+      }
+
+      try {
+        processor.parseSQLToPhysicalPlan("select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
+      } catch (Exception e) {
+        Assert.assertEquals("Aggregation function is restricted to one if group by level clause exists", e.getMessage());
       }
     }
 
