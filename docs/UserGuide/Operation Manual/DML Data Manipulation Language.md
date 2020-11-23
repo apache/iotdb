@@ -172,7 +172,7 @@ select count(status) from root.ln.wf01.wt01;
 ##### Aggregation By Level
 
 **Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
-For all timeseries path, by convention, "level=0" represents *root* level. 
+For all timeseries paths, by convention, "level=0" represents *root* level. 
 That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
 
 For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
