@@ -1105,7 +1105,7 @@ public class CMManager extends MManager {
           List<PartialPath> fullPathStrs = getMatchedPaths(pathStr);
           if (fullPathStrs.isEmpty()) {
             nonExistPaths.add(pathStr);
-            logger.error("Path {} is not found.", pathStr);
+            logger.debug("Path {} is not found.", pathStr);
           } else {
             fullPaths.addAll(fullPathStrs);
           }
@@ -1181,11 +1181,11 @@ public class CMManager extends MManager {
         getMatchedPaths(plan.getPaths());
     List<PartialPath> fullPaths = getMatchedPathsRet.left;
     List<PartialPath> nonExistPath = getMatchedPathsRet.right;
+    plan.setPaths(fullPaths);
     if (!nonExistPath.isEmpty()) {
       throw new PathNotExistException(nonExistPath.stream().map(PartialPath::getFullPath).collect(
           Collectors.toList()));
     }
-    plan.setPaths(fullPaths);
   }
 
   @Override

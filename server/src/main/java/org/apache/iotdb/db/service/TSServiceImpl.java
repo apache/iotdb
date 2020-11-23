@@ -1327,7 +1327,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         statusList.add(status);
       } catch (Exception e) {
-        logger.error("meet error when insert in batch", e);
         isAllSuccessful = false;
         statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
       }

@@ -470,6 +470,7 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
+    StringBuilder errMsgBuilder = new StringBuilder("");
     if (Config.DEFAULT_CACHE_LEADER_MODE) {
       Map<String, TSInsertStringRecordsReq> deviceGroup = new HashMap<>();
       for (int i = 0; i < deviceIds.size(); i++) {
@@ -484,7 +485,13 @@ public class Session {
           getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
         } catch (RedirectException e) {
           handleRedirection(entry.getKey(), e);
+        } catch (StatementExecutionException e) {
+          errMsgBuilder.append(e.getMessage());
         }
+      }
+      String errMsg = errMsgBuilder.toString();
+      if (!errMsg.isEmpty()) {
+        throw new StatementExecutionException(errMsg);
       }
     } else {
       TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,

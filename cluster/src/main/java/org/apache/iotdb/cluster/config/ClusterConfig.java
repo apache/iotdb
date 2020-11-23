@@ -311,7 +311,7 @@ public class ClusterConfig {
     return enableAutoCreateSchema;
   }
 
-  void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
+  public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 

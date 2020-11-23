@@ -28,6 +28,7 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +75,9 @@ public class CommonUtils {
    * @return
    */
   public static long getUsableSpace(String dir) {
-    return FSFactoryProducer.getFSFactory().getFile(dir).getFreeSpace();
+    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+    dirFile.mkdirs();
+    return dirFile.getFreeSpace();
   }
 
   public static boolean hasSpace(String dir) {

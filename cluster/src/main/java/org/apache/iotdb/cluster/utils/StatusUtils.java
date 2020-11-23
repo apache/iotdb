@@ -111,7 +111,7 @@ public class StatusUtils {
         status.setMessage("Storage group processor related error. ");
         break;
       case STORAGE_GROUP_ERROR:
-        status.setMessage("Storage group related error. ");
+        status.setMessage("No associated storage group. ");
         break;
       case STORAGE_ENGINE_ERROR:
         status.setMessage("Storage engine related error. ");

@@ -64,10 +64,14 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
+    StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new BatchExecutionException(statuses, status.message);
+        errMsgs.append(status.getMessage()).append(";");
       }
+    }
+    if (errMsgs.length() > 0) {
+      throw new BatchExecutionException(statuses, errMsgs.toString());
     }
   }
 
