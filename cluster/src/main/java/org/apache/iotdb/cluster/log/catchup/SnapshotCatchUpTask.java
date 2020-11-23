@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.cluster.log.catchup;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -61,7 +64,11 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
-    request.setSnapshotBytes(snapshot.serialize());
+    ByteBuffer data = snapshot.serialize();
+    if (logger.isDebugEnabled()) {
+      logger.debug("do snapshot catch up with size {}", data.array().length);
+    }
+    request.setSnapshotBytes(data);
 
     synchronized (raftMember.getTerm()) {
       // make sure this node is still a leader
@@ -95,6 +102,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       succeed.wait(SEND_SNAPSHOT_WAIT_MS);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("send snapshot to node {} success {}", raftMember.getThisNode(), succeed.get());
     }
     return succeed.get();
   }

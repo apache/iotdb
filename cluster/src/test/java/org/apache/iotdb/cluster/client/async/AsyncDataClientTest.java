@@ -52,7 +52,7 @@ public class AsyncDataClientTest {
 
     client.onError(new Exception());
     assertNull(client.getCurrMethod());
-    assertTrue(client.isReady());
+    assertFalse(client.isReady());
 
     assertEquals(
         "DataClient{node=ClusterNode{ ip='192.168.0.0', metaPort=9003, nodeIdentifier=0, dataPort=40010, clientPort=0}}",

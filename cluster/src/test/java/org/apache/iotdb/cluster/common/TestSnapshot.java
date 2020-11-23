@@ -30,18 +30,22 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 public class TestSnapshot extends Snapshot {
 
   private int id;
+  private ByteBuffer data;
 
   public TestSnapshot() {
+    data = ByteBuffer.wrap(new byte[8192*2048]);
   }
 
   public TestSnapshot(int id) {
     this.id = id;
+    data = ByteBuffer.wrap(new byte[8192*2048]);
   }
 
   @Override
   public ByteBuffer serialize() {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES + 8192 * 2048);
     byteBuffer.putInt(id);
+    byteBuffer.put(data);
     byteBuffer.flip();
     return byteBuffer;
   }
@@ -49,6 +53,7 @@ public class TestSnapshot extends Snapshot {
   @Override
   public void deserialize(ByteBuffer buffer) {
     id = buffer.getInt();
+    data.put(buffer);
   }
 
   @Override

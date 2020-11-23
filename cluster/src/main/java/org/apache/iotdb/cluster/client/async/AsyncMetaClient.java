@@ -70,6 +70,7 @@ public class AsyncMetaClient extends AsyncClient {
     }
   }
 
+  @SuppressWarnings("squid:S1135")
   @Override
   public void onError(Exception e) {
     super.onError(e);
@@ -98,6 +99,12 @@ public class AsyncMetaClient extends AsyncClient {
     return "MetaClient{" +
         "node=" + node +
         '}';
+  }
+
+
+  public void close() {
+    ___transport.close();
+    ___currentMethod = null;
   }
 
   public Node getNode() {

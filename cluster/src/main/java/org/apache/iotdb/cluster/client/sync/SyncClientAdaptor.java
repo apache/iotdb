@@ -117,7 +117,7 @@ public class SyncClientAdaptor {
       return resultRef.get();
     } catch (NullPointerException e) {
       logger.error("match term null exception", e);
-      throw e;
+      return false;
     }
   }
 

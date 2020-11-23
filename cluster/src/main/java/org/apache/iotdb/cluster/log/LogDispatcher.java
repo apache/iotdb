@@ -225,19 +225,7 @@ public class LogDispatcher {
           for (SendLogRequest request : currBatch) {
             request.getAppendEntryRequest().setEntry(request.serializedLogFuture.get());
           }
-
-          if (currBatch.size() > 1) {
-            if (useBatchInLogCatchUp) {
-              sendLogs(currBatch);
-            } else {
-              for (SendLogRequest batch : currBatch) {
-                sendLog(batch);
-              }
-            }
-          } else {
-            sendLog(currBatch.get(0));
-          }
-
+          sendBatchLogs(currBatch);
           currBatch.clear();
         }
       } catch (InterruptedException e) {
@@ -348,6 +336,20 @@ public class LogDispatcher {
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END
               .calOperationCostTimeFromStart(currBatch.get(prevIndex).getLog().getCreateTime());
         }
+      }
+    }
+
+    private void sendBatchLogs(List<SendLogRequest> currBatch) throws TException {
+      if (currBatch.size() > 1) {
+        if (useBatchInLogCatchUp) {
+          sendLogs(currBatch);
+        } else {
+          for (SendLogRequest batch : currBatch) {
+            sendLog(batch);
+          }
+        }
+      } else {
+        sendLog(currBatch.get(0));
       }
     }
 
