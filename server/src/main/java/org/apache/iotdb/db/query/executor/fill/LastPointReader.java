@@ -52,9 +52,9 @@ public class LastPointReader {
 
   private QueryDataSource dataSource;
 
-  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();;
+  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
 
-  public LastPointReader() {
+    public LastPointReader() {
 
   }
 

@@ -528,6 +528,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param partitionTable
    * @throws TTransportException
    */
+  @SuppressWarnings("java:S1135")
   public void buildDataGroupMembers(PartitionTable partitionTable) {
     setPartitionTable(partitionTable);
     // TODO-Cluster: if there are unchanged members, do not stop and restart them

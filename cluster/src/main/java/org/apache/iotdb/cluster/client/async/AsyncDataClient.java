@@ -72,6 +72,7 @@ public class AsyncDataClient extends AsyncClient {
 
   }
 
+  @SuppressWarnings("squid:S1135")
   @Override
   public void onError(Exception e) {
     super.onError(e);
@@ -80,6 +81,11 @@ public class AsyncDataClient extends AsyncClient {
       //TODO: if e instance of network failure
       pool.onError(node);
     }
+  }
+
+  public void close() {
+    ___transport.close();
+    ___currentMethod = null;
   }
 
   public static class FactoryAsync extends AsyncClientFactory {
@@ -133,7 +139,7 @@ public class AsyncDataClient extends AsyncClient {
       logger.warn("Client {} is running {} and will timeout at {}", hashCode(), ___currentMethod,
           new Date(___currentMethod.getTimeoutTimestamp()));
     }
-    return ___currentMethod == null;
+    return ___currentMethod == null && !hasError();
   }
 
   TAsyncMethodCall<Object> getCurrMethod() {

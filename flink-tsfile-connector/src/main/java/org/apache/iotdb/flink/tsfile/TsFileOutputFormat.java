@@ -51,6 +51,7 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 	protected TSFileConfig config;
 
 	protected transient Configuration hadoopConf = null;
+	private FileOutputStream fos = null;
 	protected transient TsFileWriter writer = null;
 
 	public TsFileOutputFormat(String path, Schema schema, TSFileConfig config) {
@@ -82,7 +83,8 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 					new org.apache.hadoop.fs.Path(new URI(actualFilePath.getPath())), hadoopConf, true);
 			} else {
 				// Local File System
-				out = new LocalTsFileOutput(new FileOutputStream(actualFilePath.getPath()));
+				fos = new FileOutputStream(actualFilePath.getPath());
+				out = new LocalTsFileOutput(fos);
 			}
 		} catch (URISyntaxException e) {
 			throw new RuntimeException(e);
@@ -93,8 +95,17 @@ public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 	@Override
 	public void close() throws IOException {
 		super.close();
-		writer.close();
-		writer = null;
+		try {
+			if (writer != null) {
+				writer.close();
+				writer = null;
+			}
+		} finally {
+			if (fos != null) {
+				fos.close();
+				fos = null;
+			}
+		}
 	}
 
 	@Override

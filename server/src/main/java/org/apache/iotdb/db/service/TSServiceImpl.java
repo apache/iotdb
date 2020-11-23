@@ -1316,7 +1316,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setValues(
-            req.getValuesList().get(i).toArray(new Object[req.getValuesList().get(i).size()]));
+            req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status == null) {
@@ -1423,7 +1423,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-      plan.setValues(req.getValues().toArray(new Object[req.getValues().size()]));
+      plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());

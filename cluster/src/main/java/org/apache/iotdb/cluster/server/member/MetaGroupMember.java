@@ -1536,6 +1536,7 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param planGroupMap sub-plan -> data group pairs
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
       PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
@@ -1580,12 +1581,10 @@ public class MetaGroupMember extends RaftMember {
             tmpStatus.getCode(), entry.getValue().getHeader(),
             tmpStatus.getMessage(), tmpStatus.subStatus));
       }
-      if (parentPlan instanceof InsertTabletPlan) {
-        if (tmpStatus.isSetRedirectNode() &&
-            ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
-                .getMaxTime()) {
-          endPoint = tmpStatus.getRedirectNode();
-        }
+      if (parentPlan instanceof InsertTabletPlan && tmpStatus.isSetRedirectNode() &&
+          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
+              .getMaxTime()) {
+        endPoint = tmpStatus.getRedirectNode();
       }
     }
 

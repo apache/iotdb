@@ -107,7 +107,7 @@ public class IoTDBRecoverUnclosedIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +

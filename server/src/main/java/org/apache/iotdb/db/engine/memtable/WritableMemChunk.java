@@ -193,7 +193,6 @@ public class WritableMemChunk implements IWritableMemChunk {
           .append(System.lineSeparator());
       out.append("Last point:").append(getSortedTVList().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
-      ;
     }
     return out.toString();
   }

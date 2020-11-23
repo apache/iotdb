@@ -44,7 +44,7 @@ public class ReadWriteForEncodingUtils {
     int max = 1;
     for (int num : list) {
       int bitWidth = 32 - Integer.numberOfLeadingZeros(num);
-      max = bitWidth > max ? bitWidth : max;
+      max = Math.max(bitWidth, max);
     }
     return max;
   }
@@ -59,7 +59,7 @@ public class ReadWriteForEncodingUtils {
     int max = 1;
     for (long num : list) {
       int bitWidth = 64 - Long.numberOfLeadingZeros(num);
-      max = bitWidth > max ? bitWidth : max;
+      max = Math.max(bitWidth, max);
     }
     return max;
   }

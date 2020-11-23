@@ -74,10 +74,13 @@ public class CatchUpTask implements Runnable {
     logger.debug("Checking the match index of {}", node);
     long localFirstIndex = 0;
     try {
-      localFirstIndex = raftMember.getLogManager().getFirstIndex();
-      lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
-      hi = raftMember.getLogManager().getLastLogIndex() + 1;
-      logs = raftMember.getLogManager().getEntries(lo, hi);
+      // to avoid snapshot catch up when index is volatile
+      synchronized (raftMember.getLogManager()) {
+        localFirstIndex = raftMember.getLogManager().getFirstIndex();
+        lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
+        hi = raftMember.getLogManager().getLastLogIndex() + 1;
+        logs = raftMember.getLogManager().getEntries(lo, hi);
+      }
       // this may result from peer's match index being changed concurrently, making the peer
       // actually catch up now
       if (logs.isEmpty()) {
@@ -115,7 +118,8 @@ public class CatchUpTask implements Runnable {
     }
 
     if (logger.isInfoEnabled()) {
-      logger.info("{}: {} matches at {}", raftMember.getName(), node, logs.get(index).getCurrLogIndex() - 1);
+      logger.info("{}: {} matches at {}", raftMember.getName(), node,
+          logs.get(index).getCurrLogIndex() - 1);
     }
 
     peer.setMatchIndex(logs.get(index).getCurrLogIndex() - 1);
@@ -132,14 +136,14 @@ public class CatchUpTask implements Runnable {
     return true;
   }
 
-  //TODO use log in disk to snapshot first, if the log not found on disk, then use snapshot.
+  @SuppressWarnings("squid:S1135")
   private boolean judgeUseLogsInDiskToCatchUp() {
+    //TODO use log in disk to snapshot first, if the log not found on disk, then use snapshot.
     if (!ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
       return false;
     }
-    return ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp();
-
     // TODO judge the cost of snapshot and logs in disk
+    return ClusterDescriptor.getInstance().getConfig().isEnableUsePersistLogOnDiskToCatchUp();
   }
 
   private List<Log> getLogsInStableEntryManager(long startIndex, long endIndex) {
@@ -152,6 +156,7 @@ public class CatchUpTask implements Runnable {
 
   /**
    * return the index of log whose previous log is matched, or -1 when can not found
+   *
    * @param logs
    * @return
    * @throws LeaderUnknownException

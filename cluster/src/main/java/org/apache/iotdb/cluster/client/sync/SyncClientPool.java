@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
@@ -123,7 +125,11 @@ public class SyncClientPool {
     try {
       return syncClientFactory.getSyncClient(node, this);
     } catch (TTransportException e) {
-      logger.error("Cannot open transport for client", e);
+      if (e.getCause() instanceof ConnectException || e.getCause() instanceof SocketTimeoutException) {
+        logger.debug("Cannot open transport for client {} : {}", node, e.getMessage());
+      } else {
+        logger.error("Cannot open transport for client {}", node, e);
+      }
       nodeClientNumMap.put(node, nodeClientNum);
       return null;
     }

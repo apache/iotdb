@@ -150,6 +150,24 @@ Here we show the commonly used interfaces and their parameters in the Native API
         List<List<String>> measurementsList, List<List<TSDataType>> typesList,
         List<List<Object>> valuesList)
   ```
+  
+* Raw data query. Time interval include startTime and exclude endTime
+
+  ```
+  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ```
+
+* Execute query statement
+
+  ```
+  SessionDataSet executeQueryStatement(String sql)
+  ```
+  
+* Execute non query statement
+
+  ```
+  void executeNonQueryStatement(String sql)
+  ```
 
 ## Native APIs for profiling network cost
 
@@ -217,8 +235,8 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 ## 0.9-0.10 Session Interface Updates
 
-Significant chages are made in IoTDB session of version 0.10 compared to version 0.9.
-A large numbers of new interfaces are added, and some old interfaces have new names or parameters.
+Significant changes are made in IoTDB session of version 0.10 compared to version 0.9.
+A number of new interfaces are added, and some old interfaces have new names or parameters.
 Besides, all exceptions thrown by session interfaces are changed from *IoTDBSessionExeception* to *IoTDBConnectionException* or *StatementExecutionExeception*.
 The detailed modifications are listed as follows.
 
