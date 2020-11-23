@@ -53,9 +53,6 @@ public class Cli extends AbstractCli {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     commandLine = null;
 
-    String[] newArgs;
-    String[] newArgs2;
-
     if (args == null || args.length == 0) {
       println(
           "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
@@ -65,8 +62,8 @@ public class Cli extends AbstractCli {
       return;
     }
     init();
-    newArgs = removePasswordArgs(args);
-    newArgs2 = processExecuteArgs(newArgs);
+    String[] newArgs = removePasswordArgs(args);
+    String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;
