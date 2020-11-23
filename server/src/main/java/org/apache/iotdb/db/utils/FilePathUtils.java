@@ -168,7 +168,7 @@ public class FilePathUtils {
       return Collections.emptyList();
     }
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-      entry.getValue().reset();
+      finalPaths.put(entry.getKey(), null);
     }
 
     List<AggregateResult> resultSet = new ArrayList<>();
