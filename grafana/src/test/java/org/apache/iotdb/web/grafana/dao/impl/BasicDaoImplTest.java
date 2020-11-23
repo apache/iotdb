@@ -23,8 +23,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.Assert.*;
-
 public class BasicDaoImplTest {
 
 
@@ -37,21 +35,21 @@ public class BasicDaoImplTest {
     }
 
     @Test
-    public void getInternal() {
+    public void getInterval() {
         BasicDaoImpl impl = new BasicDaoImpl(null);
         ReflectionTestUtils.setField(impl, "isDownSampling", true);
         ReflectionTestUtils.setField(impl, "interval", "1m");
 
-        String internal1 = impl.getInternal(0);
-        assert internal1.equals("");
+        String interval1 = impl.getInterval(0);
+        assert interval1.equals("");
 
-        String internal2 = impl.getInternal(3);
-        assert internal2.equals("1m");
+        String interval2 = impl.getInterval(3);
+        assert interval2.equals("1m");
 
-        String internal3 = impl.getInternal(25);
-        assert internal3.equals("1h");
+        String interval3 = impl.getInterval(25);
+        assert interval3.equals("1h");
 
-        String internal4 = impl.getInternal(24 * 30 + 1);
-        assert internal4.equals("1d");
+        String interval4 = impl.getInterval(24 * 30 + 1);
+        assert interval4.equals("1d");
     }
 }

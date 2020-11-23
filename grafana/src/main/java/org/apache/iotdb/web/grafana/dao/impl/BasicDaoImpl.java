@@ -142,14 +142,14 @@ public class BasicDaoImpl implements BasicDao {
         from * timestampRadioX, to * timestampRadioX);
     String columnName = "root." + s;
 
-    String internalLocal = getInternal(hours);
-    if (!internalLocal.equals("")) {
+    String intervalLocal = getInterval(hours);
+    if (!intervalLocal.equals("")) {
       sql = String.format(
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
           s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
           from * timestampRadioX, to * timestampRadioX,
-          from * timestampRadioX, to * timestampRadioX, internalLocal);
+          from * timestampRadioX, to * timestampRadioX, intervalLocal);
       columnName = function + "(root." + s + ")";
     }
 
@@ -157,7 +157,7 @@ public class BasicDaoImpl implements BasicDao {
     return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
   }
 
-  public String getInternal(final long hours) {
+  public String getInterval(final long hours) {
     if (!isDownSampling || !(hours > 1)) {
       return "";
     }
