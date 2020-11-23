@@ -23,7 +23,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -31,7 +30,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class IoTDBAggregationByLevel {
+public class IoTDBAggregationByLevelIT {
   private Planner processor = new Planner();
   private static final String[] dataSet = new String[]{
       "SET STORAGE GROUP TO root.sg1",
@@ -58,7 +57,6 @@ public class IoTDBAggregationByLevel {
       "INSERT INTO root.sg2.d2(timestamp,temperature) values(800,61.22)",
   };
 
-  private static final String TIMESTAMP_STR = "Time";
   private static final double DOUBLE_PRECISION = 0.001d;
 
   @Before

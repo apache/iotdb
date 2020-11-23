@@ -380,7 +380,7 @@ public class PhysicalGenerator {
       } else if (queryOperator.isGroupByLevel()){
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
         try {
-          if (!VerifyAllAggregationDataTypesEqual(queryOperator)) {
+          if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
             throw new QueryProcessException("Aggregate among unmatched data types");
           }
         } catch (MetadataException e) {
@@ -796,7 +796,7 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
-  private boolean VerifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
+  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
       throws MetadataException{
     List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
     if (aggregations.isEmpty()) {
