@@ -62,7 +62,7 @@ public interface IWritableMemChunk {
   MeasurementSchema getSchema();
 
   /**
-   * served for query and flush requests.
+   * served for query requests.
    * <p>
    * if tv list has been sorted, just return reference of it
    * <p>
@@ -75,8 +75,16 @@ public interface IWritableMemChunk {
    *
    * @return sorted tv list
    */
-  TVList getSortedTVList();
+  TVList getSortedTVListForQuery();
 
+
+  /**
+   * served for flush requests.
+   * The logic is just same as getSortedTVListForQuery, but without add reference count
+   *
+   * @return sorted tv list
+   */
+  TVList getSortedTVListForFlush();
 
   default TVList getTVList() {
     return null;

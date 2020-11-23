@@ -248,7 +248,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     // get sorted tv list is synchronized so different query can get right sorted list reference
-    TVList chunkCopy = memChunk.getSortedTVList();
+    TVList chunkCopy = memChunk.getSortedTVListForQuery();
     int curSize = chunkCopy.size();
 
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion(),
