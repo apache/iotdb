@@ -201,7 +201,7 @@ UDTF的结束方法，您可以在此方法中进行一些资源释放等的操�
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `OneByOneAccessStrategy`，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
-该方法每次处理原始数据的一行。原始数据由`Row`读入，由`PointCollector`输出。您可以选择在一次`transform`方法调用中输出任意数量的数据点，唯一需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致。
+该方法每次处理原始数据的一行。原始数据由`Row`读入，由`PointCollector`输出。您可以选择在一次`transform`方法调用中输出任意数量的数据点。需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致，而输出数据点的时间戳必须是严格单调递增的。
 
 下面是一个实现了`void transform(Row row, PointCollector collector) throws Exception`方法的完整UDF示例。它是一个加法器，接收两列时间序列输入，当这两个数据点都不为`null`时，输出这两个数据点的代数和。
 
@@ -239,7 +239,7 @@ public class Adder implements UDTF {
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `SlidingTimeWindowAccessStrategy`或者`TumblingWindowAccessStrategy`时，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
-该方法每次处理固定行数或者固定时间间隔内的一批数据，我们称包含这一批数据的容器为窗口。原始数据由`RowWindow`读入，由`PointCollector`输出。`RowWindow`能够帮助您访问某一批次的`Row`，它提供了对这一批次的`Row`进行随机访问和迭代访问的接口。您可以选择在一次`transform`方法调用中输出任意数量的数据点，需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致。
+该方法每次处理固定行数或者固定时间间隔内的一批数据，我们称包含这一批数据的容器为窗口。原始数据由`RowWindow`读入，由`PointCollector`输出。`RowWindow`能够帮助您访问某一批次的`Row`，它提供了对这一批次的`Row`进行随机访问和迭代访问的接口。您可以选择在一次`transform`方法调用中输出任意数量的数据点，需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致，而输出数据点的时间戳必须是严格单调递增的。
 
 下面是一个实现了`void transform(RowWindow rowWindow, PointCollector collector) throws Exception`方法的完整UDF示例。它是一个计数器，接收任意列数的时间序列输入，作用是统计并输出指定时间范围内每一个时间窗口中的数据行数。
 
