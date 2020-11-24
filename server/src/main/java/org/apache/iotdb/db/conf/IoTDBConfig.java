@@ -2020,7 +2020,6 @@ public class IoTDBConfig {
     return startUpNanosecond;
   }
 
-
   public boolean isEnableFileTimeIndexer() {
     return enableFileTimeIndexer;
   }
@@ -2035,6 +2034,7 @@ public class IoTDBConfig {
 
   public void setFileTimeIndexerType(int fileTimeIndexerType) {
     this.fileTimeIndexerType = fileTimeIndexerType;
+  }
 
   public int getThriftMaxFrameSize() {
     return thriftMaxFrameSize;
