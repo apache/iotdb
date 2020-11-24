@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +87,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
@@ -863,12 +865,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
     } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<String, Long> finalPaths = FilePathUtils
-          .getPathByLevel(((AggregationPlan) plan).getDeduplicatedPaths(),
-              ((AggregationPlan) plan).getLevel(), null);
-      for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-        respColumns.add("count(" + entry.getKey() + ")");
-        columnsTypes.add(TSDataType.INT64.toString());
+      Map<Integer, String> pathIndex = new HashMap<>();
+      Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
+      for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+        respColumns.add(entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
+        columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
@@ -1296,7 +1297,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setValues(
-            req.getValuesList().get(i).toArray(new Object[req.getValuesList().get(i).size()]));
+            req.getValuesList().get(i).toArray(new Object[0]));
         plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status == null) {
@@ -1403,7 +1404,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
-      plan.setValues(req.getValues().toArray(new Object[req.getValues().size()]));
+      plan.setValues(req.getValues().toArray(new Object[0]));
       plan.setNeedInferType(true);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());

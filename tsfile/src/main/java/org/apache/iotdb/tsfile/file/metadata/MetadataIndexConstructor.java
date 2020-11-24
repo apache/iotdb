@@ -92,7 +92,6 @@ public class MetadataIndexConstructor {
     // else, build level index for devices
     Queue<MetadataIndexNode> deviceMetadaIndexQueue = new ArrayDeque<>();
     MetadataIndexNode currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-    MetadataIndexNode deviceMetadataIndexNode;
 
     for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
       // when constructing from internal node, each node is related to an entry
@@ -104,7 +103,7 @@ public class MetadataIndexConstructor {
       entry.getValue().serializeTo(out.wrapAsStream());
     }
     addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadaIndexQueue, out);
-    deviceMetadataIndexNode = generateRootNode(deviceMetadaIndexQueue,
+    MetadataIndexNode deviceMetadataIndexNode = generateRootNode(deviceMetadaIndexQueue,
         out, MetadataIndexNodeType.INTERNAL_DEVICE);
     deviceMetadataIndexNode.setEndOffset(out.getPosition());
     return deviceMetadataIndexNode;

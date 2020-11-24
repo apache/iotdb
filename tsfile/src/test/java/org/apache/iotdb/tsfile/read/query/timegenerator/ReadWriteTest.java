@@ -118,7 +118,6 @@ public class ReadWriteTest {
     TSRecord tsRecord = new TSRecord(1, "d1");
     DataPoint dPoint1 = new FloatDataPoint("s1", 1.2f);
     DataPoint dPoint2 = new IntDataPoint("s2", 20);
-    DataPoint dPoint3;
     tsRecord.addTuple(dPoint1);
     tsRecord.addTuple(dPoint2);
 
@@ -127,7 +126,7 @@ public class ReadWriteTest {
 
     tsRecord = new TSRecord(2, "d1");
     dPoint2 = new IntDataPoint("s2", 20);
-    dPoint3 = new IntDataPoint("s3", 50);
+    DataPoint dPoint3 = new IntDataPoint("s3", 50);
     tsRecord.addTuple(dPoint2);
     tsRecord.addTuple(dPoint3);
     tsFileWriter.write(tsRecord);

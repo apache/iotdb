@@ -16,31 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.tool;
 
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StartupException;
+import org.junit.Assert;
+import org.junit.Test;
 
-public interface IService {
+public class CsvLineSplitTest {
 
-  /**
-   * Start current service.
-   */
-  void start() throws StartupException;
+  @Test
+  public void testSplit() {
+    Assert.assertArrayEquals(new String[]{"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\"\\\"\""));
+    Assert.assertArrayEquals(new String[]{"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\"\\'\""));
+  }
 
-  /**
-   * Stop current service. If current service uses thread or thread pool,
-   * current service should guarantee to putBack thread or thread pool.
-   */
-  void stop();
-
-  default void waitAndStop(long milliseconds) {stop();}
-
-  default void shutdown(long milliseconds) throws ShutdownException {waitAndStop(milliseconds);}
-
-  /**
-   * Get the name of the the service.
-   * @return current service name
-   */
-  ServiceType getID();
 }
