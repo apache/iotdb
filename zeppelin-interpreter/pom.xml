@@ -21,12 +21,18 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-parent</artifactId>
+        <version>0.11.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <groupId>org.apache.zeppelin</groupId>
     <artifactId>zeppelin-iotdb</artifactId>
     <packaging>jar</packaging>
     <version>0.8.2</version>
     <name>Zeppelin: IoTDB interpreter</name>
-    <url>http://www.apache.org</url>
+    <description>Zeppelin cassandra support</description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <zeppelin.version>0.7.0</zeppelin.version>

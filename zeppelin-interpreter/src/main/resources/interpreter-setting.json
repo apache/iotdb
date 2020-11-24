@@ -1,7 +1,7 @@
 [
   {
     "group": "iotdb",
-    "name": "iotodb",
+    "name": "iotdb",
     "className": "org.apache.zeppelin.iotdb.IoTDBInterpreter",
     "properties": {
       "host": {
