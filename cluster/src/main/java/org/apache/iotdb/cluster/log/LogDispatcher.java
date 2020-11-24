@@ -95,7 +95,16 @@ public class LogDispatcher {
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
       try {
-        if (!nodeLogQueue.add(log)) {
+        boolean addSucceeded;
+        if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
+          addSucceeded = nodeLogQueue.offer(log,
+              ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS(),
+              TimeUnit.MILLISECONDS);
+        } else {
+          addSucceeded = nodeLogQueue.add(log);
+        }
+
+        if (!addSucceeded) {
           logger.debug("Log queue[{}] of {} is full, ignore the log to this node", i,
               member.getName());
         } else {
@@ -104,6 +113,8 @@ public class LogDispatcher {
       } catch (IllegalStateException e) {
         logger.debug("Log queue[{}] of {} is full, ignore the log to this node", i,
             member.getName());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
   }
@@ -111,7 +122,7 @@ public class LogDispatcher {
   private BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
     BlockingQueue<SendLogRequest> logBlockingQueue =
         new ArrayBlockingQueue<>(
-            ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem());
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
     int bindingThreadNum = 1;
     for (int i = 0; i < bindingThreadNum; i++) {
       executorService.submit(new DispatcherThread(node, logBlockingQueue));

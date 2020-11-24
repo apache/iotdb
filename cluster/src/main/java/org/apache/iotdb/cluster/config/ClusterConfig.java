@@ -155,6 +155,13 @@ public class ClusterConfig {
    */
   private int maxNumberOfLogsPerFetchOnDisk = 1000;
 
+  /**
+   * When set to true, if the log queue of a follower fills up, LogDispatcher will wait for a
+   * while until the queue becomes available, otherwise LogDispatcher will just ignore that slow
+   * node.
+   */
+  private boolean waitForSlowNode = true;
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
   }
@@ -425,5 +432,13 @@ public class ClusterConfig {
 
   public void setMaxNumberOfLogsPerFetchOnDisk(int maxNumberOfLogsPerFetchOnDisk) {
     this.maxNumberOfLogsPerFetchOnDisk = maxNumberOfLogsPerFetchOnDisk;
+  }
+
+  public boolean isWaitForSlowNode() {
+    return waitForSlowNode;
+  }
+
+  public void setWaitForSlowNode(boolean waitForSlowNode) {
+    this.waitForSlowNode = waitForSlowNode;
   }
 }

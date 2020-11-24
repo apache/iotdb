@@ -266,9 +266,9 @@ public class CatchUpTask implements Runnable {
       logger.error("Unexpected error when taking snapshot.", e);
     }
     snapshot = raftMember.getLogManager().getSnapshot(peer.getMatchIndex());
-    if (logger.isDebugEnabled()) {
+    if (logger.isInfoEnabled()) {
       logger
-          .debug("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
+          .info("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
     }
   }
 
@@ -279,6 +279,7 @@ public class CatchUpTask implements Runnable {
     Log logToSearch = new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
     int pos = Collections
         .binarySearch(logs, logToSearch, Comparator.comparingLong(Log::getCurrLogIndex));
+    int prevSize = logs.size();
     if (pos >= 0) {
       logs.subList(0, pos + 1).clear();
     } else {
@@ -287,6 +288,7 @@ public class CatchUpTask implements Runnable {
         logs.subList(0, insertPos).clear();
       }
     }
+    logger.info("Logs are reduced from {} to {}", prevSize, logs.size());
   }
 
   @Override

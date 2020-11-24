@@ -78,6 +78,8 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S1135") // ignore todos
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
+  private static final Logger logger = LoggerFactory.getLogger(FileSnapshot.class);
+
   public static final int PULL_FILE_RETRY_INTERVAL_MS = 5000;
   private Collection<TimeseriesSchema> timeseriesSchemas;
   private List<RemoteTsFileResource> dataFiles;
@@ -100,14 +102,18 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
   @Override
   public ByteBuffer serialize() {
+    logger.info("Start to serialize a snapshot {}", this);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
     try {
+      logger.info("Start to serialize {} schemas", timeseriesSchemas.size());
       dataOutputStream.writeInt(timeseriesSchemas.size());
       for (TimeseriesSchema measurementSchema : timeseriesSchemas) {
         measurementSchema.serializeTo(dataOutputStream);
       }
+
+      logger.info("Start to serialize {} data files", dataFiles.size());
       dataOutputStream.writeInt(dataFiles.size());
       for (RemoteTsFileResource dataFile : dataFiles) {
         dataFile.serialize(dataOutputStream);
@@ -185,6 +191,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       try {
         logger.info("Starting to install a snapshot {} into slot[{}]", snapshot, slot);
         installFileSnapshotSchema(snapshot);
+        logger.info("Schemas in snapshot are registered");
 
         SlotStatus status = slotManager.getStatus(slot);
         if (status == SlotStatus.PULLING) {
@@ -252,7 +259,10 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         throws PullFileException {
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
       // pull file
-      for (RemoteTsFileResource resource : remoteTsFileResources) {
+      for (int i = 0, remoteTsFileResourcesSize = remoteTsFileResources.size();
+          i < remoteTsFileResourcesSize; i++) {
+        RemoteTsFileResource resource = remoteTsFileResources.get(i);
+        logger.info("Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(), resource);
         try {
           if (!isFileAlreadyPulled(resource)) {
             loadRemoteFile(resource);

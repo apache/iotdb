@@ -65,6 +65,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
   public ByteBuffer serialize() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
+    logger.info("Start to serialize a snapshot of {} sub-snapshots", slotSnapshots.size());
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(slotSnapshots.size());
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {

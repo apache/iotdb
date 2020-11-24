@@ -383,12 +383,13 @@ public class DataGroupMember extends RaftMember {
    * @param request
    */
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
-    logger.debug("{}: received a snapshot from {} with size {}", name, request.getHeader(), request.getSnapshotBytes().length);
+    logger.info("{}: received a snapshot from {} with size {}", name, request.getHeader(),
+        request.getSnapshotBytes().length);
     PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
-      logger.debug("{} received a snapshot {}", name, snapshot);
+      logger.info("{} received a snapshot {}", name, snapshot);
     }
     snapshot.getDefaultInstaller(this).install(snapshot, -1);
   }

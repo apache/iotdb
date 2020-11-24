@@ -23,8 +23,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
@@ -64,9 +62,10 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
+    logger.info("Start to send snapshot to {}", node);
     ByteBuffer data = snapshot.serialize();
-    if (logger.isDebugEnabled()) {
-      logger.debug("do snapshot catch up with size {}", data.array().length);
+    if (logger.isInfoEnabled()) {
+      logger.info("Do snapshot catch up with size {}", data.array().length);
     }
     request.setSnapshotBytes(data);
 
@@ -91,31 +90,32 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
     AsyncClient client = raftMember.getAsyncClient(node);
     if (client == null) {
-      logger.debug("{}: client null for node {}", raftMember.getThisNode(), node);
+      logger.info("{}: client null for node {}", raftMember.getThisNode(), node);
       abort = true;
       return false;
     }
 
-    logger.debug("{},the snapshot request size={}", raftMember.getName(),
+    logger.info("{}: the snapshot request size={}", raftMember.getName(),
         request.getSnapshotBytes().length);
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       succeed.wait(SEND_SNAPSHOT_WAIT_MS);
     }
-    if (logger.isDebugEnabled()) {
-      logger.debug("send snapshot to node {} success {}", raftMember.getThisNode(), succeed.get());
+    if (logger.isInfoEnabled()) {
+      logger.info("send snapshot to node {} success {}", raftMember.getThisNode(), succeed.get());
     }
     return succeed.get();
   }
 
   private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
-    logger.debug("{},the snapshot request size={}", raftMember.getName(),
-        request.getSnapshotBytes().length);
+    logger.info("{}: sending a snapshot request size={} to {}", raftMember.getName(),
+        request.getSnapshotBytes().length, node);
     Client client = raftMember.getSyncClient(node);
     try {
       try {
         client.sendSnapshot(request);
+        logger.info("{}: snapshot is sent to {}", raftMember.getName(), node);
         return true;
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
