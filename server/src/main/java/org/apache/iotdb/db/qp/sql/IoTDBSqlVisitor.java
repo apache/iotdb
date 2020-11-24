@@ -1264,6 +1264,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     parseTimeInterval(ctx.timeInterval(), queryOp);
 
     if (ctx.INT() != null) {
+      queryOp.setGroupByLevel(true);
       queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
     }
   }
