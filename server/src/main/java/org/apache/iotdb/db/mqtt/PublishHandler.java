@@ -89,8 +89,8 @@ public class PublishHandler extends AbstractInterceptHandler {
 
             InsertRowPlan plan = new InsertRowPlan();
             plan.setTime(event.getTimestamp());
-            plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
-            plan.setValues(event.getValues().toArray(new Object[event.getValues().size()]));
+            plan.setMeasurements(event.getMeasurements().toArray(new String[0]));
+            plan.setValues(event.getValues().toArray(new Object[0]));
             plan.setDataTypes(new TSDataType[event.getValues().size()]);
             plan.setNeedInferType(true);
 
@@ -98,7 +98,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             try {
                 plan.setDeviceId(new PartialPath(event.getDevice()));
                 status = executeNonQuery(plan);
-            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException | IllegalPathException e ) {
+            } catch (Exception e) {
                 LOG.warn(
                     "meet error when inserting device {}, measurements {}, at time {}, because ",
                     event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);

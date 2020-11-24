@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -172,8 +171,7 @@ public class SeqTsFileRecoverTest {
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
         resource, false, false);
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true);
     assertFalse(writer.canWrite());
     writer.close();
 
@@ -222,8 +220,7 @@ public class SeqTsFileRecoverTest {
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
         resource, false, true);
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true);
 
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());

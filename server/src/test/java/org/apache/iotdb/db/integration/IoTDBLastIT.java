@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -121,7 +123,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root.* order by time desc");
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
       while (resultSet.next()) {
@@ -157,7 +159,7 @@ public class IoTDBLastIT {
       boolean hasResultSet = statement.execute(
           "select last temperature,status,id from root.ln.wf01.wt01");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
@@ -182,7 +184,7 @@ public class IoTDBLastIT {
       Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
@@ -201,7 +203,7 @@ public class IoTDBLastIT {
       Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
@@ -238,7 +240,7 @@ public class IoTDBLastIT {
           statement.execute(
               "select last temperature,status,id from root.ln.wf01.wt02");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
@@ -325,7 +327,7 @@ public class IoTDBLastIT {
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt03");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
@@ -371,7 +373,7 @@ public class IoTDBLastIT {
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt04");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
@@ -413,7 +415,7 @@ public class IoTDBLastIT {
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt04");
 
-      Assert.assertTrue(hasResultSet);
+      assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
@@ -429,6 +431,47 @@ public class IoTDBLastIT {
 
       statement
           .execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+    }
+  }
+
+  @Test
+  public void lastCacheWithFilterTest() throws SQLException, MetadataException {
+    String[] retArray =
+        new String[]{
+            "500,root.ln.wf01.wt01.temperature,22.1",
+        };
+
+    try (Connection connection =
+             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+
+      statement.execute("select last temperature from root.ln.wf01.wt01");
+      statement.execute(
+          "select last temperature from root.ln.wf01.wt01 where time >= 300");
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+
+      statement.execute(
+          "select last temperature from root.ln.wf01.wt01 where time > 600");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =

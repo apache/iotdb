@@ -62,7 +62,8 @@ Note: FullPath can not include `*`
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: FullPath can not include `*`
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * Create Timeseries Statement
@@ -602,15 +603,21 @@ The LAST function returns the last time-value pair of the given timeseries. Curr
 SELECT LAST <SelectClause> FROM <FromClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : <TimeExpr> [(AND | OR) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 
 Eg. SELECT LAST s1 FROM root.sg.d1
 Eg. SELECT LAST s1, s2 FROM root.sg.d1
 Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
+Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 Rules:
 1. the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 
-2. The result set of last query will always be displayed in a fixed three column table format.
+2. SELECT LAST only supports time filter that contains '>' or '>=' currently.
+
+3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
 | Time | Path         | Value |
@@ -620,7 +627,7 @@ For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result 
 |  4   | root.sg.d2.s1| 250   |
 |  9   | root.sg.d2.s2| 600   |
 
-3. It is not supported to use "diable align" in LAST query. 
+4. It is not supported to use "diable align" in LAST query. 
 
 ```
 
@@ -1005,19 +1012,6 @@ TRACING OFF   // Close performance tracing
 ```
 
 # Reference
-
-## Keywords
-
-```
-Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, USER, USING, VALUE, VALUES, WHERE, WITH
-
-Keywords with special meanings (case insensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF 
-* Compression Methods: UNCOMPRESSED, SNAPPY, GZIP, LZ0, ZDT, PAA, PLA
-* Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
-```
 
 ## Identifiers
 

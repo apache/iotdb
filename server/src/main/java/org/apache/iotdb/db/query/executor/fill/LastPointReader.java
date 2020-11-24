@@ -52,9 +52,9 @@ public class LastPointReader {
 
   private QueryDataSource dataSource;
 
-  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();;
+  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
 
-  public LastPointReader() {
+    public LastPointReader() {
 
   }
 
@@ -216,6 +216,9 @@ public class LastPointReader {
   }
 
   private boolean endtimeContainedByTimeFilter(Statistics statistics) {
+    if (timeFilter == null) {
+      return true;
+    }
     return timeFilter.containStartEndTime(statistics.getEndTime(), statistics.getEndTime());
   }
 

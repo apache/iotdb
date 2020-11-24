@@ -181,15 +181,6 @@
 
 ### 引擎层配置
 
-* back\_loop\_period\_in\_second
-
-|名字| back\_loop\_period\_in\_second |
-|:---:|:---|
-|描述| 系统统计量触发统计的频率，单位为秒。|
-|类型|Int32|
-|默认值| 5 |
-|改后生效方式|重启服务器生效|
-
 * data\_dirs
 
 |名字| data\_dirs |
@@ -271,11 +262,20 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* enable\_parameter\_adapter
+* enable\_mem\_comtrol
 
-|Name| enable\_parameter\_adapter |
+|Name| enable\_mem\_control |
 |:---:|:---|
-|Description| 开启自动调整系统参数，避免爆内存|
+|Description| 开启内存控制，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
+* enable\_mem\_comtrol
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| 开启内存控制，避免爆内存|
 |Type|Bool|
 |Default| true |
 |Effective|重启服务器生效|
@@ -287,7 +287,7 @@
 |Description| 内存缓冲区 memtable 阈值|
 |Type|Long|
 |Default| 1073741824 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective|enable\_mem\_control为false时生效、重启服务器生效|
 
 * avg\_series\_point\_number\_threshold
 
@@ -305,7 +305,7 @@
 |Description| 每个 tsfile 大小|
 |Type|Long|
 |Default| 536870912 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective| 重启服务器生效|
 
 * enable\_partition
 
@@ -386,26 +386,6 @@
 |描述| 当IoTDB将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于0，那么采用机器所安装的CPU核的数量。默认值为0。|
 |类型| Int32 |
 |默认值| 0 |
-|改后生效方式|重启服务器生效|
-
-
-* stat\_monitor\_detect\_freq\_in\_second
-
-|名字| stat\_monitor\_detect\_freq\_in\_second |
-|:---:|:---|
-|描述| 每隔一段时间（以秒为单位）检测当前记录统计量时间范围是否超过stat_monitor_retain_interval，并进行定时清理。|
-|类型| Int32 |
-|默认值|600 |
-|改后生效方式|重启服务器生效|
-
-
-* stat\_monitor\_retain\_interval\_in\_second
-
-|名字| stat\_monitor\_retain\_interval\_in\_second |
-|:---:|:---|
-|描述| 系统统计信息的保留时间（以秒为单位），超过保留时间范围的统计数据将被定时清理。|
-|类型| Int32 |
-|默认值|600 |
 |改后生效方式|重启服务器生效|
 
 * tsfile\_storage\_fs

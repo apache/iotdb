@@ -45,11 +45,13 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
@@ -76,17 +78,20 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
@@ -165,6 +170,13 @@ public class PhysicalGenerator {
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
+      case CREATE_INDEX:
+        CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
+        return new CreateIndexPlan(createIndexOp.getSelectedPaths(), createIndexOp.getProps(),
+            createIndexOp.getTime(),createIndexOp.getIndexType());
+      case DROP_INDEX:
+        DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
+        return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
       case ALTER_TIMESERIES:
         AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
         return new AlterTimeSeriesPlan(alterTimeSeriesOperator.getPath(),
@@ -223,8 +235,6 @@ public class PhysicalGenerator {
         return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
-          case SQLConstant.TOK_DYNAMIC_PARAMETER:
-            return new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
           case SQLConstant.TOK_FLUSH_TASK_INFO:
             return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
           case SQLConstant.TOK_VERSION:
@@ -310,7 +320,7 @@ public class PhysicalGenerator {
    */
   protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
       String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(paths, null);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, (String) null);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregation == null) {
@@ -318,7 +328,7 @@ public class PhysicalGenerator {
     } else {
       // if the aggregation function is not null,
       // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(paths, aggregation);
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregation);
       return new Pair<>(columnDataTypes, measurementDataTypes);
     }
   }
@@ -363,14 +373,14 @@ public class PhysicalGenerator {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
-      } else {
+      } else if (queryOperator.isGroupByLevel()) {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-        if (queryOperator.getLevel() >= 0) {
-          for (String aggregation : queryPlan.getAggregations()) {
-            if (!SQLConstant.COUNT.equals(aggregation)) {
-              throw new QueryProcessException("group by level only support count now.");
-            }
+        try {
+          if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
+            throw new QueryProcessException("Aggregate among unmatched data types");
           }
+        } catch (MetadataException e) {
+          throw new QueryProcessException(e);
         }
       }
     } else if (queryOperator.isFill()) {
@@ -384,6 +394,8 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
+    } else if (queryOperator.getIndexType() != null) {
+      queryPlan = new QueryIndexPlan();
     } else {
       queryPlan = new RawDataQueryPlan();
     }
@@ -443,13 +455,15 @@ public class PhysicalGenerator {
               if (actualPaths.size() == 1) {
                 String columnName = actualPaths.get(0).getMeasurement();
                 if (originAggregations != null && !originAggregations.isEmpty()) {
-                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
+                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")",
+                      suffixPath.getTsAlias());
                 } else {
                   measurementAliasMap.put(columnName, suffixPath.getTsAlias());
                 }
               } else if (actualPaths.size() >= 2) {
                 throw new QueryProcessException(
-                    "alias '" + suffixPath.getTsAlias() + "' can only be matched with one time series");
+                    "alias '" + suffixPath.getTsAlias()
+                        + "' can only be matched with one time series");
               }
             }
 
@@ -586,9 +600,16 @@ public class PhysicalGenerator {
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
           ((RawDataQueryPlan) queryPlan).setExpression(expression);
         } catch (MetadataException e) {
-          throw new LogicalOptimizeException(e);
+          throw new LogicalOptimizeException(e.getMessage());
         }
       }
+    }
+    if(queryOperator.getIndexType() != null) {
+      if(queryPlan instanceof QueryIndexPlan) {
+        ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
+        ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
+      }
+      return queryPlan;
     }
     try {
       deduplicate(queryPlan, fetchSize);
@@ -621,7 +642,8 @@ public class PhysicalGenerator {
         for (int i = 0; i < filterPathList.size(); i++) {
           pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
         }
-        deviceToFilterMap.put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+        deviceToFilterMap
+            .put(device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
         filterPaths.clear();
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
@@ -647,7 +669,8 @@ public class PhysicalGenerator {
     return retDevices;
   }
 
-  private void concatFilterPath(PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+  private void concatFilterPath(PartialPath prefix, FilterOperator operator,
+      Set<PartialPath> filterPaths) {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
@@ -658,7 +681,8 @@ public class PhysicalGenerator {
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    if (SQLConstant.isReservedPath(filterPath) || filterPath.getFirstNode()
+        .startsWith(SQLConstant.ROOT)) {
       filterPaths.add(filterPath);
       return;
     }
@@ -681,6 +705,18 @@ public class PhysicalGenerator {
       return;
     }
 
+    if (queryPlan instanceof GroupByTimePlan) {
+      GroupByTimePlan plan = (GroupByTimePlan) queryPlan;
+      // the actual row number of group by query should be calculated from startTime, endTime and interval.
+      long interval = (plan.getEndTime() - plan.getStartTime()) / plan.getInterval();
+      if (interval > 0) {
+        fetchSize = Math.min((int) (interval), fetchSize);
+      }
+    } else if (queryPlan instanceof AggregationPlan) {
+      // the actual row number of aggregation query is 1
+      fetchSize = 1;
+    }
+
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     Set<String> columnSet = new HashSet<>();
     // if it's a last query, no need to sort by device
@@ -689,7 +725,8 @@ public class PhysicalGenerator {
         PartialPath path = paths.get(i);
         String column = path.getTsAlias();
         if (column == null) {
-          column = path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
+          column =
+              path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -715,8 +752,9 @@ public class PhysicalGenerator {
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
       String column = indexedPath.left.getTsAlias();
       if (column == null) {
-        column = indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
-            : indexedPath.left.toString();
+        column =
+            indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
+                : indexedPath.left.toString();
         if (queryPlan instanceof AggregationPlan) {
           column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
         }
@@ -745,7 +783,9 @@ public class PhysicalGenerator {
 
     // check parameter range
     if (seriesOffset >= size) {
-      throw new QueryProcessException("SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.");
+      throw new QueryProcessException(String.format(
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
+          seriesOffset, size));
     }
     int endPosition = seriesOffset + seriesLimit;
     if (endPosition > size) {
@@ -756,6 +796,27 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
+  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
+      throws MetadataException{
+    List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
+    if (aggregations.isEmpty()) {
+      return true;
+    }
+
+    List<PartialPath> paths = queryOperator.getSelectedPaths();
+    List<TSDataType> dataTypes = getSeriesTypes(paths);
+    String aggType = aggregations.get(0);
+    switch (aggType) {
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
+      default:
+        return true;
+    }
+  }
+  
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }

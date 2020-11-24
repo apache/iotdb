@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -439,6 +438,8 @@ public class MTreeTest {
           CompressionType.GZIP, null, null);
 
       assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop")));
+      assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
+      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 3));
@@ -496,6 +497,6 @@ public class MTreeTest {
     }
 
     assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
-        Arrays.asList(new PartialPath(sgPath1)));
+        Collections.singletonList(new PartialPath(sgPath1)));
   }
 }

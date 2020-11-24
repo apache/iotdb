@@ -23,8 +23,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -78,6 +76,10 @@ public class MemTableFlushTask {
    */
   public void syncFlushMemTable()
       throws ExecutionException, InterruptedException, IOException {
+    logger.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
+        storageGroup,
+        memTable.memSize(),
+        memTable.getTotalPointsNum() / memTable.getSeriesNumber());
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
@@ -90,15 +92,8 @@ public class MemTableFlushTask {
         TVList tvList = series.getSortedTVList();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
-        // register active time series to the ActiveTimeSeriesCounter
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
-          ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
-        }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
-    }
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
-      ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
     }
     noMoreEncodingTask = true;
     logger.debug(

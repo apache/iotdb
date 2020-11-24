@@ -46,7 +46,6 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
-import org.apache.thrift.TException;
 
 public abstract class AbstractCli {
 
@@ -306,8 +305,8 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp < 0) {
-      maxPrintRowCount = Integer.MAX_VALUE;
+    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+      throw new NumberFormatException();
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -344,12 +343,11 @@ public abstract class AbstractCli {
       return args;
     } else {
       StringBuilder executeCommand = new StringBuilder();
-      /*for (int j = index + 1; j < args.length; j++) {
+      for (int j = index + 1; j < args.length; j++) {
         executeCommand.append(args[j]).append(" ");
-      }*/
-      executeCommand.append(args[index + 1]);
+      }
       // remove last space
-      //executeCommand.deleteCharAt(executeCommand.length() - 1);
+      executeCommand.deleteCharAt(executeCommand.length() - 1);
       // some bashes may not remove quotes of parameters automatically, remove them in that case
       if (executeCommand.charAt(0) == '\'' || executeCommand.charAt(0) == '\"') {
         executeCommand.deleteCharAt(0);
@@ -361,11 +359,8 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
-      //args = Arrays.copyOfRange(args, 0, index);
-      // remove "-e" and it's parameter
-      String[] newArgs = ArrayUtils.remove(args, index);
-      newArgs = ArrayUtils.remove(newArgs, index);
-      return newArgs;
+      args = Arrays.copyOfRange(args, 0, index);
+      return args;
     }
   }
 
@@ -411,7 +406,7 @@ public abstract class AbstractCli {
     }
 
     if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      setMaxDisplaNum(specialCmd, cmd);
+      setMaxDisplayNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
@@ -510,7 +505,7 @@ public abstract class AbstractCli {
     println("Fetch size has set to " + values[1].trim());
   }
 
-  private static void setMaxDisplaNum(String specialCmd, String cmd) {
+  private static void setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Max display number format error, please input like %s = 10000",
@@ -541,16 +536,9 @@ public abstract class AbstractCli {
           + "Noted that your file path cannot contain any space character)");
       return;
     }
-    try {
-      println(cmd.split(" ")[1]);
-      ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
-          connection.getTimeZone());
-    } catch (SQLException e) {
-      println(String.format("Failed to import from %s because %s",
-          cmd.split(" ")[1], e.getMessage()));
-    } catch (TException e) {
-      println("Cannot connect to server");
-    }
+    println(cmd.split(" ")[1]);
+    ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
+        connection.getTimeZone());
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
@@ -663,8 +651,7 @@ public abstract class AbstractCli {
     } else {
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
-          String tmp;
-          tmp = resultSet.getString(i);
+          String tmp = resultSet.getString(i);
           if (tmp == null) {
             tmp = NULL;
           }

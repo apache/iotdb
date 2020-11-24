@@ -23,13 +23,16 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -110,7 +113,7 @@ public class LogReplayer {
       try {
         modFile.close();
       } catch (IOException e) {
-        logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
+        logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
@@ -183,8 +186,14 @@ public class LogReplayer {
 
   private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
     for (int i = 0; i < mNodes.length; i++) {
-      if (mNodes[i] == null || mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i);
+      if (mNodes[i] == null) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new PathNotExistException(tPlan.getDeviceId().getFullPath() +
+                IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+        tPlan.markFailedMeasurementInsertion(i,
+            new DataTypeMismatchException(mNodes[i].getName(), tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getType()));
       }
     }
   }

@@ -33,7 +33,7 @@ IoTDB server includes a built-in MQTT service that allows remote devices send me
 ## Built-in MQTT Service
 The Built-in MQTT Service provide the ability of direct connection to IoTDB through MQTT. It listen the publish messages from MQTT clients
  and then write the data into storage immediately. 
-The MQTT topic is corresponding to IoTDB timeseries. 
+The MQTT topic corresponds to IoTDB timeseries. 
 The messages payload can be format to events by `PayloadFormatter` which loaded by java SPI, and the default implementation is `JSONPayloadFormatter`.
 The default `json` formatter support two json format, and the following is an MQTT message payload example:
 
@@ -60,7 +60,7 @@ or
 ## MQTT Configurations
 The IoTDB MQTT service load configurations from `${IOTDB_HOME}/${IOTDB_CONF}/iotdb-engine.properties` by default.
 
-Configurations are as following:
+Configurations are as follows:
 
 | NAME        | DESCRIPTION           | DEFAULT  |
 | ------------- |:-------------:|:------:|

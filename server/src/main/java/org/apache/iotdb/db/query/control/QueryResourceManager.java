@@ -146,8 +146,7 @@ public class QueryResourceManager {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    QueryDataSource queryDataSource;
-    queryDataSource = StorageEngine.getInstance()
+    QueryDataSource queryDataSource = StorageEngine.getInstance()
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
@@ -169,9 +168,8 @@ public class QueryResourceManager {
       if (config.isEnablePerformanceTracing()) {
         boolean isprinted = false;
         if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
-          TracingManager.getInstance()
-              .writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
-                  unseqFileNumMap.remove(queryId).size());
+          TracingManager.getInstance().writeTsFileInfo(queryId, seqFileNumMap.remove(queryId),
+              unseqFileNumMap.remove(queryId));
           isprinted = true;
         }
         if (chunkNumMap.get(queryId) != null && chunkSizeMap.get(queryId) != null) {

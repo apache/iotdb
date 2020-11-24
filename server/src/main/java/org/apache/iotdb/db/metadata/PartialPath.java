@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -180,6 +182,10 @@ public class PartialPath extends Path implements Comparable<Path> {
     return true;
   }
 
+  public boolean equals(String obj) {
+    return this.getFullPath().equals(obj);
+  }
+
   @Override
   public int hashCode() {
     return this.getFullPath().hashCode();
@@ -260,5 +266,13 @@ public class PartialPath extends Path implements Comparable<Path> {
   @TestOnly
   public Path toTSFilePath() {
     return new Path(getDevice(), getMeasurement());
+  }
+
+  public static List<String> toStringList(List<PartialPath> pathList) {
+    List<String> ret = new ArrayList<>();
+    for (PartialPath path : pathList) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
   }
 }

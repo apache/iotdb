@@ -59,15 +59,15 @@ public class MetricsSystem {
   public void start() {
     registerSource();
     registerSinks();
-    sinks.forEach(sink -> sink.start());
+    sinks.forEach(Sink::start);
   }
 
   public void stop() {
-    sinks.forEach(sink -> sink.stop());
+    sinks.forEach(Sink::stop);
   }
 
   public void report() {
-    sinks.forEach(sink -> sink.report());
+    sinks.forEach(Sink::report);
   }
 
   public void registerSource() {

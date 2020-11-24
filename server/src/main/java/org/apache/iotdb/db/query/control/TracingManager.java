@@ -23,9 +23,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +40,7 @@ public class TracingManager {
   private static final String QUERY_ID = "Query Id: ";
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
   private BufferedWriter writer;
+  private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
 
   public TracingManager(String dirName, String logFileName) {
     File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
@@ -60,13 +66,14 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public void writeQueryInfo(long queryId, String statement, int pathsNum) throws IOException {
+  public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)
+      throws IOException {
+    queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder.append(QUERY_ID).append(queryId)
         .append(" - Query Statement: ").append(statement)
         .append("\n" + QUERY_ID).append(queryId)
-        .append(" - Start time: ")
-        .append(new SimpleDateFormat(DATE_FORMAT).format(System.currentTimeMillis()))
+        .append(" - Start time: ").append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
         .append("\n" + QUERY_ID).append(queryId)
         .append(" - Number of series paths: ").append(pathsNum)
         .append("\n");
@@ -74,13 +81,13 @@ public class TracingManager {
   }
 
   // for align by device query
-  public void writeQueryInfo(long queryId, String statement) throws IOException {
+  public void writeQueryInfo(long queryId, String statement, long startTime) throws IOException {
+    queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder.append(QUERY_ID).append(queryId)
         .append(" - Query Statement: ").append(statement)
         .append("\n" + QUERY_ID).append(queryId)
-        .append(" - Start time: ")
-        .append(new SimpleDateFormat(DATE_FORMAT).format(System.currentTimeMillis()))
+        .append(" - Start time: ").append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
         .append("\n");
     writer.write(builder.toString());
   }
@@ -92,17 +99,41 @@ public class TracingManager {
     writer.write(builder.toString());
   }
 
-  public void writeTsFileInfo(long queryId, int seqFileNum, int unseqFileNum) throws IOException {
+  public void writeTsFileInfo(long queryId, Set<TsFileResource> seqFileResources,
+      Set<TsFileResource> unSeqFileResources) throws IOException {
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
     StringBuilder builder = new StringBuilder(QUERY_ID).append(queryId)
-        .append(" - Number of tsfiles: ").append(seqFileNum + unseqFileNum)
-        .append("\n" + QUERY_ID).append(queryId)
-        .append(" - Number of sequence files: ").append(seqFileNum)
-        .append("\n" + QUERY_ID).append(queryId)
-        .append(" - Number of unsequence files: ").append(unseqFileNum)
-        .append("\n");
+        .append(" - Number of sequence files: ").append(seqFileResources.size());
+    for (TsFileResource seqFileResource : seqFileResources) {
+      builder.append("\n" + QUERY_ID).append(queryId)
+          .append(" - SeqFile_").append(seqFileResource.getTsFile().getName());
+      printTsFileStatistics(builder, seqFileResource);
+    }
+
+    builder.append("\n" + QUERY_ID).append(queryId)
+        .append(" - Number of unSequence files: ").append(unSeqFileResources.size());
+    for (TsFileResource unSeqFileResource : unSeqFileResources) {
+      builder.append("\n" + QUERY_ID).append(queryId)
+          .append(" - UnSeqFile_").append(unSeqFileResource.getTsFile().getName());
+      printTsFileStatistics(builder, unSeqFileResource);
+    }
+    builder.append("\n");
     writer.write(builder.toString());
+  }
+
+  // print startTime and endTime of each device, format e.g.: device1[1, 10000]
+  private void printTsFileStatistics(StringBuilder builder, TsFileResource tsFileResource) {
+    Iterator<String> deviceIter = tsFileResource.getDeviceToIndexMap().keySet().iterator();
+    while (deviceIter.hasNext()) {
+      String device = deviceIter.next();
+      builder.append(" ").append(device)
+          .append("[").append(tsFileResource.getStartTime(device))
+          .append(", ").append(tsFileResource.getEndTime(device)).append("]");
+      if (deviceIter.hasNext()) {
+        builder.append(", ");
+      }
+    }
   }
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize)
@@ -116,10 +147,10 @@ public class TracingManager {
   }
 
   public void writeEndTime(long queryId) throws IOException {
+    long endTime = System.currentTimeMillis();
     StringBuilder builder = new StringBuilder(QUERY_ID).append(queryId)
-        .append(" - End time: ")
-        .append(new SimpleDateFormat(DATE_FORMAT).format(System.currentTimeMillis()))
-        .append("\n");
+        .append(" - Total cost time: ").append(endTime - queryStartTime.remove(queryId))
+        .append("ms\n");
     writer.write(builder.toString());
     writer.flush();
   }

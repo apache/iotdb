@@ -75,6 +75,19 @@ public class IoTDBAggregationIT {
       "INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
           + "values(5, 5.5, false, 55)"
   };
+  private static String[] dataSet3 = new String[]{
+      "SET STORAGE GROUP TO root.sg",
+      "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+      "insert into root.sg.d1(timestamp,s1) values(5,5)",
+      "insert into root.sg.d1(timestamp,s1) values(12,12)",
+      "flush",
+      "insert into root.sg.d1(timestamp,s1) values(15,15)",
+      "insert into root.sg.d1(timestamp,s1) values(25,25)",
+      "flush",
+      "insert into root.sg.d1(timestamp,s1) values(1,111)",
+      "insert into root.sg.d1(timestamp,s1) values(20,200)",
+      "flush"
+  };
   private final String d0s0 = "root.vehicle.d0.s0";
   private final String d0s1 = "root.vehicle.d0.s1";
   private final String d0s2 = "root.vehicle.d0.s2";
@@ -117,7 +130,7 @@ public class IoTDBAggregationIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
@@ -131,7 +144,7 @@ public class IoTDBAggregationIT {
       hasResultSet = statement.execute(
           "SELECT count(temperature) FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
@@ -190,7 +203,7 @@ public class IoTDBAggregationIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
@@ -221,7 +234,7 @@ public class IoTDBAggregationIT {
       hasResultSet = statement.execute("SELECT count(s0),count(s1),count(s2),count(s3) " +
           "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 order by time desc");
       Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
@@ -473,6 +486,34 @@ public class IoTDBAggregationIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void firstLastValueTest() throws SQLException {
+    String[] retArray = new String[]{
+        "0,2.2,4.4",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement
+          .execute("SELECT first_value(temperature),last_value(temperature) " +
+              "FROM root.ln.wf01.wt01 WHERE time > 1 AND time < 5");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(1)
+                  + "," + resultSet.getString(2);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
     }
   }
 
@@ -747,6 +788,33 @@ public class IoTDBAggregationIT {
     }
   }
 
+  @Test
+  public void descAggregationWithUnseqData() {
+    String[] retArray = new String[]{
+        "0,12",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement.execute("SELECT max_time(s1) FROM root.sg.d1 where time < 15");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time("root.sg.d1.s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
   private void prepareData() {
     try (Connection connection = DriverManager
@@ -755,10 +823,6 @@ public class IoTDBAggregationIT {
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
-        statement.execute(sql);
-      }
-
-      for (String sql : dataSet2) {
         statement.execute(sql);
       }
 
@@ -796,6 +860,13 @@ public class IoTDBAggregationIT {
             .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
       }
 
+      for (String sql : dataSet3) {
+        statement.execute(sql);
+      }
+
+      for (String sql : dataSet2) {
+        statement.execute(sql);
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }

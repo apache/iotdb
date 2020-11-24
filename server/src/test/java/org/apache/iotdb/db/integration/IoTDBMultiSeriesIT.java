@@ -329,7 +329,7 @@ public class IoTDBMultiSeriesIT {
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -434,7 +434,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
+          "411: Meet error in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }
@@ -448,6 +448,7 @@ public class IoTDBMultiSeriesIT {
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.salary WITH DATATYPE=INT64");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.score WITH DATATYPE=FLOAT");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.grade WITH DATATYPE=DOUBLE");
 
       ResultSet nameRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.name");
       nameRs.next();
@@ -464,6 +465,10 @@ public class IoTDBMultiSeriesIT {
       ResultSet scoreRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.score");
       scoreRs.next();
       Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(scoreRs.getString(5)));
+
+      ResultSet gradeRs = statement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt01.grade");
+      gradeRs.next();
+      Assert.assertTrue(TSEncoding.GORILLA.name().equalsIgnoreCase(gradeRs.getString(5)));
     }
   }
 }

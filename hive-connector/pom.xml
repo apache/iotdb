@@ -54,7 +54,18 @@
                     <groupId>org.apache.hive</groupId>
                     <artifactId>hive-storage-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <!-- many of hadoop dependencies use guava11, but org.apache.curator from hadoop-common uses
+        guava16 -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>21.0</version>
         </dependency>
         <!-- force upgrade the dependency of hive-serde-->
         <dependency>
@@ -76,6 +87,10 @@
                 <exclusion>
                     <groupId>org.antlr</groupId>
                     <artifactId>antlr-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

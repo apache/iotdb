@@ -419,12 +419,10 @@ public class IoTDBMetadataFetchIT {
           boolean hasResultSet = statement.execute(sql);
           if (hasResultSet) {
             try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
               while (resultSet.next()) {
                 StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
+                builder.append(resultSet.getString(1)).append(",");
+                builder.append(resultSet.getInt(2)).append(",");
                 Assert.assertTrue(standard.contains(builder.toString()));
               }
             }

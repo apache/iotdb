@@ -1017,8 +1017,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private String getMetadataInJsonFunc() throws TException, IoTDBSQLException {
     TSFetchMetadataReq req = new TSFetchMetadataReq(sessionId, "METADATA_IN_JSON");
-    TSFetchMetadataResp resp;
-    resp = client.fetchMetadata(req);
+    TSFetchMetadataResp resp = client.fetchMetadata(req);
     try {
       RpcUtils.verifySuccess(resp.getStatus());
     } catch (StatementExecutionException e) {
