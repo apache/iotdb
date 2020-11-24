@@ -42,10 +42,10 @@ Monitor下有几个属性，包括数据文件目录，写入数据统计信息�
 
 - SystemDirectory
 
-| 名称 | SystemDirectory    |
-| :--: | :----------------- |
-| 描述 | 数据文件的绝对目录 |
-| 类型 | String             |
+| 名称 | SystemDirectory        |
+| :--: | :--------------------- |
+| 描述 | 数据系统文件的绝对目录 |
+| 类型 | String                 |
 
 - DataSizeInByte
 
