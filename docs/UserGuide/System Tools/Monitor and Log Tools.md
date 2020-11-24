@@ -44,7 +44,7 @@ There are several attributes under monitor, including data file directory, the s
 
 |Name| SystemDirectory |
 |:---:|:---|
-|Description| The absolute directory of data file. |
+|Description| The absolute directory of data system file. |
 |Type| String |
 
 * DataSizeInByte
