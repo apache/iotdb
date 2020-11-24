@@ -160,15 +160,7 @@ public class GroupByTimeDataSetTest {
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
-
-    // with multi result
-    queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan(
-            "select count(s1), count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
-    assertTrue(dataSet.hasNext());
-    assertEquals("0\t1", dataSet.next().toString());
+    
 
     // with double quotation mark
     queryPlan = (QueryPlan) processor
@@ -181,14 +173,6 @@ public class GroupByTimeDataSetTest {
     assertTrue(dataSet.hasNext());
     assertEquals("10\t1", dataSet.next().toString());
 
-    // not count
-    try {
-      processor.parseSQLToPhysicalPlan(
-          "select sum(s0) from root.test.* group by ([0,200), 1ms), level=6");
-      fail();
-    } catch (Exception e) {
-      assertEquals("group by level only support count now.", e.getMessage());
-    }
   }
 
   @Test

@@ -169,31 +169,38 @@ select count(status) from root.ln.wf01.wt01;
 | 4              |
 
 
-##### Count Points By Level
+##### Aggregation By Level
 
-Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+**Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
+For all timeseries paths, by convention, "level=0" represents *root* level. 
+That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
 
-This could be used to query the number of points under each device.
-
-The SQL statement is:
-
+For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
+To count the number of "status" points of all these series, use query:
 ```
-select count(status) from root.ln.wf01.wt01 group by level=1;
+select count(status) from root.ln.wf01.* group by level=2
 ```
+Result:
+
+| count(root.ln.wf01.*.status) |
+| ---------------------------- |
+| 7                            |
 
 
-| Time   | count(root.ln) |
-| ------ | -------------- |
-| 0      | 7              |
-
-
+Assuming another timeseries is added, called "root.ln.wf02.wt01.status".
+To query the number of "status" points of both two paths "root.ln.wf01" and "root.ln.wf02".
 ```
-select count(status) from root.ln.wf01.wt01 group by level=2;
+select count(status) from root.ln.*.* group by level=2
 ```
+Result：
 
-| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
-| ------ | ------------------- | ------------------- |
-| 0      | 4                   | 3                   |
+| count(root.ln.wf01.*.status) | count(root.ln.wf02.*.status) |
+| ---------------------------- | ---------------------------- |
+| 7                            | 4
+
+All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value.
+When using four aggregations: sum, avg, min_value and max_value, please make sure all the aggregated series have exactly the same data type.
+Otherwise, it will generate a syntax error.
 
 ### Down-Frequency Aggregate Query
 
@@ -735,7 +742,7 @@ The result set is：
 
 #### Other ResultSet Format
 
-In addition, IoTDB supports two other result set format: 'align by device' and 'disable align'.
+In addition, IoTDB supports two other results set format: 'align by device' and 'disable align'.
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
@@ -745,9 +752,9 @@ The SQL statement is:
 select s1,s2 from root.sg1.* align by device
 ```
 
-For more syntax description, please read SQL REFERENCE.
+For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
-The 'disable align' indicates that there are 3 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
+The 'disable align' indicates that there are 2 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
 The SQL statement is:
 
@@ -755,7 +762,7 @@ The SQL statement is:
 select * from root.sg1 where time > 10 disable align
 ```
 
-For more syntax description, please read SQL REFERENCE.
+For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 ####  Error Handling
 

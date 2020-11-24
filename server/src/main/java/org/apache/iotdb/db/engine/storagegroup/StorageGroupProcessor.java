@@ -120,6 +120,7 @@ import org.slf4j.LoggerFactory;
 public class StorageGroupProcessor {
 
   public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
@@ -131,7 +132,6 @@ public class StorageGroupProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * indicating the file to be loaded already exists locally.
@@ -242,6 +242,10 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  /**
+   * value of root.stats."root.sg".TOTAL_POINTS
+   */
+  private long monitorSeriesValue;
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
 
   public boolean isReady() {
@@ -390,6 +394,18 @@ public class StorageGroupProcessor {
       logger.info("{} last compaction merge task is working, skip current merge",
           storageGroupName);
     }
+  }
+
+  public long getMonitorSeriesValue() {
+    return monitorSeriesValue;
+  }
+
+  public void setMonitorSeriesValue(long monitorSeriesValue) {
+    this.monitorSeriesValue = monitorSeriesValue;
+  }
+
+  public void updateMonitorSeriesValue(int successPointsNum) {
+    this.monitorSeriesValue += successPointsNum;
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

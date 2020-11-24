@@ -141,7 +141,7 @@ public class Measurement implements MeasurementMBean, IService {
     }
     logger.info("start measurement stats module...");
     service = IoTDBThreadPoolFactory.newScheduledThreadPool(
-        2, ThreadName.TIME_COST_STATSTIC.getName());
+        2, ThreadName.TIME_COST_STATISTIC.getName());
   }
 
   public boolean addOperationLatency(Operation op, long startTime) {
@@ -251,7 +251,7 @@ public class Measurement implements MeasurementMBean, IService {
     this.clearStatisticalState();
     if (service.isShutdown()) {
       service = IoTDBThreadPoolFactory.newScheduledThreadPool(
-          2, ThreadName.TIME_COST_STATSTIC.getName());
+          2, ThreadName.TIME_COST_STATISTIC.getName());
     }
     //we have to check again because someone may change the value.
     isEnableStat = IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceStat();

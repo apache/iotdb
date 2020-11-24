@@ -79,7 +79,6 @@ public class MManagerImproveTest {
   public void analyseTimeCost() throws MetadataException {
     mManager = IoTDB.metaManager;
 
-    long startTime, endTime;
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
     string_combine = path_exist = list_init = check_filelevel = get_seriestype = 0;
 
@@ -87,11 +86,11 @@ public class MManagerImproveTest {
     String measurement = "s5";
     String path = deviceId + TsFileConstant.PATH_SEPARATOR + measurement;
 
-    startTime = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
       assertTrue(mManager.isPathExist(new PartialPath(path)));
     }
-    endTime = System.currentTimeMillis();
+    long endTime = System.currentTimeMillis();
     path_exist += endTime - startTime;
 
     startTime = System.currentTimeMillis();
@@ -133,8 +132,7 @@ public class MManagerImproveTest {
   }
 
   private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
-    MNode node = null;
-    node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
+    MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
       MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);

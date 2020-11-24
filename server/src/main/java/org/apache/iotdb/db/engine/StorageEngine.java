@@ -68,6 +68,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -292,7 +295,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) throws ShutdownException {
+  public void shutdown(long milliseconds) throws ShutdownException {
     try {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -321,8 +324,7 @@ public class StorageEngine implements IService {
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupPath);
+      StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
@@ -373,6 +375,9 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
+      if (config.isEnableStatMonitor()) {
+        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -380,8 +385,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -395,6 +398,19 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
+    if (config.isEnableStatMonitor()) {
+      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
+    }
+  }
+
+  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    int successPointsNum =
+        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    // update to storage group statistics
+    processor.updateMonitorSeriesValue(successPointsNum);
+    // update to global statistics
+    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /**
