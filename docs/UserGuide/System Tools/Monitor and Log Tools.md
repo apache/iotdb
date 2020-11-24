@@ -62,15 +62,26 @@ There are several attributes under monitor, including data file directory, the s
 |Description| If the monitor module is open |
 |Type| Boolean |
 
-### Data Status Monitoring
+### Data Monitoring
 
-This module is the statistical monitoring method provided by IoTDB to monitor data information. The current version of IoTDB provides statistics for writing data.
+This module is for providing some statistics info about the writing operations:
 
-#### Way of data storing
+- the data size (in bytes) in IoTDB, the number of data points in IoTDB;
+- how many operations are successful or failed executed.
 
-User can choose to enable or disable the function of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file). Also, user can decide if data is written to the disk in the format of time series (corresponding to the `enable_monitor_series_write` item in the configuration file). If the data monitoring switch and time series writing switch are turned on at the same time, the user can view the statistical data by jconsole or querying monitor time series; if only the data monitoring switch is turned on, the statistics in memory can only be viewed in jconsole mode.
+#### Enable/disable the module
 
-> Note: For statistics stored in time series mode, it will be reloaded into memory when IoTDB is restarted, while the statistics recorded only in memory will be cleared when IoTDB is shut down.
+Users can choose to enable or disable the feature of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file).
+
+#### Statistics Data Storing
+
+By default, the statistics data is only saved in memory and can be accessed using Jconsole.
+
+The data can also be written as some time series on disk. To enable it, set `enable_monitor_series_write=true` in the configuration file. If so, using `select` statement in IoTDB-cli can query these time series.
+
+> Note:
+> if `enable_monitor_series_write=true`, when IoTDB is restarted, the previous statistics data will be recovered into memory.
+> if `enable_monitor_series_write=false`, IoTDB will forget all statistics data after the instance is restarted.
 
 #### Writing Data Monitor
 
