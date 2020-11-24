@@ -24,7 +24,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.ICompressor;
-import org.apache.iotdb.tsfile.encoding.encoder.SdtEncoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -80,7 +80,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private boolean isSdtEncoding;
 
-  private SdtEncoder sdtEncoder;
+  private SDTEncoder sdtEncoder;
 
   /**
    * do not re-execute SDT compression when merging chunks
@@ -121,7 +121,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (measurementSchema.getProps() != null && !isMerging) {
       if (measurementSchema.getProps().getOrDefault("loss", "").equals("sdt")) {
         isSdtEncoding = true;
-        sdtEncoder = new SdtEncoder(measurementSchema.getType());
+        sdtEncoder = new SDTEncoder();
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compdev")) {
@@ -167,7 +167,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       if (isSdtEncoding) {
         //store last read time and value
         time = sdtEncoder.getTime();
-        value = (long) sdtEncoder.getValue();
+        value = sdtEncoder.getLongValue();
       }
       pageWriter.write(time, value);
       checkPageSizeAndMayOpenANewPage();
@@ -179,7 +179,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
       if (isSdtEncoding) {
         time = sdtEncoder.getTime();
-        value = (int) sdtEncoder.getValue();
+        value = sdtEncoder.getIntValue();
       }
       pageWriter.write(time, value);
       checkPageSizeAndMayOpenANewPage();
@@ -197,7 +197,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
       if (isSdtEncoding) {
         time = sdtEncoder.getTime();
-        value = (float) sdtEncoder.getValue();
+        value = sdtEncoder.getFloatValue();
       }
       pageWriter.write(time, value);
       checkPageSizeAndMayOpenANewPage();
@@ -209,7 +209,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
       if (isSdtEncoding) {
         time = sdtEncoder.getTime();
-        value = (double) sdtEncoder.getValue();
+        value = sdtEncoder.getDoubleValue();
       }
       pageWriter.write(time, value);
       checkPageSizeAndMayOpenANewPage();
@@ -225,10 +225,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long[] timestamps, int[] values, int batchSize) {
     if (isSdtEncoding) {
-      sdtEncoder.encode(timestamps, values);
-      timestamps = sdtEncoder.getTimestamps();
-      values = sdtEncoder.getIntValues();
-      batchSize = Math.min(timestamps.length, batchSize);
+      batchSize = sdtEncoder.encode(timestamps, values, batchSize);
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
@@ -237,10 +234,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long[] timestamps, long[] values, int batchSize) {
     if (isSdtEncoding) {
-      sdtEncoder.encode(timestamps, values);
-      timestamps = sdtEncoder.getTimestamps();
-      values = sdtEncoder.getLongValues();
-      batchSize = Math.min(timestamps.length, batchSize);
+      batchSize = sdtEncoder.encode(timestamps, values, batchSize);
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
@@ -255,10 +249,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long[] timestamps, float[] values, int batchSize) {
     if (isSdtEncoding) {
-      sdtEncoder.encode(timestamps, values);
-      timestamps = sdtEncoder.getTimestamps();
-      values = sdtEncoder.getFloatValues();
-      batchSize = Math.min(timestamps.length, batchSize);
+      batchSize = sdtEncoder.encode(timestamps, values, batchSize);
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();
@@ -267,10 +258,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long[] timestamps, double[] values, int batchSize) {
     if (isSdtEncoding) {
-      sdtEncoder.encode(timestamps, values);
-      timestamps = sdtEncoder.getTimestamps();
-      values = sdtEncoder.getDoubleValues();
-      batchSize = Math.min(timestamps.length, batchSize);
+      batchSize = sdtEncoder.encode(timestamps, values, batchSize);
     }
     pageWriter.write(timestamps, values, batchSize);
     checkPageSizeAndMayOpenANewPage();

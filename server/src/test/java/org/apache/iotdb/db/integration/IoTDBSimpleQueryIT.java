@@ -205,7 +205,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(count, 17);
+      assertEquals(count, 18);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -306,7 +306,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(count, 17);
+      assertEquals(count, 18);
 
       //no sdt encoding when merging
       statement.execute("merge");
@@ -315,7 +315,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(count, 17);
+      assertEquals(count, 18);
 
     } catch (SQLException e) {
       e.printStackTrace();

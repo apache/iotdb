@@ -20,17 +20,15 @@
 package org.apache.iotdb.tsfile.encoding;
 
 import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
-import org.apache.iotdb.tsfile.encoding.encoder.SdtEncoder;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.encoding.encoder.SDTEncoder;
 import org.junit.Test;
 
-public class SdtEncoderTest {
+public class SDTEncoderTest {
 
   @Test
   public void testIntSingleValue() throws IOException {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.INT32);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -47,7 +45,7 @@ public class SdtEncoderTest {
 
   @Test
   public void testDoubleSingleValue() throws IOException {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.DOUBLE);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -64,7 +62,7 @@ public class SdtEncoderTest {
 
   @Test
   public void testLongSingleValue() throws IOException {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.INT64);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -81,7 +79,7 @@ public class SdtEncoderTest {
 
   @Test
   public void testFloatSingleValue() throws IOException {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.FLOAT);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -98,7 +96,7 @@ public class SdtEncoderTest {
 
   @Test
   public void testIntValueArray() {
-  SdtEncoder encoder = new SdtEncoder(TSDataType.INT32);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -111,14 +109,14 @@ public class SdtEncoderTest {
       timestamps[time] = time;
       values[time] = value;
     }
-    encoder.encode(timestamps, values);
+    int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(encoder.getIntValues().length, 22);
+    assertEquals(size, 22);
   }
 
   @Test
   public void testDoubleValueArray() throws IOException {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.DOUBLE);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -131,14 +129,14 @@ public class SdtEncoderTest {
       timestamps[time] = time;
       values[time] = value;
     }
-    encoder.encode(timestamps, values);
+    int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(encoder.getDoubleValues().length, 14);
+    assertEquals(size, 14);
   }
 
   @Test
   public void testLongValueArray() {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.INT64);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -151,14 +149,14 @@ public class SdtEncoderTest {
       timestamps[time] = time;
       values[time] = value;
     }
-    encoder.encode(timestamps, values);
+    int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(encoder.getLongValues().length, 22);
+    assertEquals(size, 22);
   }
 
   @Test
   public void testFloatValueArray() {
-    SdtEncoder encoder = new SdtEncoder(TSDataType.FLOAT);
+    SDTEncoder encoder = new SDTEncoder();
     encoder.setCompDeviation(0.01);
 
     int degree = 0;
@@ -171,8 +169,8 @@ public class SdtEncoderTest {
       timestamps[time] = time;
       values[time] = value;
     }
-    encoder.encode(timestamps, values);
+    int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(encoder.getFloatValues().length, 14);
+    assertEquals(size, 14);
   }
 }
