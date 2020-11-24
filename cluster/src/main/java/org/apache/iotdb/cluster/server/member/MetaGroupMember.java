@@ -1453,7 +1453,7 @@ public class MetaGroupMember extends RaftMember {
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
           return processPartitionedPlan(plan);
-        } catch (MetadataException e) {
+        } catch (MetadataException | InterruptedException e) {
           logger.error(
               String.format("Failed to set storage group or create timeseries, because %s", e));
         }
