@@ -24,6 +24,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -143,11 +144,7 @@ public class AsyncDataLogApplier implements LogApplier {
     if (Timer.ENABLE_INSTRUMENTING) {
       log.setEnqueueTime(System.nanoTime());
     }
-    consumerMap.computeIfAbsent(planKey, d -> {
-      DataLogConsumer dataLogConsumer = new DataLogConsumer(name + "-" + d);
-      consumerPool.submit(dataLogConsumer);
-      return dataLogConsumer;
-    }).accept(log);
+    consumerMap.computeIfAbsent(planKey, d -> new DataLogConsumer(name + "-" + d)).accept(log);
   }
 
   private void drainConsumers() {
@@ -190,6 +187,7 @@ public class AsyncDataLogApplier implements LogApplier {
     private volatile long lastLogIndex;
     private volatile long lastAppliedLogIndex;
     private String name;
+    private Future<?> future;
 
     public DataLogConsumer(String name) {
       this.name = name;
@@ -221,18 +219,22 @@ public class AsyncDataLogApplier implements LogApplier {
             }
           }
         } catch (InterruptedException e) {
-          logger.info("DataLogConsumer exits");
           Thread.currentThread().interrupt();
-          return;
+          break;
         } catch (Exception e) {
           logger.error("DataLogConsumer exits", e);
           return;
         }
       }
+      logger.info("DataLogConsumer exits");
     }
 
     @Override
     public void accept(Log log) {
+      if (future == null || future.isCancelled() || future.isDone()) {
+        future = consumerPool.submit(this);
+      }
+
       try {
         lastLogIndex = log.getCurrLogIndex();
         logQueue.put(log);
