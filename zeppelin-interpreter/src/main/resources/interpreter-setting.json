@@ -34,6 +34,11 @@
         "defaultValue": "root",
         "description": "Password for authentication"
       }
+    },
+    "editor": {
+      "language": "sql",
+      "editOnDblClick": false,
+      "completionKey": "TAB"
     }
   }
 ]

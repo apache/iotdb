@@ -2,17 +2,22 @@
   "paragraphs": [
     {
       "title": "Set IoTDB Schema",
-      "text": "SET STORAGE GROUP TO root.ln.wf01.wt01;\nCREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n\n",
+      "text": "%iotdb\n\nSET STORAGE GROUP TO root.ln.wf01.wt01;\nCREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n\n",
       "user": "anonymous",
-      "dateUpdated": "2020-11-24T14:50:26+0800",
+      "dateUpdated": "2020-11-24T17:01:35+0800",
       "config": {
         "colWidth": 6,
         "fontSize": 9,
         "enabled": true,
         "results": {},
-        "editorSetting": {},
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB"
+        },
         "title": true,
-        "lineNumbers": true
+        "lineNumbers": true,
+        "editorMode": "ace/mode/sql"
       },
       "settings": {
         "params": {},
@@ -33,25 +38,30 @@
       "jobName": "paragraph_1606199112249_2061310279",
       "id": "paragraph_1606199112249_2061310279",
       "dateCreated": "2020-11-24T14:25:12+0800",
-      "dateStarted": "2020-11-24T14:25:45+0800",
-      "dateFinished": "2020-11-24T14:25:47+0800",
+      "dateStarted": "2020-11-24T17:01:35+0800",
+      "dateFinished": "2020-11-24T17:01:35+0800",
       "status": "FINISHED",
       "focus": true,
-      "$$hashKey": "object:5350"
+      "$$hashKey": "object:407"
     },
     {
       "title": "Insert Time Series",
-      "text": "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (1, 1.1, false, 4);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (2, 3.2, true, 3);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (3, 2.3, false, 2);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (4, 4.4, false, 1);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (5, 3.5, false, 0);",
+      "text": "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (1, 1.1, false, 4);\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (2, 3.2, true, 3);\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (3, 2.3, false, 2);\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (4, 4.4, false, 1);\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (5, 3.5, false, 0);",
       "user": "anonymous",
-      "dateUpdated": "2020-11-24T14:50:58+0800",
+      "dateUpdated": "2020-11-24T17:01:38+0800",
       "config": {
         "colWidth": 6,
         "fontSize": 9,
         "enabled": true,
         "results": {},
-        "editorSetting": {},
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB"
+        },
         "title": true,
-        "lineNumbers": true
+        "lineNumbers": true,
+        "editorMode": "ace/mode/sql"
       },
       "settings": {
         "params": {},
@@ -72,16 +82,16 @@
       "jobName": "paragraph_1606199645491_331600654",
       "id": "paragraph_1606199645491_331600654",
       "dateCreated": "2020-11-24T14:34:05+0800",
-      "dateStarted": "2020-11-24T14:49:20+0800",
-      "dateFinished": "2020-11-24T14:49:20+0800",
+      "dateStarted": "2020-11-24T17:01:38+0800",
+      "dateFinished": "2020-11-24T17:01:38+0800",
       "status": "FINISHED",
-      "$$hashKey": "object:5351"
+      "$$hashKey": "object:408"
     },
     {
       "title": "Query: Table",
       "text": "SELECT *\nFROM root.ln.wf01.wt01\nWHERE time >= 1\n\tAND time <= 6;",
       "user": "anonymous",
-      "dateUpdated": "2020-11-24T14:51:06+0800",
+      "dateUpdated": "2020-11-24T17:01:40+0800",
       "config": {
         "colWidth": 6,
         "fontSize": 9,
@@ -94,7 +104,62 @@
               "optionOpen": false,
               "setting": {
                 "table": {
-                  "tableGridState": {},
+                  "tableGridState": {
+                    "columns": [
+                      {
+                        "name": "Time0",
+                        "visible": true,
+                        "width": 150,
+                        "sort": {},
+                        "filters": [
+                          {}
+                        ],
+                        "pinned": ""
+                      },
+                      {
+                        "name": "root.ln.wf01.wt01.temperature1",
+                        "visible": true,
+                        "width": 290,
+                        "sort": {},
+                        "filters": [
+                          {}
+                        ],
+                        "pinned": ""
+                      },
+                      {
+                        "name": "root.ln.wf01.wt01.status2",
+                        "visible": true,
+                        "width": "*",
+                        "sort": {},
+                        "filters": [
+                          {}
+                        ],
+                        "pinned": ""
+                      },
+                      {
+                        "name": "root.ln.wf01.wt01.hardware3",
+                        "visible": true,
+                        "width": "*",
+                        "sort": {},
+                        "filters": [
+                          {}
+                        ],
+                        "pinned": ""
+                      }
+                    ],
+                    "scrollFocus": {},
+                    "selection": [],
+                    "grouping": {
+                      "grouping": [],
+                      "aggregations": [],
+                      "rowExpandedStates": {}
+                    },
+                    "treeView": {},
+                    "pagination": {
+                      "paginationCurrentPage": 1,
+                      "paginationPageSize": 250
+                    }
+                  },
                   "tableColumnTypeState": {
                     "names": {
                       "Time": "string",
@@ -118,10 +183,15 @@
             }
           }
         },
-        "editorSetting": {},
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB"
+        },
         "editorHide": false,
         "title": true,
-        "lineNumbers": true
+        "lineNumbers": true,
+        "editorMode": "ace/mode/sql"
       },
       "settings": {
         "params": {},
@@ -142,16 +212,16 @@
       "jobName": "paragraph_1605787967187_651066788",
       "id": "paragraph_1605787967187_651066788",
       "dateCreated": "2020-11-19T20:12:47+0800",
-      "dateStarted": "2020-11-24T14:49:22+0800",
-      "dateFinished": "2020-11-24T14:49:22+0800",
+      "dateStarted": "2020-11-24T17:01:40+0800",
+      "dateFinished": "2020-11-24T17:01:40+0800",
       "status": "FINISHED",
-      "$$hashKey": "object:5352"
+      "$$hashKey": "object:409"
     },
     {
       "title": "Query: Line Chart",
       "text": "SELECT *\nFROM root.ln.wf01.wt01\nWHERE time >= 1\n\tAND time <= 6;",
       "user": "anonymous",
-      "dateUpdated": "2020-11-24T14:51:13+0800",
+      "dateUpdated": "2020-11-24T17:01:42+0800",
       "config": {
         "colWidth": 6,
         "fontSize": 9,
@@ -226,10 +296,15 @@
             "helium": {}
           }
         },
-        "editorSetting": {},
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB"
+        },
         "editorHide": false,
         "title": true,
-        "lineNumbers": true
+        "lineNumbers": true,
+        "editorMode": "ace/mode/sql"
       },
       "settings": {
         "params": {},
@@ -250,10 +325,10 @@
       "jobName": "paragraph_1606200407155_1025230441",
       "id": "paragraph_1606200407155_1025230441",
       "dateCreated": "2020-11-24T14:46:47+0800",
-      "dateStarted": "2020-11-24T14:49:23+0800",
-      "dateFinished": "2020-11-24T14:49:23+0800",
+      "dateStarted": "2020-11-24T17:01:42+0800",
+      "dateFinished": "2020-11-24T17:01:42+0800",
       "status": "FINISHED",
-      "$$hashKey": "object:5353"
+      "$$hashKey": "object:410"
     },
     {
       "text": "",
@@ -264,7 +339,12 @@
         "fontSize": 9,
         "enabled": true,
         "results": {},
-        "editorSetting": {}
+        "editorSetting": {
+          "language": "sql",
+          "editOnDblClick": false,
+          "completionKey": "TAB"
+        },
+        "editorMode": "ace/mode/sql"
       },
       "settings": {
         "params": {},
@@ -277,7 +357,7 @@
       "id": "paragraph_1605787989076_1398743633",
       "dateCreated": "2020-11-19T20:13:09+0800",
       "status": "READY",
-      "$$hashKey": "object:5354"
+      "$$hashKey": "object:411"
     }
   ],
   "name": "IoTDB-Zeppelin-Demo",
