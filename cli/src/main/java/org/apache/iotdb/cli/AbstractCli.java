@@ -536,14 +536,9 @@ public abstract class AbstractCli {
           + "Noted that your file path cannot contain any space character)");
       return;
     }
-    try {
-      println(cmd.split(" ")[1]);
-      ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
-          connection.getTimeZone());
-    } catch (SQLException e) {
-      println(String.format("Failed to import from %s because %s",
-          cmd.split(" ")[1], e.getMessage()));
-    }
+    println(cmd.split(" ")[1]);
+    ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
+        connection.getTimeZone());
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
