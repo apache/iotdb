@@ -48,6 +48,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -171,7 +172,8 @@ public class TsFileProcessor {
    *
    * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
+  public void insert(InsertRowPlan insertRowPlan) 
+      throws WriteProcessException, WriteProcessRejectException {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
@@ -214,7 +216,7 @@ public class TsFileProcessor {
    * @param results result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
-      TSStatus[] results) throws WriteProcessException {
+      TSStatus[] results) throws WriteProcessException, WriteProcessRejectException {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
@@ -254,7 +256,8 @@ public class TsFileProcessor {
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
+  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) 
+      throws WriteProcessException, WriteProcessRejectException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
@@ -292,7 +295,7 @@ public class TsFileProcessor {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
         blockInsertionIfReject();
-      } catch (WriteProcessException e) {
+      } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
@@ -304,7 +307,7 @@ public class TsFileProcessor {
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
-      throws WriteProcessException {
+      throws WriteProcessException, WriteProcessRejectException {
     if (start >= end) {
       return;
     }
@@ -356,7 +359,7 @@ public class TsFileProcessor {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
         blockInsertionIfReject();
-      } catch (WriteProcessException e) {
+      } catch (WriteProcessRejectException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
@@ -367,13 +370,13 @@ public class TsFileProcessor {
     workMemTable.addTextDataSize(textDataIncrement);
   }
 
-  private void blockInsertionIfReject() throws WriteProcessException {
+  private void blockInsertionIfReject() throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
       try {
         TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
         if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
+          throw new WriteProcessRejectException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
