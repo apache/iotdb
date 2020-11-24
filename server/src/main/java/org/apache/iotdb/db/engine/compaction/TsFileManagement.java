@@ -66,7 +66,9 @@ public abstract class TsFileManagement {
   public ModificationFile mergingModification;
   private long mergeStartTime;
 
-  // whether execute merge chunk in this task
+  /**
+   * whether execute merge chunk in this task
+   */
   protected boolean isMerge = false;
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {

@@ -778,7 +778,7 @@ public class IoTDBDescriptor {
       conf.setEnableContinuousCompaction(
           Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
 
-      // update enable_continuous_compaction
+      // update merge_write_throughput_mb_per_sec
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
 

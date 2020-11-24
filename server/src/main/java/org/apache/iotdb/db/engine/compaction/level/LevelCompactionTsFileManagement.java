@@ -70,8 +70,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private final boolean enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
       .isEnableUnseqCompaction();
-  private final boolean enableContinuousCompaction = IoTDBDescriptor.getInstance().getConfig()
-      .isEnableContinuousCompaction();
   private final boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig()
       .isForceFullMerge();
   // First map is partition list; Second list is level list; Third list is file list in level;
@@ -439,7 +437,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
-    // whether execute merge chunk in this task
     isMerge = merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
         seqFileNumInEachLevel);
     if (enableUnseqCompaction && unseqLevelNum <= 1
