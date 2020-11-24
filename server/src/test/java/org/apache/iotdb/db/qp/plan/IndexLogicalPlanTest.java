@@ -31,27 +31,27 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
-import org.apache.iotdb.db.qp.strategy.ParseDriver;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class IndexLogicalPlanTest {
 
-  private ParseDriver parseDriver;
+  private LogicalGenerator generator;
 
   @Before
   public void before() {
-    parseDriver = new ParseDriver();
+    generator = new LogicalGenerator();
   }
 
   @Test
   public void testParseCreateIndexWholeMatching() {
     String sqlStr = "CREATE INDEX ON root.Ery.*.Glu WHERE time > 50 WITH INDEX=RTREE_PAA, PAA_dim=8";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
@@ -67,7 +67,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseCreateIndexSubMatching() {
     String sqlStr = "CREATE INDEX ON root.Wind.AZQ02.Speed WITH INDEX=ELB_INDEX, BLOCK_SIZE=5";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
@@ -83,7 +83,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseDropIndexWholeMatching() {
     String sqlStr = "DROP INDEX RTREE_PAA ON root.Ery.*.Glu";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
@@ -96,7 +96,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseDropIndexSubMatching() {
     String sqlStr = "DROP INDEX ELB_INDEX ON root.Wind.AZQ02.Speed";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
@@ -110,10 +110,10 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseQueryIndexWholeMatching() throws IllegalPathException {
     String sqlStr = "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
-    Assert.assertEquals(QueryIndexOperator.class, op.getClass());
-    QueryIndexOperator queryOperator = (QueryIndexOperator) op;
-    Assert.assertEquals(OperatorType.QUERY_INDEX, queryOperator.getType());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
     Assert.assertEquals("Glu",
         queryOperator.getSelectedPaths().get(0).getFullPath());
     Assert.assertEquals("root.Ery.*",
@@ -131,10 +131,10 @@ public class IndexLogicalPlanTest {
         + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "
         + "CONCAT (10, 20, 25, 24, 14, 8) WITH TOLERANCE 2 "
         + "CONCAT  (8, 9, 10, 14, 15, 15) WITH TOLERANCE 1";
-    Operator op = parseDriver.parse(sqlStr, ZoneId.systemDefault());
-    Assert.assertEquals(QueryIndexOperator.class, op.getClass());
-    QueryIndexOperator queryOperator = (QueryIndexOperator) op;
-    Assert.assertEquals(OperatorType.QUERY_INDEX, queryOperator.getType());
+    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
     Assert.assertEquals("Speed",
         queryOperator.getSelectedPaths().get(0).getFullPath());
     Assert.assertEquals("root.Wind.AZQ02",
