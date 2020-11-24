@@ -440,7 +440,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @Override
   protected void merge(long timePartition) {
     // whether execute merge chunk in this task
-    boolean isMerge = merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
+    isMerge = merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum,
         seqFileNumInEachLevel);
     if (enableUnseqCompaction && unseqLevelNum <= 1
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
@@ -450,10 +450,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } else {
       isMerge = merge(forkedUnSequenceTsFileResources, false, timePartition, unseqLevelNum,
           unseqFileNumInEachLevel) || isMerge;
-    }
-    // if merge in this merge task, execute next merge task to check if need continuous merge
-    if (isMerge && enableContinuousCompaction) {
-      merge(timePartition);
     }
   }
 

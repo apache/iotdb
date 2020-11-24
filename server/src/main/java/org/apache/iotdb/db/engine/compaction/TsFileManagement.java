@@ -66,6 +66,9 @@ public abstract class TsFileManagement {
   public ModificationFile mergingModification;
   private long mergeStartTime;
 
+  // whether execute merge chunk in this task
+  protected boolean isMerge = false;
+
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
@@ -172,7 +175,7 @@ public abstract class TsFileManagement {
     @Override
     public void run() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMerge, timePartitionId);
     }
   }
 

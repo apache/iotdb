@@ -375,15 +375,15 @@ public class StorageGroupProcessor {
         && seqTsFileResources.size() > 0) {
       compactionMergeWorking = true;
       logger.info("{} submit a compaction merge task", storageGroupName);
+      // find the first file in list to execute compaction task
+      long timeRangeId = seqTsFileResources.get(0).getTimePartition();
       try {
-        // find the first file in list to execute compaction task
-        long timeRangeId = seqTsFileResources.get(0).getTimePartition();
         tsFileManagement.forkCurrentFileList(timeRangeId);
         CompactionMergeTaskPoolManager.getInstance().submitTask(
             tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
                 timeRangeId));
       } catch (IOException | RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
+        this.closeCompactionMergeCallBack(false, timeRangeId);
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1045,7 +1045,8 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::updateLatestFlushTimeCallback, true, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
+          this::updateLatestFlushTimeCallback, true,
+          partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -1057,7 +1058,8 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::unsequenceFlushCallback, false, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
+          this::unsequenceFlushCallback, false,
+          partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -1726,7 +1728,7 @@ public class StorageGroupProcessor {
                 tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
                     tsFileProcessor.getTimeRangeId()));
       } catch (IOException | RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
+        this.closeCompactionMergeCallBack(false, tsFileProcessor.getTimeRangeId());
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1742,10 +1744,30 @@ public class StorageGroupProcessor {
   /**
    * close compaction merge callback, to release some locks
    */
-  private void closeCompactionMergeCallBack() {
-    this.compactionMergeWorking = false;
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
+  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
+    if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
+        logger.info("{} submit a new compaction merge task", storageGroupName);
+        try {
+          // fork and filter current tsfile, then commit then to compaction merge
+          tsFileManagement.forkCurrentFileList(timePartitionId);
+          CompactionMergeTaskPoolManager.getInstance()
+              .submitTask(
+                  tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
+                      timePartitionId));
+        } catch (IOException | RejectedExecutionException e) {
+          this.closeCompactionMergeCallBack(false, timePartitionId);
+          logger.error("{} compaction submit task failed", storageGroupName);
+        }
+      } else {
+        logger.info("{} last compaction merge task is working, skip current merge",
+            storageGroupName);
+      }
+    } else {
+      this.compactionMergeWorking = false;
+      synchronized (closeStorageGroupCondition) {
+        closeStorageGroupCondition.notifyAll();
+      }
     }
   }
 
@@ -2521,7 +2543,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface CloseCompactionMergeCallBack {
 
-    void call();
+    void call(boolean isMerge, long timePartitionId);
   }
 
   @FunctionalInterface
