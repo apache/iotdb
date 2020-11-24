@@ -774,6 +774,14 @@ public class IoTDBDescriptor {
       // update debug_state
       conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
 
+      // update enable_continuous_compaction
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
+
+      // update enable_continuous_compaction
+      conf.setMergeWriteThroughputMbPerSec(
+          Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
+
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
