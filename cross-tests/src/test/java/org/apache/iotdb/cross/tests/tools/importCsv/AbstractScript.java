@@ -49,7 +49,7 @@ public abstract class AbstractScript {
     p.destroy();
 
 
-    System.out.println("Expected output:");
+    System.out.println("should contains:");
     for (String s : output) {
       System.out.println(s);
     }
@@ -59,7 +59,7 @@ public abstract class AbstractScript {
       System.out.println(out);
     }
 
-    assertTrue(actualOutput.get(actualOutput.size() - 1).startsWith(output[output.length - 1]));
+    assertTrue(actualOutput.get(actualOutput.size() - 1).contains(output[output.length - 1]));
   }
 
   protected String getCliPath() {

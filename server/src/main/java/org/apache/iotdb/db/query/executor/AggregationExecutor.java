@@ -384,20 +384,24 @@ public class AggregationExecutor {
       record.addField(resultData.getResult(), dataType);
     }
 
-    SingleDataSet dataSet = null;
+    SingleDataSet dataSet;
     if (((AggregationPlan) plan).getLevel() >= 0) {
-      // current only support count operation
       Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, Long> finalPaths = FilePathUtils
-          .getPathByLevel(plan.getDeduplicatedPaths(), ((AggregationPlan) plan).getLevel(),
-              pathIndex);
+      Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(
+              (AggregationPlan) plan, pathIndex);
 
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
+      List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
+              aggregateResultList, finalPaths, pathIndex);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
-      for (int i = 0; i < finalPaths.size(); i++) {
-        dataTypes.add(TSDataType.INT64);
+      for (int i = 0; i < mergedAggResults.size(); i++) {
+        dataTypes.add(mergedAggResults.get(i).getResultDataType());
+      }
+      RowRecord curRecord = new RowRecord(0);
+      for (AggregateResult resultData : mergedAggResults) {
+        TSDataType dataType = resultData.getResultDataType();
+        curRecord.addField(resultData.getResult(), dataType);
       }
 
       dataSet = new SingleDataSet(paths, dataTypes);

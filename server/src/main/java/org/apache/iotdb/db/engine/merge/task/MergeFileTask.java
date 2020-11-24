@@ -223,7 +223,7 @@ class MergeFileTask {
         if (metaData.getStartTime() == startTime) {
           Chunk chunk = reader.readMemChunk(metaData);
           fileWriter.writeChunk(chunk, metaData);
-          maxVersion = metaData.getVersion() > maxVersion ? metaData.getVersion() : maxVersion;
+          maxVersion = Math.max(metaData.getVersion(), maxVersion);
           context.incTotalPointWritten(metaData.getNumOfPoints());
           break;
         }

@@ -28,11 +28,11 @@ import org.junit.Test;
 public class ExportCsvTestIT extends AbstractScript{
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
   }
 
   @Test
@@ -50,8 +50,8 @@ public class ExportCsvTestIT extends AbstractScript{
     final String[] output = {"````````````````````````````````````````````````",
         "Starting IoTDB Client Export Script",
         "````````````````````````````````````````````````",
-        "Encounter an error when exporting data, error is: Connection Error, "
-            + "please check whether the network is available or the server has started."};
+        "Connect failed because org.apache.thrift.transport.TTransportException: "
+            + "java.net.ConnectException: Connection refused"};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
         dir + File.separator + "tools" + File.separator + "export-csv.bat",
@@ -64,8 +64,8 @@ public class ExportCsvTestIT extends AbstractScript{
     final String[] output = {"------------------------------------------",
         "Starting IoTDB Client Export Script",
         "------------------------------------------",
-        "Encounter an error when exporting data, error is: Connection Error, "
-            + "please check whether the network is available or the server has started."};
+        "Connect failed because org.apache.thrift.transport.TTransportException: "
+            + "java.net.ConnectException: Connection refused"};
     String dir = getCliPath();
     ProcessBuilder builder = new ProcessBuilder("sh",
         dir + File.separator + "tools" + File.separator + "export-csv.sh",
