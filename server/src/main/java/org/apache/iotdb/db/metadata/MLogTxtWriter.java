@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -167,8 +168,12 @@ public class MLogTxtWriter implements AutoCloseable {
     }
 
     // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
-    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
-      throw new IOException("Deleting " + tmpLogFile + "failed.");
+    if (tmpLogFile.exists()) {
+      try {
+        Files.delete(Paths.get(tmpLogFile.toURI()));
+      } catch (IOException e) {
+        throw new IOException("Deleting " + tmpLogFile + "failed with exception " + e.getMessage());
+      }
     }
     // upgrading
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile));

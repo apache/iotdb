@@ -198,6 +198,7 @@ public class IoTDBConfigCheck {
   }
 
   /**
+<<<<<<< HEAD
    * upgrade 0.10 properties to 0.11 properties
    */
   @SuppressWarnings("unused")
@@ -230,6 +231,8 @@ public class IoTDBConfigCheck {
   }
 
   /**
+=======
+>>>>>>> 614e18466 (fix some snoar warn)
    * repair 0.10 properties
    */
   private void upgradePropertiesFileFromBrokenFile()
@@ -338,6 +341,5 @@ public class IoTDBConfigCheck {
       }
     }
   }
-
 }
 

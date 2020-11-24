@@ -53,6 +53,7 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -257,19 +258,31 @@ public class MLogWriter implements AutoCloseable {
     } else if (!logFile.exists() && tmpLogFile.exists()) {
       // if old .bin doesn't exist but .bin.tmp exists, rename tmp file to .bin
       FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
-    } else if (tmpLogFile.exists() && !tmpLogFile.delete()) {
+    } else if (tmpLogFile.exists()) {
       // if both .bin and .bin.tmp exist, delete .bin.tmp
-      throw new IOException("Deleting " + tmpLogFile + "failed.");
+      try {
+        Files.delete(Paths.get(tmpLogFile.toURI()));
+      } catch (IOException e) {
+        throw new IOException("Deleting " + tmpLogFile + "failed with exception " + e.getMessage());
+      }
     }
 
     // do some clean job
     // remove old .txt and .txt.tmp
-    if (oldLogFile.exists() && !oldLogFile.delete()) {
-      throw new IOException("Deleting old mlog.txt " + oldLogFile + "failed.");
+    if (oldLogFile.exists()) {
+      try {
+        Files.delete(Paths.get(oldLogFile.toURI()));
+      } catch (IOException e) {
+        throw new IOException("Deleting " + oldLogFile + "failed with exception " + e.getMessage());
+      }
     }
 
-    if (tmpOldLogFile.exists() && !tmpOldLogFile.delete()) {
-      throw new IOException("Deleting old mlog.txt.tmp " + oldLogFile + "failed.");
+    if (tmpOldLogFile.exists()) {
+      try {
+        Files.delete(Paths.get(tmpOldLogFile.toURI()));
+      } catch (IOException e) {
+        throw new IOException("Deleting " + tmpOldLogFile + "failed with exception " + e.getMessage());
+      }
     }
 
     // rename .bin.tmp to .bin
