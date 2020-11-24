@@ -73,7 +73,7 @@ public interface IUnCompressor {
    * @param byteArray to be uncompressed bytes
    * @return bytes after uncompressed
    */
-  public abstract byte[] uncompress(byte[] byteArray) throws IOException;
+  byte[] uncompress(byte[] byteArray) throws IOException;
 
   /**
    * uncompress the byte array.
