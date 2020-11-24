@@ -40,9 +40,9 @@ There are several attributes under monitor, including data file directory, the s
 
 ##### MBean Monitor Attributes List
 
-* BaseDirectory
+* SystemDirectory
 
-|Name| BaseDirectory |
+|Name| SystemDirectory |
 |:---:|:---|
 |Description| The absolute directory of data file. |
 |Type| String |
@@ -62,13 +62,15 @@ There are several attributes under monitor, including data file directory, the s
 |Description| If the monitor module is open |
 |Type| Boolean |
 
->  Monitor data statistics are described below
-
 ### Data Status Monitoring
 
-This module is the statistical monitoring method provided by IoTDB for users to store data information. The statistical data are recorded in the system and stored in the database. The current version of IoTDB provides statistics for writing data.
+This module is the statistical monitoring method provided by IoTDB to monitor data information. The current version of IoTDB provides statistics for writing data.
 
-The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file).
+#### Way of data storing
+
+User can choose to enable or disable the function of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file). Also, user can decide if data is written to the disk in the format of time series (corresponding to the `enable_monitor_series_write` item in the configuration file). If the data monitoring switch and time series writing switch are turned on at the same time, the user can view the statistical data by jconsole or querying monitor time series; if only the data monitoring switch is turned on, the statistics in memory can only be viewed in jconsole mode.
+
+> Note: For statistics stored in time series mode, it will be reloaded into memory when IoTDB is restarted, while the statistics recorded only in memory will be cleared when IoTDB is shut down.
 
 #### Writing Data Monitor
 
