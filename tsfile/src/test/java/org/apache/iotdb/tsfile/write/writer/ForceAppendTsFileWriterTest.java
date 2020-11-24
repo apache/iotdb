@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.write.writer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -44,12 +45,23 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class ForceAppendTsFileWriterTest {
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test1.tsfile");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test
   public void test() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
+    if (file.exists()) {
+      fail("Do not know why the file exists...." + file.getAbsolutePath());
+    }
+    System.out.println(file.getAbsolutePath());
+    if (!file.getParentFile().exists()) {
+      fail("folder does not exist...." + file.getParentFile().getAbsolutePath());
+    }
+    if (!file.getParentFile().isDirectory()) {
+      fail("folder is not a directory...." + file.getParentFile().getAbsolutePath());
+    }
+
     TsFileWriter writer = new TsFileWriter(file);
     writer.registerTimeseries(new Path("d1", "s1"),
         new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));

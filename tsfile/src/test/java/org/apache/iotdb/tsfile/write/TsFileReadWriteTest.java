@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import java.util.Arrays;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,31 +70,68 @@ public class TsFileReadWriteTest {
     f = new File(path);
     if (f.exists()) {
       assertTrue(f.delete());
-      ;
     }
   }
 
   @Test
   public void intTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i), TSEncoding.RLE);
+    List<TSEncoding> encodings = Arrays
+        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
+            TSEncoding.GORILLA);
+    for (TSEncoding encoding : encodings) {
+      intTest(encoding);
+    }
+  }
+
+  private void intTest(TSEncoding encoding) throws IOException, WriteProcessException {
+    writeDataByTSRecord(TSDataType.INT32, (i) -> new IntDataPoint("sensor_1", (int) i), encoding);
     readData((i, field, delta) -> assertEquals(i, field.getIntV()));
   }
 
   @Test
   public void longTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.RLE);
+    List<TSEncoding> encodings = Arrays
+        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.REGULAR,
+            TSEncoding.GORILLA);
+    for (TSEncoding encoding : encodings) {
+      longTest(encoding);
+    }
+  }
+
+  public void longTest(TSEncoding encoding) throws IOException, WriteProcessException {
+    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), encoding);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
   }
 
   @Test
   public void floatTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i), TSEncoding.RLE);
+    List<TSEncoding> encodings = Arrays
+        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
+            TSEncoding.GORILLA);
+    for (TSEncoding encoding : encodings) {
+      floatTest(encoding);
+    }
+  }
+
+  public void floatTest(TSEncoding encoding) throws IOException, WriteProcessException {
+    writeDataByTSRecord(TSDataType.FLOAT, (i) -> new FloatDataPoint("sensor_1", (float) i),
+        encoding);
     readData((i, field, delta) -> assertEquals(i, field.getFloatV(), delta));
   }
 
   @Test
   public void doubleTest() throws IOException, WriteProcessException {
-    writeDataByTSRecord(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i), TSEncoding.RLE);
+    List<TSEncoding> encodings = Arrays
+        .asList(TSEncoding.PLAIN, TSEncoding.RLE, TSEncoding.TS_2DIFF, TSEncoding.GORILLA_V1,
+            TSEncoding.GORILLA);
+    for (TSEncoding encoding : encodings) {
+      doubleTest(encoding);
+    }
+  }
+
+  public void doubleTest(TSEncoding encoding) throws IOException, WriteProcessException {
+    writeDataByTSRecord(TSDataType.DOUBLE, (i) -> new DoubleDataPoint("sensor_1", (double) i),
+        encoding);
     readData((i, field, delta) -> assertEquals(i, field.getDoubleV(), delta));
   }
 
@@ -135,12 +174,14 @@ public class TsFileReadWriteTest {
   @Test
   public void readMeasurementWithRegularEncodingTest() throws IOException, WriteProcessException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("REGULAR");
-    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i), TSEncoding.REGULAR);
+    writeDataByTSRecord(TSDataType.INT64, (i) -> new LongDataPoint("sensor_1", i),
+        TSEncoding.REGULAR);
     readData((i, field, delta) -> assertEquals(i, field.getLongV()));
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
   }
 
-  private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy, TSEncoding encodingType)
+  private void writeDataByTSRecord(TSDataType dataType, DataPointProxy proxy,
+      TSEncoding encodingType)
       throws IOException, WriteProcessException {
     int floatCount = 1024 * 1024 * 13 + 1023;
     // add measurements into file schema

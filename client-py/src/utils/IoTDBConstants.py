@@ -37,8 +37,9 @@ class TSEncoding(Enum):
     DIFF = 3
     TS_2DIFF = 4
     BITMAP = 5
-    GORILLA = 6
+    GORILLA_V1 = 6
     REGULAR = 7
+    GORILLA = 8
 
 
 @unique
@@ -50,3 +51,4 @@ class Compressor(Enum):
     SDT = 4
     PAA = 5
     PLA = 6
+    LZ4 = 7

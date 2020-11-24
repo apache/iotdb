@@ -42,9 +42,9 @@
 
 环境配置项主要用于对IoTDB Server运行的Java环境相关参数进行配置，如JVM相关配置。IoTDB Server启动时，此部分配置会被传给JVM。用户可以通过查看 `iotdb-env.sh`(或`iotdb-env.bat`)文件查看环境配置项内容。详细配置项说明如下：
 
-* LOCAL\_JMX
+* JMX\_LOCAL
 
-|名字|LOCAL\_JMX|
+|名字|JMX\_LOCAL|
 |:---:|:---|
 |描述|JMX监控模式，配置为yes表示仅允许本地监控，设置为no的时候表示允许远程监控|
 |类型|枚举String : “yes”, “no”|
@@ -271,11 +271,20 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* enable\_parameter\_adapter
+* enable\_mem\_comtrol
 
-|Name| enable\_parameter\_adapter |
+|Name| enable\_mem\_control |
 |:---:|:---|
-|Description| 开启自动调整系统参数，避免爆内存|
+|Description| 开启内存控制，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
+* enable\_mem\_comtrol
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| 开启内存控制，避免爆内存|
 |Type|Bool|
 |Default| true |
 |Effective|重启服务器生效|
@@ -287,7 +296,7 @@
 |Description| 内存缓冲区 memtable 阈值|
 |Type|Long|
 |Default| 1073741824 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective|enable\_mem\_control为false时生效、重启服务器生效|
 
 * avg\_series\_point\_number\_threshold
 
@@ -305,7 +314,7 @@
 |Description| 每个 tsfile 大小|
 |Type|Long|
 |Default| 536870912 |
-|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+|Effective| 重启服务器生效|
 
 * enable\_partition
 

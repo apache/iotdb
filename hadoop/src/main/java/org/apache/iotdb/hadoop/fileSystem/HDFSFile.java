@@ -48,6 +48,7 @@ public class HDFSFile extends File {
   private Path hdfsPath;
   private FileSystem fs;
   private static final Logger logger = LoggerFactory.getLogger(HDFSFile.class);
+  private static final String UNSUPPORT_OPERATION = "Unsupported operation.";
 
 
   public HDFSFile(String pathname) {
@@ -121,7 +122,7 @@ public class HDFSFile extends File {
         Path filePath = fileStatus.getPath();
         files.add(new HDFSFile(filePath.toUri().toString()));
       }
-      return files.toArray(new HDFSFile[files.size()]);
+      return files.toArray(new HDFSFile[0]);
     } catch (IOException e) {
       logger.error("Fail to list files in {}. ", hdfsPath.toUri().toString(), e);
       return null;
@@ -257,13 +258,13 @@ public class HDFSFile extends File {
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     PathFilter pathFilter = path -> path.toUri().toString().endsWith(suffix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     PathFilter pathFilter = path -> path.toUri().toString().startsWith(prefix);
     List<HDFSFile> files = listFiles(fileFolder, pathFilter);
-    return files.toArray(new HDFSFile[files.size()]);
+    return files.toArray(new HDFSFile[0]);
   }
 
   private List<HDFSFile> listFiles(String fileFolder, PathFilter pathFilter) {
@@ -290,146 +291,146 @@ public class HDFSFile extends File {
 
   @Override
   public String getParent() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isAbsolute() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public File[] listFiles(FileFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public String getCanonicalPath() throws IOException {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public File getCanonicalFile() throws IOException {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public URL toURL() throws MalformedURLException {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public URI toURI() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canRead() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canWrite() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isFile() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean isHidden() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long lastModified() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public void deleteOnExit() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public String[] list() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public String[] list(FilenameFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public File[] listFiles(FilenameFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean mkdir() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setLastModified(long time) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadOnly() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setWritable(boolean writable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setWritable(boolean writable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadable(boolean readable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setReadable(boolean readable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setExecutable(boolean executable, boolean ownerOnly) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean setExecutable(boolean executable) {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public boolean canExecute() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long getTotalSpace() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public long getUsableSpace() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 
   @Override
   public java.nio.file.Path toPath() {
-    throw new UnsupportedOperationException("Unsupported operation.");
+    throw new UnsupportedOperationException(UNSUPPORT_OPERATION);
   }
 }

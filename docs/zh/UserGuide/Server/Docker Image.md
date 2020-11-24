@@ -28,7 +28,7 @@ Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中.
 $ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker
 ```
 或者:
-```console
+```shell
 $ git clone https://github.com/apache/iotdb
 $ cd iotdb
 $ cd docker

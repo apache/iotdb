@@ -196,4 +196,4 @@ Notes:
 
 - `alpha`: It should be in the range of [0,1]. The watermark detection is based on the significance test. The smaller the `alpha` is, the lower the probability that the data without the watermark is detected to be watermark embedded, and thus the higher the credibility of the result of detecting the existence of the watermark in data.
 
-- `columnIndex`: It should be a postive integer.
+- `columnIndex`: It should be a positive integer.

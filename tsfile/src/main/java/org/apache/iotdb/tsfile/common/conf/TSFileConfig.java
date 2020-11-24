@@ -30,23 +30,28 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
  */
 public class TSFileConfig implements Serializable {
 
-  // Memory configuration
+  /**
+   * encoding configuration
+   */
   public static final int RLE_MIN_REPEATED_NUM = 8;
   public static final int RLE_MAX_REPEATED_NUM = 0x7FFF;
   public static final int RLE_MAX_BIT_PACKED_NUM = 63;
 
-  // Data type configuration
-  // Gorilla encoding configuration
-  public static final int FLOAT_LENGTH = 32;
-  public static final int FLAOT_LEADING_ZERO_LENGTH = 5;
   public static final int FLOAT_VALUE_LENGTH = 6;
-
-  // Encoder configuration
-  public static final int DOUBLE_LENGTH = 64;
-  public static final int DOUBLE_LEADING_ZERO_LENGTH = 6;
-
-  // RLE configuration
   public static final int DOUBLE_VALUE_LENGTH = 7;
+
+  public static final int VALUE_BITS_LENGTH_32BIT = 32;
+  public static final int LEADING_ZERO_BITS_LENGTH_32BIT = 5;
+  public static final int MEANINGFUL_XOR_BITS_LENGTH_32BIT = 5;
+
+  public static final int VALUE_BITS_LENGTH_64BIT = 64;
+  public static final int LEADING_ZERO_BITS_LENGTH_64BIT = 6;
+  public static final int MEANINGFUL_XOR_BITS_LENGTH_64BIT = 6;
+
+  public static final int GORILLA_ENCODING_ENDING_INTEGER = Integer.MIN_VALUE;
+  public static final long GORILLA_ENCODING_ENDING_LONG = Long.MIN_VALUE;
+  public static final float GORILLA_ENCODING_ENDING_FLOAT = Float.NaN;
+  public static final double GORILLA_ENCODING_ENDING_DOUBLE = Double.NaN;
 
   /**
    * String encoder with UTF-8 encodes a character to at most 4 bytes.
@@ -104,8 +109,8 @@ public class TSFileConfig implements Serializable {
   private String timeEncoding = "TS_2DIFF";
   /**
    * Encoder of value series. default value is PLAIN. For int, long data type,
-   * TsFile also supports TS_2DIFF and RLE(run-length encoding). For float, double
-   * data type, TsFile also supports TS_2DIFF, RLE(run-length encoding) and
+   * TsFile also supports TS_2DIFF, REGULAR, GORILLA and RLE(run-length encoding).
+   * For float, double data type, TsFile also supports TS_2DIFF, RLE(run-length encoding) and
    * GORILLA. For text data type, TsFile only supports PLAIN.
    */
   private String valueEncoder = "PLAIN";
@@ -134,8 +139,7 @@ public class TSFileConfig implements Serializable {
    */
   private double dftSatisfyRate = 0.1;
   /**
-   * Data compression method, TsFile supports UNCOMPRESSED or SNAPPY. Default
-   * value is UNCOMPRESSED which means no compression
+   * Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4.
    */
   private CompressionType compressor = CompressionType.SNAPPY;
   /**

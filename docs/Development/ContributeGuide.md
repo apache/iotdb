@@ -80,6 +80,8 @@ Correspondence between versions and branches on the official website:
 Precautions:
 
 * Images in Markdown can be uploaded to https://github.com/thulab/iotdb/issues/543 for url
+* Do not use special Unicode chars, e.g., U+FF1A 
+* Do not use the character of dollar (as we will use Latex to generate pdf files)
 
 ## Contributing code
 
@@ -100,7 +102,7 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting ```antlr/target/generated-sources/antlr4``` and ```thrift/target/generated-sources/thrift``` marked as ```Source Root```。 
 
 * Server main function：```server/src/main/java/org/apache/iotdb/db/service/IoTDB```，Can be started in debug mode
-* Client：```client/src/main/java/org/apache/iotdb/client/```，Use Clinet for linux and WinClint for windows, you can start directly, need the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
+* Client：```cli/src/main/java/org/apache/iotdb/cli/```，Use Client for linux and WinClint for windows, you can start directly, need the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
 * Server rpc implementation (mainly used for client and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
   * all jdbc statements：executeStatement(TSExecuteStatementReq req)
   * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	
@@ -108,3 +110,18 @@ Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting
 
 * Storage engine org.apache.iotdb.db.engine.StorageEngine
 * Query engine org.apache.iotdb.db.qp.QueryProcessor
+
+
+## Frequent Questions when Compiling the Source Code
+
+1. I could not download thrift-* tools, like `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+
+It is due to some network problems (especially in China), you can:
+
+* Download the file from the URL manually;
+  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
+  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
+* Put the file to thrift/target/tools/
+* Re-run maven command like `mvn compile`
+

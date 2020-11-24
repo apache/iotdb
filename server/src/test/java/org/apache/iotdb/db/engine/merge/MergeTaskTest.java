@@ -65,9 +65,9 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void testMerge() throws Exception {
     MergeTask mergeTask =
-        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
-            , l) -> {
-        }, "test", false, 1, MERGE_TEST_SG);
+        new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
+            (k, v, l) -> {
+            }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -111,7 +111,7 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testChunkNumThreshold() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l) -> {

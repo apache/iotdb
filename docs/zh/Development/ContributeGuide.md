@@ -118,7 +118,7 @@ import -> Maven -> Existing Maven Projects
 ## 调试代码
 
 * 服务器主函数：```server/src/main/java/org/apache/iotdb/db/service/IoTDB```，可以debug模式启动
-* 客户端：```client/src/main/java/org/apache/iotdb/client/```，linux 用 Clinet，windows 用 WinClint，可以直接启动，需要参数"-h 127.0.0.1 -p 6667 -u root -pw root"
+* 客户端：```cli/src/main/java/org/apache/iotdb/cli/```，linux 用 Client，windows 用 WinClint，可以直接启动，需要参数"-h 127.0.0.1 -p 6667 -u root -pw root"
 * 服务器的 rpc 实现（主要用来客户端和服务器通信，一般在这里开始打断点）：```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
 	* jdbc所有语句：executeStatement(TSExecuteStatementReq req)
 	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	
@@ -126,4 +126,19 @@ import -> Maven -> Existing Maven Projects
 
 * 存储引擎 org.apache.iotdb.db.engine.StorageEngine
 * 查询引擎 org.apache.iotdb.db.qp.Planner
+
+
+
+## 常见编译错误
+
+1. 无法下载 thrift-* 等文件, 例如 `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+
+这一般是网络问题，这时候需要手动下载上述文件：
+
+* 根据以下网址手动下载上述文件;
+  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
+  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
+* 将该文件拷贝到thrift/target/tools/目录下
+* 重新执行maven的编译命令
 

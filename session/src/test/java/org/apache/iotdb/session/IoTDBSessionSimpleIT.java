@@ -21,6 +21,7 @@ package org.apache.iotdb.session;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -133,6 +134,36 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  public void testInsertWrongPathByStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1..d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      logger.error("" ,e);
+    }
+    
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    Assert.assertFalse(dataSet.hasNext());
+
+    session.close();
+  }
+
+  @Test
   public void testInsertByObjAndNotInferType()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -204,8 +235,8 @@ public class IoTDBSessionSimpleIT {
         .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
             null, null);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
+    assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
     MeasurementMNode mNode = (MeasurementMNode) MManager
         .getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
@@ -260,6 +291,53 @@ public class IoTDBSessionSimpleIT {
       count++;
     }
     Assert.assertEquals(10, count);
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void createTimeSeriesWithDoubleTicks() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    session.createTimeseries("root.sg.\"my.device.with.colon:\".s", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertTrue(dataSet.hasNext());
+
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void createWrongTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    try {
+      session.createTimeseries("root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("",e);
+    }
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertFalse(dataSet.hasNext());
+
     session.deleteStorageGroup(storageGroup);
     session.close();
   }

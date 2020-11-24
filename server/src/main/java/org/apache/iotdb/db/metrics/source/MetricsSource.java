@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.metrics.source;
 
-import org.apache.iotdb.db.metrics.server.ServerArgument;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import org.apache.iotdb.db.metrics.server.ServerArgument;
 
 public class MetricsSource implements Source {
 
-  public String sourceName = "iot-metrics";
+  private static final String SOURCE_NAME = "iot-metrics";
   public MetricRegistry metricRegistry;
   public ServerArgument serverArgument;
 
@@ -35,61 +35,61 @@ public class MetricsSource implements Source {
 
   public void registerInfo() {
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "host"), new Gauge<String>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "host"), new Gauge<String>() {
       public String getValue() {
         return serverArgument.getHost();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "port"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "port"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getPort();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "cores"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "cores"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getCores();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "cpu_ratio"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "cpu_ratio"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getCpuRatio();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "total_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "total_memory"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getTotalMemory();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "max_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "max_memory"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getMaxMemory();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "free_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "free_memory"), new Gauge<Integer>() {
       public Integer getValue() {
         return (int) serverArgument.getFreeMemory();
       }
     });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "totalPhysical_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "totalPhysical_memory"), new Gauge<Integer>() {
           public Integer getValue() {
             return (int) serverArgument.getTotalPhysicalMemory();
           }
         });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "freePhysical_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "freePhysical_memory"), new Gauge<Integer>() {
           public Integer getValue() {
             return (int) serverArgument.getFreePhysicalMemory();
           }
         });
 
-    metricRegistry.register(MetricRegistry.name(sourceName, "usedPhysical_memory"), new Gauge<Integer>() {
+    metricRegistry.register(MetricRegistry.name(SOURCE_NAME, "usedPhysical_memory"), new Gauge<Integer>() {
           public Integer getValue() {
             return (int) serverArgument.getUsedPhysicalMemory();
           }
@@ -98,7 +98,7 @@ public class MetricsSource implements Source {
 
   @Override
   public String sourceName() {
-    return this.sourceName;
+    return MetricsSource.SOURCE_NAME;
   }
 
 }

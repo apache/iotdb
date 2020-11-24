@@ -80,7 +80,6 @@ public class SQLConstant {
   public static final int LESSTHAN = SqlBaseLexer.OPERATOR_LT;
   public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
   public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
-  public static final int EQUAL_NS = SqlBaseLexer.OPERATOR_NEQ;
   public static final int IN = SqlBaseLexer.OPERATOR_IN;
 
   public static final int TOK_SELECT = 21;
@@ -127,8 +126,6 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION = 66;
 
   public static final int TOK_FLUSH_TASK_INFO = 67;
-  public static final int TOK_DYNAMIC_PARAMETER = 68;
-
   public static final int TOK_LOAD_FILES = 69;
   public static final int TOK_REMOVE_FILE = 70;
   public static final int TOK_MOVE_FILE = 71;
@@ -181,7 +178,6 @@ public class SQLConstant {
     tokenSymbol.put(KW_NOT, "!");
     tokenSymbol.put(EQUAL, "=");
     tokenSymbol.put(NOTEQUAL, "<>");
-    tokenSymbol.put(EQUAL_NS, "<=>");
     tokenSymbol.put(LESSTHANOREQUALTO, "<=");
     tokenSymbol.put(LESSTHAN, "<");
     tokenSymbol.put(GREATERTHANOREQUALTO, ">=");
@@ -194,7 +190,6 @@ public class SQLConstant {
     tokenNames.put(KW_NOT, "not");
     tokenNames.put(EQUAL, "equal");
     tokenNames.put(NOTEQUAL, "not_equal");
-    tokenNames.put(EQUAL_NS, "equal_ns");
     tokenNames.put(LESSTHANOREQUALTO, "lessthan_or_equalto");
     tokenNames.put(LESSTHAN, "lessthan");
     tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
@@ -233,7 +228,6 @@ public class SQLConstant {
 
     tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
     tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
-    tokenNames.put(TOK_DYNAMIC_PARAMETER, "TOK_DYNAMIC_PARAMETER");
 
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
@@ -243,6 +237,11 @@ public class SQLConstant {
     tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
+
+    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
+    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
+    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
+
   }
 
   static {
