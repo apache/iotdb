@@ -25,9 +25,6 @@ public class Peer {
 
   private long nextIndex;
   private long matchIndex;
-  // only this field will be updated in different thread, as it's value is true or false,
-  // so just adding a volatile is enough to face the concurrency problem
-  private volatile boolean isCatchUp;
   private AtomicInteger inconsistentHeartbeatNum = new AtomicInteger();
   // lastLogIndex from the last heartbeat
   private long lastHeartBeatIndex;
@@ -35,7 +32,6 @@ public class Peer {
   public Peer(long nextIndex) {
     this.nextIndex = nextIndex;
     this.matchIndex = -1;
-    this.isCatchUp = true;
   }
 
   public synchronized long getNextIndex() {
@@ -54,14 +50,6 @@ public class Peer {
     this.matchIndex = matchIndex;
     this.setNextIndex(Math.max(nextIndex, matchIndex + 1));
     this.notifyAll();
-  }
-
-  public boolean isCatchUp() {
-    return isCatchUp;
-  }
-
-  public void setCatchUp(boolean catchUp) {
-    isCatchUp = catchUp;
   }
 
   public int incInconsistentHeartbeatNum() {

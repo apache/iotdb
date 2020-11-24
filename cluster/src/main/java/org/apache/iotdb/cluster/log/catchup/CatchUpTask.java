@@ -320,7 +320,6 @@ public class CatchUpTask implements Runnable {
           logger.info("{}: Catch up {} finished, update it's matchIndex to {}",
               raftMember.getName(), node, peer.getMatchIndex());
         }
-        peer.setCatchUp(true);
         peer.resetInconsistentHeartbeatNum();
       }
 

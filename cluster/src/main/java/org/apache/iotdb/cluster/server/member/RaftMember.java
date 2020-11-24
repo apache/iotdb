@@ -33,8 +33,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -699,7 +701,17 @@ public abstract class RaftMember {
     }
     logger.info("{}: Start to make {} catch up", name, follower);
     if (!catchUpService.isShutdown()) {
-      catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
+      Future<?> future = catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower),
+          this));
+      catchUpService.submit(() -> {
+        try {
+          future.get();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+          logger.error("Catup task exits with unexpected exception", e);
+        }
+      });
     }
   }
 

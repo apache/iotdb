@@ -84,7 +84,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
 
     Peer peer = localMember.getPeerMap()
         .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
-    if (!peer.isCatchUp() || !localMember.getLogManager()
+    if (!localMember.getLogManager()
         .isLogUpToDate(lastLogTerm, lastLogIdx) || !localMember.getLogManager()
         .matchTerm(lastLogTerm, lastLogIdx)) {
       // the follower is not up-to-date
@@ -93,11 +93,6 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         // some logs may be lost due to restart
         peer.setMatchIndex(-1);
       }
-      logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
-          memberName, follower,
-          lastLogIdx, lastLogTerm,
-          localLastLogIdx, localLastLogTerm,
-          peer.getMatchIndex());
 
       // only start a catch up when the follower's lastLogIndex remains stall and unchanged for 5
       // heartbeats
@@ -105,6 +100,11 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         // the follower's lastLogIndex is unchanged, increase inconsistent counter
         int inconsistentNum = peer.incInconsistentHeartbeatNum();
         if (inconsistentNum >= 5) {
+          logger.info("{}: catching up node {}, index-term: {}-{}/{}-{}, peer match index {}",
+              memberName, follower,
+              lastLogIdx, lastLogTerm,
+              localLastLogIdx, localLastLogTerm,
+              peer.getMatchIndex());
           localMember.catchUp(follower);
         }
       } else {

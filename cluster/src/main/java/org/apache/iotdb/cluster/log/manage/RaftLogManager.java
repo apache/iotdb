@@ -161,10 +161,12 @@ public abstract class RaftLogManager {
     int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
         .getLogDeleteCheckIntervalSecond();
 
-    this.deleteLogFuture = deleteLogExecutorService
-        .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
-            logDeleteCheckIntervalSecond,
-            TimeUnit.SECONDS);
+    if (logDeleteCheckIntervalSecond > 0) {
+      this.deleteLogFuture = deleteLogExecutorService
+          .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
+              logDeleteCheckIntervalSecond,
+              TimeUnit.SECONDS);
+    }
 
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
 
@@ -728,7 +730,10 @@ public abstract class RaftLogManager {
     getStableEntryManager().close();
     if (deleteLogExecutorService != null) {
       deleteLogExecutorService.shutdownNow();
-      deleteLogFuture.cancel(true);
+      if (deleteLogFuture != null) {
+        deleteLogFuture.cancel(true);
+      }
+
       try {
         deleteLogExecutorService.awaitTermination(20, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
@@ -803,6 +808,10 @@ public abstract class RaftLogManager {
 
   private void innerDeleteLog(int sizeToReserve) {
     long removeSize = committedEntryManager.getTotalSize() - sizeToReserve;
+    if (removeSize <= 0) {
+      return;
+    }
+
     long compactIndex = Math
         .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {

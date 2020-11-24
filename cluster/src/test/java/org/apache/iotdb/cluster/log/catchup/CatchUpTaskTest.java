@@ -241,7 +241,6 @@ public class CatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
-    peer.setCatchUp(false);
     peer.setMatchIndex(0);
     CatchUpTask task = new CatchUpTask(receiver, peer, sender);
     task.run();
@@ -273,7 +272,6 @@ public class CatchUpTaskTest {
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
       Peer peer = new Peer(10);
-      peer.setCatchUp(false);
       peer.setMatchIndex(0);
       CatchUpTask task = new CatchUpTask(receiver, peer, sender);
       task.run();
@@ -300,7 +298,6 @@ public class CatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
-    peer.setCatchUp(false);
     peer.setNextIndex(0);
     CatchUpTask task = new CatchUpTask(receiver, peer, sender);
     ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
@@ -325,7 +322,6 @@ public class CatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
-    peer.setCatchUp(false);
     peer.setNextIndex(0);
     CatchUpTask task = new CatchUpTask(receiver, peer, sender);
     task.run();
@@ -355,7 +351,6 @@ public class CatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
-    peer.setCatchUp(false);
     peer.setMatchIndex(0);
     peer.setNextIndex(0);
 

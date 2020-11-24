@@ -81,7 +81,6 @@ public class AppendNodeEntryHandlerTest {
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(0, quorum.get());
-    assertFalse(peer.isCatchUp());
   }
 
   @Test
@@ -155,6 +154,5 @@ public class AppendNodeEntryHandlerTest {
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(5, quorum.get());
-    assertFalse(peer.isCatchUp());
   }
 }

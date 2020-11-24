@@ -234,7 +234,7 @@ public class LogDispatcher {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
           for (SendLogRequest request : currBatch) {
-            request.getAppendEntryRequest().setEntry(request.serializedLogFuture.get());
+            request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
           }
           sendBatchLogs(currBatch);
           currBatch.clear();

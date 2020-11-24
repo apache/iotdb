@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -68,9 +67,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long response) {
-    if (Timer.ENABLE_INSTRUMENTING) {
-      Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
-    }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
@@ -88,6 +84,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           voteCounter.notifyAll();
         }
         peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));
+        if (Timer.ENABLE_INSTRUMENTING) {
+          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
+        }
       } else if (resp > 0) {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
@@ -100,14 +99,17 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         }
         leaderShipStale.set(true);
         voteCounter.notifyAll();
+        if (Timer.ENABLE_INSTRUMENTING) {
+          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
+        }
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
         logger.debug("{}: The log {} is rejected by {} because: {}", member.getName(), log,
             receiver, resp);
-        if (resp == RESPONSE_LOG_MISMATCH) {
-          setPeerNotCatchUp();
-        }
         onFail();
+        if (Timer.ENABLE_INSTRUMENTING) {
+          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
+        }
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle
@@ -116,7 +118,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    setPeerNotCatchUp();
     if (exception instanceof ConnectException) {
       logger
           .warn("{}: Cannot append log {}: cannot connect to {}: {}", member.getName(), log,
@@ -156,10 +157,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   public void setPeer(Peer peer) {
     this.peer = peer;
-  }
-
-  private void setPeerNotCatchUp() {
-    peer.setCatchUp(false);
   }
 
   public void setReceiver(Node follower) {

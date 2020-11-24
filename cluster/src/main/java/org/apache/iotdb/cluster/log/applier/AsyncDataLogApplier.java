@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
@@ -232,6 +233,16 @@ public class AsyncDataLogApplier implements LogApplier {
     @Override
     public void accept(Log log) {
       if (future == null || future.isCancelled() || future.isDone()) {
+        if (future != null) {
+          try {
+            future.get();
+          } catch (InterruptedException e) {
+            logger.error("Last applier thread exits unexpectedly", e);
+            Thread.currentThread().interrupt();
+          } catch (ExecutionException e) {
+            logger.error("Last applier thread exits unexpectedly", e);
+          }
+        }
         future = consumerPool.submit(this);
       }
 

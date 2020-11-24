@@ -30,7 +30,7 @@ public class ClusterConstant {
   public static final int HASH_SALT = 2333;
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
 
-  public static final int LOG_NUM_IN_BATCH = 1024;
+  public static final int LOG_NUM_IN_BATCH = 100;
 
   public static final Node EMPTY_NODE = new Node();
 

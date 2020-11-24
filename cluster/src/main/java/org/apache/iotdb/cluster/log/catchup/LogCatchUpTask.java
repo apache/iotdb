@@ -54,7 +54,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class LogCatchUpTask implements Callable<Boolean> {
 
   // sending logs may take longer than normal communications
-  private static final long SEND_LOGS_WAIT_MS = 5 * 60 * 1000L;
+  private static final long SEND_LOGS_WAIT_MS = RaftServer.getWriteOperationTimeoutMS();
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
   Node node;
   RaftMember raftMember;
@@ -217,6 +217,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       totalLogSize += logSize;
       // we should send logs who's size is smaller than the max frame size of thrift
       // left 200 byte for other fields of AppendEntriesRequest
+      // send at most 100 logs a time to avoid long latency
       if (totalLogSize >
           IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()
               - IoTDBConstant.LEFT_SIZE_IN_REQUEST) {
@@ -254,10 +255,16 @@ public class LogCatchUpTask implements Callable<Boolean> {
       return;
     }
     // do append entries
+    if (logger.isInfoEnabled()) {
+      logger.info("{}: sending {} logs to {}", raftMember.getName(), node, logList.size());
+    }
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       abort = !appendEntriesAsync(logList, request);
     } else {
       abort = !appendEntriesSync(logList, request);
+    }
+    if (!abort && logger.isInfoEnabled()) {
+      logger.info("{}: sent {} logs to {}", raftMember.getName(), node, logList.size());
     }
     logList.clear();
   }
@@ -277,9 +284,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
       if (client == null) {
         return false;
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
-      }
       client.appendEntries(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       appendSucceed.wait(SEND_LOGS_WAIT_MS);
@@ -297,9 +301,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
     Client client = raftMember.getSyncClient(node);
     try {
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
-      }
       long result = client.appendEntries(request);
       handler.onComplete(result);
       return appendSucceed.get();
