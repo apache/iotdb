@@ -200,32 +200,37 @@ select count(status) from root.ln.wf01.wt01;
 | 4              |
 
 
-##### 按层级统计
-通过定义LEVEL来统计指定层级下的数据点个数。
+#### 分层聚合查询
 
-这可以用来查询不同层级下的数据点总个数
+在时间序列层级结构中，分层聚合查询用于对某一层级进行聚合查询。
+这里使用LEVEL来统计指定层级下的聚合范围，该语句约定root为第0层序列，若统计"root.ln"下所有序列则需指定level为1。
 
-语法是：
-
-这个可以用来查询某个路径下的总数据点数
-
+例如：在"root.ln.wf01"下存在多个子序列：wt01，wt02，wt03等均有名为status的序列，
+如果需要统计这些子序列的status包含的点个数，使用以下查询:
 ```
-select count(status) from root.ln.wf01.wt01 group by level=1;
+select count(status) from root.ln.wf01.* group by level=2
 ```
+运行结果为：
+
+| count(root.ln.wf01.*.status) |
+| ---------------------------- |
+| 7                            |
 
 
-| Time   | count(root.ln) |
-| ------ | -------------- |
-| 0      | 7              |
-
-
+假设此时在"root.ln"下面加入名为wf02的子序列，如"root.ln.wf02.wt01.status"。
+需要同时查询"root.ln.wf01"和"root.ln.wf02"下各自status子序列的点个数。则使用查询：
 ```
-select count(status) from root.ln.wf01.wt01 group by level=2;
+select count(status) from root.ln.*.* group by level=2
 ```
+运行结果：
 
-| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
-| ------ | ------------------- | ------------------- |
-| 0      | 4                   | 3                   |
+| count(root.ln.wf01.*.status) | count(root.ln.wf02.*.status) |
+| ---------------------------- | ---------------------------- |
+| 7                            | 4
+
+分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value
+
+对于sum, avg, min_value, max_value四种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
 ### 降频聚合查询
 

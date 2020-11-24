@@ -373,14 +373,14 @@ public class PhysicalGenerator {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
-      } else {
+      } else if (queryOperator.isGroupByLevel()) {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-        if (queryOperator.getLevel() >= 0) {
-          for (String aggregation : queryPlan.getAggregations()) {
-            if (!SQLConstant.COUNT.equals(aggregation)) {
-              throw new QueryProcessException("group by level only support count now.");
-            }
+        try {
+          if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
+            throw new QueryProcessException("Aggregate among unmatched data types");
           }
+        } catch (MetadataException e) {
+          throw new QueryProcessException(e);
         }
       }
     } else if (queryOperator.isFill()) {
@@ -796,6 +796,27 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
+  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
+      throws MetadataException{
+    List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
+    if (aggregations.isEmpty()) {
+      return true;
+    }
+
+    List<PartialPath> paths = queryOperator.getSelectedPaths();
+    List<TSDataType> dataTypes = getSeriesTypes(paths);
+    String aggType = aggregations.get(0);
+    switch (aggType) {
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
+      default:
+        return true;
+    }
+  }
+  
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
