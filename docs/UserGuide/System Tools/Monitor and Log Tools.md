@@ -76,7 +76,7 @@ User can choose to enable or disable the function of data statistics monitoring 
 
 At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics records the number of total points and requests, and the storage group statistics counts the write data of each storage group.
 
-The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk **, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying **. Statistics will not disappear after system refresh or restart. To restart statistics, please delete current statistics and restart the system.
+The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk **, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying **. 
 
 Here are the writing data statistics (the range supported is shown in brackets):
 
