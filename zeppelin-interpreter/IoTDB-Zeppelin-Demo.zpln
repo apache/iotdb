@@ -1,0 +1,297 @@
+﻿{
+  "paragraphs": [
+    {
+      "title": "Set IoTDB Schema",
+      "text": "SET STORAGE GROUP TO root.ln.wf01.wt01;\nCREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\nCREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n\n",
+      "user": "anonymous",
+      "dateUpdated": "2020-11-24T14:50:26+0800",
+      "config": {
+        "colWidth": 6,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {},
+        "title": true,
+        "lineNumbers": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Sql executed."
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1606199112249_2061310279",
+      "id": "paragraph_1606199112249_2061310279",
+      "dateCreated": "2020-11-24T14:25:12+0800",
+      "dateStarted": "2020-11-24T14:25:45+0800",
+      "dateFinished": "2020-11-24T14:25:47+0800",
+      "status": "FINISHED",
+      "focus": true,
+      "$$hashKey": "object:5350"
+    },
+    {
+      "title": "Insert Time Series",
+      "text": "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (1, 1.1, false, 4);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (2, 3.2, true, 3);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (3, 2.3, false, 2);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (4, 4.4, false, 1);\n\nINSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\nVALUES (5, 3.5, false, 0);",
+      "user": "anonymous",
+      "dateUpdated": "2020-11-24T14:50:58+0800",
+      "config": {
+        "colWidth": 6,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {},
+        "title": true,
+        "lineNumbers": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TEXT",
+            "data": "Sql executed."
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1606199645491_331600654",
+      "id": "paragraph_1606199645491_331600654",
+      "dateCreated": "2020-11-24T14:34:05+0800",
+      "dateStarted": "2020-11-24T14:49:20+0800",
+      "dateFinished": "2020-11-24T14:49:20+0800",
+      "status": "FINISHED",
+      "$$hashKey": "object:5351"
+    },
+    {
+      "title": "Query: Table",
+      "text": "SELECT *\nFROM root.ln.wf01.wt01\nWHERE time >= 1\n\tAND time <= 6;",
+      "user": "anonymous",
+      "dateUpdated": "2020-11-24T14:51:06+0800",
+      "config": {
+        "colWidth": 6,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "table",
+              "height": 300,
+              "optionOpen": false,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "Time": "string",
+                      "root.ln.wf01.wt01.temperature": "string",
+                      "root.ln.wf01.wt01.status": "string",
+                      "root.ln.wf01.wt01.hardware": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                }
+              },
+              "commonSetting": {}
+            }
+          }
+        },
+        "editorSetting": {},
+        "editorHide": false,
+        "title": true,
+        "lineNumbers": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TABLE",
+            "data": "Time\troot.ln.wf01.wt01.temperature\troot.ln.wf01.wt01.status\troot.ln.wf01.wt01.hardware\n1\t1.1\tfalse\t4\n2\t3.2\ttrue\t3\n3\t2.3\tfalse\t2\n4\t4.4\tfalse\t1\n5\t3.5\tfalse\t0"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1605787967187_651066788",
+      "id": "paragraph_1605787967187_651066788",
+      "dateCreated": "2020-11-19T20:12:47+0800",
+      "dateStarted": "2020-11-24T14:49:22+0800",
+      "dateFinished": "2020-11-24T14:49:22+0800",
+      "status": "FINISHED",
+      "$$hashKey": "object:5352"
+    },
+    {
+      "title": "Query: Line Chart",
+      "text": "SELECT *\nFROM root.ln.wf01.wt01\nWHERE time >= 1\n\tAND time <= 6;",
+      "user": "anonymous",
+      "dateUpdated": "2020-11-24T14:51:13+0800",
+      "config": {
+        "colWidth": 6,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {
+          "0": {
+            "graph": {
+              "mode": "lineChart",
+              "height": 300,
+              "optionOpen": false,
+              "setting": {
+                "table": {
+                  "tableGridState": {},
+                  "tableColumnTypeState": {
+                    "names": {
+                      "Time": "string",
+                      "root.ln.wf01.wt01.status": "string"
+                    },
+                    "updated": false
+                  },
+                  "tableOptionSpecHash": "[{\"name\":\"useFilter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable filter for columns\"},{\"name\":\"showPagination\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable pagination for better navigation\"},{\"name\":\"showAggregationFooter\",\"valueType\":\"boolean\",\"defaultValue\":false,\"widget\":\"checkbox\",\"description\":\"Enable a footer for displaying aggregated values\"}]",
+                  "tableOptionValue": {
+                    "useFilter": false,
+                    "showPagination": false,
+                    "showAggregationFooter": false
+                  },
+                  "updated": false,
+                  "initialized": false
+                },
+                "lineChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                },
+                "stackedAreaChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                },
+                "pieChart": {},
+                "multiBarChart": {
+                  "rotate": {
+                    "degree": "-45"
+                  },
+                  "xLabelStatus": "default"
+                }
+              },
+              "commonSetting": {},
+              "keys": [
+                {
+                  "name": "Time",
+                  "index": 0,
+                  "aggr": "sum"
+                }
+              ],
+              "groups": [],
+              "values": [
+                {
+                  "name": "root.ln.wf01.wt01.temperature",
+                  "index": 1,
+                  "aggr": "sum"
+                },
+                {
+                  "name": "root.ln.wf01.wt01.hardware",
+                  "index": 3,
+                  "aggr": "sum"
+                }
+              ]
+            },
+            "helium": {}
+          }
+        },
+        "editorSetting": {},
+        "editorHide": false,
+        "title": true,
+        "lineNumbers": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "results": {
+        "code": "SUCCESS",
+        "msg": [
+          {
+            "type": "TABLE",
+            "data": "Time\troot.ln.wf01.wt01.temperature\troot.ln.wf01.wt01.status\troot.ln.wf01.wt01.hardware\n1\t1.1\tfalse\t4\n2\t3.2\ttrue\t3\n3\t2.3\tfalse\t2\n4\t4.4\tfalse\t1\n5\t3.5\tfalse\t0"
+          }
+        ]
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1606200407155_1025230441",
+      "id": "paragraph_1606200407155_1025230441",
+      "dateCreated": "2020-11-24T14:46:47+0800",
+      "dateStarted": "2020-11-24T14:49:23+0800",
+      "dateFinished": "2020-11-24T14:49:23+0800",
+      "status": "FINISHED",
+      "$$hashKey": "object:5353"
+    },
+    {
+      "text": "",
+      "user": "anonymous",
+      "dateUpdated": "2020-11-24T14:24:43+0800",
+      "config": {
+        "colWidth": 12,
+        "fontSize": 9,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {}
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "runtimeInfos": {},
+      "progressUpdateIntervalMs": 500,
+      "jobName": "paragraph_1605787989076_1398743633",
+      "id": "paragraph_1605787989076_1398743633",
+      "dateCreated": "2020-11-19T20:13:09+0800",
+      "status": "READY",
+      "$$hashKey": "object:5354"
+    }
+  ],
+  "name": "IoTDB-Zeppelin-Demo",
+  "id": "2FRZ8D72H",
+  "defaultInterpreterGroup": "iotdb",
+  "version": "0.9.0-preview2",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {},
+  "path": "/IoTDB-Zeppelin-Demo"
+}

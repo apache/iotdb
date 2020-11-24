@@ -17,6 +17,7 @@
 package org.apache.zeppelin.iotdb;
 
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -76,7 +77,7 @@ public class IoTDBInterpreter extends Interpreter {
           "IoTDBConnectionException: " + connectionException.getMessage());
     }
     try {
-      String[] scriptLines = script.split("\n");
+      String[] scriptLines = parseMultiLinesSQL(script);
       InterpreterResult interpreterResult = null;
       for (String scriptLine : scriptLines) {
         if (scriptLine.toLowerCase().startsWith("select")) {
@@ -145,6 +146,11 @@ public class IoTDBInterpreter extends Interpreter {
       sortedMap.put(entry.getKey(), entry.getValue());
     }
     return sortedMap;
+  }
+
+  static String[] parseMultiLinesSQL(String sql) {
+    String[] tmp = sql.replace('\t', ' ').replace('\n', ' ').trim().split(";");
+    return Arrays.stream(tmp).map(String::trim).toArray(String[]::new);
   }
 
 }

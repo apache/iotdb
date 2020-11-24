@@ -573,6 +573,8 @@
                             <exclude>LICENSE-binary</exclude>
                             <!-- json does not support comments-->
                             <exclude>**/*.json</exclude>
+                            <!-- the zeppelin export file format-->
+                            <exclude>**/*.zpln</exclude>
                         </excludes>
                     </configuration>
                 </plugin>

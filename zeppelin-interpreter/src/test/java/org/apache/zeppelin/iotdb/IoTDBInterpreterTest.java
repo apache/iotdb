@@ -18,9 +18,11 @@
  */
 package org.apache.zeppelin.iotdb;
 
+import java.util.Arrays;
 import java.util.Properties;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,6 +40,65 @@ public class IoTDBInterpreterTest {
   @After
   public void close() {
     interpreter.close();
+  }
+
+  @Test
+  public void TestMultiLines() {
+    String insert = "SET STORAGE GROUP TO root.ln.wf01.wt01;\n"
+        + "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN;\n"
+        + "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN;\n"
+        + "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN;\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (1, 1.1, false, 11);\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (2, 2.2, true, 22);\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (3, 3.3, false, 33);\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (4, 4.4, false, 44);\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (5, 5.5, false, 55);\n"
+        + "\n"
+        + "\n";
+    String[] gt = new String[]{
+        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.ln.wf01.wt01.hardware WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (2, 2.2, true, 22)",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (3, 3.3, false, 33)",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (4, 4.4, false, 44)",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
+    };
+    Assert.assertArrayEquals(gt, IoTDBInterpreter.parseMultiLinesSQL(insert));
+  }
+
+  @Test
+  public void TestMultiLines2() {
+    String query = "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (4, 4.4, false, 44);\n"
+        + "\n"
+        + "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware)\n"
+        + "VALUES (5, 5.5, false, 55);\n"
+        + "\n"
+        + "\n"
+        + "SELECT *\n"
+        + "FROM root.ln.wf01.wt01\n"
+        + "WHERE time >= 1\n"
+        + "\tAND time <= 6;";
+
+    String[] gt = new String[]{
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (4, 4.4, false, 44)",
+        "INSERT INTO root.ln.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
+        "SELECT * FROM root.ln.wf01.wt01 WHERE time >= 1  AND time <= 6",
+    };
+    Assert.assertArrayEquals(gt, IoTDBInterpreter.parseMultiLinesSQL(query));
   }
 
   @Test
