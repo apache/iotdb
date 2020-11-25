@@ -34,6 +34,14 @@ public interface TsFileOutput {
   void write(byte[] b) throws IOException;
 
   /**
+   * Writes 1 byte  to this output at the current position.
+   *
+   * @param b the data.
+   * @throws IOException if an I/O error occurs.
+   */
+  void write(byte b) throws IOException;
+
+  /**
    * Writes <code>b.remaining()</code> bytes from the specified byte array to this
    * output at the current position.
    *

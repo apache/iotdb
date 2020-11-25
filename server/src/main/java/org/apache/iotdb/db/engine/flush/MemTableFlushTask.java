@@ -75,7 +75,7 @@ public class MemTableFlushTask {
    * the function for flushing memtable.
    */
   public void syncFlushMemTable()
-      throws ExecutionException, InterruptedException, IOException {
+      throws ExecutionException, InterruptedException {
     logger.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
         storageGroup,
         memTable.memSize(),

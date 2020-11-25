@@ -23,10 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class PageHeader {
 
@@ -41,21 +40,24 @@ public class PageHeader {
     this.statistics = statistics;
   }
 
-  public static int calculatePageHeaderSizeWithoutStatistics() {
-    return 2 * Integer.BYTES; // uncompressedSize, compressedSize
+  /**
+   * max page header size without statistics
+   */
+  public static int estimateMaxPageHeaderSizeWithoutStatistics() {
+    return 2 * (Integer.BYTES + 1); // uncompressedSize, compressedSize
   }
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
       throws IOException {
-    int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
-    int compressedSize = ReadWriteIOUtils.readInt(inputStream);
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     Statistics statistics = Statistics.deserialize(inputStream, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
-    int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
-    int compressedSize = ReadWriteIOUtils.readInt(buffer);
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     Statistics statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
@@ -93,8 +95,8 @@ public class PageHeader {
   }
 
   public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(uncompressedSize, outputStream);
-    ReadWriteIOUtils.write(compressedSize, outputStream);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, outputStream);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, outputStream);
     statistics.serialize(outputStream);
   }
 

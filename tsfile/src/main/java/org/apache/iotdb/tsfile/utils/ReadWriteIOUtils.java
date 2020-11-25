@@ -353,11 +353,42 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * write string to outputStream.
+   *
+   * @return the length of string represented by byte[].
+   */
+  public static int writeVar(String s, OutputStream outputStream) throws IOException {
+    int len = 0;
+    if (s == null) {
+      len += ReadWriteForEncodingUtils.writeVarInt(-1, outputStream);
+      return len;
+    }
+
+    byte[] bytes = s.getBytes();
+    len += write(bytes.length, outputStream);
+    outputStream.write(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  /**
    * write string to byteBuffer.
    *
    * @return the length of string represented by byte[].
    */
   public static int write(String s, ByteBuffer buffer) {
+    if (s == null) {
+      return write(-1, buffer);
+    }
+    int len = 0;
+    byte[] bytes = s.getBytes();
+    len += write(bytes.length, buffer);
+    buffer.put(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  public static int writeVar(String s, ByteBuffer buffer) {
     if (s == null) {
       return write(-1, buffer);
     }
@@ -451,6 +482,13 @@ public class ReadWriteIOUtils {
   public static int write(TSEncoding encoding, ByteBuffer buffer) {
     short n = encoding.serialize();
     return write(n, buffer);
+  }
+
+  /**
+   * read a byte var from inputStream.
+   */
+  public static byte readByte(InputStream inputStream) throws IOException {
+    return (byte) inputStream.read();
   }
 
   /**
@@ -587,9 +625,41 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * string length's type is varInt
+   */
+  public static String readVarIntString(InputStream inputStream) throws IOException {
+    int strLength = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    if (strLength <= 0) {
+      return null;
+    }
+    byte[] bytes = new byte[strLength];
+    int readLen = inputStream.read(bytes, 0, strLength);
+    if (readLen != strLength) {
+      throw new IOException(String.format(RETURN_ERROR,
+          strLength, readLen));
+    }
+    return new String(bytes, 0, strLength);
+  }
+
+  /**
    * read string from byteBuffer.
    */
   public static String readString(ByteBuffer buffer) {
+    int strLength = readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    byte[] bytes = new byte[strLength];
+    buffer.get(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
+  }
+
+  /**
+   * string length's type is varInt
+   */
+  public static String readVarIntString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
     if (strLength < 0) {
       return null;
@@ -842,33 +912,33 @@ public class ReadWriteIOUtils {
   }
 
   public static CompressionType readCompressionType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
-    return CompressionType.deserialize(n);
+    byte n = readByte(inputStream);
+    return CompressionType.byteToEnum(n);
   }
 
   public static CompressionType readCompressionType(ByteBuffer buffer) {
-    short n = readShort(buffer);
-    return CompressionType.deserialize(n);
+    byte n = buffer.get();
+    return CompressionType.byteToEnum(n);
   }
 
   public static TSDataType readDataType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
-    return TSDataType.deserialize(n);
+    byte n = readByte(inputStream);
+    return TSDataType.byteToEnum(n);
   }
 
   public static TSDataType readDataType(ByteBuffer buffer) {
-    short n = readShort(buffer);
-    return TSDataType.deserialize(n);
+    byte n = buffer.get();
+    return TSDataType.byteToEnum(n);
   }
 
   public static TSEncoding readEncoding(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
-    return TSEncoding.deserialize(n);
+    byte n = readByte(inputStream);
+    return TSEncoding.byteToEnum(n);
   }
 
   public static TSEncoding readEncoding(ByteBuffer buffer) {
-    short n = readShort(buffer);
-    return TSEncoding.deserialize(n);
+    byte n = buffer.get();
+    return TSEncoding.byteToEnum(n);
   }
 
 

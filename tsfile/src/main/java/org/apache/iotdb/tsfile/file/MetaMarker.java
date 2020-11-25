@@ -26,10 +26,17 @@ import java.io.IOException;
  */
 public class MetaMarker {
 
-  public static final byte CHUNK_GROUP_FOOTER = 0;
+  public static final byte CHUNK_GROUP_HEADER = 0;
+  /**
+   * means this chunk has more than one page
+   */
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
   public static final byte VERSION = 3;
+  /**
+   * means this chunk has only one page
+   */
+  public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 4;
 
   private MetaMarker() {
   }

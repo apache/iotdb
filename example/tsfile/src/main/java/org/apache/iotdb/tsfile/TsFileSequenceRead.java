@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -55,7 +55,7 @@ public class TsFileSequenceRead {
       // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
       // judge accordingly.
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER_V2
               .getBytes().length);
       System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
@@ -63,9 +63,10 @@ public class TsFileSequenceRead {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             System.out.println("\t[Chunk]");
             System.out.println("\tposition: " + reader.position());
-            ChunkHeader header = reader.readChunkHeader();
+            ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             Decoder defaultTimeDecoder = Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -92,10 +93,10 @@ public class TsFileSequenceRead {
               }
             }
             break;
-          case MetaMarker.CHUNK_GROUP_FOOTER:
+          case MetaMarker.CHUNK_GROUP_HEADER:
             System.out.println("Chunk Group Footer position: " + reader.position());
-            ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
-            System.out.println("device: " + chunkGroupFooter.getDeviceID());
+            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupFooter();
+            System.out.println("device: " + chunkGroupHeader.getDeviceID());
             break;
           case MetaMarker.VERSION:
             long version = reader.readVersion();

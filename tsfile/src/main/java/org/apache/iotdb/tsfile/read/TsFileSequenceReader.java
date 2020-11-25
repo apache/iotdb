@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -207,7 +207,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public boolean isComplete() throws IOException {
     return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2
-        + TSFileConfig.VERSION_NUMBER.getBytes().length
+        + TSFileConfig.VERSION_NUMBER_V2.getBytes().length
         && (readTailMagic().equals(readHeadMagic()) || readTailMagic()
         .equals(TSFileConfig.VERSION_NUMBER_V1));
   }
@@ -228,7 +228,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public String readVersionNumber() throws IOException {
     ByteBuffer versionNumberBytes = ByteBuffer
-        .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+        .allocate(TSFileConfig.VERSION_NUMBER_V2.getBytes().length);
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     return new String(versionNumberBytes.array());
@@ -654,8 +654,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
-  public ChunkGroupFooter readChunkGroupFooter() throws IOException {
-    return ChunkGroupFooter.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+  public ChunkGroupHeader readChunkGroupFooter() throws IOException {
+    return ChunkGroupHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
   }
 
   /**
@@ -666,9 +666,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
-  public ChunkGroupFooter readChunkGroupFooter(long position, boolean markerRead)
+  public ChunkGroupHeader readChunkGroupFooter(long position, boolean markerRead)
       throws IOException {
-    return ChunkGroupFooter.deserializeFrom(tsFileInput, position, markerRead);
+    return ChunkGroupHeader.deserializeFrom(tsFileInput, position, markerRead);
   }
 
   public long readVersion() throws IOException {
@@ -687,20 +687,17 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return a CHUNK_HEADER
    * @throws IOException io error
    */
-  public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+  public ChunkHeader readChunkHeader(byte chunkType) throws IOException {
+    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
   }
 
   /**
    * read the chunk's header.
-   *
-   * @param position        the file offset of this chunk's header
+   *  @param position        the file offset of this chunk's header
    * @param chunkHeaderSize the size of chunk's header
-   * @param markerRead      true if the offset does not contains the marker , otherwise false
    */
-  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
-      throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
+  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
   }
 
   /**
@@ -722,7 +719,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
+    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeleteIntervalList());
@@ -903,12 +900,12 @@ public class TsFileSequenceReader implements AutoCloseable {
     List<ChunkMetadata> chunkMetadataList = null;
     String deviceID;
 
-    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER_V2
         .getBytes().length;
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !TSFileConfig.VERSION_NUMBER
+    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !TSFileConfig.VERSION_NUMBER_V2
         .equals(readVersionNumber())) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
@@ -932,6 +929,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
+          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             // this is the first chunk of a new ChunkGroup.
             if (newChunkGroup) {
               newChunkGroup = false;
@@ -941,7 +939,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
             // as different chunks may be created by the same insertions(sqls), and partial
             // insertion is not tolerable
-            ChunkHeader chunkHeader = this.readChunkHeader();
+            ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
             MeasurementSchema measurementSchema = new MeasurementSchema(measurementID,
                 chunkHeader.getDataType(),
@@ -960,12 +958,12 @@ public class TsFileSequenceReader implements AutoCloseable {
             chunkMetadataList.add(currentChunk);
             chunkCnt++;
             break;
-          case MetaMarker.CHUNK_GROUP_FOOTER:
+          case MetaMarker.CHUNK_GROUP_HEADER:
             // this is a chunk group
             // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
-            ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
-            deviceID = chunkGroupFooter.getDeviceID();
+            ChunkGroupHeader chunkGroupHeader = this.readChunkGroupFooter();
+            deviceID = chunkGroupHeader.getDeviceID();
             if (newSchema != null) {
               for (MeasurementSchema tsSchema : measurementSchemaList) {
                 newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);

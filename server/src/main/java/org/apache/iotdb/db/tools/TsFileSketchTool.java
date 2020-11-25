@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -105,25 +105,25 @@ public class TsFileSketchTool {
           }
           // chunkGroupFooter begins
           printlnBoth(pw, String.format("%20s", chunkEndPos) + "|\t[Chunk Group Footer]");
-          ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter(chunkEndPos, false);
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupFooter(chunkEndPos, false);
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
           printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupFooter.getDeviceID());
+                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
           printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupFooter.getDataSize());
-          printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupFooter
+                  String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupHeader.getDataSize());
+          printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupHeader
                   .getNumberOfChunks());
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
           // versionInfo begins if there is a versionInfo
-          if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
+          if (versionMap.containsKey(chunkEndPos + chunkGroupHeader.getSerializedSize())) {
             printlnBoth(pw,
-                    String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize())
+                    String.format("%20s", chunkEndPos + chunkGroupHeader.getSerializedSize())
                             + "|\t[Version Info]");
             printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
             printlnBoth(pw,
                     String.format("%20s", "") + "|\t\t[version] "
-                            + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
+                            + versionMap.get(chunkEndPos + chunkGroupHeader.getSerializedSize()));
           }
         }
 

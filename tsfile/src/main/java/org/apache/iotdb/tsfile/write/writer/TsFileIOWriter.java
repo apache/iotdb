@@ -30,7 +30,7 @@ import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -60,14 +60,14 @@ import org.slf4j.LoggerFactory;
 public class TsFileIOWriter {
 
   public static final byte[] magicStringBytes;
-  public static final byte[] versionNumberBytes;
+  public static final byte versionNumberByte;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
-    versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
+    versionNumberByte = TSFileConfig.VERSION_NUMBER;
   }
 
   protected TsFileOutput out;
@@ -85,7 +85,6 @@ public class TsFileIOWriter {
 
   private long markedPosition;
   private String currentChunkGroupDeviceId;
-  private long currentChunkGroupStartOffset;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
   
   // for upgrade tool
@@ -136,16 +135,17 @@ public class TsFileIOWriter {
 
   protected void startFile() throws IOException {
     out.write(magicStringBytes);
-    out.write(versionNumberBytes);
+    out.write(versionNumberByte);
   }
 
   public void startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
-    currentChunkGroupStartOffset = out.getPosition();
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
+    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
+    chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
   /**
@@ -155,12 +155,7 @@ public class TsFileIOWriter {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
-    long dataSize = out.getPosition() - currentChunkGroupStartOffset;
-    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupDeviceId, dataSize,
-        chunkMetadataList.size());
-    chunkGroupFooter.serializeTo(out.wrapAsStream());
-    chunkGroupMetadataList
-        .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
+    chunkGroupMetadataList.add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
     out.flush();

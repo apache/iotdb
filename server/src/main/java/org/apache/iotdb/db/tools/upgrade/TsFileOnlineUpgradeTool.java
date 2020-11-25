@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -185,7 +185,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    */
   public String readVersionNumber() throws IOException {
     ByteBuffer versionNumberBytes = ByteBuffer
-        .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+        .allocate(TSFileConfig.VERSION_NUMBER_V2.getBytes().length);
     tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(versionNumberBytes);
     versionNumberBytes.flip();
@@ -213,8 +213,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
-  public ChunkGroupFooter readChunkGroupFooter() throws IOException {
-    return ChunkGroupFooter.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
+  public ChunkGroupHeader readChunkGroupFooter() throws IOException {
+    return ChunkGroupHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
   }
 
   /**
@@ -374,10 +374,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             pageDataInChunkGroup.add(dataInChunk);
             pagePartitionInfoInChunkGroup.add(pagePartitionInfo);
             break;
-          case MetaMarker.CHUNK_GROUP_FOOTER:
+          case MetaMarker.CHUNK_GROUP_HEADER:
             // this is the footer of a ChunkGroup.
-            ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
-            String deviceID = chunkGroupFooter.getDeviceID();
+            ChunkGroupHeader chunkGroupHeader = this.readChunkGroupFooter();
+            String deviceID = chunkGroupHeader.getDeviceID();
             rewrite(oldTsFile, deviceID, measurementSchemaList, pageHeadersInChunkGroup,
                 pageDataInChunkGroup, versionOfChunkGroup, pagePartitionInfoInChunkGroup);
 

@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -64,7 +64,7 @@ public class TsFileSequenceReaderTest {
   @Test
   public void testReadTsFileSequently() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER_V2
         .getBytes().length);
     Map<String, List<Pair<Long, Long>>> deviceChunkGroupMetadataOffsets = new HashMap<>();
 
@@ -73,14 +73,15 @@ public class TsFileSequenceReaderTest {
     while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
       switch (marker) {
         case MetaMarker.CHUNK_HEADER:
-          ChunkHeader header = reader.readChunkHeader();
+        case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+          ChunkHeader header = reader.readChunkHeader(marker);
           for (int j = 0; j < header.getNumOfPages(); j++) {
             PageHeader pageHeader = reader.readPageHeader(header.getDataType());
             reader.readPage(pageHeader, header.getCompressionType());
           }
           break;
-        case MetaMarker.CHUNK_GROUP_FOOTER:
-          ChunkGroupFooter footer = reader.readChunkGroupFooter();
+        case MetaMarker.CHUNK_GROUP_HEADER:
+          ChunkGroupHeader footer = reader.readChunkGroupFooter();
           long endOffset = reader.position();
           Pair<Long, Long> pair = new Pair<>(startOffset, endOffset);
           deviceChunkGroupMetadataOffsets.putIfAbsent(footer.getDeviceID(), new ArrayList<>());

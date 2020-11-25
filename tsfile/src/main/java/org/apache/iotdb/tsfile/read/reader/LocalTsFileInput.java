@@ -25,6 +25,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,5 +125,14 @@ public class LocalTsFileInput implements TsFileInput {
   @Override
   public int readInt() {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String readVarIntString(long offset) throws IOException {
+    long position = channel.position();
+    channel.position(offset);
+    String res = ReadWriteIOUtils.readVarIntString(wrapAsInputStream());
+    channel.position(position);
+    return res;
   }
 }

@@ -85,7 +85,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+    assertEquals(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER_V2
         .getBytes().length, rWriter.getTruncatedSize());
 
     rWriter = new RestorableTsFileIOWriter(file);
@@ -105,7 +105,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length + TsFileIOWriter.versionNumberBytes.length,
+    assertEquals(TsFileIOWriter.magicStringBytes.length + 1,
         rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }
@@ -119,7 +119,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length + TsFileIOWriter.versionNumberBytes.length,
+    assertEquals(TsFileIOWriter.magicStringBytes.length + 1,
         rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }
@@ -137,7 +137,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length + TsFileIOWriter.versionNumberBytes.length,
+    assertEquals(TsFileIOWriter.magicStringBytes.length + 1,
         rWriter.getTruncatedSize());
     assertTrue(file.delete());
   }

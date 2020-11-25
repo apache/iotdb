@@ -78,6 +78,12 @@ public class ChunkWriterImpl implements IChunkWriter {
   private Statistics<?> statistics;
 
   /**
+   * first page info
+   */
+  private int sizeWithoutStatistic;
+  private Statistics<?> firstPageStatistics;
+
+  /**
    * @param schema schema of this measurement
    */
   public ChunkWriterImpl(MeasurementSchema schema) {
@@ -95,8 +101,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
 
     this.pageWriter = new PageWriter(measurementSchema);
-    this.pageWriter.setTimeEncoder(measurementSchema.getTimeEncoder());
-    this.pageWriter.setValueEncoder(measurementSchema.getValueEncoder());
   }
 
   @Override
@@ -172,8 +176,8 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   /**
-   * check occupied memory size, if it exceeds the PageSize threshold, construct a page and 
-   * put it to pageBuffer
+   * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
+   * to pageBuffer
    */
   private void checkPageSizeAndMayOpenANewPage() {
     if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
@@ -201,7 +205,19 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private void writePageToPageBuffer() {
     try {
-      pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer);
+      int sizeWithoutStatistic = pageWriter
+          .writePageHeaderAndDataIntoBuff(pageBuffer, numOfPages == 0);
+      if (numOfPages == 0) { // record the firstPageStatistics
+        this.firstPageStatistics = pageWriter.getStatistics();
+        this.sizeWithoutStatistic = sizeWithoutStatistic;
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        byte[] b = pageBuffer.toByteArray();
+        pageBuffer.reset();
+        pageBuffer.write(b, 0, sizeWithoutStatistic);
+        firstPageStatistics.serialize(pageBuffer);
+        pageBuffer.write(b, sizeWithoutStatistic, b.length - sizeWithoutStatistic);
+        firstPageStatistics = null;
+      }
 
       // update statistics of this chunk
       numOfPages++;
@@ -226,7 +242,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public long estimateMaxSeriesMemSize() {
-    return pageWriter.estimateMaxMemSize() + this.estimateMaxPageMemSize();
+    return pageBuffer.size() + pageWriter.estimateMaxMemSize() + PageHeader
+        .estimateMaxPageHeaderSizeWithoutStatistics() + pageWriter.getStatistics()
+        .getSerializedSize();
   }
 
   @Override
@@ -235,7 +253,8 @@ public class ChunkWriterImpl implements IChunkWriter {
       return 0;
     }
     // return the serialized size of the chunk header + all pages
-    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId()) + (long) pageBuffer.size();
+    return ChunkHeader.getSerializedSize(measurementSchema.getMeasurementId(), pageBuffer.size())
+        + (long) pageBuffer.size();
   }
 
   @Override
@@ -267,10 +286,12 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // write the page header to pageBuffer
     try {
-      logger.debug("start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
+      logger.debug("start to flush a page header into buffer, buffer position {} ",
+          pageBuffer.size());
       header.serializeTo(pageBuffer);
-      logger.debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
-          measurementSchema.getMeasurementId(), pageBuffer.size());
+      logger
+          .debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
+              measurementSchema.getMeasurementId(), pageBuffer.size());
 
       statistics.mergeStatistics(header.getStatistics());
 
@@ -317,18 +338,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
 
     writer.endCurrentChunk();
-  }
-
-  /**
-   * estimate max page memory size.
-   *
-   * @return the max possible allocated size currently
-   */
-  private long estimateMaxPageMemSize() {
-    // return the sum of size of buffer and page max size
-    return (long) (pageBuffer.size() +
-        PageHeader.calculatePageHeaderSizeWithoutStatistics() +
-        pageWriter.getStatistics().getSerializedSize());
   }
 
 

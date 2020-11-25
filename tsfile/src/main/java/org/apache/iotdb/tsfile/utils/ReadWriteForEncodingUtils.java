@@ -106,6 +106,15 @@ public class ReadWriteForEncodingUtils {
     return value | (b << i);
   }
 
+  public static int readVarInt(InputStream in) throws IOException {
+    int value = readUnsignedVarInt(in);
+    int x = value >>> 1;
+    if ((value & 1) != 0) {
+      x = ~x;
+    }
+    return x;
+  }
+
   /**
    * read an unsigned var int in stream and transform it to int format.
    *
@@ -123,6 +132,15 @@ public class ReadWriteForEncodingUtils {
     return value | (b << i);
   }
 
+  public static int readVarInt(ByteBuffer buffer) {
+    int value = readUnsignedVarInt(buffer);
+    int x = value >>> 1;
+    if ((value & 1) != 0) {
+      x = ~x;
+    }
+    return x;
+  }
+
   /**
    * write a value to stream using unsigned var int format. for example, int
    * 123456789 has its binary format 00000111-01011011-11001101-00010101 (if we
@@ -134,12 +152,42 @@ public class ReadWriteForEncodingUtils {
    * @param value value to write into stream
    * @param out   output stream
    */
-  public static void writeUnsignedVarInt(int value, ByteArrayOutputStream out) {
+  public static int writeUnsignedVarInt(int value, ByteArrayOutputStream out) {
+    int position = 1;
     while ((value & 0xFFFFFF80) != 0L) {
       out.write((value & 0x7F) | 0x80);
       value >>>= 7;
+      position++;
     }
     out.write(value & 0x7F);
+    return position;
+  }
+
+  public static int writeVarInt(int value, ByteArrayOutputStream out) {
+    int uValue = value << 1;
+    if (value < 0) {
+      uValue = ~uValue;
+    }
+    return writeUnsignedVarInt(uValue, out);
+  }
+
+  public static int writeUnsignedVarInt(int value, OutputStream out) throws IOException {
+    int position = 1;
+    while ((value & 0xFFFFFF80) != 0L) {
+      out.write((value & 0x7F) | 0x80);
+      value >>>= 7;
+      position++;
+    }
+    out.write(value & 0x7F);
+    return position;
+  }
+
+  public static int writeVarInt(int value, OutputStream out) throws IOException {
+    int uValue = value << 1;
+    if (value < 0) {
+      uValue = ~uValue;
+    }
+    return writeUnsignedVarInt(uValue, out);
   }
 
   /**
@@ -164,6 +212,46 @@ public class ReadWriteForEncodingUtils {
       position++;
     }
     buffer.put((byte) (value & 0x7F));
+    return position;
+  }
+
+  public static int writeVarInt(int value, ByteBuffer buffer) {
+    int uValue = value << 1;
+    if (value < 0) {
+      uValue = ~uValue;
+    }
+    return writeUnsignedVarInt(uValue, buffer);
+  }
+
+  /**
+   * Returns the encoding size in bytes of its input value.
+   * @param value the integer to be measured
+   * @return the encoding size in bytes of its input value
+   */
+  public static int varIntSize(int value) {
+    int uValue = value << 1;
+    if (value < 0) {
+      uValue = ~uValue;
+    }
+    int position = 1;
+    while ((uValue & 0xFFFFFF80) != 0L) {
+      uValue >>>= 7;
+      position++;
+    }
+    return position;
+  }
+
+  /**
+   * Returns the encoding size in bytes of its input value.
+   * @param value the unsigned integer to be measured
+   * @return the encoding size in bytes of its input value
+   */
+  public static int uVarIntSize(int value) {
+    int position = 1;
+    while ((value & 0xFFFFFF80) != 0L) {
+      value >>>= 7;
+      position++;
+    }
     return position;
   }
 
