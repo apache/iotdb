@@ -21,18 +21,42 @@ package org.apache.iotdb.pulsar;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.impl.schema.StringSchema;
 
 public class PulsarProducer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
-  private static final String TOPIC_NAME = "test-topic";
-  private final Producer<byte[]> producer ;
+  private final Producer<String> producer ;
+  public static final String[] ALL_DATA = {
+      "sensor1,2017/10/24 19:30:00,606162908",
+      "sensor2,2017/10/24 19:30:00,160161162",
+      "sensor3,2017/10/24 19:30:00,260261262",
+      "sensor4,2017/10/24 19:30:00,360361362",
+      "sensor1,2017/10/24 19:31:00,818182346",
+      "sensor2,2017/10/24 19:31:00,180181182",
+      "sensor3,2017/10/24 19:31:00,280281282",
+      "sensor4,2017/10/24 19:31:00,380381382",
+      "sensor1,2017/10/24 19:32:00,505152421",
+      "sensor2,2017/10/24 19:32:00,150151152",
+      "sensor3,2017/10/24 19:32:00,250251252",
+      "sensor4,2017/10/24 19:32:00,350351352",
+      "sensor1,2017/10/24 19:33:00,404142234",
+      "sensor2,2017/10/24 19:33:00,140141142",
+      "sensor3,2017/10/24 19:33:00,240241242",
+      "sensor4,2017/10/24 19:33:00,340341342",
+      "sensor1,2017/10/24 19:34:00,101112567",
+      "sensor2,2017/10/24 19:34:00,110111112",
+      "sensor3,2017/10/24 19:34:00,210211212",
+      "sensor4,2017/10/24 19:34:00,310311312",
+  };
 
-  public PulsarProducer(Producer<byte[]> producer) {
+  public PulsarProducer(Producer<String> producer) {
     this.producer = producer;
   }
 
   public void produce() throws PulsarClientException {
-    producer.send("My message".getBytes());
+    for (String s : ALL_DATA) {
+      producer.send(s);
+    }
   }
 
   public static void main(String[] args) throws PulsarClientException {
@@ -40,8 +64,8 @@ public class PulsarProducer {
         .serviceUrl(SERVICE_URL)
         .build();
 
-    PulsarProducer pulsarProducer = new PulsarProducer(client.newProducer()
-        .topic(TOPIC_NAME).create());
+    PulsarProducer pulsarProducer = new PulsarProducer(
+        client.newProducer(new StringSchema()).topic(Constant.TOPIC_NAME).create());
 
     pulsarProducer.produce();
     System.out.println("Producing finished");

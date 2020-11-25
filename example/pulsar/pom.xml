@@ -24,6 +24,7 @@
         <artifactId>iotdb-examples</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>0.11.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>pulsar-example</artifactId>
@@ -34,6 +35,11 @@
             <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-client</artifactId>
             <version>2.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

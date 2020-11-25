@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.pulsar;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClient;
@@ -25,16 +27,22 @@ import org.apache.pulsar.client.api.PulsarClientException;
 
 public class PulsarConsumer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
-  private static final String TOPIC_NAME = "test-topic";
-  private final Consumer consumer;
+  private static final String TOPIC_NAME = "iotdb-topic";
+  private final Consumer<byte[]> consumer;
 
-  public PulsarConsumer(Consumer consumer) {
+  public PulsarConsumer(Consumer<byte[]> consumer) {
     this.consumer = consumer;
   }
 
   public void consume() throws PulsarClientException {
-    Message msg = consumer.receive();
+    Message<?> msg = consumer.receive();
     System.out.printf("Message received: %s", new String(msg.getData()));
+  }
+
+  public void consumeInParallel() {
+    ExecutorService executor = Executors.newFixedThreadPool(1);
+    PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumer);
+    executor.submit(consumerExecutor);
   }
 
   public static void main(String[] args) throws PulsarClientException {
@@ -42,11 +50,13 @@ public class PulsarConsumer {
         .serviceUrl(SERVICE_URL)
         .build();
 
-    Consumer consumer = client.newConsumer()
-        .topic(TOPIC_NAME)
+    Consumer<byte[]> consumer = client.newConsumer()
+        .topic(Constant.TOPIC_NAME)
         .subscriptionName("my-subscription")
         .subscribe();
 
-    new PulsarConsumer(consumer).consume();
+    PulsarConsumer pulsarConsumer = new PulsarConsumer(consumer);
+    pulsarConsumer.consumeInParallel();
+
   }
 }
