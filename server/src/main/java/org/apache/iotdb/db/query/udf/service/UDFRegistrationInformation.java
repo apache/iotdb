@@ -23,11 +23,14 @@ public class UDFRegistrationInformation {
 
   private final String functionName;
   private final String className;
+  private final Class<?> functionClass;
   private final boolean isTemporary;
 
-  public UDFRegistrationInformation(String functionName, String className, boolean isTemporary) {
+  public UDFRegistrationInformation(String functionName, String className, Class<?> functionClass,
+      boolean isTemporary) {
     this.functionName = functionName;
     this.className = className;
+    this.functionClass = functionClass;
     this.isTemporary = isTemporary;
   }
 
@@ -37,6 +40,10 @@ public class UDFRegistrationInformation {
 
   public String getClassName() {
     return className;
+  }
+
+  public Class<?> getFunctionClass() {
+    return functionClass;
   }
 
   public boolean isTemporary() {

@@ -24,6 +24,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,9 +50,10 @@ public class UDFRegistrationService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(UDFRegistrationService.class);
 
-  private static final String LOG_FILE_DIR = IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-      + File.separator + "udf" + File.separator;
-  private static final String LOG_FILE_NAME = LOG_FILE_DIR + "ulog.txt";
+  private static final String ULOG_FILE_DIR =
+      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+          + File.separator + "udf" + File.separator;
+  private static final String LOG_FILE_NAME = ULOG_FILE_DIR + "ulog.txt";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
 
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
@@ -57,9 +61,19 @@ public class UDFRegistrationService implements IService {
   private final ReentrantReadWriteLock lock;
   private UDFLogWriter temporaryLogWriter;
 
+  private final String libRoot;
+
   private UDFRegistrationService() {
     registrationInformation = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
+    libRoot = parseLibRoot();
+  }
+
+  private String parseLibRoot() {
+    String path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
+    int firstIndex = path.lastIndexOf(System.getProperty("path.separator")) + 1;
+    int lastIndex = path.lastIndexOf(File.separator) + 1;
+    return path.substring(firstIndex, lastIndex);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -92,10 +106,11 @@ public class UDFRegistrationService implements IService {
       }
     }
 
-    try {
-      Class<?> functionClass = Class.forName(className);
+    Class<?> functionClass;
+    try (URLClassLoader udfClassLoader = getUDFClassLoader()) {
+      functionClass = Class.forName(className, true, udfClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+    } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
       String errorMessage = String.format(
           "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
           functionName, className, e.toString());
@@ -103,8 +118,8 @@ public class UDFRegistrationService implements IService {
       throw new UDFRegistrationException(errorMessage);
     }
 
-    registrationInformation
-        .put(functionName, new UDFRegistrationInformation(functionName, className, isTemporary));
+    registrationInformation.put(functionName,
+        new UDFRegistrationInformation(functionName, className, functionClass, isTemporary));
 
     if (writeToTemporaryLogFile && !isTemporary) {
       try {
@@ -118,6 +133,12 @@ public class UDFRegistrationService implements IService {
         throw new UDFRegistrationException(errorMessage, e);
       }
     }
+  }
+
+  private URLClassLoader getUDFClassLoader() throws IOException {
+    Collection<File> files = FileUtils.listFiles(new File(libRoot), null, true);
+    URL[] urls = FileUtils.toURLs(files.toArray(new File[0]));
+    return new URLClassLoader(urls);
   }
 
   public void deregister(String functionName) throws UDFRegistrationException {
@@ -171,9 +192,8 @@ public class UDFRegistrationService implements IService {
     }
 
     try {
-      Class<?> functionClass = Class.forName(information.getClassName());
-      return (UDF) functionClass.getDeclaredConstructor().newInstance();
-    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
+      return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
+    } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
       String errorMessage = String.format("Failed to reflect UDF %s(%s) instance, because %s",
           context.getName(), information.getClassName(), e.toString());
       logger.warn(errorMessage);
@@ -189,21 +209,7 @@ public class UDFRegistrationService implements IService {
   public void start() throws StartupException {
     try {
       makeDirIfNecessary();
-      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
-      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
-
-      if (temporaryLogFile.exists()) {
-        if (logFile.exists()) {
-          FileUtils.deleteQuietly(logFile);
-        }
-        recoveryFromLogFile(temporaryLogFile);
-      } else {
-        if (logFile.exists()) {
-          recoveryFromLogFile(logFile);
-          FSFactoryProducer.getFSFactory().moveFile(logFile, temporaryLogFile);
-        }
-      }
-
+      doRecovery();
       temporaryLogWriter = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
@@ -211,11 +217,28 @@ public class UDFRegistrationService implements IService {
   }
 
   private void makeDirIfNecessary() throws IOException {
-    File file = SystemFileFactory.INSTANCE.getFile(LOG_FILE_DIR);
+    File file = SystemFileFactory.INSTANCE.getFile(ULOG_FILE_DIR);
     if (file.exists() && file.isDirectory()) {
       return;
     }
     FileUtils.forceMkdir(file);
+  }
+
+  private void doRecovery() throws IOException, UDFRegistrationException {
+    File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+    File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
+
+    if (temporaryLogFile.exists()) {
+      if (logFile.exists()) {
+        FileUtils.deleteQuietly(logFile);
+      }
+      recoveryFromLogFile(temporaryLogFile);
+    } else {
+      if (logFile.exists()) {
+        recoveryFromLogFile(logFile);
+        FSFactoryProducer.getFSFactory().moveFile(logFile, temporaryLogFile);
+      }
+    }
   }
 
   private void recoveryFromLogFile(File logFile) throws IOException, UDFRegistrationException {
