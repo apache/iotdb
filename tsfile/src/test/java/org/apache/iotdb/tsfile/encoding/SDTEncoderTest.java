@@ -40,7 +40,7 @@ public class SDTEncoderTest {
         count++;
       }
     }
-    assertEquals(count, 22);
+    assertEquals(22, count);
   }
 
   @Test
@@ -57,7 +57,7 @@ public class SDTEncoderTest {
         count++;
       }
     }
-    assertEquals(count, 14);
+    assertEquals(14, count);
   }
 
   @Test
@@ -74,7 +74,7 @@ public class SDTEncoderTest {
         count++;
       }
     }
-    assertEquals(count, 22);
+    assertEquals(22, count);
   }
 
   @Test
@@ -91,7 +91,7 @@ public class SDTEncoderTest {
         count++;
       }
     }
-    assertEquals(count, 14);
+    assertEquals(14, count);
   }
 
   @Test
@@ -111,7 +111,7 @@ public class SDTEncoderTest {
     }
     int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(size, 22);
+    assertEquals(22, size);
   }
 
   @Test
@@ -131,7 +131,7 @@ public class SDTEncoderTest {
     }
     int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(size, 14);
+    assertEquals(14, size);
   }
 
   @Test
@@ -151,7 +151,7 @@ public class SDTEncoderTest {
     }
     int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(size, 22);
+    assertEquals(22, size);
   }
 
   @Test
@@ -171,6 +171,6 @@ public class SDTEncoderTest {
     }
     int size = encoder.encode(timestamps, values, timestamps.length);
 
-    assertEquals(size, 14);
+    assertEquals(14, size);
   }
 }
