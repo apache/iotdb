@@ -83,9 +83,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param statistics value statistics
+   * @param tsDataType     time series data type
+   * @param fileOffset     file offset
+   * @param statistics     value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -144,10 +144,7 @@ public class ChunkMetadata implements Accountable {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(measurementUid, outputStream);
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
-    byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
     byteLen += statistics.serialize(outputStream);
     return byteLen;
   }
@@ -155,16 +152,18 @@ public class ChunkMetadata implements Accountable {
   /**
    * deserialize from ByteBuffer.
    *
-   * @param buffer ByteBuffer
+   * @param buffer          ByteBuffer
+   * @param measurementUid  measurementUid of this chunk metadata
+   * @param tsDataType      data type of this chunk metadata
    * @return ChunkMetaData object
    */
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) {
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, String measurementUid,
+      TSDataType tsDataType) {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
+    chunkMetaData.measurementUid = measurementUid;
+    chunkMetaData.tsDataType = tsDataType;
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
-
     chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
 
     return chunkMetaData;

@@ -165,7 +165,7 @@ public class InsertTabletPlan extends InsertPlan {
       if (dataType == null) {
         continue;
       }
-      stream.writeShort(dataType.serialize());
+      stream.write(dataType.serialize());
     }
   }
 
@@ -403,7 +403,7 @@ public class InsertTabletPlan extends InsertPlan {
 
     this.dataTypes = new TSDataType[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = TSDataType.deserialize(buffer.getShort());
+      dataTypes[i] = TSDataType.deserialize(buffer.get());
     }
 
     int rows = buffer.getInt();

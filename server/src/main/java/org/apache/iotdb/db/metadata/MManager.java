@@ -350,9 +350,9 @@ public class MManager {
         }
 
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-            TSDataType.deserialize(Short.parseShort(args[2])),
-            TSEncoding.deserialize(Short.parseShort(args[3])),
-            CompressionType.deserialize(Short.parseShort(args[4])), props, tagMap, null, alias);
+            TSDataType.deserialize(Byte.parseByte(args[2])),
+            TSEncoding.deserialize(Byte.parseByte(args[3])),
+            CompressionType.deserialize(Byte.parseByte(args[4])), props, tagMap, null, alias);
 
         createTimeseries(plan, offset);
         break;

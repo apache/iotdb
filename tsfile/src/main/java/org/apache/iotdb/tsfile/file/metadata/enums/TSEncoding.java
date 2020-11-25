@@ -28,18 +28,33 @@ public enum TSEncoding {
    * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short encoding) {
-    return getTsEncoding(encoding);
-  }
-
-  public static byte deserializeToByte(short encoding) {
+  public static TSEncoding deserialize(byte encoding) {
     if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
-    return (byte) encoding;
+    switch (encoding) {
+      case 1:
+        return PLAIN_DICTIONARY;
+      case 2:
+        return RLE;
+      case 3:
+        return DIFF;
+      case 4:
+        return TS_2DIFF;
+      case 5:
+        return BITMAP;
+      case 6:
+        return GORILLA_V1;
+      case 7:
+        return REGULAR;
+      case 8:
+        return GORILLA;
+      default:
+        return PLAIN;
+    }
   }
 
-  private static TSEncoding getTsEncoding(short encoding) {
+  private static TSEncoding getTsEncoding(byte encoding) {
     if (encoding < 0 || 8 < encoding) {
       throw new IllegalArgumentException("Invalid input: " + encoding);
     }
@@ -76,7 +91,7 @@ public enum TSEncoding {
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   /**
@@ -84,14 +99,7 @@ public enum TSEncoding {
    *
    * @return -encoding type
    */
-  public short serialize() {
-    return enumToByte();
-  }
-
-  /**
-   * @return byte number
-   */
-  public byte enumToByte() {
+  public byte serialize() {
     switch (this) {
       case PLAIN_DICTIONARY:
         return 1;

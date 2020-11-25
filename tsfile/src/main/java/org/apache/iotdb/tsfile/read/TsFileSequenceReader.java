@@ -491,9 +491,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public Map<String, List<ChunkMetadata>> readChunkMetadataInDevice(String device)
       throws IOException {
-    if (tsFileMetaData == null) {
-      readFileMetadata();
-    }
+    readFileMetadata();
 
     long start = 0;
     int size = 0;
@@ -507,8 +505,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     // read buffer of all ChunkMetadatas of this device
     ByteBuffer buffer = readData(start, size);
     Map<String, List<ChunkMetadata>> seriesMetadata = new HashMap<>();
+    int index = 0;
+    int curSize = timeseriesMetadataMap.get(index).getDataSizeOfChunkMetaDataList();
     while (buffer.hasRemaining()) {
-      ChunkMetadata chunkMetadata = ChunkMetadata.deserializeFrom(buffer);
+      if (buffer.position() >= curSize) {
+        index++;
+        curSize += timeseriesMetadataMap.get(index).getDataSizeOfChunkMetaDataList();
+      }
+      ChunkMetadata chunkMetadata = ChunkMetadata
+          .deserializeFrom(buffer, timeseriesMetadataMap.get(index).getMeasurementId(),
+              timeseriesMetadataMap.get(index).getTSDataType());
       seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
           .add(chunkMetadata);
     }
@@ -693,7 +699,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   /**
    * read the chunk's header.
-   *  @param position        the file offset of this chunk's header
+   *
+   * @param position        the file offset of this chunk's header
    * @param chunkHeaderSize the size of chunk's header
    */
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
@@ -1034,7 +1041,9 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
     while (buffer.hasRemaining()) {
-      chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
+      chunkMetadataList.add(ChunkMetadata
+          .deserializeFrom(buffer, timeseriesMetaData.getMeasurementId(),
+              timeseriesMetaData.getTSDataType()));
     }
 
     VersionUtils.applyVersion(chunkMetadataList, versionInfo);

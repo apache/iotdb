@@ -77,9 +77,9 @@ public class TsFileMetadata {
 
     // read bloom filter
     if (buffer.hasRemaining()) {
-      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
-      int filterSize = ReadWriteIOUtils.readInt(buffer);
-      int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
+      int filterSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+      int hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
     }
 
@@ -103,15 +103,12 @@ public class TsFileMetadata {
     if (metadataIndex != null) {
       byteLen += metadataIndex.serializeTo(outputStream);
     } else {
+      // TODO Maybe should throw an exception
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
 
-    // totalChunkNum, invalidChunkNum
-    byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
-    byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
-
     // versionInfo
-    byteLen += ReadWriteIOUtils.write(versionInfo.size(), outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(versionInfo.size(), outputStream);
     for (Pair<Long, Long> versionPair : versionInfo) {
       byteLen += ReadWriteIOUtils.write(versionPair.left, outputStream);
       byteLen += ReadWriteIOUtils.write(versionPair.right, outputStream);
@@ -135,11 +132,12 @@ public class TsFileMetadata {
     BloomFilter filter = buildBloomFilter(paths);
 
     byte[] bytes = filter.serialize();
-    byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, outputStream);
     outputStream.write(bytes);
     byteLen += bytes.length;
-    byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
-    byteLen += ReadWriteIOUtils.write(filter.getHashFunctionSize(), outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(filter.getSize(), outputStream);
+    byteLen += ReadWriteForEncodingUtils
+        .writeUnsignedVarInt(filter.getHashFunctionSize(), outputStream);
     return byteLen;
   }
 

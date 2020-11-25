@@ -72,8 +72,6 @@ public class TsFileIOWriter {
 
   protected TsFileOutput out;
   protected boolean canWrite = true;
-  protected int totalChunkNum = 0;
-  protected int invalidChunkNum;
   protected File file;
 
   // current flushed Chunk
@@ -207,7 +205,6 @@ public class TsFileIOWriter {
   public void endCurrentChunk() {
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
-    totalChunkNum++;
   }
 
   /**
@@ -234,8 +231,6 @@ public class TsFileIOWriter {
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
     tsFileMetaData.setMetadataIndex(metadataIndex);
     tsFileMetaData.setVersionInfo(versionInfo);
-    tsFileMetaData.setTotalChunkNum(totalChunkNum);
-    tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
     tsFileMetaData.setMetaOffset(metaOffset);
 
     long footerIndex = out.getPosition();
@@ -359,14 +354,6 @@ public class TsFileIOWriter {
     out.write(new byte[]{MetaMarker.CHUNK_HEADER});
   }
 
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
-  public int getInvalidChunkNum() {
-    return invalidChunkNum;
-  }
-
   public File getFile() {
     return file;
   }
@@ -400,7 +387,6 @@ public class TsFileIOWriter {
         if (!chunkValid) {
           chunkMetaDataIterator.remove();
           chunkNum--;
-          invalidChunkNum++;
         } else {
           startTimeIdxes.put(path, startTimeIdx + 1);
         }

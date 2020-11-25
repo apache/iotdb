@@ -32,12 +32,7 @@ public enum TSDataType {
    * @param type -param to judge enum type
    * @return -enum type
    */
-  public static TSDataType deserialize(short type) {
-    return getTsDataType(type);
-  }
-
-
-  private static TSDataType getTsDataType(short type) {
+  public static TSDataType deserialize(byte type) {
     if (type >= 6 || type < 0) {
       throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -57,46 +52,16 @@ public enum TSDataType {
     }
   }
 
-  public static byte deserializeToByte(short type) {
-    if (type >= 6 || type < 0) {
-      throw new IllegalArgumentException("Invalid input: " + type);
-    }
-    return (byte) type;
-  }
-
-  /**
-   * give an byte to return a data type.
-   *
-   * @param type byte number
-   * @return data type
-   */
-  public static TSDataType byteToEnum(byte type) {
-    return getTsDataType(type);
-  }
-
-  public static TSDataType deserializeFrom(ByteBuffer buffer) {
-    return deserialize(buffer.getShort());
-  }
-
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   public void serializeTo(ByteBuffer byteBuffer) {
-    byteBuffer.putShort(serialize());
+    byteBuffer.put(serialize());
   }
 
   public void serializeTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeShort(serialize());
-  }
-
-  /**
-   * return a serialize data type.
-   *
-   * @return -enum type
-   */
-  public short serialize() {
-    return enumToByte();
+    outputStream.write(serialize());
   }
 
   public int getDataTypeSize() {
@@ -119,7 +84,7 @@ public enum TSDataType {
   /**
    * @return byte number
    */
-  public byte enumToByte() {
+  public byte serialize() {
     switch (this) {
       case BOOLEAN:
         return 0;

@@ -87,11 +87,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
    */
   public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
       CompressionType compressionType, Map<String, String> props) {
-    this.type = type.enumToByte();
+    this.type = type.serialize();
     this.measurementId = measurementId;
-    this.encoding = encoding.enumToByte();
+    this.encoding = encoding.serialize();
     this.props = props;
-    this.compressor = compressionType.enumToByte();
+    this.compressor = compressionType.serialize();
   }
 
   public MeasurementSchema(String measurementId, byte type, byte encoding,
@@ -111,11 +111,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(inputStream);
 
-    measurementSchema.type = TSDataType.deserializeToByte(ReadWriteIOUtils.readShort(inputStream));
+    measurementSchema.type = ReadWriteIOUtils.readByte(inputStream);
 
-    measurementSchema.encoding = TSEncoding.deserializeToByte(ReadWriteIOUtils.readShort(inputStream));
+    measurementSchema.encoding = ReadWriteIOUtils.readByte(inputStream);
 
-    measurementSchema.compressor = CompressionType.deserializeToByte(ReadWriteIOUtils.readShort(inputStream));
+    measurementSchema.compressor = ReadWriteIOUtils.readByte(inputStream);
 
     int size = ReadWriteIOUtils.readInt(inputStream);
     if (size > 0) {
@@ -140,11 +140,11 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
     measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
 
-    measurementSchema.type = TSDataType.deserializeToByte(ReadWriteIOUtils.readShort(buffer));
+    measurementSchema.type = ReadWriteIOUtils.readByte(buffer);
 
-    measurementSchema.encoding = TSEncoding.deserializeToByte(ReadWriteIOUtils.readShort(buffer));
+    measurementSchema.encoding = ReadWriteIOUtils.readByte(buffer);
 
-    measurementSchema.compressor = CompressionType.deserializeToByte(ReadWriteIOUtils.readShort(buffer));
+    measurementSchema.compressor = ReadWriteIOUtils.readByte(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
@@ -178,7 +178,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public TSDataType getType() {
-    return TSDataType.byteToEnum(type);
+    return TSDataType.deserialize(type);
   }
 
   public void setProps(Map<String, String> props) {
@@ -212,7 +212,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public CompressionType getCompressor() {
-    return CompressionType.byteToEnum(compressor);
+    return CompressionType.deserialize(compressor);
   }
 
   /**
@@ -312,6 +312,6 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public void setType(TSDataType type) {
-    this.type = (byte) type.serialize();
+    this.type = type.serialize();
   }
 }

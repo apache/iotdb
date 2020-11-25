@@ -22,24 +22,12 @@ public enum CompressionType {
   UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4;
 
   /**
-   * deserialize short number.
+   * deserialize byte number.
    *
-   * @param compressor short number
+   * @param compressor byte number
    * @return CompressionType
    */
-  public static CompressionType deserialize(short compressor) {
-    return getCompressionType(compressor);
-  }
-
-  public static byte deserializeToByte(short compressor) {
-    if (compressor >= 8 || compressor < 0) {
-      throw new IllegalArgumentException("Invalid input: " + compressor);
-    }
-    return (byte) compressor;
-  }
-
-
-  private static CompressionType getCompressionType(short compressor) {
+  public static CompressionType deserialize(byte compressor) {
     if (compressor >= 8 || compressor < 0) {
       throw new IllegalArgumentException("Invalid input: " + compressor);
     }
@@ -63,33 +51,14 @@ public enum CompressionType {
     }
   }
 
-  /**
-   * give an byte to return a compression type.
-   *
-   * @param compressor byte number
-   * @return CompressionType
-   */
-  public static CompressionType byteToEnum(byte compressor) {
-    return getCompressionType(compressor);
-  }
-
   public static int getSerializedSize() {
-    return Short.BYTES;
-  }
-
-  /**
-   * serialize.
-   *
-   * @return short number
-   */
-  public short serialize() {
-    return enumToByte();
+    return Byte.BYTES;
   }
 
   /**
    * @return byte number
    */
-  public byte enumToByte() {
+  public byte serialize() {
     switch (this) {
       case SNAPPY:
         return 1;
