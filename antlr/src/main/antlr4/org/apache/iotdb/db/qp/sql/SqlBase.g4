@@ -33,7 +33,7 @@ statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
@@ -170,19 +170,19 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT aliasClause tagClause attributeClause
+    | UPSERT aliasClause? tagClause? attributeClause?
     ;
 
 aliasClause
-    : (ALIAS OPERATOR_EQ ID)?
+    : ALIAS OPERATOR_EQ ID
     ;
 
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
-    tagClause
-    attributeClause
+    tagClause?
+    attributeClause?
     ;
 
 compressor
@@ -197,11 +197,11 @@ compressor
     ;
 
 attributeClause
-    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET
     ;
 
 tagClause
-    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : TAGS LR_BRACKET property (COMMA property)* RR_BRACKET
     ;
 
 setClause
@@ -209,7 +209,7 @@ setClause
     ;
 
 whereClause
-    : WHERE orExpression
+    : WHERE (orExpression | indexPredicateClause)
     ;
 
 showWhereClause
@@ -230,7 +230,6 @@ andExpression
 predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
-    | (suffixPath | fullPath) indexPredicateClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
@@ -243,19 +242,19 @@ fromClause
     ;
 
 specialClause
-    : specialLimit
-    | orderByTimeClause specialLimit?
-    | groupByTimeClause orderByTimeClause? specialLimit?
-    | groupByFillClause orderByTimeClause? specialLimit?
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign
-    | groupByLevelClause orderByTimeClause? specialLimit?
+    : specialLimit #specialLimitStatement
+    | orderByTimeClause specialLimit? #orderByTimeStatement
+    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
+    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
     ;
 
 specialLimit
-    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
     ;
 
 orderByTimeClause
@@ -351,9 +350,8 @@ topClause
     ;
 
 indexPredicateClause
-    : LIKE sequenceClause
-    | CONTAIN sequenceClause WITH TOLERANCE constant
-    (CONCAT sequenceClause WITH TOLERANCE constant)*
+    : (suffixPath | fullPath) LIKE sequenceClause
+    | (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
     ;
 
 
@@ -370,7 +368,7 @@ comparisonOperator
     | type = OPERATOR_NEQ
     ;
 
-insertColumnSpec
+insertColumnsSpec
     : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)+ RR_BRACKET
     ;
 
