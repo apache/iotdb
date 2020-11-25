@@ -68,6 +68,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
+  // the single-node IoTDB instance
   private IoTDB ioTDB;
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();

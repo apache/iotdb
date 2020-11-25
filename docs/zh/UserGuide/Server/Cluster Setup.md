@@ -41,6 +41,17 @@ or
 目前支持的启动覆盖原有配置的配置项有：
 `internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
 
+## 被覆盖的单机版选项
+
+iotdb-engines.properties配置文件中的部分内容会不再生效：
+
+* `enable_auto_create_schema` 不再生效，并被视为`false`. 应使用 iotdb-cluster.properties 中的  
+`enable_auto_create_schema` 来控制是否自动创建序列。
+
+
+* `is_sync_enable` 不再生效，并被视为 `false`.
+
+
 ## 配置项
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得您可以在启动服务器或服务器运行时对其进行配置。
