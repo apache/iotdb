@@ -42,9 +42,6 @@ type Session struct {
 	sessionId          int64
 	trans              thrift.TTransport
 	requestStatementId int64
-	ts                 string
-	sg                 string
-	dv                 string
 	err                error
 }
 

@@ -150,12 +150,11 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) {
  */
 func (s *Session) DeleteStorageGroups(storageGroupIds []string) {
 	status, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
-	s.sg = strings.Replace(strings.Trim(fmt.Sprint(storageGroupIds), "[]"), " ", ",", -1)
 	if err != nil {
 		log.WithError(err).Error("delete storage groups failed")
 	} else {
 		log.WithFields(log.Fields{
-			"sg":   s.sg,
+			"sg":   storageGroupIds,
 			"code": status.Code,
 		}).Debug("delete storage groups success")
 	}
@@ -199,12 +198,11 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
 	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: dataTypes,
 		Encodings: encodings, Compressors: compressors}
 	status, err := s.client.CreateMultiTimeseries(context.Background(), &request)
-	s.ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
 	if err != nil {
 		log.WithError(err).Error("creating multi time series failed")
 	} else {
 		log.WithFields(log.Fields{
-			"ts":   s.ts,
+			"ts":   paths,
 			"code": status.Code,
 		}).Debug("creating multi time series success")
 	}
@@ -242,12 +240,11 @@ func (s *Session) DeleteTimeseries(paths []string) {
 func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) {
 	request := rpc.TSDeleteDataReq{SessionId: s.sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
 	status, err := s.client.DeleteData(context.Background(), &request)
-	s.ts = strings.Replace(strings.Trim(fmt.Sprint(paths), "[]"), " ", ",", -1)
 	if err != nil {
 		log.WithError(err).Error("delete data failed")
 	} else {
 		log.WithFields(log.Fields{
-			"ts":   s.ts,
+			"ts":   paths,
 			"code": status.Code,
 		}).Debug("delete data success")
 	}
@@ -305,13 +302,12 @@ func (s *Session) InsertStringRecords(deviceIds []string, measurements [][]strin
 	timestamps []int64) {
 	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
 		ValuesList: values, Timestamps: timestamps}
-	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
 	status, err := s.client.InsertStringRecords(context.Background(), &request)
 	if err != nil {
 		log.WithError(err).Error("insert multi string records failed")
 	} else {
 		log.WithFields(log.Fields{
-			"dv":   s.dv,
+			"dv":   deviceIds,
 			"code": status.Code,
 		}).Debug("insert multi string records success")
 	}
@@ -321,13 +317,12 @@ func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]s
 	timestamps []int64) {
 	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
 		ValuesList: values, Timestamps: timestamps}
-	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
 	status, err := s.client.TestInsertStringRecords(context.Background(), &request)
 	if err != nil {
 		log.WithError(err).Error("insert multi string records failed")
 	} else {
 		log.WithFields(log.Fields{
-			"dv":   s.dv,
+			"dv":   deviceIds,
 			"code": status.Code,
 		}).Debug("insert multi string records success")
 	}
@@ -394,14 +389,13 @@ func (s *Session) genInsertRecordReq(deviceId string, measurements []string, dat
  */
 func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
 	timestamps []int64) {
-	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
 	request := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
 	status, err := s.client.InsertRecords(context.Background(), request)
 	if err != nil {
 		log.WithError(err).Error("insert multiple records failed")
 	} else {
 		log.WithFields(log.Fields{
-			"dv":   s.dv,
+			"dv":   deviceIds,
 			"code": status.Code,
 		}).Debug("insert multiple records success")
 	}
@@ -409,14 +403,13 @@ func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dat
 
 func (s *Session) TestInsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]int32, values [][]interface{},
 	timestamps []int64) {
-	s.dv = strings.Replace(strings.Trim(fmt.Sprint(deviceIds), "[]"), " ", ",", -1)
 	request := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
 	status, err := s.client.TestInsertRecords(context.Background(), request)
 	if err != nil {
 		log.WithError(err).Error("insert multiple records failed")
 	} else {
 		log.WithFields(log.Fields{
-			"dv":   s.dv,
+			"dv":   deviceIds,
 			"code": status.Code,
 		}).Debug("insert multiple records success")
 	}
