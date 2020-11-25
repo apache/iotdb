@@ -143,8 +143,8 @@ public class DataGroupMember extends RaftMember {
   private LocalQueryExecutor localQueryExecutor;
 
   /**
-   * When a new partition table is installed, all data members will be checked if unchanged. If
-   * not, such members will be removed.
+   * When a new partition table is installed, all data members will be checked if unchanged. If not,
+   * such members will be removed.
    */
   private boolean unchanged;
 
@@ -361,6 +361,7 @@ public class DataGroupMember extends RaftMember {
           metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
           metaGroupMember.getLogManager().getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
+      setLeader(electionRequest.getElector());
       lastHeartbeatReceivedTime = System.currentTimeMillis();
       setVoteFor(electionRequest.getElector());
       updateHardState(thatTerm, getVoteFor());
@@ -385,7 +386,8 @@ public class DataGroupMember extends RaftMember {
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     logger.info("{}: received a snapshot from {} with size {}", name, request.getHeader(),
         request.getSnapshotBytes().length);
-    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
+    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(
+        FileSnapshot.Factory.INSTANCE);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
@@ -522,8 +524,9 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
-        snapshotSave));
+    pullSnapshotService
+        .submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
+            snapshotSave));
   }
 
   /**

@@ -1091,6 +1091,7 @@ public abstract class RaftMember {
           name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
           thatLastLogTerm, logManager.getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
+      setLeader(electionRequest.getElector());
       lastHeartbeatReceivedTime = System.currentTimeMillis();
       setVoteFor(electionRequest.getElector());
       updateHardState(thatTerm, getVoteFor());
@@ -1415,7 +1416,6 @@ public abstract class RaftMember {
         logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
         setVoteFor(null);
-        setLeader(null);
         updateHardState(newTerm, getVoteFor());
       }
 
