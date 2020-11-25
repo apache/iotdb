@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,6 +85,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -305,13 +307,17 @@ public class CMManager extends MManager {
   @Override
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
-    MNode deviceNode = getDeviceNode(plan.getDeviceId());
+    try {
+      MNode deviceNode = getDeviceNode(plan.getDeviceId());
 
-    int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(),
+      int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(),
         measurementMNodes);
-    if (nonExistSchemaIndex == -1) {
-      plan.setMeasurementMNodes(measurementMNodes);
-      return deviceNode;
+      if (nonExistSchemaIndex == -1) {
+        plan.setMeasurementMNodes(measurementMNodes);
+        return deviceNode;
+      }
+    } catch (PathNotExistException exception) {
+      // ignore, so we could try local MTree
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -405,6 +411,9 @@ public class CMManager extends MManager {
       createStorageGroup(deviceId);
     }
 
+    // need to verify the storage group is created
+    verifyCreatedSgSuccess(deviceIds, plan);
+
     if (plan instanceof InsertPlan) {
       // try to create timeseries
       boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
@@ -412,6 +421,42 @@ public class CMManager extends MManager {
         throw new MetadataException(
             "Failed to create timeseries from InsertPlan automatically."
         );
+      }
+    }
+  }
+
+  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan) throws MetadataException {
+    long startTime = System.currentTimeMillis();
+    boolean[] ready = new boolean[deviceIds.size()];
+    Arrays.fill(ready, false);
+    while (true) {
+      boolean allReady = true;
+      for (int i = 0; i < deviceIds.size(); i++) {
+        if (ready[i]) {
+          continue;
+        }
+        PartialPath storageGroupName = MetaUtils
+          .getStorageGroupPathByLevel(deviceIds.get(i), IoTDBDescriptor.getInstance()
+            .getConfig().getDefaultStorageGroupLevel());
+        if (IoTDB.metaManager.isStorageGroup(storageGroupName)) {
+          ready[i] = true;
+        } else {
+          allReady = false;
+        }
+      }
+      if (allReady) {
+        break;
+      }
+
+      if (System.currentTimeMillis() - startTime > ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS()) {
+        break;
+      } else {
+        try {
+          Thread.sleep(1);
+        } catch (InterruptedException e) {
+          logger.debug("Failed to wait for creating sgs for plan {}", physicalPlan, e);
+          Thread.currentThread().interrupt();
+        }
       }
     }
   }
