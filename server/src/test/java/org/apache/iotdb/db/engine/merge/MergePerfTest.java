@@ -46,8 +46,8 @@ public class MergePerfTest extends MergeTest{
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     resource.setCacheDeviceMeta(true);
     MergeTask mergeTask =
-        new MergeTask(resource, tempSGDir.getPath(), (k, v
-            , l) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
+        new MergeTask(resource, tempSGDir.getPath(), (k, v, l) -> {
+        }, "test", fullMerge, 100, MERGE_TEST_SG);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();

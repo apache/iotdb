@@ -146,8 +146,7 @@ public class MergeMultiChunkTask {
 
   private void mergePaths() throws IOException {
     mergeLogger.logTSStart(currMergingPaths);
-    IPointReader[] unseqReaders;
-    unseqReaders = resource.getUnseqReaders(currMergingPaths);
+    IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       if (unseqReaders[i].hasNextTimeValuePair()) {

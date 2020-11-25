@@ -410,6 +410,12 @@ public class SeriesReader {
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
       initFirstPageReader();
+      if (firstPageReader != null) {
+        long endpointTime = orderUtils.getOverlapCheckTime(firstPageReader.getStatistics());
+        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endpointTime);
+        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endpointTime, false);
+        unpackAllOverlappedChunkMetadataToCachedPageReaders(endpointTime, false);
+      }
 
       if (firstPageOverlapped()) {
         /*
@@ -427,14 +433,17 @@ public class SeriesReader {
     return firstPageReader != null;
   }
 
-  private boolean firstPageOverlapped() {
+  private boolean firstPageOverlapped() throws IOException {
     if (firstPageReader == null) {
       return false;
     }
     return (!seqPageReaders.isEmpty() && orderUtils
         .isOverlapped(firstPageReader.getStatistics(), seqPageReaders.get(0).getStatistics())) || (
-        !unSeqPageReaders.isEmpty() && orderUtils.isOverlapped(firstPageReader.getStatistics(),
-            unSeqPageReaders.peek().getStatistics()));
+        !unSeqPageReaders.isEmpty() && orderUtils
+            .isOverlapped(firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
+            || (mergeReader.hasNextTimeValuePair()
+            && mergeReader.currentTimeValuePair().getTimestamp() > firstPageReader.getStatistics()
+            .getStartTime()));
   }
 
   private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endpointTime, boolean init)
@@ -496,8 +505,8 @@ public class SeriesReader {
     if (mergeReader.hasNextTimeValuePair() &&
         ((orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() <=
             firstPageReader.getStatistics().getEndTime()) ||
-        (!orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() >=
-            firstPageReader.getStatistics().getStartTime()))) {
+            (!orderUtils.getAscending() && mergeReader.currentTimeValuePair().getTimestamp() >=
+                firstPageReader.getStatistics().getStartTime()))) {
       throw new IOException("overlapped data should be consumed first");
     }
 
@@ -611,7 +620,8 @@ public class SeriesReader {
                   .addReader(firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending())
                           .getBatchDataIterator(), firstPageReader.version,
                       orderUtils.getOverlapCheckTime(firstPageReader.getStatistics()));
-              currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime, firstPageReader);
+              currentPageEndPointTime = updateEndPointTime(currentPageEndPointTime,
+                  firstPageReader);
               firstPageReader = null;
             }
           }

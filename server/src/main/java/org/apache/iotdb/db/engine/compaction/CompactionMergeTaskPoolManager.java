@@ -67,9 +67,9 @@ public class CompactionMergeTaskPoolManager implements IService {
   }
 
   @Override
-  public void waitAndStop(long millseconds) {
+  public void waitAndStop(long milliseconds) {
     if (pool != null) {
-      awaitTermination(pool, millseconds);
+      awaitTermination(pool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       waitTermination();
     }
@@ -78,9 +78,17 @@ public class CompactionMergeTaskPoolManager implements IService {
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!pool.isTerminated()) {
-      // wait
+      int timeMillis = 0;
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        logger.error("CompactionMergeTaskPoolManager {} shutdown",
+            ThreadName.COMPACTION_SERVICE.getName(), e);
+        Thread.currentThread().interrupt();
+      }
+      timeMillis += 200;
       long time = System.currentTimeMillis() - startTime;
-      if (time % 60_000 == 0) {
+      if (timeMillis % 60_000 == 0) {
         logger.warn("CompactionManager has wait for {} seconds to stop", time / 1000);
       }
     }
@@ -88,12 +96,12 @@ public class CompactionMergeTaskPoolManager implements IService {
     logger.info("CompactionManager stopped");
   }
 
-  private void awaitTermination(ExecutorService service, long millseconds) {
+  private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
       service.shutdown();
-      service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
+      service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      logger.warn("CompactionThreadPool can not be closed in {} ms", millseconds);
+      logger.warn("CompactionThreadPool can not be closed in {} ms", milliseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();

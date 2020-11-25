@@ -66,6 +66,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -77,6 +78,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -92,6 +94,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -268,6 +271,10 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
+      case CREATE_INDEX:
+        throw new QueryProcessException("Create index hasn't been supported yet");
+      case DROP_INDEX:
+        throw new QueryProcessException("Drop index hasn't been supported yet");
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -356,6 +363,8 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
+      } else if (queryPlan instanceof QueryIndexPlan) {
+        throw new QueryProcessException("Query index hasn't been supported yet");
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);
@@ -433,14 +442,14 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Arrays.asList(new PartialPath(COLUMN_COLUMN, false),
                 new PartialPath(COLUMN_COUNT, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
     for (PartialPath columnPath : nodes) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
-      Field field1 = new Field(TSDataType.TEXT);
+      Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
+      field1.setIntV(getPathsNum(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -764,8 +773,7 @@ public class PlanExecutor implements IPlanExecutor {
     Set<PartialPath> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
-      MNode node = null;
-      node = IoTDB.metaManager
+      MNode node = IoTDB.metaManager
           .getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series = new PartialPath(
@@ -848,10 +856,6 @@ public class PlanExecutor implements IPlanExecutor {
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws QueryProcessException {
     try {
-      if (!IoTDB.metaManager.isPathExist(path)) {
-        throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
-      }
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
@@ -865,19 +869,6 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-
-      // check insert plan
-      if (insertRowPlan.getMeasurements() == null) {
-        throw new QueryProcessException(
-            "The measurements of InsertRowPlan is null, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-      if (insertRowPlan.getValues().length == 0) {
-        throw new QueryProcessException(
-            "The size of values in this InsertRowPlan is 0, deviceId:" + insertRowPlan.getDeviceId()
-                + ", time:" + insertRowPlan.getTime());
-      }
-
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
       getSeriesSchemas(insertRowPlan);
@@ -905,8 +896,14 @@ public class PlanExecutor implements IPlanExecutor {
               "failed to insert points " + insertRowPlan.getFailedMeasurements());
         }
       }
-    } catch (StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+    } catch (Exception e) {
+      // update failed statistics
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
+      }
+      if (e instanceof StorageEngineException || e instanceof MetadataException) {
+        throw new QueryProcessException((IoTDBException) e);
+      }
     }
   }
 
@@ -921,8 +918,14 @@ public class PlanExecutor implements IPlanExecutor {
         throw new StorageEngineException(
             "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
       }
-    } catch (StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+    } catch (Exception e) {
+      // update failed statistics
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
+      }
+      if (e instanceof StorageEngineException || e instanceof MetadataException) {
+        throw new QueryProcessException((IoTDBException) e);
+      }
     }
   }
 

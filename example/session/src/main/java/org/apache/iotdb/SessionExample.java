@@ -404,8 +404,7 @@ public class SessionExample {
   }
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet;
-    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
     while (dataSet.hasNext()) {
@@ -423,8 +422,7 @@ public class SessionExample {
     long startTime = 10L;
     long endTime = 200L;
 
-    SessionDataSet dataSet;
-    dataSet = session.executeRawDataQuery(paths, startTime, endTime);
+    SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime);
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024);
     while (dataSet.hasNext()) {
@@ -435,8 +433,7 @@ public class SessionExample {
 
   private static void queryByIterator()
       throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet;
-    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     DataIterator iterator = dataSet.iterator();
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000

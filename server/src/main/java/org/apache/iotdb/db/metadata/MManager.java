@@ -40,15 +40,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -121,7 +123,7 @@ public class MManager {
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, MNode> mNodeCache;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
+  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
   // data type -> number
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
@@ -430,8 +432,11 @@ public class MManager {
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          if (entry.getKey() == null || entry.getValue() == null) {
+            continue;
+          }
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
 
@@ -491,7 +496,7 @@ public class MManager {
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
-      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.getStatStorageGroupPrefixArray()));
+      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
@@ -528,8 +533,8 @@ public class MManager {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
+            logger.debug(String.format(String.format(DEBUG_MSG, "Delete" + TAG_FORMAT,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset()));
           }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
           if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
@@ -540,8 +545,8 @@ public class MManager {
           }
         } else {
           if (logger.isDebugEnabled()) {
-            logger.debug(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
+            logger.debug(String.format(String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION,
+                node.getFullPath()), entry.getKey(), entry.getValue(), node.getOffset(),
                 tagIndex.containsKey(entry.getKey())));
           }
         }
@@ -821,6 +826,9 @@ public class MManager {
     List<MeasurementMNode> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (tagValue.contains(plan.getValue())) {
           allMatchedNodes.addAll(entry.getValue());
@@ -828,6 +836,9 @@ public class MManager {
       }
     } else {
       for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
         String tagValue = entry.getKey();
         if (plan.getValue().equals(tagValue)) {
           allMatchedNodes.addAll(entry.getValue());
@@ -837,9 +848,20 @@ public class MManager {
 
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert timestamp
     if (plan.isOrderByHeat()) {
-      allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
-          .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-          .reversed().thenComparing(MNode::getFullPath)).collect(toList());
+      List<StorageGroupProcessor> list;
+      try {
+        list = StorageEngine.getInstance()
+            .mergeLock(allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
+        try {
+          allMatchedNodes = allMatchedNodes.stream().sorted(Comparator
+              .comparingLong((MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+              .reversed().thenComparing(MNode::getFullPath)).collect(toList());
+        } finally {
+          StorageEngine.getInstance().mergeUnLock(list);
+        }
+      } catch (StorageEngineException e) {
+        throw new MetadataException(e);
+      }
     } else {
       // otherwise, we just sort them by the alphabetical order
       allMatchedNodes = allMatchedNodes.stream().sorted(Comparator.comparing(MNode::getFullPath))
@@ -1182,8 +1204,8 @@ public class MManager {
       // update inverted Index map
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
       return;
@@ -1205,9 +1227,8 @@ public class MManager {
           if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                  DEBUG_MSG, "Upsert"
-                      + TAG_FORMAT,
-                  leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset()));
+                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
+                      key, beforeValue, leafMNode.getOffset()));
             }
 
             tagIndex.get(key).get(beforeValue).remove(leafMNode);
@@ -1217,10 +1238,8 @@ public class MManager {
           } else {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                  DEBUG_MSG_1, "Upsert"
-                      + PREVIOUS_CONDITION,
-                  leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
-                  tagIndex.containsKey(key)));
+                      String.format(DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                      key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
             }
           }
         }
@@ -1228,13 +1247,16 @@ public class MManager {
         // if the key doesn't exist or the value is not equal to the new one
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
+          tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
     }
 
-    pair.right.putAll(attributesMap);
+    if (attributesMap != null) {
+      pair.right.putAll(attributesMap);
+    }
+
 
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
@@ -1298,8 +1320,8 @@ public class MManager {
       leafMNode.setOffset(offset);
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
-        tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
       }
       return;
     }
@@ -1321,8 +1343,8 @@ public class MManager {
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
     // update tag inverted map
-    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-        .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode));
+    tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
   }
 
   /**
@@ -1367,9 +1389,8 @@ public class MManager {
       if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(value)) {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG, "Drop"
-                  + TAG_FORMAT,
-              leafMNode.getFullPath(), entry.getKey(), entry.getValue(), leafMNode.getOffset()));
+                  String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
+                  entry.getKey(), entry.getValue(), leafMNode.getOffset()));
         }
 
         tagIndex.get(key).get(value).remove(leafMNode);
@@ -1382,10 +1403,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG_1, "Drop"
-                  + PREVIOUS_CONDITION,
-              leafMNode.getFullPath(), key, value, leafMNode.getOffset(),
-              tagIndex.containsKey(key)));
+                  String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  key, value, leafMNode.getOffset(), tagIndex.containsKey(key)));
         }
       }
 
@@ -1446,23 +1465,20 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG, "Set"
-                  + TAG_FORMAT,
-              leafMNode.getFullPath(), entry.getKey(), beforeValue, leafMNode.getOffset()));
+                  String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
+                  entry.getKey(), beforeValue, leafMNode.getOffset()));
         }
 
         tagIndex.get(key).get(beforeValue).remove(leafMNode);
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG_1, "Set"
-                  + PREVIOUS_CONDITION,
-              leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
-              tagIndex.containsKey(key)));
+                  String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
         }
       }
-      tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-          .computeIfAbsent(currentValue, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     }
   }
 
@@ -1507,9 +1523,8 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG, "Rename"
-                  + TAG_FORMAT,
-              leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset()));
+                  String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
+                  oldKey, value, leafMNode.getOffset()));
         }
 
         tagIndex.get(oldKey).get(value).remove(leafMNode);
@@ -1517,14 +1532,12 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-              DEBUG_MSG_1, "Rename"
-                  + PREVIOUS_CONDITION,
-              leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(),
-              tagIndex.containsKey(oldKey)));
+                  String.format(DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  oldKey, value, leafMNode.getOffset(), tagIndex.containsKey(oldKey)));
         }
       }
-      tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
-          .computeIfAbsent(value, k -> new HashSet<>()).add(leafMNode);
+      tagIndex.computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>()).add(leafMNode);
     } else if (pair.right.containsKey(oldKey)) {
       // check attribute map
       pair.right.put(newKey, pair.right.remove(oldKey));

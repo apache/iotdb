@@ -151,29 +151,10 @@ public class IoTDBDescriptor {
       conf.setEnableStatMonitor(Boolean
           .parseBoolean(properties.getProperty("enable_stat_monitor",
               Boolean.toString(conf.isEnableStatMonitor()))));
-      conf.setBackLoopPeriodSec(Integer
-          .parseInt(properties.getProperty("back_loop_period_in_second",
-              Integer.toString(conf.getBackLoopPeriodSec()))));
-      int statMonitorDetectFreqSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_detect_freq_in_second",
-              Integer.toString(conf.getStatMonitorDetectFreqSec())));
-      int statMonitorRetainIntervalSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_retain_interval_in_second",
-              Integer.toString(conf.getStatMonitorRetainIntervalSec())));
-      // the conf value must > default value, or may cause system unstable
-      if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
-        conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
-      } else {
-        logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
-            + " use default value");
-      }
 
-      if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
-        conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
-      } else {
-        logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
-            + " use default value");
-      }
+      conf.setEnableMonitorSeriesWrite(Boolean
+          .parseBoolean(properties.getProperty("enable_monitor_series_write",
+              Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setEnableMetricService(Boolean.parseBoolean(properties
           .getProperty("enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
@@ -307,6 +288,10 @@ public class IoTDBDescriptor {
           .getProperty("compaction_strategy",
               conf.getCompactionStrategy().toString())));
 
+      conf.setEnableUnseqCompaction(Boolean.parseBoolean(
+          properties.getProperty("enable_unseq_compaction",
+              Boolean.toString(conf.isEnableUnseqCompaction()))));
+
       conf.setSeqLevelNum(Integer.parseInt(properties
           .getProperty("seq_level_num",
               Integer.toString(conf.getSeqLevelNum()))));
@@ -340,6 +325,28 @@ public class IoTDBDescriptor {
       if (conf.getConcurrentFlushThread() <= 0) {
         conf.setConcurrentFlushThread(Runtime.getRuntime().availableProcessors());
       }
+
+      // start: index parameter setting
+      conf.setIndexRootFolder(properties.getProperty("index_root_dir", conf.getIndexRootFolder()));
+
+      conf.setEnableIndex(Boolean.parseBoolean(properties.getProperty("enable_index",
+          Boolean.toString(conf.isEnableIndex()))));
+
+      conf.setConcurrentIndexBuildThread(Integer
+          .parseInt(properties.getProperty("concurrent_index_build_thread",
+              Integer.toString(conf.getConcurrentIndexBuildThread()))));
+      if (conf.getConcurrentIndexBuildThread() <= 0) {
+        conf.setConcurrentIndexBuildThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setDefaultIndexWindowRange(Integer
+          .parseInt(properties.getProperty("default_index_window_range",
+              Integer.toString(conf.getDefaultIndexWindowRange()))));
+
+      conf.setIndexBufferSize(Long
+          .parseLong(properties.getProperty("index_buffer_size",
+              Long.toString(conf.getIndexBufferSize()))));
+      // end: index parameter setting
 
       conf.setConcurrentQueryThread(Integer
           .parseInt(properties.getProperty("concurrent_query_thread",
@@ -770,7 +777,8 @@ public class IoTDBDescriptor {
   }
 
   private void initMemoryAllocate(Properties properties) {
-    String memoryAllocateProportion = properties.getProperty("write_read_schema_free_memory_proportion");
+    String memoryAllocateProportion = properties
+        .getProperty("write_read_schema_free_memory_proportion");
     if (memoryAllocateProportion != null) {
       String[] proportions = memoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -831,9 +839,6 @@ public class IoTDBDescriptor {
 
   /**
    * Get default encode algorithm by data type
-   *
-   * @param dataType
-   * @return
    */
   public TSEncoding getDefualtEncodingByType(TSDataType dataType) {
     switch (dataType) {

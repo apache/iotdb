@@ -64,12 +64,12 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
 一个新创建的用户默认不使用水印。因此查询结果就是数据库中的原始数据。
 
 ```
-.\start-client.bat -u root -pw root
+.\start-cli.bat -u root -pw root
 create user Alice 1234
 grant user Alice privileges 'READ_TIMESERIES' on root.vehicle
 exit
 
-.\start-client.bat -u Alice -pw 1234
+.\start-cli.bat -u Alice -pw 1234
 select * from root
 +-----------------------------------+------------------+
 |                               Time|root.vehicle.d0.s0|
@@ -119,11 +119,11 @@ sql用法：`grant watermark_embedding to Alice`
 只有root用户有权限运行该指令。在root给Alice施加水印嵌入之后，Alice的所有查询结果都将被嵌入水印。
 
 ```
-.\start-client.bat -u root -pw root
+.\start-cli.bat -u root -pw root
 grant watermark_embedding to Alice
 exit
 
-.\start-client.bat -u Alice -pw 1234
+.\start-cli.bat -u Alice -pw 1234
 select * from root
 
 +-----------------------------------+------------------+

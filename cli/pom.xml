@@ -37,7 +37,7 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
+            <artifactId>iotdb-session</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -46,6 +46,11 @@
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>

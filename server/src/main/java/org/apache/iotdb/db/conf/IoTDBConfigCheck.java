@@ -33,8 +33,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.MLogWriter;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -143,7 +141,7 @@ public class IoTDBConfigCheck {
    * When upgrading the system.properties:
    * (1) create system.properties.tmp
    * (2) delete system.properties
-   * (2) rename system.properties.tmp to system.properties
+   * (3) rename system.properties.tmp to system.properties
    */
   public void checkConfig() throws IOException {
     propertiesFile = SystemFileFactory.INSTANCE
@@ -186,29 +184,24 @@ public class IoTDBConfigCheck {
             inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // need to upgrade from 0.9 to 0.10
+    // check whether upgrading from v0.9 to v0.11
     if (!properties.containsKey(IOTDB_VERSION_STRING)) {
-      checkUnClosedTsFileV1();
-      MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+      logger.error("DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.11!"
+          + " Please upgrade to v0.10 first");
+      System.exit(-1);
+    }
+    // check whether upgrading from v0.10 to v0.11
+    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
+      logger.info("Upgrading IoTDB from v0.10 to v0.11, checking files...");
+      checkUnClosedTsFileV2();
       upgradePropertiesFile();
-
-      // upgrade mlog finished, delete old mlog file
-      File mlogFile = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR + File.separator
-          + MetadataConstant.METADATA_LOG);
-      File tmpMLogFile = SystemFileFactory.INSTANCE.getFile(mlogFile.getAbsolutePath()
-          + ".tmp");
-
-      if (!mlogFile.delete()) {
-        throw new IOException("Deleting " + mlogFile + "failed.");
-      }
-      // rename tmpLogFile to mlog
-      FileUtils.moveFile(tmpMLogFile, mlogFile);
+      logger.info("Upgrade to IoTDB v0.11 successfully!");
     }
     checkProperties();
   }
 
   /**
-   * upgrade 0.9 properties to 0.10 properties
+   * upgrade 0.10 properties to 0.11 properties
    */
   private void upgradePropertiesFile()
       throws IOException {
@@ -237,7 +230,6 @@ public class IoTDBConfigCheck {
     // rename system.properties.tmp to system.properties
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
-
 
   /**
    * repair 0.10 properties
@@ -307,20 +299,20 @@ public class IoTDBConfigCheck {
   }
 
   /**
-   * ensure all tsfiles are closed in 0.9 when starting 0.10
+   * ensure all TsFiles are closed in 0.10 when starting 0.11
    */
-  private void checkUnClosedTsFileV1() {
+  private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
-      logger.error("Unclosed Version-1 TsFile detected, please run 'flush' on V0.9 IoTDB"
-          + " before upgrading to V0.10");
+      logger.error("Unclosed Version-2 TsFile detected, please run 'flush' on v0.10 IoTDB"
+          + " before upgrading to v0.11");
       System.exit(-1);
     }
-    checkUnClosedTsFileV1InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
-    checkUnClosedTsFileV1InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
   }
 
-  private void checkUnClosedTsFileV1InFolders(List<String> folders) {
+  private void checkUnClosedTsFileV2InFolders(List<String> folders) {
     for (String baseDir : folders) {
       File fileFolder = FSFactoryProducer.getFSFactory().getFile(baseDir);
       if (!fileFolder.isDirectory()) {
@@ -330,14 +322,19 @@ public class IoTDBConfigCheck {
         if (!storageGroup.isDirectory()) {
           continue;
         }
-        File[] tsfiles = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(storageGroup.toString(), TsFileConstant.TSFILE_SUFFIX);
-        File[] resources = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(storageGroup.toString(), TsFileResource.RESOURCE_SUFFIX);
-        if (tsfiles.length != resources.length) {
-          logger.error("Unclosed Version-1 TsFile detected, please run 'flush' on V0.9 IoTDB"
-              + " before upgrading to V0.10");
-          System.exit(-1);
+        for (File partitionDir : storageGroup.listFiles()) {
+          if (!partitionDir.isDirectory()) {
+            continue;
+          }
+          File[] tsfiles = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(partitionDir.toString(), TsFileConstant.TSFILE_SUFFIX);
+          File[] resources = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
+          if (tsfiles.length != resources.length) {
+            logger.error("Unclosed Version-2 TsFile detected, please run 'flush' on v0.10 IoTDB"
+                + " before upgrading to v0.11");
+            System.exit(-1);
+          }
         }
       }
     }

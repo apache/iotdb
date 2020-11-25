@@ -24,6 +24,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -58,8 +60,13 @@ public class GroupByFillDataSet extends QueryDataSet {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
-    initPreviousParis(context, groupByFillPlan);
-    initLastTimeArray(context, groupByFillPlan);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+    try {
+      initPreviousParis(context, groupByFillPlan);
+      initLastTimeArray(context, groupByFillPlan);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
+    }
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
@@ -67,6 +74,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
     firstNotNullTV = new TimeValuePair[paths.size()];
+
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
@@ -97,13 +105,16 @@ public class GroupByFillDataSet extends QueryDataSet {
       throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
+    List<PartialPath> seriesPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      TimeValuePair lastTimeValuePair;
-      lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeriesLocally(
-          (PartialPath) paths.get(i), dataTypes.get(i), context, null,
-          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
-      if (lastTimeValuePair != null && lastTimeValuePair.getValue() != null) {
-        lastTimeArray[i] = lastTimeValuePair.getTimestamp();
+      seriesPaths.add((PartialPath) paths.get(i));
+    }
+    List<Pair<Boolean, TimeValuePair>> lastValueContainer =
+            LastQueryExecutor.calculateLastPairForSeriesLocally(
+                    seriesPaths, dataTypes, context, null, groupByFillPlan);
+    for (int i = 0; i < lastValueContainer.size(); i++) {
+      if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
+        lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();
       }
     }
   }

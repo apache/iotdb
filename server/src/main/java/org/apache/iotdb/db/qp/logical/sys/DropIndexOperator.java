@@ -16,31 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public interface MonitorMBean {
+import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 
-  long getDataSizeInByte();
+/**
+ * this operator is to drop a certain index on some time series.
+ */
+public class DropIndexOperator extends SFWOperator {
 
-  int getFileNodeNum();
+  private IndexType indexType;
 
-  long getOverflowCacheSize();
+  public DropIndexOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.DROP_INDEX;
+  }
 
-  long getBufferWriteCacheSize();
+  public IndexType getIndexType() {
+    return indexType;
+  }
 
-  String getSystemDirectory();
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
+  }
 
-  boolean getWriteAheadLogStatus();
-
-  int getTotalOpenFileNum();
-
-  int getDataOpenFileNum();
-
-  int getWalOpenFileNum();
-
-  int getDigestOpenFileNum();
-
-  int getMetadataOpenFileNum();
-
-  int getSocketOpenFileNum();
 }

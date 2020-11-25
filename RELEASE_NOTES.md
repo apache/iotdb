@@ -77,7 +77,7 @@
 * IOTDB-872 Enable setting timezone at client
 * IOTDB-877 fix prefix bug on show storage group and show devices
 * IOTDB-904 fix update last cache NullPointerException
-* IOTDB-920 Disable insert row thats only contains time/timestamp column
+* IOTDB-920 Disable insert row that only contains time/timestamp column
 * IOTDB-921 When execute two query simultaneously in one statement, got error
 * IOTDB-922 Int and Long can convert to each other in ResultSet
 * IOTDB-947 Fix error when counting node with wildcard
@@ -153,7 +153,7 @@
 * IOTDB-671 Add clear cache command
 * Support open and close time range in group by, e.g, [), (]
 * Online upgrade from 0.9.x
-* Support speical characters in path: -/+&%$#@
+* Support special characters in path: -/+&%$#@
 * IOTDB-446 Support path start with a digit, e.g., root.sg.12a
 * enable rpc compression in session pool
 * Make JDBC OSGi usable and added a feature file
@@ -181,7 +181,7 @@
 * IOTDB-597 Rename methods in Session: insertBatch to insertTablet, insertInBatch to insertRecords, insert to insertRecord
 * RPC is incompatible, you can not use client-v0.9 to connect with server-v0.10
 * TsFile format is incompatible, will be upgraded when starting 0.10
-* Refine exception code in narive api
+* Refine exception code in native api
 
 ## Miscellaneous changes
 
@@ -277,7 +277,7 @@
 - Fix batch insert once an illegal sql occurs all the sqls after that will not succeed
 - Fix concurrent modification exception when iterator TsFileResourceList 
 - Fix some HDFS config issues 
-- Fix runtime exception not catched and sync schema pos was nullpointer bug in DataTransferManager
+- Fix runtime exception not be catched and sync schema pos was nullpointer bug in DataTransferManager
 - Fix python rpc grammar mistakes
 - Fix upgrade ConcurrentModificationException
 

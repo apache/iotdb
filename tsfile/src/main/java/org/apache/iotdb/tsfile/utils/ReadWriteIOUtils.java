@@ -341,7 +341,7 @@ public class ReadWriteIOUtils {
   public static int write(String s, OutputStream outputStream) throws IOException {
     int len = 0;
     if (s == null) {
-      len += write(0, outputStream);
+      len += write(-1, outputStream);
       return len;
     }
 
@@ -591,8 +591,10 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
-    if (strLength <= 0) {
+    if (strLength < 0) {
       return null;
+    } else if (strLength == 0) {
+      return "";
     }
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);
@@ -701,6 +703,29 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[byteLength];
     buffer.get(bytes);
     ByteBuffer byteBuffer = ByteBuffer.allocate(byteLength);
+    byteBuffer.put(bytes);
+    byteBuffer.flip();
+    return byteBuffer;
+  }
+
+  /**
+   * read bytes from an inputStream where the length is specified at the head of the inputStream.
+   * Make sure {@code inputStream} contains an integer numeric (the first 4 bytes) indicating
+   * the length of the following data.
+   *
+   * @param inputStream contains a length and a stream
+   * @return bytebuffer
+   * @throws IOException if the read length doesn't equal to the self description length.
+   */
+  public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream)
+      throws IOException {
+    int length = readInt(inputStream);
+    byte[] bytes = new byte[length];
+    int readLen = inputStream.read(bytes);
+    if (readLen != length) {
+      throw new IOException(String.format(RETURN_ERROR, length, readLen));
+    }
+    ByteBuffer byteBuffer = ByteBuffer.allocate(length);
     byteBuffer.put(bytes);
     byteBuffer.flip();
     return byteBuffer;

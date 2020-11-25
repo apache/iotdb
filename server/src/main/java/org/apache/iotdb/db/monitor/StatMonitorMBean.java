@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,19 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy;
+package org.apache.iotdb.db.monitor;
 
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.misc.ParseCancellationException;
+public interface StatMonitorMBean {
 
-public class LogicalGeneratorError extends BaseErrorListener {
+  long getGlobalTotalPointsNum();
 
-  public static final LogicalGeneratorError INSTANCE = new LogicalGeneratorError();
+  long getGlobalReqSuccessNum();
 
-  @Override
-  public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
-    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
-  }
+  long getGlobalReqFailNum();
+
+  long getStorageGroupTotalPointsNum(String storageGroupName);
+
+  String getSystemDirectory();
+
+  long getDataSizeInByte();
+
+  boolean getWriteAheadLogStatus();
+
+  boolean getEnableStatMonitor();
 }
+

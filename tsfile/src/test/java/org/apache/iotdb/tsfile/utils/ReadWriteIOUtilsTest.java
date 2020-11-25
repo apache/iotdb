@@ -45,8 +45,7 @@ public class ReadWriteIOUtilsTest {
       fail(e.toString());
     }
 
-    String result;
-    result = ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    String result = ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(str, result);
 
@@ -80,8 +79,7 @@ public class ReadWriteIOUtilsTest {
       fail(e.toString());
     }
 
-    Map<String, String> result;
-    result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    Map<String, String> result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
 

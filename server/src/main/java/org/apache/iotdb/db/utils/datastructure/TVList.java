@@ -187,7 +187,7 @@ public abstract class TVList {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
-        minTime = time < minTime ? time : minTime;
+        minTime = Math.min(time, minTime);
       }
     }
     int deletedNumber = size - newSize;
@@ -245,7 +245,7 @@ public abstract class TVList {
   abstract void clearValue();
 
   /**
-   * The arrays for sorting are not including in write memory now, 
+   * The arrays for sorting are not including in write memory now,
    * the memory usage is considered as temporary memory.
    */
   abstract void clearSortedValue();
@@ -452,12 +452,12 @@ public abstract class TVList {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
     for (int i = start; i < end; i++) {
-      inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
+      inPutMinTime = Math.min(inPutMinTime, time[i]);
       if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
-    minTime = inPutMinTime < minTime ? inPutMinTime : minTime;
+    minTime = Math.min(inPutMinTime, minTime);
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
@@ -559,5 +559,10 @@ public abstract class TVList {
     }
   }
 
+  public abstract TSDataType getDataType();
+
+  public long getLastTime() {
+    return getTime(size - 1);
+  }
 
 }

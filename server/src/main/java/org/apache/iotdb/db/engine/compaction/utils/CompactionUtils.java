@@ -198,6 +198,9 @@ public class CompactionUtils {
       for (TsFileResource levelResource : tsFileResources) {
         TsFileSequenceReader reader = buildReaderFromTsFileResource(levelResource,
             tsFileSequenceReaderMap, storageGroup);
+        if (reader == null) {
+          continue;
+        }
         Map<String, List<ChunkMetadata>> chunkMetadataMap = reader
             .readChunkMetadataInDevice(device);
         for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
@@ -247,13 +250,13 @@ public class CompactionUtils {
             }
           }
           if (isPageEnoughLarge) {
-            logger.info("{} [Compaction] page enough large, use append merge", storageGroup);
+            logger.debug("{} [Compaction] page enough large, use append merge", storageGroup);
             // append page in chunks, so we do not have to deserialize a chunk
             maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
                 readerChunkMetadatasMap, targetResource, writer);
           } else {
             logger
-                .info("{} [Compaction] page enough large, use deserialize merge", storageGroup);
+                .debug("{} [Compaction] page too small, use deserialize merge", storageGroup);
             // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
                 entry, targetResource, writer);

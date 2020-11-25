@@ -1013,19 +1013,6 @@ TRACING OFF   // Close performance tracing
 
 # Reference
 
-## Keywords
-
-```
-Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, USER, USING, VALUE, VALUES, WHERE, WITH
-
-Keywords with special meanings (case insensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF 
-* Compression Methods: UNCOMPRESSED, SNAPPY, GZIP, LZ0, ZDT, PAA, PLA
-* Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
-```
-
 ## Identifiers
 
 ```

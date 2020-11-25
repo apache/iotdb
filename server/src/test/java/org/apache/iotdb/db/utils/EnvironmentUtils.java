@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.concurrent.TimeUnit;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
@@ -73,7 +74,8 @@ public class EnvironmentUtils {
 
   private static IoTDB daemon;
 
-  public static boolean examinePorts = false;
+  public static boolean examinePorts = Boolean
+      .parseBoolean(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     logger.warn("EnvironmentUtil cleanEnv...");
@@ -87,44 +89,18 @@ public class EnvironmentUtils {
 
     if (examinePorts) {
       // TODO: this is just too slow, especially on Windows, consider a better way
-      TTransport transport = new TSocket("127.0.0.1", 6667, 100);
-      if (!transport.isOpen()) {
+      boolean closed = examinePorts();
+      if (!closed) {
+        //sleep 10 seconds
         try {
-          transport.open();
-          logger.error("stop daemon failed. 6667 can be connected now.");
-          transport.close();
-        } catch (TTransportException e) {
+          TimeUnit.SECONDS.sleep(10);
+        } catch (InterruptedException e) {
+          //do nothing
         }
-      }
-      //try sync service
-      transport = new TSocket("127.0.0.1", 5555, 100);
-      if (!transport.isOpen()) {
-        try {
-          transport.open();
-          logger.error("stop Sync daemon failed. 5555 can be connected now.");
-          transport.close();
-        } catch (TTransportException e) {
+
+        if (!examinePorts()) {
+          fail("failed to close some ports");
         }
-      }
-      //try jmx connection
-      try {
-        JMXServiceURL url =
-            new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
-        JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
-        logger.error("stop JMX failed. 31999 can be connected now.");
-        jmxConnector.close();
-      } catch (IOException e) {
-        //do nothing
-      }
-      //try MetricService
-      Socket socket = new Socket();
-      try {
-        socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
-        logger.error("stop MetricService failed. 8181 can be connected now.");
-      } catch (Exception e) {
-        //do nothing
-      } finally {
-        socket.close();
       }
     }
 
@@ -161,6 +137,55 @@ public class EnvironmentUtils {
     config.setTsFileSizeThreshold(oldTsFileThreshold);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
+
+
+  private static boolean examinePorts() {
+    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+    if (!transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop daemon failed. 6667 can be connected now.");
+        transport.close();
+        return false;
+      } catch (TTransportException e) {
+        //do nothing
+      }
+    }
+    //try sync service
+    transport = new TSocket("127.0.0.1", 5555, 100);
+    if (!transport.isOpen()) {
+      try {
+        transport.open();
+        logger.error("stop Sync daemon failed. 5555 can be connected now.");
+        transport.close();
+        return false;
+      } catch (TTransportException e) {
+        //do nothing
+      }
+    }
+    //try jmx connection
+    try {
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+      logger.error("stop JMX failed. 31999 can be connected now.");
+      jmxConnector.close();
+      return false;
+    } catch (IOException e) {
+      //do nothing
+    }
+    //try MetricService
+    try (Socket socket = new Socket()) {
+      socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
+      logger.error("stop MetricService failed. 8181 can be connected now.");
+      return false;
+    } catch (Exception e) {
+      //do nothing
+    }
+    //do nothing
+    return true;
+  }
+
 
   public static void cleanAllDir() throws IOException {
     // delete sequential files
@@ -228,7 +253,7 @@ public class EnvironmentUtils {
   }
 
   public static void shutdownDaemon() throws Exception {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.shutdown();
     }
   }
@@ -250,6 +275,7 @@ public class EnvironmentUtils {
 
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
+    stopDaemon();
     reactiveDaemon();
   }
 
