@@ -89,6 +89,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
@@ -687,6 +688,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // generate the queryId for the operation
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      // register startTime to query time manager
+      QueryTimeManager.getInstance().registerQuery(queryId, startTime);
+      QueryTimeManager.getInstance().registerQueryThread(queryId, Thread.currentThread());
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance()

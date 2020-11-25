@@ -42,6 +42,7 @@ public enum ServiceType {
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE("CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
+  QUERY_TIME_MANAGER("Query time manager", "Query time"),
 
   FLUSH_SERVICE("Flush ServerService",
       generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
