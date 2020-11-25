@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -411,7 +412,7 @@ public class CMManager extends MManager {
     }
 
     // need to verify the storage group is created
-    verifyCreatedSgSuccess(deviceIds);
+    verifyCreatedSgSuccess(deviceIds, plan);
 
     if (plan instanceof InsertPlan) {
       // try to create timeseries
@@ -424,19 +425,26 @@ public class CMManager extends MManager {
     }
   }
 
-  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds) throws MetadataException {
+  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan) throws MetadataException {
     long startTime = System.currentTimeMillis();
+    boolean[] ready = new boolean[deviceIds.size()];
+    Arrays.fill(ready, false);
     while (true) {
-      int successNum = deviceIds.size();
-      for (PartialPath deviceId : deviceIds) {
+      boolean allReady = true;
+      for (int i = 0; i < deviceIds.size(); i++) {
+        if (ready[i]) {
+          continue;
+        }
         PartialPath storageGroupName = MetaUtils
-          .getStorageGroupPathByLevel(deviceId, IoTDBDescriptor.getInstance()
+          .getStorageGroupPathByLevel(deviceIds.get(i), IoTDBDescriptor.getInstance()
             .getConfig().getDefaultStorageGroupLevel());
         if (IoTDB.metaManager.isStorageGroup(storageGroupName)) {
-          successNum --;
+          ready[i] = true;
+        } else {
+          allReady = false;
         }
       }
-      if (successNum <= 0) {
+      if (allReady) {
         break;
       }
 
@@ -446,7 +454,7 @@ public class CMManager extends MManager {
         try {
           Thread.sleep(1);
         } catch (InterruptedException e) {
-          logger.debug("Failed to wait for creating sgs for plan");
+          logger.debug("Failed to wait for creating sgs for plan {}", physicalPlan, e);
           Thread.currentThread().interrupt();
         }
       }
