@@ -18,31 +18,32 @@
  */
 package org.apache.iotdb.pulsar;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.SubscriptionType;
 
 public class PulsarConsumer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
-  private static final String TOPIC_NAME = "iotdb-topic";
-  private final Consumer<byte[]> consumer;
+  // Specify the number of consumers
+  private static final int CONSUMER_NUM = 5;
+  private List<Consumer<?>> consumerList;
 
-  public PulsarConsumer(Consumer<byte[]> consumer) {
-    this.consumer = consumer;
-  }
-
-  public void consume() throws PulsarClientException {
-    Message<?> msg = consumer.receive();
-    System.out.printf("Message received: %s", new String(msg.getData()));
+  public PulsarConsumer(List<Consumer<?>> consumerList) {
+    this.consumerList = consumerList;
   }
 
   public void consumeInParallel() {
-    ExecutorService executor = Executors.newFixedThreadPool(1);
-    PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumer);
-    executor.submit(consumerExecutor);
+    ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
+    for (int i = 0; i < consumerList.size(); i++) {
+      PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
+      executor.submit(consumerExecutor);
+    }
   }
 
   public static void main(String[] args) throws PulsarClientException {
@@ -50,13 +51,18 @@ public class PulsarConsumer {
         .serviceUrl(SERVICE_URL)
         .build();
 
-    Consumer<byte[]> consumer = client.newConsumer()
-        .topic(Constant.TOPIC_NAME)
-        .subscriptionName("my-subscription")
-        .subscribe();
-
-    PulsarConsumer pulsarConsumer = new PulsarConsumer(consumer);
+    List<Consumer<?>> consumerList = new ArrayList<>();
+    for (int i = 0; i < CONSUMER_NUM; i++) {
+      // In shared subscription mode, multiple consumers can attach to the same subscription
+      // and message are delivered in a round robin distribution across consumers.
+      Consumer<byte[]> consumer = client.newConsumer()
+          .topic(Constant.TOPIC_NAME)
+          .subscriptionName("my-subscription")
+          .subscriptionType(SubscriptionType.Shared)
+          .subscribe();
+      consumerList.add(consumer);
+    }
+    PulsarConsumer pulsarConsumer = new PulsarConsumer(consumerList);
     pulsarConsumer.consumeInParallel();
-
   }
 }

@@ -29,8 +29,8 @@ import org.apache.pulsar.client.api.PulsarClientException;
 public class PulsarConsumerThread implements Runnable {
   private Connection connection = null;
   private Statement statement = null;
-  private static boolean setStorageGroup = false;
-  private static boolean createTimeSeries = false;
+  private static boolean setStorageGroup = true;
+  private static boolean createTimeSeries = true;
   private static final String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
   private static final String createTimeseriesSqlTemplate = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
   private static final String insertDataSqlTemplate = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
