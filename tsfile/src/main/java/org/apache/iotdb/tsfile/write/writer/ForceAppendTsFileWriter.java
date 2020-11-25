@@ -66,9 +66,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
       canWrite = true;
       versionInfo = tsFileMetadata.getVersionInfo();
-      totalChunkNum = tsFileMetadata.getTotalChunkNum();
-      invalidChunkNum = tsFileMetadata.getInvalidChunkNum();
-      
+
       List<String> devices = reader.getAllDevices();
       for (String device : devices) {
         List<ChunkMetadata> chunkMetadataList = new ArrayList<>();

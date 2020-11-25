@@ -769,7 +769,7 @@ public class ReadWriteIOUtils {
    * read a int + buffer
    */
   public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
-    int byteLength = readInt(buffer);
+    int byteLength = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     byte[] bytes = new byte[byteLength];
     buffer.get(bytes);
     ByteBuffer byteBuffer = ByteBuffer.allocate(byteLength);

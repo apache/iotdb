@@ -29,19 +29,13 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
  */
 public class TsFileMetadata {
-
-  // fields below are IoTDB extensions and they does not affect TsFile's
-  // stand-alone functionality
-  private int totalChunkNum;
-  // invalid means a chunk has been rewritten by merge and the chunk's data is in
-  // another new chunk
-  private int invalidChunkNum;
 
   // bloom filter
   private BloomFilter bloomFilter;
@@ -66,12 +60,10 @@ public class TsFileMetadata {
 
     // metadataIndex
     fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
-    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
     // versionInfo
     List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-    int versionSize = ReadWriteIOUtils.readInt(buffer);
+    int versionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < versionSize; i++) {
       long versionPos = ReadWriteIOUtils.readLong(buffer);
       long version = ReadWriteIOUtils.readLong(buffer);
@@ -166,21 +158,6 @@ public class TsFileMetadata {
     return filter;
   }
 
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
-  public void setTotalChunkNum(int totalChunkNum) {
-    this.totalChunkNum = totalChunkNum;
-  }
-
-  public int getInvalidChunkNum() {
-    return invalidChunkNum;
-  }
-
-  public void setInvalidChunkNum(int invalidChunkNum) {
-    this.invalidChunkNum = invalidChunkNum;
-  }
 
   public long getMetaOffset() {
     return metaOffset;

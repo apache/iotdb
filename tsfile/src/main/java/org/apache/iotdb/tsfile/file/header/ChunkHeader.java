@@ -173,7 +173,7 @@ public class ChunkHeader {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, outputStream);
+    length += ReadWriteIOUtils.write(chunkType, outputStream);
     length += ReadWriteIOUtils.write(measurementID, outputStream);
     length += ReadWriteIOUtils.write(dataSize, outputStream);
     length += ReadWriteIOUtils.write(dataType, outputStream);
@@ -191,7 +191,7 @@ public class ChunkHeader {
    */
   public int serializeTo(ByteBuffer buffer) {
     int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, buffer);
+    length += ReadWriteIOUtils.write(chunkType, buffer);
     length += ReadWriteIOUtils.write(measurementID, buffer);
     length += ReadWriteIOUtils.write(dataSize, buffer);
     length += ReadWriteIOUtils.write(dataType, buffer);

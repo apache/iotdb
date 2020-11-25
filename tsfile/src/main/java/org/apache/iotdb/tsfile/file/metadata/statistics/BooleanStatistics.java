@@ -200,6 +200,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
+    byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
 
@@ -207,16 +208,22 @@ public class BooleanStatistics extends Statistics<Boolean> {
   void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBool(inputStream);
     this.lastValue = ReadWriteIOUtils.readBool(inputStream);
+    this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
   @Override
   void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
+    this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return "BooleanStatistics{" +
+        "firstValue=" + firstValue +
+        ", lastValue=" + lastValue +
+        ", sumValue=" + sumValue +
+        '}';
   }
 }
