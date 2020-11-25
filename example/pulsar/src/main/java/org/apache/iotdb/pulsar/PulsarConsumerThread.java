@@ -25,15 +25,23 @@ import java.sql.Statement;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.PulsarClientException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PulsarConsumerThread implements Runnable {
   private Connection connection = null;
   private Statement statement = null;
   private static boolean setStorageGroup = true;
   private static boolean createTimeSeries = true;
-  private static final String createStorageGroupSqlTemplate = "SET STORAGE GROUP TO %s";
-  private static final String createTimeseriesSqlTemplate = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
-  private static final String insertDataSqlTemplate = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
+  private static final String CREATE_SG_TEMPLATE = "SET STORAGE GROUP TO %s";
+  private static final String CREATE_TIMESERIES_TEMPLATE = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
+  private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
+  public static final String[] ALL_TIMESERIES = {
+      "root.vehicle.deviceid.sensor1",
+      "root.vehicle.deviceid.sensor2",
+      "root.vehicle.deviceid.sensor3",
+      "root.vehicle.deviceid.sensor4"};
+  private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
   private final Consumer<?> consumer;
 
@@ -48,24 +56,25 @@ public class PulsarConsumerThread implements Runnable {
       connection = DriverManager
           .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
               Constant.IOTDB_CONNECTION_PASSWORD);
-      statement = connection.createStatement();
-      if (setStorageGroup) {
-        try {
-          statement.execute(String.format(createStorageGroupSqlTemplate, Constant.STORAGE_GROUP));
-        } catch (SQLException e) {
-        }
-        setStorageGroup = false;
-      }
-      if (createTimeSeries) {
-        for (String timeseries : Constant.ALL_TIMESERIES) {
-          statement.addBatch(String.format(createTimeseriesSqlTemplate, timeseries));
-        }
-        statement.executeBatch();
-        statement.clearBatch();
-        createTimeSeries = false;
-      }
+      prepareTimeseries();
     } catch (ClassNotFoundException | SQLException e) {
-      System.out.println(e.getMessage());
+      logger.error(e.getMessage());
+    }
+  }
+
+  private void prepareTimeseries() throws SQLException {
+    statement = connection.createStatement();
+    if (setStorageGroup) {
+      statement.execute(String.format(CREATE_SG_TEMPLATE, Constant.STORAGE_GROUP));
+      setStorageGroup = false;
+    }
+    if (createTimeSeries) {
+      for (String timeseries : ALL_TIMESERIES) {
+        statement.addBatch(String.format(CREATE_TIMESERIES_TEMPLATE, timeseries));
+      }
+      statement.executeBatch();
+      statement.clearBatch();
+      createTimeSeries = false;
     }
   }
 
@@ -77,10 +86,10 @@ public class PulsarConsumerThread implements Runnable {
     String[] items = message.split(",");
 
     try {
-      String sql = String.format(insertDataSqlTemplate, items[0], items[1], items[2]);
+      String sql = String.format(INSERT_TEMPLATE, items[0], items[1], items[2]);
       statement.execute(sql);
     } catch (SQLException e) {
-      System.out.println(e.getMessage());
+      logger.error(e.getMessage());
     }
   }
 
@@ -93,7 +102,7 @@ public class PulsarConsumerThread implements Runnable {
 
         consumer.acknowledge(msg);
       } catch (PulsarClientException e) {
-        e.printStackTrace();
+        logger.error(e.getMessage());
         break;
       }
     } while (true);

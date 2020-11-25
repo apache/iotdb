@@ -25,13 +25,4 @@ public class Constant {
   public static final String IOTDB_CONNECTION_USER = "root";
   public static final String IOTDB_CONNECTION_PASSWORD = "root";
   public static final String STORAGE_GROUP = "root.vehicle";
-
-  /**
-   *  If you write level3 as device, timeseries will not be created because device is the keyword
-   */
-  public static final String[] ALL_TIMESERIES = {
-      "root.vehicle.deviceid.sensor1",
-      "root.vehicle.deviceid.sensor2",
-      "root.vehicle.deviceid.sensor3",
-      "root.vehicle.deviceid.sensor4"};
 }
