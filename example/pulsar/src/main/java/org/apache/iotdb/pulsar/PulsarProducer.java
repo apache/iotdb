@@ -26,7 +26,7 @@ import org.apache.pulsar.client.impl.schema.StringSchema;
 public class PulsarProducer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
   private final Producer<String> producer ;
-  public static final String[] ALL_DATA = {
+  protected static final String[] ALL_DATA = {
       "sensor1,2017/10/24 19:30:00,606162908",
       "sensor2,2017/10/24 19:30:00,160161162",
       "sensor3,2017/10/24 19:30:00,260261262",
@@ -68,6 +68,5 @@ public class PulsarProducer {
         client.newProducer(new StringSchema()).topic(Constant.TOPIC_NAME).create());
 
     pulsarProducer.produce();
-    System.out.println("Producing finished");
   }
 }

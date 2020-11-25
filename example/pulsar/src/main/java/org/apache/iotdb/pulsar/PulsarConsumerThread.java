@@ -36,11 +36,12 @@ public class PulsarConsumerThread implements Runnable {
   private static final String CREATE_SG_TEMPLATE = "SET STORAGE GROUP TO %s";
   private static final String CREATE_TIMESERIES_TEMPLATE = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
   private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
-  public static final String[] ALL_TIMESERIES = {
+  protected static final String[] ALL_TIMESERIES = {
       "root.vehicle.deviceid.sensor1",
       "root.vehicle.deviceid.sensor2",
       "root.vehicle.deviceid.sensor3",
       "root.vehicle.deviceid.sensor4"};
+
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
   private final Consumer<?> consumer;
