@@ -117,16 +117,10 @@ func NewIoTDBRpcDataSet(dataSet *SessionDataSet, fetchSize int32) *IoTDBRpcDataS
 		case "BOOLEAN":
 			ioTDBRpcDataSet.Values[i] = make([]byte, 1)
 			break
-		case "INT32":
+		case "INT32", "FLOAT":
 			ioTDBRpcDataSet.Values[i] = make([]byte, 4)
 			break
-		case "INT64":
-			ioTDBRpcDataSet.Values[i] = make([]byte, 8)
-			break
-		case "FLOAT":
-			ioTDBRpcDataSet.Values[i] = make([]byte, 4)
-			break
-		case "DOUBLE":
+		case "INT64", "DOUBLE":
 			ioTDBRpcDataSet.Values[i] = make([]byte, 8)
 			break
 		case "TEXT":
@@ -161,16 +155,10 @@ func (r *IoTDBRpcDataSet) constructOneRow() {
 			case "BOOLEAN":
 				r.Values[i] = valueBuffer[:1]
 				r.QueryDataSet.ValueList[i] = valueBuffer[1:]
-			case "INT32":
+			case "INT32", "FLOAT":
 				r.Values[i] = valueBuffer[:4]
 				r.QueryDataSet.ValueList[i] = valueBuffer[4:]
-			case "INT64":
-				r.Values[i] = valueBuffer[:8]
-				r.QueryDataSet.ValueList[i] = valueBuffer[8:]
-			case "FLOAT":
-				r.Values[i] = valueBuffer[:4]
-				r.QueryDataSet.ValueList[i] = valueBuffer[4:]
-			case "DOUBLE":
+			case "INT64", "DOUBLE":
 				r.Values[i] = valueBuffer[:8]
 				r.QueryDataSet.ValueList[i] = valueBuffer[8:]
 			case "TEXT":

@@ -536,35 +536,15 @@ func valuesToBytes(dataTypes []int32, values []interface{}) []byte {
 	buf := bytes.NewBuffer([]byte{})
 	for i := 0; i < len(dataTypes); i++ {
 		dataType := int16(dataTypes[i])
-		binary.Write(buf, binary.BigEndian, &dataType)
+		binary.Write(buf, binary.BigEndian, dataType)
 		switch dataTypes[i] {
-		case 0:
-			binary.Write(buf, binary.BigEndian, values[i].(bool))
-			break
-		case 1:
-			tmp := values[i].(int32)
-			binary.Write(buf, binary.BigEndian, &tmp)
-			break
-		case 2:
-			tmp := values[i].(int64)
-			binary.Write(buf, binary.BigEndian, &tmp)
-			break
-		case 3:
-			tmp := values[i].(float32)
-			binary.Write(buf, binary.BigEndian, &tmp)
-			break
-		case 4:
-			tmp := values[i].(float64)
-			binary.Write(buf, binary.BigEndian, &tmp)
+		case 0, 1, 2, 3, 4:
+			binary.Write(buf, binary.BigEndian, values[i])
 			break
 		case 5:
 			tmp := (int32)(len(values[i].(string)))
-			binary.Write(buf, binary.BigEndian, &tmp)
+			binary.Write(buf, binary.BigEndian, tmp)
 			buf.WriteString(values[i].(string))
-			break
-		case 6:
-			tmp := values[i].(int)
-			binary.Write(buf, binary.BigEndian, &tmp)
 			break
 		}
 	}
