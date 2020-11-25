@@ -79,7 +79,6 @@ public class EnvironmentUtils {
   public static void setIsEnableHttpService(boolean isEnableHttpService) {
     EnvironmentUtils.isEnableHttpService = isEnableHttpService;
   }
-  public static boolean examinePorts = false;
 
   public static boolean examinePorts = Boolean
       .parseBoolean(System.getProperty("test.port.closed", "false"));

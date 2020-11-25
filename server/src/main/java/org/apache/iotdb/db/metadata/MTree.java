@@ -1112,6 +1112,29 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get child node name in the next level of the given path. but path can't contain star.
+   *
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [d1, d2]
+   *
+   * @return All child nodes' name(s) of given seriesPath.
+   */
+  Set<String> getChildNodeNameInNextLevel(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    MNode node = root;
+    for(int i = 1; i < nodes.length; i++) {
+      node = node.getChild(nodes[i]);
+      if(node == null) {
+        throw new IllegalPathException(path.getFullPath());
+      }
+    }
+    return new TreeSet<>(node.getChildren().keySet());
+  }
+
+  /**
    * Traverse the MTree to match all child node path in next level
    *
    * @param node   the current traversing node

@@ -40,7 +40,7 @@ public class HttpServer {
 
   private static final boolean SSL = System.getProperty("ssl") != null;
   private final int port;
-  private ServerBootstrap b;
+  private final ServerBootstrap b;
   private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
   private Channel ch;
   private EventLoopGroup bossGroup;

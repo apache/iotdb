@@ -145,4 +145,10 @@ public class HttpRouterTest extends HttpPrepData {
         , router.route(HttpMethod.POST, HttpConstant.ROUTING_QUERY, query).toString());
   }
 
+  @Test
+  public void getChildPathByRouter() throws Exception {
+    prepareData();
+    Assert.assertEquals("[\"m0\",\"m1\",\"m2\",\"m3\",\"m4\",\"m5\",\"m6\",\"m7\",\"m8\",\"m9\"]",
+        router.route(HttpMethod.GET, GET_CHILD_PATH_URL, null).toString());
+  }
 }

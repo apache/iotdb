@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.handler.DeleteStorageGroupsHandler;
 import org.apache.iotdb.db.http.handler.DeleteTimeSeriesHandler;
+import org.apache.iotdb.db.http.handler.GetChildPathsHandler;
 import org.apache.iotdb.db.http.handler.GetTimeSeriesHandler;
 import org.apache.iotdb.db.http.handler.InsertHandler;
 import org.apache.iotdb.db.http.handler.QueryHandler;
@@ -95,6 +96,12 @@ public class HttpRouter {
       case HttpConstant.ROUTING_GET_TIME_SERIES:
         GetTimeSeriesHandler getTimeSeriesHandler = new GetTimeSeriesHandler();
         return getTimeSeriesHandler.handle(json.getAsJsonArray());
+      case HttpConstant.ROUTING_GET_CHILD_PATHS:
+        GetChildPathsHandler getChildPathsHandler = new GetChildPathsHandler();
+        if(!method.equals(HttpMethod.GET)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support GET");
+        }
+        return getChildPathsHandler.handle(decoder.parameters().get(HttpConstant.PATH).get(0));
       case "":
         JsonObject result = new JsonObject();
         result.addProperty(HttpConstant.RESULT, "Hello, IoTDB");

@@ -70,6 +70,7 @@ public abstract class HttpPrepData {
   static final String SUCCESSFUL_RESPONSE = "{\"result\":\"successful operation\"}";
   private final QueryRouter queryRouter = new QueryRouter();
   static final String LOGIN_URI = "/user/login?username=root&password=root";
+  static final String GET_CHILD_PATH_URL = "/getChildPaths?path=root.test";
 
   protected void prepareData() throws MetadataException, StorageEngineException {
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));

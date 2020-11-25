@@ -34,6 +34,7 @@ public class HttpConstant {
   public static final String ROUTING_STORAGE_GROUPS_DELETE = "/storageGroups/delete";
   public static final String ROUTING_TIME_SERIES_DELETE = "/timeSeries/delete";
   public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
+  public static final String ROUTING_GET_CHILD_PATHS = "/getChildPaths";
 
   public static final String AGGREGATIONS = "aggregations";
   public static final String PREVIOUS = "previous";
@@ -65,6 +66,7 @@ public class HttpConstant {
   public static final String TAGS = "tags";
   public static final String ATTRIBUTES = "attributes";
   public static final String NULL = "null";
+  public static final String PATH = "path";
 
   public static final String DEVICE_ID = "deviceId";
   public static final String MEASUREMENTS = "measurements";
