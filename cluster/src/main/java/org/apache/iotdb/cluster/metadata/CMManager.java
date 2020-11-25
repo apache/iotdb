@@ -394,7 +394,7 @@ public class CMManager extends MManager {
    * create storage groups for CreateTimeseriesPlan and InsertPlan, also create timeseries for
    * InsertPlan. Only the two kind of plans can use this method.
    */
-  public void createSchema(PhysicalPlan plan) throws MetadataException, InterruptedException {
+  public void createSchema(PhysicalPlan plan) throws MetadataException {
     // try to set storage group
     List<PartialPath> deviceIds;
     // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
@@ -411,6 +411,20 @@ public class CMManager extends MManager {
     }
 
     // need to verify the storage group is created
+    verifyCreatedSgSuccess(deviceIds);
+
+    if (plan instanceof InsertPlan) {
+      // try to create timeseries
+      boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
+      if (!isAutoCreateTimeseriesSuccess) {
+        throw new MetadataException(
+            "Failed to create timeseries from InsertPlan automatically."
+        );
+      }
+    }
+  }
+
+  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds) throws MetadataException {
     long startTime = System.currentTimeMillis();
     while (true) {
       int successNum = deviceIds.size();
@@ -432,19 +446,9 @@ public class CMManager extends MManager {
         try {
           Thread.sleep(1);
         } catch (InterruptedException e) {
-          logger.debug("wait to create sgs for plan {}", plan);
-          throw e;
+          logger.debug("Failed to wait for creating sgs for plan");
+          Thread.currentThread().interrupt();
         }
-      }
-    }
-
-    if (plan instanceof InsertPlan) {
-      // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = createTimeseries((InsertPlan) plan);
-      if (!isAutoCreateTimeseriesSuccess) {
-        throw new MetadataException(
-            "Failed to create timeseries from InsertPlan automatically."
-        );
       }
     }
   }
