@@ -89,6 +89,7 @@ public class SDTEncoder {
     isFirstValue = true;
   }
 
+
   public boolean encodeFloat(long time, float value) {
     // store the first time and value pair
     if (isFirstValue(time, value)) {
@@ -111,45 +112,22 @@ public class SDTEncoder {
     double curUpperSlope = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = (value - lastReadFloat) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredFloat + compDeviation - lastReadFloat + slope * lastReadTimestamp -
-            lowerDoor * lastStoredTimestamp) / (slope - lowerDoor));
-        lastStoredFloat = (float) (lastStoredFloat + compDeviation + lowerDoor * (timestamp - lastStoredTimestamp)
-            - compDeviation / 2);
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadFloat = value;
-        lastReadTimestamp = time;
-        return true;
-      }
     }
 
     double curLowerSlope = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = (value - lastReadFloat) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredFloat - compDeviation - lastReadFloat + slope * lastReadTimestamp -
-            upperDoor * lastStoredTimestamp) / (slope - upperDoor));
-        lastStoredFloat = (float) (lastStoredFloat - compDeviation + upperDoor * (timestamp - lastStoredTimestamp)
-            + compDeviation / 2);
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadFloat = value;
-        lastReadTimestamp = time;
-        return true;
-      }
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredFloat = lastReadFloat;
+      upperDoor = (value - lastStoredFloat - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredFloat + compDeviation) / (time - lastStoredTimestamp);
+      lastReadFloat = value;
+      lastReadTimestamp = time;
+      return true;
     }
 
     lastReadFloat = value;
@@ -179,50 +157,26 @@ public class SDTEncoder {
     double curUpperSlope = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = ((double) value - lastReadLong) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredLong + compDeviation - lastReadLong + slope * lastReadTimestamp -
-            lowerDoor * lastStoredTimestamp) / (slope - lowerDoor));
-        lastStoredLong = Math.round((lastStoredLong + compDeviation + lowerDoor * (timestamp - lastStoredTimestamp)
-            - compDeviation / 2));
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadLong = value;
-        lastReadTimestamp = time;
-        return true;
-      }
     }
 
     double curLowerSlope = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = ((double) value - lastReadLong) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredLong - compDeviation - lastReadLong + slope * lastReadTimestamp -
-            upperDoor * lastStoredTimestamp) / (slope - upperDoor));
-        lastStoredLong = Math.round((lastStoredLong - compDeviation + upperDoor * (timestamp - lastStoredTimestamp)
-            + compDeviation / 2));
-        lastStoredTimestamp = timestamp;
-
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadLong = value;
-        lastReadTimestamp = time;
-        return true;
-      }
     }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredLong = lastReadLong;
+      lastStoredTimestamp = lastReadTimestamp;
+      upperDoor = (value - lastStoredLong - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredLong + compDeviation) / (time - lastStoredTimestamp);
+      lastReadLong = value;
+      lastReadTimestamp = time;
+      return true;
+    }
+
     lastReadLong = value;
     lastReadTimestamp = time;
-
     return false;
   }
 
@@ -248,45 +202,22 @@ public class SDTEncoder {
     double curUpperSlope = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = ((double) value - lastReadInt) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredInt + compDeviation - lastReadInt + slope * lastReadTimestamp -
-            lowerDoor * lastStoredTimestamp) / (slope - lowerDoor));
-        lastStoredInt = (int) Math.round((lastStoredInt + compDeviation + lowerDoor * (timestamp - lastStoredTimestamp)
-            - compDeviation / 2));
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadInt = value;
-        lastReadTimestamp = time;
-        return true;
-      }
     }
 
     double curLowerSlope = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = ((double) value - lastReadInt) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredInt - compDeviation - lastReadInt + slope * lastReadTimestamp -
-            upperDoor * lastStoredTimestamp) / (slope - upperDoor));
-        lastStoredInt = (int) Math.round((lastStoredInt - compDeviation + upperDoor * (timestamp - lastStoredTimestamp)
-            + compDeviation / 2));
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadInt = value;
-        lastReadTimestamp = time;
-        return true;
-      }
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredInt = lastReadInt;
+      upperDoor = (value - lastStoredInt - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredInt + compDeviation) / (time - lastStoredTimestamp);
+      lastReadInt = value;
+      lastReadTimestamp = time;
+      return true;
     }
 
     lastReadInt = value;
@@ -316,51 +247,29 @@ public class SDTEncoder {
     double curUpperSlope = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
     if (curUpperSlope > upperDoor) {
       upperDoor = curUpperSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = (value - lastReadDouble) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredDouble + compDeviation - lastReadDouble + slope * lastReadTimestamp -
-            lowerDoor * lastStoredTimestamp) / (slope - lowerDoor));
-        lastStoredDouble = (lastStoredDouble + compDeviation + lowerDoor * (timestamp - lastStoredTimestamp)
-            - compDeviation / 2);
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadDouble = value;
-        lastReadTimestamp = time;
-        return true;
-      }
     }
 
     double curLowerSlope = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
     if (curLowerSlope < lowerDoor) {
       lowerDoor = curLowerSlope;
-      if (upperDoor > lowerDoor) {
-        // slope between curr point and last read point
-        double slope = (value - lastReadDouble) / (time - lastReadTimestamp);
-        // start point of the next segment
-        long timestamp = (long) ((lastStoredDouble - compDeviation - lastReadDouble + slope * lastReadTimestamp -
-            upperDoor * lastStoredTimestamp) / (slope - upperDoor));
-        lastStoredDouble = (lastStoredDouble - compDeviation + upperDoor * (timestamp - lastStoredTimestamp)
-            + compDeviation / 2);
-        lastStoredTimestamp = timestamp;
-        // recalculate upperDoor and lowerDoor
-        upperDoor = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
-        lowerDoor = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
-        // update last read point to current point
-        lastReadDouble = value;
-        lastReadTimestamp = time;
-        return true;
-      }
+    }
+
+    // current point to the lastStoredPair's value exceeds compDev, will store lastReadPair and update two doors
+    if (upperDoor >= lowerDoor) {
+      lastStoredTimestamp = lastReadTimestamp;
+      lastStoredDouble = lastReadDouble;
+      upperDoor = (value - lastStoredDouble - compDeviation) / (time - lastStoredTimestamp);
+      lowerDoor = (value - lastStoredDouble + compDeviation) / (time - lastStoredTimestamp);
+      lastReadDouble = value;
+      lastReadTimestamp = time;
+      return true;
     }
 
     lastReadDouble = value;
     lastReadTimestamp = time;
     return false;
   }
+
 
   public int encode(long[] timestamps, double[] values, int batchSize) {
     int index = 0;
@@ -461,7 +370,6 @@ public class SDTEncoder {
   private void reset() {
     upperDoor = Integer.MIN_VALUE;
     lowerDoor = Integer.MAX_VALUE;
-    isFirstValue = true;
   }
 
   /**
