@@ -69,12 +69,12 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 | 接口定义                                                     | 描述                                                         | 是否必须           |
 | :----------------------------------------------------------- | :----------------------------------------------------------- | ------------------ |
-| `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception` | 初始化方法，在UDTF处理输入数据前，调用用户自定义的初始化行为。用户每执行一次UDTF查询，框架就会构造一个新的worker，该方法在每个worker被初始化时调用一次。在每一个worker的生命周期内，该方法只会被调用一次。 | 是                 |
+| `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception` | 初始化方法，在UDTF处理输入数据前，调用用户自定义的初始化行为。用户每执行一次UDTF查询，框架就会构造一个新的UDF类实例，该方法在每个UDF类实例被初始化时调用一次。在每一个UDF类实例的生命周期内，该方法只会被调用一次。 | 是                 |
 | `void beforeDestroy() `                                      | UDTF的结束方法。此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后被调用。 | 否                 |
 | `void transform(Row row, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`OneByOneAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`Row`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与下面的方法二选一 |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`TumblingWindowAccessStrategy`或者`SlidingTimeWindowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`RowWindow`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与上面的方法二选一 |
 
-注意，框架每执行一次UDTF查询，都会构造一个全新的worker，查询结束时，对应的worker即被销毁，因此不同UDTF查询（即使是在同一个SQL语句中）worker内部的数据都是隔离的。您可以放心地在UDTF中维护一些状态数据，无需考虑并发对worker内部状态数据的影响。
+注意，框架每执行一次UDTF查询，都会构造一个全新的UDF类实例，查询结束时，对应的UDF类实例即被销毁，因此不同UDTF查询（即使是在同一个SQL语句中）UDF类实例内部的数据都是隔离的。您可以放心地在UDTF中维护一些状态数据，无需考虑并发对UDF类实例内部状态数据的影响。
 
 下面将详细介绍各个接口的使用方法。
 
@@ -193,7 +193,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 UDTF的结束方法，您可以在此方法中进行一些资源释放等的操作。
 
-此方法由框架调用。对于一个worker而言，生命周期中会且只会被调用一次，即在处理完最后一条记录之后被调用。
+此方法由框架调用。对于一个UDF类实例而言，生命周期中会且只会被调用一次，即在处理完最后一条记录之后被调用。
 
 
 
