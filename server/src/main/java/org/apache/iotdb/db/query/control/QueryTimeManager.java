@@ -1,13 +1,10 @@
 package org.apache.iotdb.db.query.control;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
@@ -30,7 +27,7 @@ public class QueryTimeManager implements IService {
   private int MAX_QUERY_TIME = IoTDBDescriptor.getInstance().getConfig().getQueryTimeThreshold();
 
   /**
-   * the examine period of query time manager.
+   * the examine period of query time manager, 30s
    */
   private int examinePeriod = 30000;
 
@@ -43,7 +40,7 @@ public class QueryTimeManager implements IService {
    * the key of queryThreadMap is the query id and the value of queryThreadMap is the executing
    * threads of this query.
    */
-  private Map<Long, List<Thread>> queryThreadMap;
+  private Map<Long, Thread> queryThreadMap;
 
   private ScheduledExecutorService executorService;
 
@@ -58,46 +55,33 @@ public class QueryTimeManager implements IService {
 
   private void closeOverTimeQueryInFixTime() {
     executorService.scheduleAtFixedRate(() -> {
-      synchronized (this) {
-        long currentTime = System.currentTimeMillis();
-        boolean hasOverTimeQuery = false;
-        for (Entry<Long, Long> entry : queryStartTimeMap.entrySet()) {
-          if (currentTime - entry.getValue() >= MAX_QUERY_TIME) {
-            killQuery(entry.getKey());
-            hasOverTimeQuery = true;
-          }
-        }
-        // TODO
-        if (hasOverTimeQuery) {
-          try {
-            throw new TimeoutException("Query is over time, please check your query statement");
-          } catch (TimeoutException e) {
-            logger.error("Query is over time, ");
-          }
+      long currentTime = System.currentTimeMillis();
+      for (Entry<Long, Long> entry : queryStartTimeMap.entrySet()) {
+        if (currentTime - entry.getValue() >= MAX_QUERY_TIME) {
+          killQuery(entry.getKey());
+          logger.error("Query is time out with queryId " + entry.getKey());
         }
       }
     }, 0, examinePeriod, TimeUnit.MILLISECONDS);
   }
 
   private void killQuery(long queryId) {
-    List<Thread> threads = queryThreadMap.get(queryId);
-    for (Thread thread : threads) {
-      thread.interrupt();
-    }
+    queryThreadMap.get(queryId).interrupt();
     unRegisterQuery(queryId);
   }
 
-  public void registerQuery(long queryId, long startTime) {
+  public void registerQuery(long queryId, long startTime, Thread queryThread) {
     queryStartTimeMap.put(queryId, startTime);
-  }
-
-  public void registerQueryThread(long queryId, Thread queryThread) {
-    queryThreadMap.putIfAbsent(queryId, new ArrayList<>()).add(queryThread);
+    queryThreadMap.put(queryId, queryThread);
   }
 
   public void unRegisterQuery(long queryId) {
     queryStartTimeMap.remove(queryId);
     queryThreadMap.remove(queryId);
+  }
+
+  public boolean isQueryInterrupted(long queryId) {
+    return queryThreadMap.get(queryId).isInterrupted();
   }
 
   public static QueryTimeManager getInstance() {

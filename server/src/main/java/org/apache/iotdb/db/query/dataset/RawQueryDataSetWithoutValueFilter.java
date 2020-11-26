@@ -28,6 +28,7 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -53,17 +54,26 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     private final ManagedSeriesReader reader;
     private final String pathName;
     private BlockingQueue<BatchData> blockingQueue;
+    private final Thread mainThread;
 
     public ReadTask(ManagedSeriesReader reader,
-        BlockingQueue<BatchData> blockingQueue, String pathName) {
+        BlockingQueue<BatchData> blockingQueue, String pathName, Thread mainThread) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
+      this.mainThread = mainThread;
     }
 
     @Override
     public void runMayThrow() {
       try {
+        // check the status of mainThread instead of time passed to keep the consistency
+        if (mainThread.isInterrupted()) {
+          putExceptionBatchData(new QueryTimeoutRuntimeException(
+                  "Current query is time out, please check your statement and run again)"),
+              "Current query is time out");
+          return;
+        }
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
@@ -177,7 +187,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       TASK_POOL_MANAGER
-          .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
+          .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath(),
+              Thread.currentThread()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       fillCache(i);
@@ -385,7 +396,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                paths.get(seriesIndex).getFullPath()));
+                paths.get(seriesIndex).getFullPath(), Thread.currentThread()));
           }
         }
       }

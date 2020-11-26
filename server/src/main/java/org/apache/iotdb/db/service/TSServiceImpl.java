@@ -689,8 +689,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       // register startTime to query time manager
-      QueryTimeManager.getInstance().registerQuery(queryId, startTime);
-      QueryTimeManager.getInstance().registerQueryThread(queryId, Thread.currentThread());
+      QueryTimeManager.getInstance().registerQuery(queryId, startTime, Thread.currentThread());
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance()
@@ -869,9 +868,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return StaticResps.LAST_RESP.deepCopy();
     } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
       Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
+      Map<String, AggregateResult> finalPaths = FilePathUtils
+          .getPathByLevel((AggregationPlan) plan, pathIndex);
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
-        respColumns.add(entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
+        respColumns
+            .add(entry.getValue().getAggregationType().toString() + "(" + entry.getKey() + ")");
         columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
