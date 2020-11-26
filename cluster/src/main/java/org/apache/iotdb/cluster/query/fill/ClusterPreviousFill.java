@@ -91,7 +91,7 @@ public class ClusterPreviousFill extends PreviousFill {
       throws StorageEngineException {
     // make sure the partition table is new
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }

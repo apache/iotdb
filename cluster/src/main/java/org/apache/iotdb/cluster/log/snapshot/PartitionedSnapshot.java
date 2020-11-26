@@ -193,7 +193,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       }
       // ensure storage groups are synchronized
       try {
-        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck();
+        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(true);
       } catch (CheckConsistencyException e) {
         throw new SnapshotInstallationException(e);
       }

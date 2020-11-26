@@ -87,7 +87,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       throws IOException, QueryProcessException {
     // calculate the global last from all data groups
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new IOException(e);
     }
@@ -174,7 +174,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
       try {
-        localDataMember.syncLeaderWithConsistencyCheck();
+        localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }

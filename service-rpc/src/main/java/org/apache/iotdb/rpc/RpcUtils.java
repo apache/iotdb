@@ -19,10 +19,14 @@
 package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
@@ -50,6 +54,9 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      return;
+    }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new StatementExecutionException(status);
     }
@@ -63,10 +70,28 @@ public class RpcUtils {
     }
   }
 
+  public static void verifySuccessWithRedirectionForInsertTablets(TSStatus status,
+      TSInsertTabletsReq req)
+      throws StatementExecutionException, RedirectException {
+    verifySuccess(status);
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      List<TSStatus> statusSubStatus = status.getSubStatus();
+      for (int i = 0; i < statusSubStatus.size(); i++) {
+        TSStatus subStatus = statusSubStatus.get(i);
+        if (subStatus.isSetRedirectNode()) {
+          deviceEndPointMap.put(req.getDeviceIds().get(i), subStatus.getRedirectNode());
+        }
+      }
+      throw new RedirectException(deviceEndPointMap);
+    }
+  }
+
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
     StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         errMsgs.append(status.getMessage()).append(";");
       }
     }

@@ -734,6 +734,9 @@ public class MetaGroupMemberTest extends MemberTest {
           schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null);
       status = testMetaMember.executeNonQueryPlan(createTimeSeriesPlan);
+      if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }

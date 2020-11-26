@@ -138,7 +138,7 @@ public abstract class DataSnapshotTest {
     // do nothing
     metaGroupMember = new TestMetaGroupMember() {
       @Override
-      public void syncLeaderWithConsistencyCheck() {
+      public void syncLeaderWithConsistencyCheck(boolean isWriteRequest) {
         // do nothing
       }
     };

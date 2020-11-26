@@ -70,6 +70,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -547,9 +548,10 @@ public class CMManager extends MManager {
         return false;
       }
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
-          result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        logger.error("{} failed to execute create timeseries {}", metaGroupMember.getThisNode(),
-            seriesPath);
+          result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode() &&
+          result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        logger.error("{} failed to execute create timeseries {}: {}", metaGroupMember.getThisNode(),
+            seriesPath, result);
         return false;
       }
     }
@@ -611,7 +613,8 @@ public class CMManager extends MManager {
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths,
       Node ignoredGroup)
       throws MetadataException {
-    logger.debug("{}: Pulling timeseries schemas of {}", metaGroupMember.getName(), prefixPaths);
+    logger.debug("{}: Pulling timeseries schemas of {}, ignored group {}",
+        metaGroupMember.getName(), prefixPaths, ignoredGroup);
     // split the paths by the data groups that should hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
     for (PartialPath prefixPath : prefixPaths) {
@@ -843,7 +846,7 @@ public class CMManager extends MManager {
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
     // make sure this node knows all storage groups
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -1078,7 +1081,7 @@ public class CMManager extends MManager {
       int limit, int offset) throws MetadataException {
     // make sure this node knows all storage groups
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -1116,7 +1119,7 @@ public class CMManager extends MManager {
   public List<PartialPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
     // make sure this node knows all storage groups
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -1322,7 +1325,7 @@ public class CMManager extends MManager {
       throws CheckConsistencyException, MetadataException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeaderWithConsistencyCheck();
+    localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
@@ -1411,5 +1414,15 @@ public class CMManager extends MManager {
     getAllPathsResult.setPaths(retPaths);
     getAllPathsResult.setAliasList(alias);
     return getAllPathsResult;
+  }
+
+  @Override
+  public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
+    try {
+      return super.getStorageGroupPath(path);
+    } catch (StorageGroupNotSetException e) {
+      metaGroupMember.syncLeader();
+      return super.getStorageGroupPath(path);
+    }
   }
 }

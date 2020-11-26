@@ -211,7 +211,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void getAllPaths(Node header, List<String> paths, boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
@@ -222,7 +222,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void getAllDevices(Node header, List<String> path,
       AsyncMethodCallback<Set<String>> resultHandler) {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllDevices(path));
     } catch (MetadataException | CheckConsistencyException e) {
       resultHandler.onError(e);
@@ -233,7 +233,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void getNodeList(Node header, String path, int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
@@ -244,7 +244,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
   public void getChildNodePathInNextLevel(Node header, String path,
       AsyncMethodCallback<Set<String>> resultHandler) {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);

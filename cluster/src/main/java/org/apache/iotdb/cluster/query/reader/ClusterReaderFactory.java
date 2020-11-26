@@ -93,7 +93,7 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -186,7 +186,7 @@ public class ClusterReaderFactory {
       throws StorageEngineException, EmptyIntervalException {
     // make sure the partition table is new
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
@@ -262,7 +262,7 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
@@ -368,7 +368,7 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -524,7 +524,7 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException, IOException {
     // pull the newest data
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
@@ -551,7 +551,7 @@ public class ClusterReaderFactory {
       TSDataType dataType, QueryContext context, DataGroupMember dataGroupMember, boolean ascending)
       throws StorageEngineException, QueryProcessException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }

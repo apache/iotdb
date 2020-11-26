@@ -61,13 +61,17 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
 
   public AppendNodeEntryHandler() {
-    if (Timer.ENABLE_INSTRUMENTING && ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+    if (Timer.ENABLE_INSTRUMENTING && ClusterDescriptor.getInstance().getConfig()
+        .isUseAsyncServer()) {
       sendStart = System.nanoTime();
     }
   }
 
   @Override
   public void onComplete(Long response) {
+    if (Timer.ENABLE_INSTRUMENTING) {
+      Statistic.RAFT_SENDER_SEND_LOG_ASYNC.calOperationCostTimeFromStart(sendStart);
+    }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
@@ -85,9 +89,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           voteCounter.notifyAll();
         }
         peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));
-        if (Timer.ENABLE_INSTRUMENTING) {
-          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
-        }
       } else if (resp > 0) {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
@@ -100,17 +101,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         }
         leaderShipStale.set(true);
         voteCounter.notifyAll();
-        if (Timer.ENABLE_INSTRUMENTING) {
-          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
-        }
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
         logger.debug("{}: The log {} is rejected by {} because: {}", member.getName(), log,
             receiver, resp);
         onFail();
-        if (Timer.ENABLE_INSTRUMENTING) {
-          Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(sendStart);
-        }
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle

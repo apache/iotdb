@@ -87,7 +87,7 @@ abstract class BaseApplier implements LogApplier {
   private void executeAfterSync(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(true);
     } catch (CheckConsistencyException ce) {
       throw new QueryProcessException(ce.getMessage());
     }
