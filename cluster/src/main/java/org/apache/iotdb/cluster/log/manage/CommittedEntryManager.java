@@ -184,7 +184,7 @@ public class CommittedEntryManager {
    */
   void compactEntries(long compactIndex) throws EntryUnavailableException {
     long dummyIndex = getDummyIndex();
-    if (compactIndex <= dummyIndex) {
+    if (compactIndex < dummyIndex) {
       logger.info(
           "entries before request index ({}) have been compacted, and the compactIndex is ({})",
           compactIndex, dummyIndex);
