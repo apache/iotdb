@@ -16,9 +16,13 @@
 # under the License.
 #
 
-from IoTDBConstants import TSDataType
-from Field import Field
+# for package
+from .IoTDBConstants import TSDataType
+from .Field import Field
 
+# for debug
+# from IoTDBConstants import TSDataType
+# from Field import Field
 
 class RowRecord(object):
 
