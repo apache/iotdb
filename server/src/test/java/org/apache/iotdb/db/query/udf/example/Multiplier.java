@@ -24,7 +24,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class Multiplier implements UDTF {
@@ -39,7 +39,7 @@ public class Multiplier implements UDTF {
     b = parameters.getLongOrDefault("b", 0);
     configurations
         .setOutputDataType(TSDataType.INT64)
-        .setAccessStrategy(new OneByOneAccessStrategy());
+        .setAccessStrategy(new RowByRowAccessStrategy());
   }
 
   @Override

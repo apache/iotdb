@@ -33,9 +33,9 @@ public interface AccessStrategy {
   enum AccessStrategyType {
 
     /**
-     * @see OneByOneAccessStrategy
+     * @see RowByRowAccessStrategy
      */
-    ONE_BY_ONE,
+    ROW_BY_ROW,
 
     /**
      * @see SlidingTimeWindowAccessStrategy

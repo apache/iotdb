@@ -44,7 +44,7 @@ import org.junit.Test;
 public class IoTDBUDFWindowQueryIT {
 
   public static final String ACCESS_STRATEGY_KEY = "access";
-  public static final String ACCESS_STRATEGY_ONE_BY_ONE = "one-by-one";
+  public static final String ACCESS_STRATEGY_ROW_BY_ROW = "row-by-row";
   public static final String ACCESS_STRATEGY_SLIDING_SIZE = "size";
   public static final String ACCESS_STRATEGY_SLIDING_TIME = "time";
 
@@ -117,7 +117,7 @@ public class IoTDBUDFWindowQueryIT {
   @Test
   public void testRowByRow() {
     String sql = String.format("select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
-        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE);
+        ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Statement statement = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",

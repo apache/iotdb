@@ -41,13 +41,13 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations
  *       .setOutputDataType(TSDataType.INT64)
- *       .setAccessStrategy(new OneByOneAccessStrategy());
+ *       .setAccessStrategy(new RowByRowAccessStrategy());
  * }</pre>
  *
  * @see UDTF
  * @see UDTFConfigurations
  */
-public class OneByOneAccessStrategy implements AccessStrategy {
+public class RowByRowAccessStrategy implements AccessStrategy {
 
   @Override
   public void check() {
@@ -56,6 +56,6 @@ public class OneByOneAccessStrategy implements AccessStrategy {
 
   @Override
   public AccessStrategyType getAccessStrategyType() {
-    return AccessStrategyType.ONE_BY_ONE;
+    return AccessStrategyType.ROW_BY_ROW;
   }
 }

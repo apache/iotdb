@@ -71,7 +71,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 | :----------------------------------------------------------- | :----------------------------------------------------------- | ------------------ |
 | `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception` | 初始化方法，在UDTF处理输入数据前，调用用户自定义的初始化行为。用户每执行一次UDTF查询，框架就会构造一个新的UDF类实例，该方法在每个UDF类实例被初始化时调用一次。在每一个UDF类实例的生命周期内，该方法只会被调用一次。 | 是                 |
 | `void beforeDestroy() `                                      | UDTF的结束方法。此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后被调用。 | 否                 |
-| `void transform(Row row, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`OneByOneAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`Row`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与下面的方法二选一 |
+| `void transform(Row row, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`RowByRowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`Row`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与下面的方法二选一 |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`SlidingSizeWindowAccessStrategy`或者`SlidingTimeWindowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`RowWindow`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与上面的方法二选一 |
 
 注意，框架每执行一次UDTF查询，都会构造一个全新的UDF类实例，查询结束时，对应的UDF类实例即被销毁，因此不同UDTF查询（即使是在同一个SQL语句中）UDF类实例内部的数据都是隔离的。您可以放心地在UDTF中维护一些状态数据，无需考虑并发对UDF类实例内部状态数据的影响。
@@ -134,7 +134,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
   
   // configurations
   configurations
-    .setAccessStrategy(new OneByOneAccessStrategy())
+    .setAccessStrategy(new RowByRowAccessStrategy())
     .setOutputDataType(TSDataType.INT32);
 }
 ```
@@ -151,11 +151,11 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 | 接口定义                          | 描述                                                         | 调用的`transform`方法                                        |
 | :-------------------------------- | :----------------------------------------------------------- | ------------------------------------------------------------ |
-| `OneByOneAccessStrategy`          | 逐行地处理原始数据。框架会为每一行原始数据输入调用一次`transform`方法。当UDF只有一个输入序列时，一行输入就是该输入序列中的一个数据点。当UDF有多个输入序列时，一行输入序列对应的是这些输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(Row row, PointCollector collector) throws Exception` |
+| `RowByRowAccessStrategy`          | 逐行地处理原始数据。框架会为每一行原始数据输入调用一次`transform`方法。当UDF只有一个输入序列时，一行输入就是该输入序列中的一个数据点。当UDF有多个输入序列时，一行输入序列对应的是这些输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(Row row, PointCollector collector) throws Exception` |
 | `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 | `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
-`OneByOneAccessStrategy`的构造不需要任何参数。
+`RowByRowAccessStrategy`的构造不需要任何参数。
 
 `SlidingTimeWindowAccessStrategy`有2种构造方法，每种构造方法需要提供3类参数：
 
@@ -199,7 +199,7 @@ UDTF的结束方法，您可以在此方法中进行一些资源释放等的操�
 
 ### `void transform(Row row, PointCollector collector) throws Exception`
 
-当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `OneByOneAccessStrategy`，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
+当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `RowByRowAccessStrategy`，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
 该方法每次处理原始数据的一行。原始数据由`Row`读入，由`PointCollector`输出。您可以选择在一次`transform`方法调用中输出任意数量的数据点。需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致，而输出数据点的时间戳必须是严格单调递增的。
 
@@ -211,7 +211,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class Adder implements UDTF {
@@ -220,7 +220,7 @@ public class Adder implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
         .setOutputDataType(TSDataType.INT64)
-        .setAccessStrategy(new OneByOneAccessStrategy());
+        .setAccessStrategy(new RowByRowAccessStrategy());
   }
 
   @Override

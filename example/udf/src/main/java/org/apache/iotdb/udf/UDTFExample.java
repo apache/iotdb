@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -45,7 +45,7 @@ public class UDTFExample implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
-        .setAccessStrategy(new OneByOneAccessStrategy())
+        .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.INT32);
   }
 

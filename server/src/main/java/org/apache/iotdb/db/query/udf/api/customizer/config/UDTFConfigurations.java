@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  * public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
  *   configurations
  *       .setOutputDataType(TSDataType.INT64)
- *       .setAccessStrategy(new OneByOneAccessStrategy());
+ *       .setAccessStrategy(new RowByRowAccessStrategy());
  * }</pre>
  */
 public class UDTFConfigurations extends UDFConfigurations {
@@ -80,7 +80,7 @@ public class UDTFConfigurations extends UDFConfigurations {
    * @param accessStrategy the specified access strategy. it should be an instance of {@link
    *                       AccessStrategy}.
    * @return this
-   * @see OneByOneAccessStrategy
+   * @see RowByRowAccessStrategy
    * @see SlidingTimeWindowAccessStrategy
    * @see SlidingSizeWindowAccessStrategy
    */

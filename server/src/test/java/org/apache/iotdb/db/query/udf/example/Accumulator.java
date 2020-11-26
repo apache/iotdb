@@ -29,7 +29,7 @@ import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,7 +40,7 @@ public class Accumulator implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     System.out.println("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
-    switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE)) {
+    switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ACCESS_STRATEGY_SLIDING_SIZE:
         configurations.setAccessStrategy(new SlidingSizeWindowAccessStrategy(
             parameters.getInt(WINDOW_SIZE_KEY)));
@@ -52,9 +52,9 @@ public class Accumulator implements UDTF {
             parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
             parameters.getLong(DISPLAY_WINDOW_END_KEY)));
         break;
-      case ACCESS_STRATEGY_ONE_BY_ONE:
+      case ACCESS_STRATEGY_ROW_BY_ROW:
       default:
-        configurations.setAccessStrategy(new OneByOneAccessStrategy());
+        configurations.setAccessStrategy(new RowByRowAccessStrategy());
     }
   }
 

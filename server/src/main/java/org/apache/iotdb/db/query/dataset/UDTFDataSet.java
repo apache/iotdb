@@ -120,7 +120,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
         int[] readerIndexes = calculateReaderIndexes(executor);
         AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
         switch (accessStrategy.getAccessStrategyType()) {
-          case ONE_BY_ONE:
+          case ROW_BY_ROW:
             transformers[i] = new UDFQueryRowTransformer(
                 inputLayer.constructRowReader(readerIndexes), executor);
             break;
