@@ -128,7 +128,7 @@ public abstract class RaftLogManager {
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
-    long first = getCommittedEntryManager().getFirstIndex();
+    long first = getCommittedEntryManager().getDummyIndex();
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
 
