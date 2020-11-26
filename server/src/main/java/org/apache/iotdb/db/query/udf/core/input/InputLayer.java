@@ -26,7 +26,7 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.core.access.RowImpl;
 import org.apache.iotdb.db.query.udf.core.access.RowWindowImpl;
 import org.apache.iotdb.db.query.udf.core.input.SafetyLine.SafetyPile;
@@ -82,9 +82,9 @@ public class InputLayer {
       case SLIDING_TIME_WINDOW:
         return new InputLayerRowSlidingTimeWindowReader(columnIndexes,
             (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
-      case TUMBLING_WINDOW:
-        return new InputLayerRowTumblingWindowReader(columnIndexes,
-            (TumblingWindowAccessStrategy) strategy, memoryBudgetInMB);
+      case SLIDING_SIZE_WINDOW:
+        return new InputLayerRowSlidingSizeWindowReader(columnIndexes,
+            (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
       default:
         throw new IllegalStateException(
             "Unexpected access strategy: " + strategy.getAccessStrategyType());
@@ -277,7 +277,7 @@ public class InputLayer {
     }
   }
 
-  private class InputLayerRowTumblingWindowReader implements LayerRowWindowReader {
+  private class InputLayerRowSlidingSizeWindowReader implements LayerRowWindowReader {
 
     private final int[] columnIndexes;
     private final TSDataType[] columnDataTypes;
@@ -289,8 +289,8 @@ public class InputLayer {
 
     private int maxIndexInLastWindow;
 
-    private InputLayerRowTumblingWindowReader(int[] columnIndexes,
-        TumblingWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
+    private InputLayerRowSlidingSizeWindowReader(int[] columnIndexes,
+        SlidingSizeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
         throws QueryProcessException {
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];

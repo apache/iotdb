@@ -103,7 +103,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
         AccessStrategy accessStrategy = udtfPlan.getExecutorByDataSetOutputColumnIndex(i)
             .getConfigurations().getAccessStrategy();
         switch (accessStrategy.getAccessStrategyType()) {
-          case TUMBLING_WINDOW:
+          case SLIDING_SIZE_WINDOW:
           case SLIDING_TIME_WINDOW:
             ++windowTransformerCount;
             break;
@@ -124,7 +124,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
             transformers[i] = new UDFQueryRowTransformer(
                 inputLayer.constructRowReader(readerIndexes), executor);
             break;
-          case TUMBLING_WINDOW:
+          case SLIDING_SIZE_WINDOW:
           case SLIDING_TIME_WINDOW:
             transformers[i] = new UDFQueryRowWindowTransformer(inputLayer
                 .constructRowWindowReader(readerIndexes, accessStrategy, memoryBudgetInMB),

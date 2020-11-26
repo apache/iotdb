@@ -26,7 +26,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 
 /**
  * User-defined Time-series Generating Function (UDTF)
@@ -84,7 +84,7 @@ public interface UDTF extends UDF {
   }
 
   /**
-   * When the user specifies {@link TumblingWindowAccessStrategy} or {@link
+   * When the user specifies {@link SlidingSizeWindowAccessStrategy} or {@link
    * SlidingTimeWindowAccessStrategy} to access the original data in {@link UDTFConfigurations},
    * this method will be called to process the transformation. In a single UDF query, this method
    * may be called multiple times.
@@ -92,7 +92,7 @@ public interface UDTF extends UDF {
    * @param rowWindow original input data window (rows inside the window are aligned by time)
    * @param collector used to collect output data points
    * @throws Exception the user can throw errors if necessary
-   * @see TumblingWindowAccessStrategy
+   * @see SlidingSizeWindowAccessStrategy
    * @see SlidingTimeWindowAccessStrategy
    */
   @SuppressWarnings("squid:S112")

@@ -31,7 +31,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class Accumulator implements UDTF {
@@ -41,11 +41,11 @@ public class Accumulator implements UDTF {
     System.out.println("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ONE_BY_ONE)) {
-      case ACCESS_STRATEGY_TUMBLING:
-        configurations.setAccessStrategy(new TumblingWindowAccessStrategy(
+      case ACCESS_STRATEGY_SLIDING_SIZE:
+        configurations.setAccessStrategy(new SlidingSizeWindowAccessStrategy(
             parameters.getInt(WINDOW_SIZE_KEY)));
         break;
-      case ACCESS_STRATEGY_SLIDING:
+      case ACCESS_STRATEGY_SLIDING_TIME:
         configurations.setAccessStrategy(new SlidingTimeWindowAccessStrategy(
             parameters.getLong(TIME_INTERVAL_KEY),
             parameters.getLong(SLIDING_STEP_KEY),

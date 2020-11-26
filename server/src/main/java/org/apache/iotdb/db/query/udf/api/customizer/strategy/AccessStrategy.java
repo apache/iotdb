@@ -43,9 +43,9 @@ public interface AccessStrategy {
     SLIDING_TIME_WINDOW,
 
     /**
-     * @see TumblingWindowAccessStrategy
+     * @see SlidingSizeWindowAccessStrategy
      */
-    TUMBLING_WINDOW
+    SLIDING_SIZE_WINDOW
   }
 
   /**

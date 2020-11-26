@@ -29,7 +29,7 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.OneByOneAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.TumblingWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
@@ -82,7 +82,7 @@ public class UDTFConfigurations extends UDFConfigurations {
    * @return this
    * @see OneByOneAccessStrategy
    * @see SlidingTimeWindowAccessStrategy
-   * @see TumblingWindowAccessStrategy
+   * @see SlidingSizeWindowAccessStrategy
    */
   public UDTFConfigurations setAccessStrategy(AccessStrategy accessStrategy) {
     this.accessStrategy = accessStrategy;
