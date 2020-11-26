@@ -70,10 +70,13 @@ public class UDFRegistrationService implements IService {
   }
 
   private String parseLibRoot() {
-    String path = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
-    int firstIndex = path.lastIndexOf(System.getProperty("path.separator")) + 1;
-    int lastIndex = path.lastIndexOf(File.separator) + 1;
-    return path.substring(firstIndex, lastIndex);
+    String jarPath = (new File(
+        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
+        .getAbsolutePath();
+    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
+    String libPath = jarPath.substring(0, lastIndex + 1);
+    logger.info("System lib root: {}", libPath);
+    return libPath;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -136,7 +139,8 @@ public class UDFRegistrationService implements IService {
   }
 
   private URLClassLoader getUDFClassLoader() throws IOException {
-    Collection<File> files = FileUtils.listFiles(new File(libRoot), null, true);
+    Collection<File> files = FileUtils
+        .listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true);
     URL[] urls = FileUtils.toURLs(files.toArray(new File[0]));
     return new URLClassLoader(urls);
   }
