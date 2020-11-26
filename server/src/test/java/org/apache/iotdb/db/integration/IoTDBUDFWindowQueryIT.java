@@ -101,6 +101,9 @@ public class IoTDBUDFWindowQueryIT {
       statement
           .execute(
               "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
+      statement
+          .execute(
+              "create function time_window_tester as \"org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -315,6 +318,71 @@ public class IoTDBUDFWindowQueryIT {
       }
     } catch (SQLException throwable) {
       if (slidingStep > 0 && timeInterval > 0 && displayWindowEnd >= displayWindowBegin) {
+        fail(throwable.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly1() {
+    testSlidingTimeWindowWithTimeIntervalOnly(1);
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly2() {
+    testSlidingTimeWindowWithTimeIntervalOnly(ITERATION_TIMES / 10);
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly3() {
+    testSlidingTimeWindowWithTimeIntervalOnly(ITERATION_TIMES / 33);
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly4() {
+    testSlidingTimeWindowWithTimeIntervalOnly(ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly5() {
+    testSlidingTimeWindowWithTimeIntervalOnly(2 * ITERATION_TIMES);
+  }
+
+  @Test
+  public void testSlidingTimeWindowWithTimeIntervalOnly6() {
+    testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
+  }
+
+  public void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
+    String sql = String.format("select time_window_tester(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+        TIME_INTERVAL_KEY, timeInterval);
+
+    int displayWindowBegin = 0;
+    int displayWindowEnd = ITERATION_TIMES;
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      while (resultSet.next()) {
+        int begin = displayWindowBegin + count * timeInterval;
+        int expectedWindowSize = begin + timeInterval < displayWindowEnd
+            ? timeInterval : displayWindowEnd - begin;
+
+        int expectedAccumulation = 0;
+        for (int i = displayWindowBegin + count * timeInterval;
+            i < displayWindowBegin + count * timeInterval + expectedWindowSize;
+            ++i) {
+          expectedAccumulation += i;
+        }
+
+        assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
+        ++count;
+      }
+    } catch (SQLException throwable) {
+      if (timeInterval > 0) {
         fail(throwable.getMessage());
       }
     }

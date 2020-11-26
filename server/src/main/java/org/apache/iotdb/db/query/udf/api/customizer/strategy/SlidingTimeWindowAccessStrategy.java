@@ -112,6 +112,37 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   }
 
   /**
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set.
+   *
+   * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
+   *                           units: y, mo, w, d, h, m, s, ms, us, ns.
+   * @param slidingStepString  sliding step in string. examples: 12d8m9ns, 1y1mo, etc. supported
+   *                           units: y, mo, w, d, h, m, s, ms, us, ns.
+   * @see DatetimeUtils.DurationUnit
+   */
+  public SlidingTimeWindowAccessStrategy(String timeIntervalString, String slidingStepString) {
+    inputInString = true;
+    this.timeIntervalString = timeIntervalString;
+    this.slidingStepString = slidingStepString;
+  }
+
+  /**
+   * Sliding step will be set to the same as the time interval, display window begin will be set to
+   * the same as the minimum timestamp of the query result set, and display window end will be set
+   * to the same as the maximum timestamp of the query result set.
+   *
+   * @param timeIntervalString time interval in string. examples: 12d8m9ns, 1y1mo, etc. supported
+   *                           units: y, mo, w, d, h, m, s, ms, us, ns.
+   * @see DatetimeUtils.DurationUnit
+   */
+  public SlidingTimeWindowAccessStrategy(String timeIntervalString) {
+    inputInString = true;
+    this.timeIntervalString = timeIntervalString;
+  }
+
+  /**
    * @param timeInterval       0 < timeInterval
    * @param slidingStep        0 < slidingStep
    * @param displayWindowBegin displayWindowBegin < displayWindowEnd
@@ -126,13 +157,41 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
     this.displayWindowEnd = displayWindowEnd;
   }
 
+  /**
+   * Display window begin will be set to the same as the minimum timestamp of the query result set,
+   * and display window end will be set to the same as the maximum timestamp of the query result
+   * set.
+   *
+   * @param timeInterval 0 < timeInterval
+   * @param slidingStep  0 < slidingStep
+   */
+  public SlidingTimeWindowAccessStrategy(long timeInterval, long slidingStep) {
+    inputInString = false;
+    this.timeInterval = timeInterval;
+    this.slidingStep = slidingStep;
+    this.displayWindowBegin = Long.MIN_VALUE;
+    this.displayWindowEnd = Long.MAX_VALUE;
+  }
+
+  /**
+   * Sliding step will be set to the same as the time interval, display window begin will be set to
+   * the same as the minimum timestamp of the query result set, and display window end will be set
+   * to the same as the maximum timestamp of the query result set.
+   *
+   * @param timeInterval 0 < timeInterval
+   */
+  public SlidingTimeWindowAccessStrategy(long timeInterval) {
+    inputInString = false;
+    this.timeInterval = timeInterval;
+    this.slidingStep = timeInterval;
+    this.displayWindowBegin = Long.MIN_VALUE;
+    this.displayWindowEnd = Long.MAX_VALUE;
+  }
+
   @Override
   public void check() throws QueryProcessException {
     if (inputInString) {
-      timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
-      slidingStep = DatetimeUtils.convertDurationStrToLong(slidingStepString);
-      displayWindowBegin = DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
-      displayWindowEnd = DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
+      parseStringParameters();
     }
 
     if (timeInterval <= 0) {
@@ -176,5 +235,15 @@ public class SlidingTimeWindowAccessStrategy implements AccessStrategy {
   @Override
   public AccessStrategyType getAccessStrategyType() {
     return AccessStrategyType.SLIDING_TIME_WINDOW;
+  }
+
+  private void parseStringParameters() throws QueryProcessException {
+    timeInterval = DatetimeUtils.convertDurationStrToLong(timeIntervalString);
+    slidingStep = slidingStepString == null ? timeInterval
+        : DatetimeUtils.convertDurationStrToLong(slidingStepString);
+    displayWindowBegin = displayWindowBeginString == null ? Long.MIN_VALUE
+        : DatetimeUtils.convertDatetimeStrToLong(displayWindowBeginString, zoneId);
+    displayWindowEnd = displayWindowEndString == null ? Long.MAX_VALUE
+        : DatetimeUtils.convertDatetimeStrToLong(displayWindowEndString, zoneId);
   }
 }

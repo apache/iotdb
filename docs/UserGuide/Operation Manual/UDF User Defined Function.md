@@ -159,11 +159,15 @@ The following are the strategies you can set:
 
 `RowByRowAccessStrategy`: The construction of `RowByRowAccessStrategy` does not require any parameters.
 
-`SlidingTimeWindowAccessStrategy`: `SlidingTimeWindowAccessStrategy` has 2 types of constructors, each of which requires you to provide 3 types of parameters:
+`SlidingTimeWindowAccessStrategy`: `SlidingTimeWindowAccessStrategy` has many constructors, you can pass 3 types of parameters to them:
 
 - Parameter 1: The display window on the time axis
 - Parameter 2: Time interval for dividing the time axis (should be positive)
 - Parameter 3: Time sliding step (not required to be greater than or equal to the time interval, but must be a positive number)
+
+The first type of parameters are optional. If the parameters are not provided, the beginning time of the display window will be set to the same as the minimum timestamp of the query result set, and the ending time of the display window will be set to the same as the maximum timestamp of the query result set.
+
+The sliding step parameter is also optional. If the parameter is not provided, the sliding step will be set to the same as the time interval for dividing the time axis.
 
 The relationship between the three types of parameters can be seen in the figure below. Please see the Javadoc for more details. 
 

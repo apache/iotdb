@@ -157,12 +157,15 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 `RowByRowAccessStrategy`的构造不需要任何参数。
 
-`SlidingTimeWindowAccessStrategy`有2种构造方法，每种构造方法需要提供3类参数：
+`SlidingTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供3类参数：
 
 1. 时间轴显示时间窗开始和结束时间
-
 2. 划分时间轴的时间间隔参数（必须为正数）
 3. 滑动步长（不要求大于等于时间间隔，但是必须为正数）。
+
+时间轴显示时间窗开始和结束时间不是必须要提供的。当您不提供这类参数时，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
+
+滑动步长参数也不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为划分时间轴的时间间隔。
 
 3类参数的关系可见下图。策略的构造方法详见Javadoc。
 

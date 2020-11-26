@@ -406,6 +406,11 @@ public class InputLayer {
 
       if (rowRecordList.size() == 0 && queryDataSet.hasNextWithoutConstraint()) {
         rowRecordList.put(queryDataSet.nextWithoutConstraint());
+
+        if (nextWindowTimeBegin == Long.MIN_VALUE) {
+          // display window begin should be set to the same as the min timestamp of the query result set
+          nextWindowTimeBegin = rowRecordList.getTime(0);
+        }
       }
       hasAtLeastOneRow = rowRecordList.size() != 0;
     }
@@ -420,9 +425,18 @@ public class InputLayer {
       }
 
       long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
-      while (rowRecordList.getRowRecord(rowRecordList.size() - 1).getTimestamp() < nextWindowTimeEnd
-          && queryDataSet.hasNextWithoutConstraint()) {
-        rowRecordList.put(queryDataSet.nextWithoutConstraint());
+      int oldRowRecordListSize = rowRecordList.size();
+      while (rowRecordList.getRowRecord(rowRecordList.size() - 1).getTimestamp()
+          < nextWindowTimeEnd) {
+        if (queryDataSet.hasNextWithoutConstraint()) {
+          rowRecordList.put(queryDataSet.nextWithoutConstraint());
+        } else if (displayWindowEnd == Long.MAX_VALUE
+            // display window end == the max timestamp of the query result set
+            && oldRowRecordListSize == rowRecordList.size()) {
+          return false;
+        } else {
+          break;
+        }
       }
 
       for (int i = nextIndexBegin; i < rowRecordList.size(); ++i) {
