@@ -16,7 +16,12 @@
 # under the License.
 #
 
-from IoTDBConstants import *
+# for package
+from .IoTDBConstants import *
+
+# for debug
+# from IoTDBConstants import *
+
 import struct
 
 
