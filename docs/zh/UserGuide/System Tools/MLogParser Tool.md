@@ -30,7 +30,7 @@
 # 使用方式
 
 Linux/MacOS
-> ./mLogParser.sh -f /your path/mlog.bin -o \your path\mlog.txt
+> ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
 
 Windows
 

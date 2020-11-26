@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.logfile;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
@@ -54,6 +55,7 @@ import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -344,6 +346,20 @@ public class MLogWriter implements AutoCloseable {
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
+        if (args.length > 8) {
+          String[] tmpArgs = new String[8];
+          tmpArgs[0] = args[0];
+          int i = 1;
+          tmpArgs[1] = "";
+          for (; i < args.length - 7; i++) {
+            tmpArgs[1] += args[i] + ",";
+          }
+          tmpArgs[1] += args[i++];
+          for (int j = 2; j < 8; j++) {
+            tmpArgs[j] = args[i++];
+          }
+          args = tmpArgs;
+        }
         Map<String, String> props = null;
         if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
@@ -365,25 +381,36 @@ public class MLogWriter implements AutoCloseable {
         }
 
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-            TSDataType.deserialize(Short.parseShort(args[2])),
-            TSEncoding.deserialize(Short.parseShort(args[3])),
-            CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
-        plan.setTagOffset(offset);
+          TSDataType.deserialize(Short.parseShort(args[2])),
+          TSEncoding.deserialize(Short.parseShort(args[3])),
+          CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
 
+        plan.setTagOffset(offset);
         createTimeseries(plan);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-            new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath(args[1])));
-        deleteTimeseries(deleteTimeSeriesPlan);
+        if (args.length > 2) {
+          StringBuilder tmp = new StringBuilder();
+          for (int i = 1; i < args.length - 1; i++) {
+            tmp.append(args[i]).append(",");
+          }
+          tmp.append(args[args.length - 1]);
+          args[1] = tmp.toString();
+        }
+        deleteTimeseries(new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath(args[1]))));
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
-        setStorageGroup(new PartialPath(args[1]));
+        try {
+          setStorageGroup(new PartialPath(args[1]));
+        }
+        // two time series may set one storage group concurrently,
+        // that's normal in our concurrency control protocol
+        catch (MetadataException e){
+          logger.info("concurrently operate set storage group cmd {} twice", cmd);
+        }
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
-        for(int i = 1; i <= args.length; i++) {
-          deleteStorageGroup(new PartialPath(args[i]));
-        }
+        deleteStorageGroup(new PartialPath(args[1]));
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(new PartialPath(args[1]), Long.parseLong(args[2]));

@@ -32,7 +32,7 @@ import java.io.IOException;
  * reader for reading mlog.txt
  */
 public class MLogTxtReader implements AutoCloseable {
-  private static final Logger logger = LoggerFactory.getLogger(MLogReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(MLogTxtReader.class);
 
   private BufferedReader bufferedReader;
   private File logFile;

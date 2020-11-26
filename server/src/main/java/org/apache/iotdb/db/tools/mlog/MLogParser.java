@@ -110,19 +110,15 @@ public class MLogParser {
       return;
     }
 
-    ConsoleReader reader = new ConsoleReader();
-    reader.setExpandEvents(false);
     try {
-      parseBasicParams(commandLine, reader);
+      parseBasicParams(commandLine);
       parseFromFile(inputFile, outputFile);
     } catch (Exception e) {
       System.out.println("Encounter an error, because: " + e.getMessage());
-    } finally {
-      reader.close();
     }
   }
 
-  public static void parseBasicParams(CommandLine commandLine, ConsoleReader reader) throws Exception {
+  public static void parseBasicParams(CommandLine commandLine) throws Exception {
     inputFile = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
     outputFile = commandLine.getOptionValue(OUT_ARGS);
 
@@ -132,13 +128,13 @@ public class MLogParser {
   }
 
   public static String checkRequiredArg(String arg, String name, CommandLine commandLine)
-    throws Exception {
+    throws ParseException {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
       System.out.println(msg);
       System.out.println("Use -help for more information");
-      throw new Exception(msg);
+      throw new ParseException(msg);
     }
     return str;
   }
@@ -154,23 +150,19 @@ public class MLogParser {
             mLogTxtWriter.createTimeseries((CreateTimeSeriesPlan)plan,
               ((CreateTimeSeriesPlan) plan).getTagOffset());
             break;
-          case DELETE_TIMESERIES: {
-            List<PartialPath> pathList = plan.getPaths();
-            for (PartialPath partialPath : pathList) {
+          case DELETE_TIMESERIES:
+            for (PartialPath partialPath : plan.getPaths()) {
               mLogTxtWriter.deleteTimeseries(partialPath.getFullPath());
             }
-          }
             break;
           case SET_STORAGE_GROUP:
             mLogTxtWriter.setStorageGroup(((SetStorageGroupPlan) plan).getPath().getFullPath());
             break;
-          case DELETE_STORAGE_GROUP: {
-            List<PartialPath> pathList = plan.getPaths();
-            for (PartialPath partialPath : pathList) {
+          case DELETE_STORAGE_GROUP:
+            for (PartialPath partialPath : plan.getPaths()) {
               mLogTxtWriter.deleteStorageGroup(partialPath.getFullPath());
             }
-          }
-          break;
+            break;
           case TTL:
             mLogTxtWriter.setTTL(((SetTTLPlan) plan).getStorageGroup().getFullPath(),
               ((SetTTLPlan) plan).getDataTTL());

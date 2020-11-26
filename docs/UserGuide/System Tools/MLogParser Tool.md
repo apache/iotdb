@@ -30,7 +30,7 @@ The tool can parse snapshot files and mlog files.
 # How to use
 
 Linux/MacOS
-> ./mLogParser.sh -f /your path/mlog.bin -o \your path\mlog.txt
+> ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
 
 Windows
 

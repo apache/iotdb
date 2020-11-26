@@ -1249,9 +1249,7 @@ public class MTree implements Serializable {
             childrenSize = ((MNodePlan) plan).getChildSize();
           }
 
-          if (childrenSize == 0) {
-            nodeStack.push(node);
-          } else {
+          if (childrenSize != 0) {
             ConcurrentHashMap<String, MNode> childrenMap = new ConcurrentHashMap<>();
             for (int i = 0; i < childrenSize; i++) {
               MNode child = nodeStack.removeFirst();
@@ -1265,8 +1263,8 @@ public class MTree implements Serializable {
               }
             }
             node.setChildren(childrenMap);
-            nodeStack.push(node);
           }
+          nodeStack.push(node);
         } catch (Exception e) {
           logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
         }
