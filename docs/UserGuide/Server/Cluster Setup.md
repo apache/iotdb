@@ -46,6 +46,15 @@ The currently supported items to overwrite the original configurations when star
 `internal_meta_port, internal_data_port, cluster_rpc_port, seed_nodes`. 
 When both exist, the specified configuration item will overwrite the configurations in the configuration file.
 
+## OverWrite the configurations of Stand-alone node
+
+Some configurations in the iotdb-engines.properties will be ignored
+
+* `enable_auto_create_schema` is always considered as `false`. Use `enable_auto_create_schema` in 
+ iotdb-cluster.properties to enable it, instead.
+
+* `is_sync_enable` is always considered as `false`.
+
 ## Cluster Configuration Items
 Before starting to use IoTDB, you need to config the configuration files first. 
 For your convenience, we have already set the default config in the files.

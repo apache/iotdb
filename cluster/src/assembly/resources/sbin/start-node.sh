@@ -20,7 +20,7 @@
 
 
 echo ---------------------
-echo Starting IoTDB
+echo "Starting IoTDB (Cluster Mode)"
 echo ---------------------
 
 if [ -z "${IOTDB_HOME}" ]; then

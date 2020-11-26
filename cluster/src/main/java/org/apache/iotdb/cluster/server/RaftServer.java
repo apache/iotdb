@@ -181,7 +181,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
    */
   abstract String getServerClientName();
 
-  private TServer getAsyncServer() throws TTransportException {
+  private TServer createAsyncServer() throws TTransportException {
     socket = getServerSocket();
     TThreadedSelectorServer.Args poolArgs =
         new TThreadedSelectorServer.Args((TNonblockingServerTransport) socket);
@@ -210,7 +210,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     return new TThreadedSelectorServer(poolArgs);
   }
 
-  private TServer getSyncServer() throws TTransportException {
+  private TServer createSyncServer() throws TTransportException {
     socket = getServerSocket();
     return ClusterUtils.createTThreadPoolServer(socket, getClientThreadPrefix(), getProcessor(),
         protocolFactory);
@@ -220,9 +220,9 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     logger.info("Cluster node {} begins to set up", thisNode);
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      poolServer = getAsyncServer();
+      poolServer = createAsyncServer();
     } else {
-      poolServer = getSyncServer();
+      poolServer = createSyncServer();
     }
 
     clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
