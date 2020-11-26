@@ -2449,8 +2449,8 @@ public class StorageGroupProcessor {
       removePartitions(filter, tsFileManagement.getIterator(false));
 
     } finally {
-      insertLock.writeLock().unlock();
       tsFileManagement.writeUnlock();
+      insertLock.writeLock().unlock();
     }
   }
 
