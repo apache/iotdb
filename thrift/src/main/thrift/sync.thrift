@@ -17,6 +17,7 @@
  * under the License.
  */
 namespace java org.apache.iotdb.service.sync.thrift
+namespace py iotdb.thrift.sync
 
 struct SyncStatus{
   1:required i32 code

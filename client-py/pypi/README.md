@@ -32,11 +32,11 @@
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 
-Apache IoTDB (incubating) (Database for Internet of Things) is an integrated data management engine designed for
-timeseries data. It provides users with services for data collection, storage and analysis. Due to its light-weight
-architecture, high performance and rich feature set together with its deep integration with Apache Hadoop and Spark,
-Apache IoTDB (incubating) can meet the requirements of massive data storage, high-speed data ingestion and complex data
-analysis in the IoT industrial fields.
+Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
+data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
+architecture, high performance and rich feature set together with its deep integration with 
+Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive data storage, 
+high-speed data ingestion and complex data analysis in the IoT industrial fields.
 
 
 # Apache IoTDB Python Client API
@@ -51,15 +51,23 @@ You have to install thrift (>=0.13) before using the package.
 
 First, download the package: `pip3 install apache-iotdb`
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/rel/0.10/client-py/src/SessionExample.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/rel/0.11/client-py/src/SessionExample.py)
 
 (you need to add `import iotdb` in the head of the file)
 
-# DISCLAIMER
+Or:
 
-Apache IoTDB is an effort undergoing incubation at The Apache Software Foundation (ASF).
-Incubation is required of all newly accepted projects until a further review indicates that the
-infrastructure, communications, and decision making process have stabilized in a manner consistent
-with other successful ASF projects. While incubation status is not necessarily a reflection of the
-completeness or stability of the code, it does indicate that the project has yet to be fully
-endorsed by the ASF.
+```python
+
+from iotdb.Session import Session
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = 'root'
+password_ = 'root'
+session = Session(ip, port_, username_, password_)
+session.open(False)
+zone = session.get_time_zone()
+session.close()
+
+```
