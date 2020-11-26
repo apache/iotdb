@@ -496,7 +496,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     private void downloadFileAsync(Node node, String remotePath, OutputStream dest)
         throws IOException, TException, InterruptedException {
-      int offset = 0;
+      long offset = 0;
       // TODO-Cluster: use elaborate downloading techniques
       int fetchSize = 64 * 1024;
 
@@ -529,13 +529,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     }
 
     private void downloadFileSync(Node node, String remotePath, OutputStream dest)
-        throws IOException, TException {
+        throws IOException {
       SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(node);
       if (client == null) {
         throw new IOException("No available client for " + node.toString());
       }
 
-      int offset = 0;
+      long offset = 0;
       // TODO-Cluster: use elaborate downloading techniques
       int fetchSize = 64 * 1024;
 
