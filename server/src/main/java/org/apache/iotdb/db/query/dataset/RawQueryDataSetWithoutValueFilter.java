@@ -296,7 +296,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
           // move next
           cachedBatchDataArray[seriesIndex].next();
 
-          // get next batch if current batch is empty and  still have remaining batch data in queue
+          // check the interrupted status of main thread before take next batch
+          if (Thread.currentThread().isInterrupted()) {
+            throw new QueryTimeoutRuntimeException(
+                "Current query is time out, please check your statement and run again");
+          }
+          // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
               && !noMoreDataInQueueArray[seriesIndex]) {
             fillCache(seriesIndex);

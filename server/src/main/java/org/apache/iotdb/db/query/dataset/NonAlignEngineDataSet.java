@@ -28,6 +28,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -52,15 +53,16 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
     private WatermarkEncoder encoder;
     private int index;
-
+    private Thread mainThread;
 
     public ReadTask(ManagedSeriesReader reader,
         BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
-        int index) {
+        int index, Thread mainThread) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.encoder = encoder;
       this.index = index;
+      this.mainThread = mainThread;
     }
 
     @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -69,6 +71,10 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       PublicBAOS timeBAOS = new PublicBAOS();
       PublicBAOS valueBAOS = new PublicBAOS();
       try {
+        if (mainThread.isInterrupted()) {
+          // nothing is put here since before reading it the main thread will return
+          return;
+        }
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
@@ -278,7 +284,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, i));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, i, Thread.currentThread()));
     }
     this.initialized = true;
   }
@@ -299,6 +305,11 @@ public class NonAlignEngineDataSet extends QueryDataSet {
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
+        // check the interrupted status of main thread before take next batch
+        if (Thread.currentThread().isInterrupted()) {
+          throw new QueryTimeoutRuntimeException(
+              "Current query is time out, please check your statement and run again");
+        }
         Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
             .take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {
@@ -323,7 +334,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                encoder, seriesIndex));
+                encoder, seriesIndex, Thread.currentThread()));
           }
         }
       }
