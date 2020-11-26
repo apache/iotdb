@@ -172,8 +172,7 @@ public class TsFileProcessor {
    *
    * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertRowPlan insertRowPlan) 
-      throws WriteProcessException, WriteProcessRejectException {
+  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
@@ -216,7 +215,7 @@ public class TsFileProcessor {
    * @param results result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
-      TSStatus[] results) throws WriteProcessException, WriteProcessRejectException {
+      TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
@@ -257,7 +256,7 @@ public class TsFileProcessor {
   }
 
   private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) 
-      throws WriteProcessException, WriteProcessRejectException {
+      throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
@@ -307,7 +306,7 @@ public class TsFileProcessor {
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
-      throws WriteProcessException, WriteProcessRejectException {
+      throws WriteProcessException {
     if (start >= end) {
       return;
     }
