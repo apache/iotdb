@@ -130,15 +130,16 @@ public class LogCatchUpTaskTest {
 
   private long dummyAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
     LogParser parser = LogParser.getINSTANCE();
-    Log testLog = null;
+    Log testLog;
     for (ByteBuffer byteBuffer : request.getEntries()) {
       testLog = parser.parse(byteBuffer);
       receivedLogs.add(testLog);
+      if (testLog != null && testLeadershipFlag && testLog.getCurrLogIndex() >= 1023) {
+        // return a larger term to indicate that the leader has changed
+        return sender.getTerm().get() + 1;
+      }
     }
 
-    if (testLog != null && testLeadershipFlag && testLog.getCurrLogIndex() == 1023) {
-      sender.setCharacter(NodeCharacter.ELECTOR);
-    }
     return Response.RESPONSE_AGREE;
   }
 
