@@ -16,38 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.tool;
 
-import java.util.Map;
-import org.apache.iotdb.db.index.common.IndexType;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * this operator is to conduct similarity search based on a certain index.
- */
-public class QueryIndexOperator extends QueryOperator {
+public class CsvLineSplitTest {
 
-  private Map<String, Object> props;
-
-  private IndexType indexType;
-
-  public QueryIndexOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.QUERY_INDEX;
+  @Test
+  public void testSplit() {
+    Assert.assertArrayEquals(new String[]{"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\"\\\"\""));
+    Assert.assertArrayEquals(new String[]{"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\"\\'\""));
   }
 
-  public Map<String, Object> getProps() {
-    return props;
-  }
-
-  public void setProps(Map<String, Object> props) {
-    this.props = props;
-  }
-
-  public IndexType getIndexType() {
-    return indexType;
-  }
-
-  public void setIndexType(IndexType indexType) {
-    this.indexType = indexType;
-  }
 }
