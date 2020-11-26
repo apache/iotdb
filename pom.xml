@@ -997,7 +997,7 @@
                                     <generator>py</generator>
                                     <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                                     <thriftSourceRoot>${basedir}/src/main/thrift</thriftSourceRoot>
-                                    <outputDirectory>${project.build.directory}/generated-sources-python/iotdb</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
