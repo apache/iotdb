@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -440,8 +439,7 @@ public class SerializeUtils {
     return ret;
   }
 
-  public static TimeValuePair deserializeTVPair(ByteBuffer buffer)
-      throws UnsupportedDataTypeException {
+  public static TimeValuePair deserializeTVPair(ByteBuffer buffer) {
     if (buffer == null || (buffer.limit() - buffer.position() == 0)) {
       return null;
     }
@@ -473,7 +471,7 @@ public class SerializeUtils {
         TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         return new TimeValuePair(time, primitiveType);
     }
-    throw new UnsupportedDataTypeException(dataType.toString());
+    return null;
   }
 
   public static ByteBuffer serializeFilter(Filter filter) {

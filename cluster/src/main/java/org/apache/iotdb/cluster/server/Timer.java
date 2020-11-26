@@ -189,7 +189,7 @@ public class Timer {
       if (ENABLE_INSTRUMENTING) {
         return System.nanoTime();
       }
-      return 0;
+      return Long.MIN_VALUE;
     }
 
     /**
@@ -197,7 +197,7 @@ public class Timer {
      * method to avoid unnecessary calls when instrumenting is disabled.
      */
     public void calOperationCostTimeFromStart(long startTime) {
-      if (ENABLE_INSTRUMENTING) {
+      if (ENABLE_INSTRUMENTING && startTime != Long.MIN_VALUE) {
         add(System.nanoTime() - startTime);
       }
     }

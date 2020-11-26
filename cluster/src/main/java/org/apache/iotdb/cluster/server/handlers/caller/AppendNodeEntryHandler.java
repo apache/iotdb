@@ -24,6 +24,7 @@ import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Peer;
@@ -56,11 +57,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   private int failedDecreasingCounter;
 
   // nano start time when the send begins
-  private long sendStart;
+  private long sendStart = Long.MIN_VALUE;
 
 
   public AppendNodeEntryHandler() {
-    if (Timer.ENABLE_INSTRUMENTING) {
+    if (Timer.ENABLE_INSTRUMENTING && ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       sendStart = System.nanoTime();
     }
   }

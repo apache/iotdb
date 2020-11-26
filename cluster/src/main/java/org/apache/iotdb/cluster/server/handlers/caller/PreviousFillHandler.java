@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -42,19 +41,13 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
 
   @Override
   public synchronized void onComplete(ByteBuffer response) {
-    if (response == null || (response.limit() - response.position()) == 0) {
-      latch.countDown();
-    } else {
-      try {
-        TimeValuePair timeValuePair = SerializeUtils.deserializeTVPair(response);
-        if (timeValuePair != null && timeValuePair.getTimestamp() > result.getTimestamp()) {
-          result = timeValuePair;
-        }
-        latch.countDown();
-      } catch (UnsupportedDataTypeException e) {
-        logger.error("Cannot deserialize TVPair", e);
+    if (response != null && (response.limit() - response.position()) != 0) {
+      TimeValuePair timeValuePair = SerializeUtils.deserializeTVPair(response);
+      if (timeValuePair != null && timeValuePair.getTimestamp() > result.getTimestamp()) {
+        result = timeValuePair;
       }
     }
+    latch.countDown();
   }
 
   public synchronized void onComplete(TimeValuePair timeValuePair) {

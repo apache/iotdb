@@ -29,7 +29,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -208,7 +207,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
             results.add(new Pair<>(true, pair));
           }
           return results;
-        } catch (TException | UnsupportedDataTypeException e) {
+        } catch (TException e) {
           logger.warn("Query last of {} from {} errored", group, seriesPaths, e);
           return Collections.emptyList();
         } catch (InterruptedException e) {
