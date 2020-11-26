@@ -28,7 +28,7 @@ path = dirname(dirname(abspath(__file__)))
 sys.path.append(path)
 
 from thrift.transport import TTransport
-from iotdb.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
+from iotdb.thrift.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
 
 
 class IoTDBRpcDataSet(object):
