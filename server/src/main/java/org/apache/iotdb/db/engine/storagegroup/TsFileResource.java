@@ -42,12 +42,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
-import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -570,11 +567,11 @@ public class TsFileResource {
     return tsFileLock.tryWriteLock();
   }
 
-  void doUpgrade() {
-    if (UpgradeUtils.isNeedUpgrade(this)) {
-      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-    }
-  }
+//  void doUpgrade() {
+//    if (UpgradeUtils.isNeedUpgrade(this)) {
+//      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
+//    }
+//  }
 
   public void removeModFile() throws IOException {
     getModFile().remove();

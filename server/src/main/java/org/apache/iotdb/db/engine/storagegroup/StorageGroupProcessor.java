@@ -80,7 +80,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1738,12 +1737,12 @@ public class StorageGroupProcessor {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
-      seqTsFileResource.doUpgrade();
+//      seqTsFileResource.doUpgrade();
     }
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
-      unseqTsFileResource.doUpgrade();
+//      unseqTsFileResource.doUpgrade();
     }
   }
 
@@ -1787,9 +1786,9 @@ public class StorageGroupProcessor {
           }
         }
       }
-      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
-        UpgradeSevice.getINSTANCE().stop();
-      }
+//      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
+//        UpgradeSevice.getINSTANCE().stop();
+//      }
     }
   }
 

@@ -108,7 +108,7 @@ public abstract class AggregateResult {
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
-    TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    TSDataType dataType = TSDataType.deserialize(buffer.get());
     boolean ascending = ReadWriteIOUtils.readBool(buffer);
     AggregateResult aggregateResult = AggregateResultFactory
         .getAggrResultByType(aggregationType, dataType, ascending);

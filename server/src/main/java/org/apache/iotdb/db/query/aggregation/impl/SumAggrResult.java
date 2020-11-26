@@ -26,6 +26,8 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,7 +51,11 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     double preValue = getDoubleValue();
-    preValue += statistics.getSumValue();
+    if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
+      preValue += statistics.getSumLongValue();
+    } else {
+      preValue += statistics.getSumDoubleValue();
+    }
     setDoubleValue(preValue);
   }
 
@@ -118,7 +124,7 @@ public class SumAggrResult extends AggregateResult {
 
   @Override
   protected void deserializeSpecificFields(ByteBuffer buffer) {
-    seriesDataType = TSDataType.deserialize(buffer.getShort());
+    seriesDataType = TSDataType.deserialize(buffer.get());
   }
 
   @Override
