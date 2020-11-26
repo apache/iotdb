@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -513,8 +513,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         curSize += timeseriesMetadataMap.get(index).getDataSizeOfChunkMetaDataList();
       }
       ChunkMetadata chunkMetadata = ChunkMetadata
-          .deserializeFrom(buffer, timeseriesMetadataMap.get(index).getMeasurementId(),
-              timeseriesMetadataMap.get(index).getTSDataType());
+          .deserializeFrom(buffer, timeseriesMetadataMap.get(index));
       seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
           .add(chunkMetadata);
     }
@@ -1041,9 +1040,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     ByteBuffer buffer = readData(startOffsetOfChunkMetadataList, dataSizeOfChunkMetadataList);
     while (buffer.hasRemaining()) {
-      chunkMetadataList.add(ChunkMetadata
-          .deserializeFrom(buffer, timeseriesMetaData.getMeasurementId(),
-              timeseriesMetaData.getTSDataType()));
+      chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer, timeseriesMetaData));
     }
 
     VersionUtils.applyVersion(chunkMetadataList, versionInfo);

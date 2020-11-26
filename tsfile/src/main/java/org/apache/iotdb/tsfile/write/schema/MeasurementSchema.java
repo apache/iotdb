@@ -174,7 +174,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   }
 
   public TSEncoding getEncodingType() {
-    return TSEncoding.byteToEnum(encoding);
+    return TSEncoding.deserialize(encoding);
   }
 
   public TSDataType getType() {

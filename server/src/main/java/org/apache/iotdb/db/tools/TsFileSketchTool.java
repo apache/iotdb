@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -109,10 +109,6 @@ public class TsFileSketchTool {
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
           printlnBoth(pw,
                   String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
-          printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupHeader.getDataSize());
-          printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupHeader
-                  .getNumberOfChunks());
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
           // versionInfo begins if there is a versionInfo
@@ -166,11 +162,6 @@ public class TsFileSketchTool {
         printlnBoth(pw,
                 String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().getChildren()
                         .size() + " key&TsMetadataIndex");
-        printlnBoth(pw,
-                String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());
-        printlnBoth(pw,
-                String.format("%20s", "") + "|\t\t[invalidChunkNum] " + tsFileMetaData
-                        .getInvalidChunkNum());
 
         // bloom filter
         BloomFilter bloomFilter = tsFileMetaData.getBloomFilter();

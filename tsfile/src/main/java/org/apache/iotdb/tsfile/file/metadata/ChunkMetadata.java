@@ -142,10 +142,12 @@ public class ChunkMetadata implements Accountable {
    * @return length
    * @throws IOException IOException
    */
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
-    byteLen += statistics.serialize(outputStream);
+    if (serializeStatistic) {
+      byteLen += statistics.serialize(outputStream);
+    }
     return byteLen;
   }
 
@@ -153,19 +155,19 @@ public class ChunkMetadata implements Accountable {
    * deserialize from ByteBuffer.
    *
    * @param buffer          ByteBuffer
-   * @param measurementUid  measurementUid of this chunk metadata
-   * @param tsDataType      data type of this chunk metadata
    * @return ChunkMetaData object
    */
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, String measurementUid,
-      TSDataType tsDataType) {
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
-    chunkMetaData.measurementUid = measurementUid;
-    chunkMetaData.tsDataType = tsDataType;
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
-
+    if (timeseriesMetadata.getTimeSeriesMetadataType() != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
+    } else {
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
     return chunkMetaData;
   }
 

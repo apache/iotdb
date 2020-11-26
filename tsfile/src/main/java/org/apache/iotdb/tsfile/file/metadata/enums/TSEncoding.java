@@ -54,42 +54,6 @@ public enum TSEncoding {
     }
   }
 
-  private static TSEncoding getTsEncoding(byte encoding) {
-    if (encoding < 0 || 8 < encoding) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
-    }
-    switch (encoding) {
-      case 1:
-        return PLAIN_DICTIONARY;
-      case 2:
-        return RLE;
-      case 3:
-        return DIFF;
-      case 4:
-        return TS_2DIFF;
-      case 5:
-        return BITMAP;
-      case 6:
-        return GORILLA_V1;
-      case 7:
-        return REGULAR;
-      case 8:
-        return GORILLA;
-      default:
-        return PLAIN;
-    }
-  }
-
-  /**
-   * give an byte to return a encoding type.
-   *
-   * @param encoding byte number
-   * @return encoding type
-   */
-  public static TSEncoding byteToEnum(byte encoding) {
-    return getTsEncoding(encoding);
-  }
-
   public static int getSerializedSize() {
     return Byte.BYTES;
   }

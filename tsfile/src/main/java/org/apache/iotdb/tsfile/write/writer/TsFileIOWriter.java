@@ -30,7 +30,7 @@ import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -84,7 +84,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-  
+
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
@@ -153,7 +153,8 @@ public class TsFileIOWriter {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
-    chunkGroupMetadataList.add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
+    chunkGroupMetadataList
+        .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
     chunkMetadataList = null;
     out.flush();
@@ -162,11 +163,11 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param measurementSchema - schema of this time series
+   * @param measurementSchema    - schema of this time series
    * @param compressionCodecName - compression name of this time series
-   * @param tsDataType - data type
-   * @param statistics - Chunk statistics
-   * @param dataSize - the serialized size of all pages
+   * @param tsDataType           - data type
+   * @param statistics           - Chunk statistics
+   * @param dataSize             - the serialized size of all pages
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(MeasurementSchema measurementSchema,
@@ -285,15 +286,18 @@ public class TsFileIOWriter {
       Statistics seriesStatistics = Statistics.getStatsByType(dataType);
 
       int chunkMetadataListLength = 0;
+      boolean serializeStatistic = (entry.getValue().size() > 1);
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
         if (!chunkMetadata.getDataType().equals(dataType)) {
           continue;
         }
-        chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
+        chunkMetadataListLength += chunkMetadata
+            .serializeTo(out.wrapAsStream(), serializeStatistic);
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
-      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(offsetOfChunkMetadataList,
+      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(
+          serializeStatistic ? (byte) 1 : (byte) 0, offsetOfChunkMetadataList,
           chunkMetadataListLength, path.getMeasurement(), dataType, seriesStatistics);
       deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
           .add(timeseriesMetadata);

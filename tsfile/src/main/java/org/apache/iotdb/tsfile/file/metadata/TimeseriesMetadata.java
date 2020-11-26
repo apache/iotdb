@@ -32,6 +32,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TimeseriesMetadata implements Accountable {
 
+  /**
+   * 0 means this time series has only one chunk, no need to save the statistic again in chunk metadata
+   * 1 means this time series has more than one chunk, should save the statistic again in chunk metadata
+   */
+  private byte timeSeriesMetadataType;
+
   private long startOffsetOfChunkMetaDataList;
   private int chunkMetaDataListDataSize;
 
@@ -53,8 +59,10 @@ public class TimeseriesMetadata implements Accountable {
   public TimeseriesMetadata() {
   }
 
-  public TimeseriesMetadata(long startOffsetOfChunkMetaDataList, int chunkMetaDataListDataSize,
-      String measurementId, TSDataType dataType, Statistics statistics) {
+  public TimeseriesMetadata(byte timeSeriesMetadataType, long startOffsetOfChunkMetaDataList,
+      int chunkMetaDataListDataSize, String measurementId, TSDataType dataType,
+      Statistics statistics) {
+    this.timeSeriesMetadataType = timeSeriesMetadataType;
     this.startOffsetOfChunkMetaDataList = startOffsetOfChunkMetaDataList;
     this.chunkMetaDataListDataSize = chunkMetaDataListDataSize;
     this.measurementId = measurementId;
@@ -63,6 +71,7 @@ public class TimeseriesMetadata implements Accountable {
   }
 
   public TimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
+    this.timeSeriesMetadataType = timeseriesMetadata.timeSeriesMetadataType;
     this.startOffsetOfChunkMetaDataList = timeseriesMetadata.startOffsetOfChunkMetaDataList;
     this.chunkMetaDataListDataSize = timeseriesMetadata.chunkMetaDataListDataSize;
     this.measurementId = timeseriesMetadata.measurementId;
@@ -73,6 +82,7 @@ public class TimeseriesMetadata implements Accountable {
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
     timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
@@ -91,6 +101,7 @@ public class TimeseriesMetadata implements Accountable {
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
+    byteLen += ReadWriteIOUtils.write(timeSeriesMetadataType, outputStream);
     byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkMetaDataList, outputStream);
@@ -98,6 +109,14 @@ public class TimeseriesMetadata implements Accountable {
         .writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
     byteLen += statistics.serialize(outputStream);
     return byteLen;
+  }
+
+  public byte getTimeSeriesMetadataType() {
+    return timeSeriesMetadataType;
+  }
+
+  public void setTimeSeriesMetadataType(byte timeSeriesMetadataType) {
+    this.timeSeriesMetadataType = timeSeriesMetadataType;
   }
 
   public long getOffsetOfChunkMetaDataList() {
