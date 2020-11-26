@@ -659,7 +659,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
-  public ChunkGroupHeader readChunkGroupFooter() throws IOException {
+  public ChunkGroupHeader readChunkGroupHeader() throws IOException {
     return ChunkGroupHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
   }
 
@@ -671,7 +671,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return a CHUNK_GROUP_FOOTER
    * @throws IOException io error
    */
-  public ChunkGroupHeader readChunkGroupFooter(long position, boolean markerRead)
+  public ChunkGroupHeader readChunkGroupHeader(long position, boolean markerRead)
       throws IOException {
     return ChunkGroupHeader.deserializeFrom(tsFileInput, position, markerRead);
   }
@@ -968,7 +968,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             // this is a chunk group
             // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
-            ChunkGroupHeader chunkGroupHeader = this.readChunkGroupFooter();
+            ChunkGroupHeader chunkGroupHeader = this.readChunkGroupHeader();
             deviceID = chunkGroupHeader.getDeviceID();
             if (newSchema != null) {
               for (MeasurementSchema tsSchema : measurementSchemaList) {

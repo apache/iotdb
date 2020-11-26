@@ -33,7 +33,6 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForV1;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -168,10 +167,6 @@ public class FileReaderManager implements IService {
       else {
         tsFileReader = new TsFileSequenceReader(filePath);
         switch (tsFileReader.readVersionNumber()) {
-          case TSFileConfig.VERSION_NUMBER_V1:
-            tsFileReader.close();
-            tsFileReader = new TsFileSequenceReaderForV1(filePath);
-            break;
           case TSFileConfig.VERSION_NUMBER_V2:
             break;
           default:

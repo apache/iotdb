@@ -80,7 +80,7 @@ public class TsFileSequenceReaderTest {
           }
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
-          ChunkGroupHeader footer = reader.readChunkGroupFooter();
+          ChunkGroupHeader footer = reader.readChunkGroupHeader();
           long endOffset = reader.position();
           Pair<Long, Long> pair = new Pair<>(startOffset, endOffset);
           deviceChunkGroupMetadataOffsets.putIfAbsent(footer.getDeviceID(), new ArrayList<>());

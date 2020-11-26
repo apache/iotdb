@@ -94,7 +94,7 @@ public class TsFileSequenceRead {
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             System.out.println("Chunk Group Footer position: " + reader.position());
-            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupFooter();
+            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             System.out.println("device: " + chunkGroupHeader.getDeviceID());
             break;
           case MetaMarker.VERSION:

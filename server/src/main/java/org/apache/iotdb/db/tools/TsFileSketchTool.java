@@ -105,7 +105,7 @@ public class TsFileSketchTool {
           }
           // chunkGroupFooter begins
           printlnBoth(pw, String.format("%20s", chunkEndPos) + "|\t[Chunk Group Footer]");
-          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupFooter(chunkEndPos, false);
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader(chunkEndPos, false);
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
           printlnBoth(pw,
                   String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
