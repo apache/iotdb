@@ -20,7 +20,8 @@ import struct
 import sys
 import time
 
-from .utils import SessionDataSet
+from .utils.SessionDataSet import SessionDataSet
+from .utils.IoTDBConstants import *
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
