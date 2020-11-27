@@ -111,7 +111,7 @@ public class ChunkHeader {
       throws IOException {
     // read measurementID
     String measurementID = ReadWriteIOUtils.readVarIntString(inputStream);
-    int dataSize = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    int dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     TSDataType dataType = ReadWriteIOUtils.readDataType(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
@@ -136,9 +136,8 @@ public class ChunkHeader {
 
     byte chunkType = buffer.get();
     // read measurementID
-    int size = ReadWriteForEncodingUtils.readVarInt(buffer);
-    String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
-    int dataSize = ReadWriteForEncodingUtils.readVarInt(buffer);
+    String measurementID = ReadWriteIOUtils.readVarIntString(buffer);
+    int dataSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     TSDataType dataType = ReadWriteIOUtils.readDataType(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
@@ -174,10 +173,9 @@ public class ChunkHeader {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int length = 0;
     length += ReadWriteIOUtils.write(chunkType, outputStream);
-    length += ReadWriteIOUtils.write(measurementID, outputStream);
-    length += ReadWriteIOUtils.write(dataSize, outputStream);
+    length += ReadWriteIOUtils.writeVar(measurementID, outputStream);
+    length += ReadWriteForEncodingUtils.writeUnsignedVarInt(dataSize, outputStream);
     length += ReadWriteIOUtils.write(dataType, outputStream);
-    length += ReadWriteIOUtils.write(numOfPages, outputStream);
     length += ReadWriteIOUtils.write(compressionType, outputStream);
     length += ReadWriteIOUtils.write(encodingType, outputStream);
     return length;
@@ -192,10 +190,9 @@ public class ChunkHeader {
   public int serializeTo(ByteBuffer buffer) {
     int length = 0;
     length += ReadWriteIOUtils.write(chunkType, buffer);
-    length += ReadWriteIOUtils.write(measurementID, buffer);
-    length += ReadWriteIOUtils.write(dataSize, buffer);
+    length += ReadWriteIOUtils.writeVar(measurementID, buffer);
+    length += ReadWriteForEncodingUtils.writeUnsignedVarInt(dataSize, buffer);
     length += ReadWriteIOUtils.write(dataType, buffer);
-    length += ReadWriteIOUtils.write(numOfPages, buffer);
     length += ReadWriteIOUtils.write(compressionType, buffer);
     length += ReadWriteIOUtils.write(encodingType, buffer);
     return length;

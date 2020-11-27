@@ -365,7 +365,7 @@ public class ReadWriteIOUtils {
     }
 
     byte[] bytes = s.getBytes();
-    len += write(bytes.length, outputStream);
+    len += ReadWriteForEncodingUtils.writeVarInt(bytes.length, outputStream);
     outputStream.write(bytes);
     len += bytes.length;
     return len;

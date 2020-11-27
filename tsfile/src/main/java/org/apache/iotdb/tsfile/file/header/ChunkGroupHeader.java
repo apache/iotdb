@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkGroupHeader {
@@ -43,15 +44,12 @@ public class ChunkGroupHeader {
    */
   public ChunkGroupHeader(String deviceID) {
     this.deviceID = deviceID;
-    this.serializedSize = Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
+    this.serializedSize = getSerializedSize(deviceID);
   }
 
   public static int getSerializedSize(String deviceID) {
-    return Byte.BYTES + Integer.BYTES + getSerializedSize(deviceID.length());
-  }
-
-  private static int getSerializedSize(int deviceIdLength) {
-    return deviceIdLength + Long.BYTES + Integer.BYTES;
+    int length = deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
+    return Byte.BYTES + ReadWriteForEncodingUtils.varIntSize(length) + length;
   }
 
   /**

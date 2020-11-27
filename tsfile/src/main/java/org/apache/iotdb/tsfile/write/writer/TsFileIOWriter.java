@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -252,7 +253,7 @@ public class TsFileIOWriter {
     }
 
     // write TsFileMetaData size
-    ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(size, out.wrapAsStream());// write the size of the file metadata.
 
     // write magic string
     out.write(magicStringBytes);

@@ -83,7 +83,7 @@ public class TimeseriesMetadata implements Accountable {
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
-    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
+    timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));
     timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData
@@ -102,7 +102,7 @@ public class TimeseriesMetadata implements Accountable {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(timeSeriesMetadataType, outputStream);
-    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.writeVar(measurementId, outputStream);
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen += ReadWriteIOUtils.write(startOffsetOfChunkMetaDataList, outputStream);
     byteLen += ReadWriteForEncodingUtils
