@@ -1729,22 +1729,22 @@ public abstract class RaftMember {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition();
-    synchronized (logUpdateCondition) {
-      while (logManager.getLastLogIndex() < prevLogIndex &&
-          alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
-        try {
-          // each time new logs are appended, this will be notified
-          long lastLogIndex = logManager.getLastLogIndex();
-          if (lastLogIndex >= prevLogIndex) {
-            return true;
-          }
-          logUpdateCondition.wait(1);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return false;
+    while (logManager.getLastLogIndex() < prevLogIndex &&
+        alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+      try {
+        // each time new logs are appended, this will be notified
+        long lastLogIndex = logManager.getLastLogIndex();
+        if (lastLogIndex >= prevLogIndex) {
+          return true;
         }
-        alreadyWait = System.currentTimeMillis() - waitStart;
+        synchronized (logUpdateCondition) {
+          logUpdateCondition.wait(1);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
       }
+      alreadyWait = System.currentTimeMillis() - waitStart;
     }
 
     return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
