@@ -31,16 +31,7 @@ import org.slf4j.LoggerFactory;
 public class PulsarConsumerThread implements Runnable {
   private Connection connection = null;
   private Statement statement = null;
-  private static boolean setStorageGroup = true;
-  private static boolean createTimeSeries = true;
-  private static final String CREATE_SG_TEMPLATE = "SET STORAGE GROUP TO %s";
-  private static final String CREATE_TIMESERIES_TEMPLATE = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
-  private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.deviceid(timestamp,%s) VALUES (%s,'%s')";
-  protected static final String[] ALL_TIMESERIES = {
-      "root.vehicle.deviceid.sensor1",
-      "root.vehicle.deviceid.sensor2",
-      "root.vehicle.deviceid.sensor3",
-      "root.vehicle.deviceid.sensor4"};
+  private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.%s(timestamp,%s) VALUES (%s,'%s')";
 
   private static final Logger logger = LoggerFactory.getLogger(PulsarConsumerThread.class);
 
@@ -48,35 +39,6 @@ public class PulsarConsumerThread implements Runnable {
 
   public PulsarConsumerThread(Consumer<?> consumer) {
     this.consumer = consumer;
-    initIoTDB();
-  }
-
-  private void initIoTDB() {
-    try {
-      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      connection = DriverManager
-          .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
-      prepareTimeseries();
-    } catch (ClassNotFoundException | SQLException e) {
-      logger.error(e.getMessage());
-    }
-  }
-
-  private void prepareTimeseries() throws SQLException {
-    statement = connection.createStatement();
-    if (setStorageGroup) {
-      statement.execute(String.format(CREATE_SG_TEMPLATE, Constant.STORAGE_GROUP));
-      setStorageGroup = false;
-    }
-    if (createTimeSeries) {
-      for (String timeseries : ALL_TIMESERIES) {
-        statement.addBatch(String.format(CREATE_TIMESERIES_TEMPLATE, timeseries));
-      }
-      statement.executeBatch();
-      statement.clearBatch();
-      createTimeSeries = false;
-    }
   }
 
   /**
@@ -87,7 +49,7 @@ public class PulsarConsumerThread implements Runnable {
     String[] items = message.split(",");
 
     try {
-      String sql = String.format(INSERT_TEMPLATE, items[0], items[1], items[2]);
+      String sql = String.format(INSERT_TEMPLATE, items[0], items[1], items[2], items[3]);
       statement.execute(sql);
     } catch (SQLException e) {
       logger.error(e.getMessage());
@@ -96,16 +58,26 @@ public class PulsarConsumerThread implements Runnable {
 
   @Override
   public void run() {
-    do {
-      try {
-        Message<?> msg = consumer.receive();
-        writeData(new String(msg.getData()));
+    try {
+      Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
+      connection = DriverManager
+          .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
+              Constant.IOTDB_CONNECTION_PASSWORD);
+      statement = connection.createStatement();
 
-        consumer.acknowledge(msg);
-      } catch (PulsarClientException e) {
-        logger.error(e.getMessage());
-        break;
-      }
-    } while (true);
+      do {
+        try {
+          Message<?> msg = consumer.receive();
+          writeData(new String(msg.getData()));
+
+          consumer.acknowledge(msg);
+        } catch (PulsarClientException e) {
+          logger.error(e.getMessage());
+          break;
+        }
+      } while (true);
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+    }
   }
 }
