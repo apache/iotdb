@@ -132,7 +132,7 @@ public abstract class RaftMember {
    * the lock is to make sure that only one thread can apply snapshot at the same time
    */
   private final Object snapshotApplyLock = new Object();
-  protected Node thisNode;
+  protected Node thisNode = ClusterConstant.EMPTY_NODE;
   /**
    * the nodes that belong to the same raft group as thisNode.
    */
@@ -548,7 +548,7 @@ public abstract class RaftMember {
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
   public AsyncClient getAsyncHeartbeatClient(Node node) {
-    if (node == null) {
+    if (node == null || ClusterConstant.EMPTY_NODE.equals(node)) {
       return null;
     }
 
@@ -589,7 +589,7 @@ public abstract class RaftMember {
   }
 
   private Client getSyncClient(SyncClientPool pool, Node node) {
-    if (node == null) {
+    if (node == null || ClusterConstant.EMPTY_NODE.equals(node)) {
       return null;
     }
 
@@ -642,9 +642,9 @@ public abstract class RaftMember {
       }
       synchronized (waitLeaderCondition) {
         if (leader == null) {
-          this.leader.getAndSet(ClusterConstant.EMPTY_NODE);
+          this.leader.set(ClusterConstant.EMPTY_NODE);
         } else {
-          this.leader.getAndSet(leader);
+          this.leader.set(leader);
         }
         if (!ClusterConstant.EMPTY_NODE.equals(this.leader.get())) {
           waitLeaderCondition.notifyAll();
@@ -1258,7 +1258,7 @@ public abstract class RaftMember {
   }
 
   private AsyncClient getAsyncClient(Node node, AsyncClientPool pool) {
-    if (ClusterConstant.EMPTY_NODE.equals(node)) {
+    if (node == null || ClusterConstant.EMPTY_NODE.equals(node)) {
       return null;
     }
     AsyncClient client = null;
@@ -1427,7 +1427,7 @@ public abstract class RaftMember {
         logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
         setVoteFor(null);
-        setLeader(null);
+        setLeader(ClusterConstant.EMPTY_NODE);
         updateHardState(newTerm, getVoteFor());
       }
 

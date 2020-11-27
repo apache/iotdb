@@ -273,7 +273,7 @@ public class DataGroupMember extends RaftMember {
     // partition table
     synchronized (term) {
       term.incrementAndGet();
-      setLeader(null);
+      setLeader(ClusterConstant.EMPTY_NODE);
       setVoteFor(thisNode);
       updateHardState(term.get(), getVoteFor());
       setLastHeartbeatReceivedTime(System.currentTimeMillis());
