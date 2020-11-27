@@ -28,7 +28,7 @@ public interface LayerRowWindowReader {
 
   boolean next() throws IOException, QueryProcessException;
 
-  void readyForNext() throws IOException;
+  void readyForNext() throws IOException, QueryProcessException;
 
   TSDataType[] getDataTypes();
 

@@ -53,15 +53,30 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
 
   private final int windowSize;
+  private final int slidingStep;
 
   /**
    * Constructor. You need to specify the number of rows in each sliding size window (except for the
-   * last window).
+   * last window) and the sliding step to the next window.
+   *
+   * @param windowSize  the number of rows in each sliding size window (0 < windowSize)
+   * @param slidingStep the number of rows between the first point of the next window and the first
+   *                    point of the current window (0 < slidingStep)
+   */
+  public SlidingSizeWindowAccessStrategy(int windowSize, int slidingStep) {
+    this.windowSize = windowSize;
+    this.slidingStep = slidingStep;
+  }
+
+  /**
+   * Constructor. You need to specify the number of rows in each sliding size window (except for the
+   * last window). The sliding step will be set to the same as the window size.
    *
    * @param windowSize the number of rows in each sliding size window (0 < windowSize)
    */
   public SlidingSizeWindowAccessStrategy(int windowSize) {
     this.windowSize = windowSize;
+    this.slidingStep = windowSize;
   }
 
   @Override
@@ -70,10 +85,18 @@ public class SlidingSizeWindowAccessStrategy implements AccessStrategy {
       throw new QueryProcessException(
           String.format("Parameter windowSize(%d) should be positive.", windowSize));
     }
+    if (slidingStep <= 0) {
+      throw new QueryProcessException(
+          String.format("Parameter slidingStep(%d) should be positive.", slidingStep));
+    }
   }
 
   public int getWindowSize() {
     return windowSize;
+  }
+
+  public int getSlidingStep() {
+    return slidingStep;
   }
 
   @Override

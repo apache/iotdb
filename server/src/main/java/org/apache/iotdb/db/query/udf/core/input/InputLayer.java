@@ -287,6 +287,8 @@ public class InputLayer {
     private final IntList rowIndexes;
     private final RowWindowImpl rowWindow;
 
+    private final int slidingStep;
+
     private int maxIndexInLastWindow;
 
     private InputLayerRowSlidingSizeWindowReader(int[] columnIndexes,
@@ -305,6 +307,8 @@ public class InputLayer {
           ? new WrappedIntArray(windowSize)
           : new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
       rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
+
+      slidingStep = accessStrategy.getSlidingStep();
 
       maxIndexInLastWindow = -1;
     }
@@ -343,15 +347,51 @@ public class InputLayer {
     }
 
     @Override
-    public void readyForNext() throws IOException {
-      maxIndexInLastWindow = rowIndexes.size() != 0
-          ? rowIndexes.get(rowIndexes.size() - 1) : maxIndexInLastWindow;
+    public void readyForNext() throws IOException, QueryProcessException {
+      updateMaxIndexForLastWindow();
 
       for (SafetyPile safetyPile : safetyPiles) {
         safetyPile.moveForwardTo(maxIndexInLastWindow + 1);
       }
 
       rowIndexes.clear();
+    }
+
+    private void updateMaxIndexForLastWindow() throws IOException, QueryProcessException {
+      if (rowIndexes.size() == 0) {
+        return;
+      }
+
+      if (slidingStep <= rowIndexes.size()) {
+        maxIndexInLastWindow = rowIndexes.get(slidingStep - 1) - 1;
+        return;
+      }
+
+      int currentStep = rowIndexes.size();
+
+      for (int i = rowIndexes.get(rowIndexes.size() - 1) + 1; i < rowRecordList.size(); ++i) {
+        if (hasNotNullSelectedFields(rowRecordList.getRowRecord(i), columnIndexes)) {
+          ++currentStep;
+          if (currentStep == slidingStep) {
+            maxIndexInLastWindow = i - 1;
+            return;
+          }
+        }
+      }
+
+      while (queryDataSet.hasNextWithoutConstraint()) {
+        RowRecord rowRecordCandidate = queryDataSet.nextWithoutConstraint();
+        rowRecordList.put(rowRecordCandidate);
+        if (hasNotNullSelectedFields(rowRecordCandidate, columnIndexes)) {
+          ++currentStep;
+          if (currentStep == slidingStep) {
+            maxIndexInLastWindow = rowRecordList.size() - 2;
+            return;
+          }
+        }
+      }
+
+      maxIndexInLastWindow = rowRecordList.size() - 1;
     }
 
     @Override
