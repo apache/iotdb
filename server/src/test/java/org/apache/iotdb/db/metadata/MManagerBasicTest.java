@@ -449,11 +449,6 @@ public class MManagerBasicTest {
       assertEquals(res[7], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
       assertEquals(res[8], manager.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
 
-      //child node name
-      assertEquals(res1[0], manager.getChildNodeNameInNextLevel(new PartialPath("root")).toString());
-      assertEquals(res1[1], manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop")).toString());
-      assertEquals(res1[2], manager.getChildNodeNameInNextLevel(new PartialPath("root.laptop.b1")).toString());
-
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

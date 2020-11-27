@@ -19,19 +19,31 @@
 package org.apache.iotdb.db.http.handler;
 
 import com.google.gson.JsonArray;
-import java.util.Set;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.util.TreeSet;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 
 public class GetChildPathsHandler extends Handler{
-  public JsonArray handle(String path) throws MetadataException {
+  public JsonElement handle(String path) throws MetadataException {
     PartialPath partialPath = new PartialPath(path);
-    Set<String> childNodeNames = IoTDB.metaManager.getChildNodeNameInNextLevel(partialPath);
-    JsonArray childNodeNamesJson = new JsonArray();
-    for(String childNodeName : childNodeNames) {
-      childNodeNamesJson.add(childNodeName);
+    MNode node = IoTDB.metaManager.getNodeByPath(partialPath);
+    if(node instanceof MeasurementMNode) {
+      JsonObject jsonObject = new JsonObject();
+      jsonObject.addProperty(HttpConstant.RESULT, "last node is a measurement");
+      return jsonObject;
+    } else {
+      TreeSet<String> tree = new TreeSet<>(node.getChildren().keySet());
+      JsonArray childNodeNamesJson = new JsonArray();
+      for(String childNodeName : tree) {
+        childNodeNamesJson.add(childNodeName);
+      }
+      return childNodeNamesJson;
     }
-    return childNodeNamesJson;
   }
 }
