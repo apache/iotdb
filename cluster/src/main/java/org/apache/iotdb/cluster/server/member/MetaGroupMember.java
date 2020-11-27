@@ -476,7 +476,7 @@ public class MetaGroupMember extends RaftMember {
         logger.info(report.toString());
       }
     } catch (Exception e) {
-      logger.error("{} exception occurred when generating node report", name);
+      logger.error("{} exception occurred when generating node report", name, e);
     }
   }
 
