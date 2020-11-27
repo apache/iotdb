@@ -348,4 +348,87 @@ public class GroupByEngineDataSetTest {
     }
     Assert.assertEquals(startTimeArray.length, cnt);
   }
+
+  @Test
+  public void testGroupByMonthDescending1() throws IOException {
+    long queryId = 1000L;
+    //interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    //sliding step = 1mo
+    long slidingStep = 1 * 30 * 86400_000L;
+    //10/31/2019:19:57:18
+    //test edge case 2/29
+    long startTime = 1572523038000L;
+    //04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {"03/31/2020:19:57:18", "02/29/2020:19:57:18", "01/31/2020:19:57:18",
+        "12/31/2019:19:57:18", "11/30/2019:19:57:18", "10/31/2019:19:57:18"};
+    String[] endTimeArray = {"04/01/2020:19:57:18", "03/31/2020:19:57:18", "02/29/2020:19:57:18",
+        "01/31/2020:19:57:18", "12/31/2019:19:57:18", "11/30/2019:19:57:18"};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+    groupByTimePlan.setAscending(false);
+
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
+        groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  @Test
+  public void testGroupByMonthDescending2() throws IOException {
+    long queryId = 1000L;
+    //interval = 1mo
+    long unit = 1 * 30 * 86400_000L;
+    //sliding step = 2mo
+    long slidingStep = 2 * 30 * 86400_000L;
+    //10/31/2019:19:57:18
+    long startTime = 1572523038000L;
+    //04/01/2020:19:57:18
+    long endTime = 1585742238000L;
+
+    DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+    df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+    String[] startTimeArray = {"02/29/2020:19:57:18", "12/31/2019:19:57:18", "10/31/2019:19:57:18"};
+    String[] endTimeArray = {"03/31/2020:19:57:18", "01/31/2020:19:57:18", "11/30/2019:19:57:18"};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    groupByTimePlan.setIntervalByMonth(true);
+    groupByTimePlan.setSlidingStepByMonth(true);
+    groupByTimePlan.setAscending(false);
+
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId,
+        groupByTimePlan);
+    int cnt = 0;
+
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertTrue(cnt < startTimeArray.length);
+      Assert.assertEquals(startTimeArray[cnt], df.format(new Date((long) pair.left)));
+      Assert.assertEquals(endTimeArray[cnt], df.format(new Date((long) pair.right)));
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
 }
