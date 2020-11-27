@@ -157,7 +157,11 @@ The following are the strategies you can set:
 | `SlidingTimeWindowAccessStrategy` | Process a batch of data in a fixed time interval each time. We call the container of a data batch a window. The framework calls the `transform` method once for each raw data input window. There may be multiple rows of data in a window, and each row is a result record of the raw query (aligned by time) on these input sequences. (In a row, there may be a column with a value of `null`, but not all of them are `null`) | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 | `SlidingSizeWindowAccessStrategy`    | The raw data is processed batch by batch, and each batch contains a fixed number of raw data rows (except the last batch). We call the container of a data batch a window. The framework calls the `transform` method once for each raw data input window. There may be multiple rows of data in a window, and each row is a result record of the raw query (aligned by time) on these input sequences. (In a row, there may be a column with a value of `null`, but not all of them are `null`) | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
+
+
 `RowByRowAccessStrategy`: The construction of `RowByRowAccessStrategy` does not require any parameters.
+
+
 
 `SlidingTimeWindowAccessStrategy`: `SlidingTimeWindowAccessStrategy` has many constructors, you can pass 3 types of parameters to them:
 
@@ -175,7 +179,16 @@ The relationship between the three types of parameters can be seen in the figure
 
 Note that the actual time interval of some of the last time windows may be less than the specified time interval parameter. In addition, there may be cases where the number of data rows in some time windows is 0. In these cases, the framework will also call the `transform` method for the empty windows.
 
-`SlidingSizeWindowAccessStrategy`: One parameter is required to construct `SlidingSizeWindowAccessStrategy`. This parameter specifies the number of data rows contained in a data processing window. Note that the number of data rows in the last window may be less than the specified number of data rows.
+
+
+`SlidingSizeWindowAccessStrategy`:  `SlidingSizeWindowAccessStrategy` has many constructors, you can pass 2 types of parameters to them:
+
+* Parameter 1: Window size. This parameter specifies the number of data rows contained in a data processing window. Note that the number of data rows in some of the last time windows may be less than the specified number of data rows.
+* Parameter 2: Sliding step. This parameter means the number of rows between the first point of the next window and the first point of the current window. (This parameter is not required to be greater than or equal to the window size, but must be a positive number)
+
+The sliding step parameter is optional. If the parameter is not provided, the sliding step will be set to the same as the window size.
+
+Please see the Javadoc for more details. 
 
 
 

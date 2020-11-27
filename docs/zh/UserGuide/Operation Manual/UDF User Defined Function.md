@@ -155,13 +155,17 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 | `SlidingTimeWindowAccessStrategy` | 以滑动时间窗口的方式处理原始数据。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 | `SlidingSizeWindowAccessStrategy`    | 以固定行数的方式处理原始数据，即每个数据处理窗口都会包含固定行数的数据（最后一个窗口除外）。框架会为每一个原始数据输入窗口调用一次`transform`方法。一个窗口可能存在多行数据，每一行数据对应的是输入序列按时间对齐后的结果（一行数据中，可能存在某一列为`null`值，但不会全部都是`null`）。 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` |
 
+
+
 `RowByRowAccessStrategy`的构造不需要任何参数。
+
+
 
 `SlidingTimeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供3类参数：
 
 1. 时间轴显示时间窗开始和结束时间
 2. 划分时间轴的时间间隔参数（必须为正数）
-3. 滑动步长（不要求大于等于时间间隔，但是必须为正数）。
+3. 滑动步长（不要求大于等于时间间隔，但是必须为正数）
 
 时间轴显示时间窗开始和结束时间不是必须要提供的。当您不提供这类参数时，时间轴显示时间窗开始时间会被定义为整个查询结果集中最小的时间戳，时间轴显示时间窗结束时间会被定义为整个查询结果集中最大的时间戳。
 
@@ -173,7 +177,16 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 注意，最后的一些时间窗口的实际时间间隔可能小于规定的时间间隔参数。另外，可能存在某些时间窗口内数据行数量为0的情况，这种情况框架也会为该窗口调用一次`transform`方法。
 
-`SlidingSizeWindowAccessStrategy`的构造需要提供1个参数。该参数指定了一个数据处理窗口包含的数据行数。注意，最后一个窗口的数据行数可能少于规定的数据行数。
+
+
+`SlidingSizeWindowAccessStrategy`有多种构造方法，您可以向构造方法提供2个参数：
+
+1. 窗口大小，即一个数据处理窗口包含的数据行数。注意，最后一些窗口的数据行数可能少于规定的数据行数。
+2. 滑动步长，即下一窗口第一个数据行与当前窗口第一个数据行间的数据行数（不要求大于等于窗口大小，但是必须为正数）
+
+滑动步长参数不是必须的。当您不提供滑动步长参数时，滑动步长会被设定为窗口大小。
+
+策略的构造方法详见Javadoc。
 
 
 
