@@ -226,12 +226,11 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * this function reads version number and checks compatibility of TsFile.
    */
-  public String readVersionNumber() throws IOException {
-    ByteBuffer versionNumberBytes = ByteBuffer
-        .allocate(TSFileConfig.VERSION_NUMBER_V2.getBytes().length);
-    tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
-    versionNumberBytes.flip();
-    return new String(versionNumberBytes.array());
+  public byte readVersionNumber() throws IOException {
+    ByteBuffer versionNumberByte = ByteBuffer.allocate(Byte.BYTES);
+    tsFileInput.read(versionNumberByte, TSFileConfig.MAGIC_STRING.getBytes().length);
+    versionNumberByte.flip();
+    return versionNumberByte.get();
   }
 
   /**
@@ -728,7 +727,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeleteIntervalList());
+    return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
   }
 
   /**
@@ -911,8 +910,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !TSFileConfig.VERSION_NUMBER_V2
-        .equals(readVersionNumber())) {
+    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !(TSFileConfig.VERSION_NUMBER
+        == readVersionNumber())) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 

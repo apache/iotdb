@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 /**
  * used in query.
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 public class Chunk implements Accountable {
 
   private ChunkHeader chunkHeader;
+  private Statistics chunkStatistic;
   private ByteBuffer chunkData;
   /**
    * A list of deleted intervals.
@@ -38,10 +40,11 @@ public class Chunk implements Accountable {
 
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, List<TimeRange> deleteIntervalList) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, List<TimeRange> deleteIntervalList, Statistics chunkStatistic) {
     this.chunkHeader = header;
     this.chunkData = buffer;
     this.deleteIntervalList = deleteIntervalList;
+    this.chunkStatistic = chunkStatistic;
   }
 
   public ChunkHeader getHeader() {
@@ -77,5 +80,9 @@ public class Chunk implements Accountable {
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+
+  public Statistics getChunkStatistic() {
+    return chunkStatistic;
   }
 }

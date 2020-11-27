@@ -660,7 +660,7 @@ public class ReadWriteIOUtils {
    * string length's type is varInt
    */
   public static String readVarIntString(ByteBuffer buffer) {
-    int strLength = readInt(buffer);
+    int strLength = ReadWriteForEncodingUtils.readVarInt(buffer);
     if (strLength < 0) {
       return null;
     } else if (strLength == 0) {

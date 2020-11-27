@@ -223,4 +223,8 @@ public class ChunkHeader {
     this.dataSize += chunkHeader.getDataSize();
     this.numOfPages += chunkHeader.getNumOfPages();
   }
+
+  public byte getChunkType() {
+    return chunkType;
+  }
 }

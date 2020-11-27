@@ -19,25 +19,26 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class ChunkReader implements IChunkReader {
 
@@ -51,7 +52,7 @@ public class ChunkReader implements IChunkReader {
   protected Filter filter;
 
   private List<IPageReader> pageReaderList = new LinkedList<>();
-  
+
   private boolean isFromOldTsFile = false;
 
   /**
@@ -72,11 +73,11 @@ public class ChunkReader implements IChunkReader {
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
 
-
-    initAllPageReaders();
+    initAllPageReaders(chunk.getChunkStatistic());
   }
 
-  public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile) throws IOException {
+  public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile)
+      throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deleteIntervalList = chunk.getDeleteIntervalList();
@@ -84,14 +85,19 @@ public class ChunkReader implements IChunkReader {
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.isFromOldTsFile = isFromOldFile;
 
-    initAllPageReaders();
+    initAllPageReaders(chunk.getChunkStatistic());
   }
 
-  private void initAllPageReaders() throws IOException {
+  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      PageHeader pageHeader;
+      if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+      } else {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      }
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
         pageReaderList.add(constructPageReaderForNextPage(pageHeader));
@@ -100,7 +106,6 @@ public class ChunkReader implements IChunkReader {
       }
     }
   }
-
 
 
   /**
@@ -156,9 +161,9 @@ public class ChunkReader implements IChunkReader {
 
     chunkDataBuffer.get(compressedPageBody);
     Decoder valueDecoder = Decoder
-            .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    unCompressor.uncompress(compressedPageBody,0, compressedPageBodyLength,
+    unCompressor.uncompress(compressedPageBody, 0, compressedPageBodyLength,
         uncompressedPageData, 0);
     ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),

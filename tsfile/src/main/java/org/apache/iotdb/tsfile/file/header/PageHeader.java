@@ -62,6 +62,12 @@ public class PageHeader {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
+  public static PageHeader deserializeFrom(ByteBuffer buffer, Statistics chunkStatistic) {
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    return new PageHeader(uncompressedSize, compressedSize, chunkStatistic);
+  }
+
   public int getUncompressedSize() {
     return uncompressedSize;
   }

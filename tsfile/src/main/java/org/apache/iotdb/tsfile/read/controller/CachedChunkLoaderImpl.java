@@ -61,7 +61,8 @@ public class CachedChunkLoaderImpl implements IChunkLoader {
   @Override
   public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
     Chunk chunk = chunkCache.get(chunkMetaData);
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList(),
+        chunkMetaData.getStatistics());
   }
 
   @Override
