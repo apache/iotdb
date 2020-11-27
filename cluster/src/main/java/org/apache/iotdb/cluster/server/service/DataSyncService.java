@@ -93,6 +93,10 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           dataGroupMember.getLeader());
       SyncDataClient client =
           (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
+      if (client == null) {
+        logger.error("{}, can not get the client for node={}", name, dataGroupMember.getLeader());
+        throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      }
       PullSnapshotResp pullSnapshotResp = null;
       try {
         pullSnapshotResp = client.pullSnapshot(request);

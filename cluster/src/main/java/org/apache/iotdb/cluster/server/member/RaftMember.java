@@ -120,9 +120,18 @@ public abstract class RaftMember {
    * client.
    **/
   private static long waitLeaderTimeMs = 60 * 1000L;
-  // when opening a client failed (connection refused), wait for a while to avoid sending useless
-  // connection requests too frequently
-  private static long syncClientTimeoutMills = 1000;
+
+  /**
+   * when opening a client failed (connection refused), wait for a while to avoid sending useless
+   * connection requests too frequently
+   */
+  private static final long SYNC_CLIENT_TIMEOUT_MS = 1000;
+
+  /**
+   * the max retry times for get a available client
+   */
+  private static final int MAX_RETRY_TIMES_FOR_GET_CLIENT = 5;
+
   /**
    * when the leader of this node changes, the condition will be notified so other threads that wait
    * on this may be woken.
@@ -548,19 +557,7 @@ public abstract class RaftMember {
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
   public AsyncClient getAsyncHeartbeatClient(Node node) {
-    if (node == null) {
-      return null;
-    }
-
-    AsyncClient client = null;
-    try {
-      do {
-        client = asyncHeartbeatClientPool.getClient(node);
-      } while (!ClientUtils.isHeartbeatClientReady(client));
-    } catch (IOException e) {
-      logger.warn("{} cannot connect to node {} for heartbeat", name, node, e);
-    }
-    return client;
+    return getAsyncClient(node, asyncHeartbeatClientPool);
   }
 
   /**
@@ -589,24 +586,26 @@ public abstract class RaftMember {
   }
 
   private Client getSyncClient(SyncClientPool pool, Node node) {
-    if (node == null) {
+    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
       return null;
     }
 
-    Client client;
-    do {
+    Client client = null;
+    for (int i = 0; i < MAX_RETRY_TIMES_FOR_GET_CLIENT; i++) {
       client = pool.getClient(node);
       if (client == null) {
         // this is typically because the target server is not yet ready (connection refused), so we
         // wait for a while before reopening the transport to avoid sending requests too frequently
         try {
-          Thread.sleep(syncClientTimeoutMills);
+          Thread.sleep(SYNC_CLIENT_TIMEOUT_MS);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return null;
         }
+      } else {
+        return client;
       }
-    } while (client == null);
+    }
     return client;
   }
 
@@ -1204,6 +1203,10 @@ public abstract class RaftMember {
 
   private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
     Client client = getSyncClient(receiver);
+    if (client == null) {
+      logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
+      return StatusUtils.TIME_OUT;
+    }
     return forwardPlanSync(plan, receiver, header, client);
   }
 
@@ -1258,22 +1261,35 @@ public abstract class RaftMember {
   }
 
   private AsyncClient getAsyncClient(Node node, AsyncClientPool pool) {
-    if (ClusterConstant.EMPTY_NODE.equals(node)) {
+    if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
       return null;
     }
+
     AsyncClient client = null;
-    try {
-      do {
+    for (int i = 0; i < MAX_RETRY_TIMES_FOR_GET_CLIENT; i++) {
+      try {
         client = pool.getClient(node);
-      } while (!ClientUtils.isClientReady(client));
-    } catch (IOException e) {
-      logger.warn("{} cannot connect to node {}", name, node, e);
+        if (!ClientUtils.isClientReady(client)) {
+          Thread.sleep(SYNC_CLIENT_TIMEOUT_MS);
+        } else {
+          return client;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return null;
+      } catch (IOException e) {
+        logger.warn("{} cannot connect to node {}", name, node, e);
+      }
     }
     return client;
   }
 
   /**
-   * NOTICE: client.putBack() must be called after use.
+   * NOTICE: client.putBack() must be called after use. the caller needs to check to see if the
+   * return value is null
+   *
+   * @param node the node to connect
+   * @return the client if node is available, otherwise null
    */
   public Client getSyncClient(Node node) {
     return getSyncClient(syncClientPool, node);

@@ -233,6 +233,9 @@ public class CatchUpTask implements Runnable {
       matched = SyncClientAdaptor.matchTerm(client, node, logIndex, logTerm, header);
     } else {
       Client client = raftMember.getSyncClient(node);
+      if (client == null) {
+        return false;
+      }
       try {
         matched = client.matchTerm(logIndex, logTerm, raftMember.getHeader());
       } catch (TException e) {
