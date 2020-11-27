@@ -363,11 +363,11 @@ public class InputLayer {
       }
 
       if (slidingStep <= rowIndexes.size()) {
-        maxIndexInLastWindow = rowIndexes.get(slidingStep - 1) - 1;
+        maxIndexInLastWindow = rowIndexes.get(slidingStep - 1);
         return;
       }
 
-      int currentStep = rowIndexes.size();
+      int currentStep = rowIndexes.size() - 1;
 
       for (int i = rowIndexes.get(rowIndexes.size() - 1) + 1; i < rowRecordList.size(); ++i) {
         if (hasNotNullSelectedFields(rowRecordList.getRowRecord(i), columnIndexes)) {

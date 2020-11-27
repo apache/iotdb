@@ -98,12 +98,14 @@ public class IoTDBUDFWindowQueryIT {
         Statement statement = connection.createStatement()) {
       statement
           .execute("create function counter as \"org.apache.iotdb.db.query.udf.example.Counter\"");
-      statement
-          .execute(
-              "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
-      statement
-          .execute(
-              "create function time_window_tester as \"org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester\"");
+      statement.execute(
+          "create function accumulator as \"org.apache.iotdb.db.query.udf.example.Accumulator\"");
+      statement.execute(
+          "create function time_window_tester as \"org.apache.iotdb.db.query.udf.example.SlidingTimeWindowConstructionTester\"");
+      statement.execute(
+          "create function size_window_0 as \"org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester0\"");
+      statement.execute(
+          "create function size_window_1 as \"org.apache.iotdb.db.query.udf.example.SlidingSizeWindowConstructorTester1\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -383,6 +385,127 @@ public class IoTDBUDFWindowQueryIT {
       }
     } catch (SQLException throwable) {
       if (timeInterval > 0) {
+        fail(throwable.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep1() {
+    testSlidingSizeWindowWithSlidingStep(1, 1, 0);
+    testSlidingSizeWindowWithSlidingStep(1, 1, 1);
+    testSlidingSizeWindowWithSlidingStep(1, 1, 10);
+    testSlidingSizeWindowWithSlidingStep(1, 1, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(1, 1, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep2() {
+    testSlidingSizeWindowWithSlidingStep(100, 100, 0);
+    testSlidingSizeWindowWithSlidingStep(100, 100, 100);
+    testSlidingSizeWindowWithSlidingStep(100, 100, 10000);
+    testSlidingSizeWindowWithSlidingStep(100, 100, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(100, 100, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep3() {
+    testSlidingSizeWindowWithSlidingStep(111, 123, 0);
+    testSlidingSizeWindowWithSlidingStep(111, 123, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(111, 123, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep4() {
+    testSlidingSizeWindowWithSlidingStep(123, 111, 0);
+    testSlidingSizeWindowWithSlidingStep(123, 111, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(123, 111, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep5() {
+    testSlidingSizeWindowWithSlidingStep(100, 10000, 0);
+    testSlidingSizeWindowWithSlidingStep(100, 10000, 100);
+    testSlidingSizeWindowWithSlidingStep(100, 10000, 10000);
+    testSlidingSizeWindowWithSlidingStep(100, 10000, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(100, 10000, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep6() {
+    testSlidingSizeWindowWithSlidingStep(10000, 1000, 0);
+    testSlidingSizeWindowWithSlidingStep(10000, 1000, 1000);
+    testSlidingSizeWindowWithSlidingStep(10000, 1000, 10000);
+    testSlidingSizeWindowWithSlidingStep(10000, 1000, (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(10000, 1000, (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep7() {
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333, 0);
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333,
+        (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES), 4333,
+        (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep8() {
+    testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES), 0);
+    testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES),
+        (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep(10000, (int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES));
+  }
+
+  @Test
+  public void testSlidingSizeWindowWithSlidingStep9() {
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES), 0);
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES), (int) (0.434 * ITERATION_TIMES));
+    testSlidingSizeWindowWithSlidingStep((int) (1.5 * ITERATION_TIMES),
+        (int) (1.5 * ITERATION_TIMES), (int) (1.5 * ITERATION_TIMES));
+  }
+
+  public void testSlidingSizeWindowWithSlidingStep(int windowSize, int slidingStep,
+      int consumptionPoint) {
+    String sql = String.format(
+        "select size_window_0(s1, \"%s\"=\"%s\", \"%s\"=\"%s\"), size_window_1(s1, \"%s\"=\"%s\") from root.vehicle.d1",
+        "windowSize", windowSize, "slidingStep", slidingStep, "consumptionPoint", consumptionPoint);
+
+    try (Statement statement = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sql);
+      assertEquals(3, resultSet.getMetaData().getColumnCount());
+
+      int count = 0;
+      while (resultSet.next()) {
+        if (ITERATION_TIMES < windowSize) {
+          String actual = resultSet.getString(2);
+          if (actual != null) {
+            assertEquals(ITERATION_TIMES - count * slidingStep, Integer.parseInt(actual));
+            ++count;
+          }
+        } else if (count * slidingStep + windowSize < ITERATION_TIMES) {
+          String actual = resultSet.getString(2);
+          if (actual != null) {
+            assertEquals(windowSize, Integer.parseInt(resultSet.getString(2)));
+            ++count;
+          }
+        } else {
+          String actual = resultSet.getString(2);
+          if (actual != null) {
+            assertEquals(ITERATION_TIMES - count * slidingStep,
+                Integer.parseInt(resultSet.getString(2)));
+            ++count;
+          }
+        }
+      }
+      assertEquals((int) Math.ceil(ITERATION_TIMES / (double) slidingStep), count);
+    } catch (SQLException throwable) {
+      if (windowSize > 0) {
         fail(throwable.getMessage());
       }
     }
