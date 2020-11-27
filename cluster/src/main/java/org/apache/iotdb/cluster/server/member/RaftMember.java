@@ -684,7 +684,7 @@ public abstract class RaftMember {
    * follower. If some of the required logs are removed, also send the snapshot.
    * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
    */
-  public void catchUp(Node follower) {
+  public void catchUp(Node follower, long lastLogIdx) {
     // for one follower, there is at most one ongoing catch-up, so the same data will not be sent
     // twice to the node
     synchronized (catchUpService) {
@@ -702,7 +702,7 @@ public abstract class RaftMember {
     logger.info("{}: Start to make {} catch up", name, follower);
     if (!catchUpService.isShutdown()) {
       Future<?> future = catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower),
-          this));
+          this, lastLogIdx));
       catchUpService.submit(() -> {
         try {
           future.get();
@@ -1628,7 +1628,7 @@ public abstract class RaftMember {
    */
   @SuppressWarnings("java:S2445") // safe synchronized
   public boolean waitForPrevLog(Peer peer, Log log) {
-    final int maxLogDiff = 10;
+    final int maxLogDiff = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     // if the peer falls behind too much, wait until it catches up, otherwise there may be too
@@ -1729,25 +1729,29 @@ public abstract class RaftMember {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition();
-    while (logManager.getLastLogIndex() < prevLogIndex &&
-        alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
-      synchronized (logUpdateCondition) {
+    synchronized (logUpdateCondition) {
+      while (logManager.getLastLogIndex() < prevLogIndex &&
+          alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
         try {
           // each time new logs are appended, this will be notified
-          logUpdateCondition.wait();
+          long lastLogIndex = logManager.getLastLogIndex();
+          if (lastLogIndex >= prevLogIndex) {
+            return true;
+          }
+          logUpdateCondition.wait(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           return false;
         }
+        alreadyWait = System.currentTimeMillis() - waitStart;
       }
-      alreadyWait = System.currentTimeMillis() - waitStart;
     }
+
     return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
   }
 
   private long checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
-    logger.debug("{}, prevLogIndex={}, lastLogIndex={}", name, prevLogIndex, lastLogIndex);
     long startTime = Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs

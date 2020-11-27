@@ -295,7 +295,10 @@ public abstract class RaftLogManager {
     }
 
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
-      return getUnCommittedEntryManager().maybeTerm(index);
+      long term = getUnCommittedEntryManager().maybeTerm(index);
+      if (term != -1) {
+        return term;
+      }
     }
 
     // search in memory

@@ -105,7 +105,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
               lastLogIdx, lastLogTerm,
               localLastLogIdx, localLastLogTerm,
               peer.getMatchIndex());
-          localMember.catchUp(follower);
+          localMember.catchUp(follower, lastLogIdx);
         }
       } else {
         // the follower's lastLogIndex is changed, which means the follower is not down yet, we
