@@ -20,10 +20,15 @@ package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -33,6 +38,7 @@ import org.slf4j.LoggerFactory;
 public class FlushManager implements FlushManagerMBean, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
@@ -93,6 +99,14 @@ public class FlushManager implements FlushManagerMBean, IService {
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
+      // update stat monitor cache to system during each flush()
+      if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
+        try {
+          StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
+        } catch (StorageEngineException | MetadataException e) {
+          logger.error("Inserting monitor series data error.", e);
+        }
+      }
     }
   }
 

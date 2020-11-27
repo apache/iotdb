@@ -67,6 +67,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -898,8 +900,14 @@ public class PlanExecutor implements IPlanExecutor {
               INSERT_MEASUREMENTS_FAILED_MESSAGE + insertRowPlan.getFailedMeasurements());
         }
       }
-    } catch (StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+    } catch (Exception e) {
+      // update failed statistics
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
+      }
+      if (e instanceof StorageEngineException || e instanceof MetadataException) {
+        throw new QueryProcessException((IoTDBException) e);
+      }
     }
   }
 
@@ -932,8 +940,14 @@ public class PlanExecutor implements IPlanExecutor {
               INSERT_MEASUREMENTS_FAILED_MESSAGE + insertTabletPlan.getFailedMeasurements());
         }
       }
-    } catch (StorageEngineException | MetadataException e) {
-      throw new QueryProcessException(e);
+    } catch (Exception e) {
+      // update failed statistics
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
+        StatMonitor.getInstance().updateFailedStatValue();
+      }
+      if (e instanceof StorageEngineException || e instanceof MetadataException) {
+        throw new QueryProcessException((IoTDBException) e);
+      }
     }
   }
 

@@ -179,6 +179,7 @@ public class TsFileProcessor {
     }
 
     workMemTable.insert(insertRowPlan);
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
@@ -239,6 +240,7 @@ public class TsFileProcessor {
     tsFileResource
         .updateStartTime(insertTabletPlan.getDeviceId().getFullPath(),
             insertTabletPlan.getTimes()[start]);
+
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
