@@ -75,7 +75,7 @@ public class IoTDBConfig {
    */
   private int httpPort = 8282;
 
-  private boolean enableHTTPService = false;
+  private boolean enableHTTPService = true;
 
   /**
    * http binding address.
