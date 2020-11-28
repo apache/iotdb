@@ -783,7 +783,7 @@ public class IoTDBConfig {
   private boolean debugState = false;
 
   // enable new indexer
-  private boolean enableFileTimeIndexer = false;
+  private boolean enableFileTimeIndexer = true;
   private int fileTimeIndexerType = 0;
 
   public IoTDBConfig() {
@@ -2103,7 +2103,7 @@ public class IoTDBConfig {
   }
 
   public void setEnableFileTimeIndexer(boolean enableFileTimeIndexer) {
-    this.enableFileTimeIndexer = enableFileTimeIndexer;
+    this.enableFileTimeIndexer = true;
   }
 
   public int getFileTimeIndexerType() {

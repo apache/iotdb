@@ -61,7 +61,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -821,9 +821,9 @@ public class TsFileProcessor {
       try {
         FileTimeIndexer fileTimeIndexer = null;
         if (sequence) {
-          fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(storageGroupName);
+          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(storageGroupName);
         } else {
-          fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(storageGroupName);
         }
         fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResource));
       } catch (IllegalPathException e) {

@@ -32,12 +32,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Manage all indexers
  */
-public class FileIndexerManager {
+public class TsFileTimeIndexManager {
   private String indexerFilePath;
   private Map<PartialPath, FileTimeIndexer> seqIndexers;
   private Map<PartialPath, FileTimeIndexer> unseqIndexers;
   private ReentrantReadWriteLock lock;
-  private static final Logger logger = LoggerFactory.getLogger(FileIndexerManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileTimeIndexManager.class);
 
   private static class IndexerManagerHolder {
 
@@ -45,14 +45,14 @@ public class FileIndexerManager {
       // allowed to do nothing
     }
 
-    private static final FileIndexerManager INSTANCE = new FileIndexerManager();
+    private static final TsFileTimeIndexManager INSTANCE = new TsFileTimeIndexManager();
   }
 
-  public static FileIndexerManager getInstance() {
+  public static TsFileTimeIndexManager getInstance() {
     return IndexerManagerHolder.INSTANCE;
   }
 
-  private FileIndexerManager() {
+  private TsFileTimeIndexManager() {
     indexerFilePath = IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
       + File.pathSeparator + IndexConstants.INDEXER_FILE;
     seqIndexers = new ConcurrentHashMap<>();

@@ -83,9 +83,8 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.TimeIndexEntry;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -390,8 +389,8 @@ public class StorageGroupProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // init TimeIndexer
       try {
-        seqFileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(storageGroupName);
-        unseqFileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(storageGroupName);
+        seqFileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(storageGroupName);
+        unseqFileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(storageGroupName);
         if (seqFileTimeIndexer != null) {
           seqFileTimeIndexer.init();
           unseqFileTimeIndexer.init();
@@ -1901,9 +1900,9 @@ public class StorageGroupProcessor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         FileTimeIndexer fileTimeIndexer = null;
         if (newTsFileResource.isSeq()) {
-          fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
         } else {
-          fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
         }
         fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(newTsFileResource));
       }
@@ -1971,9 +1970,9 @@ public class StorageGroupProcessor {
         try {
           FileTimeIndexer fileTimeIndexer = null;
           if (newTsFileResource.isSeq()) {
-            fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
+            fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(newTsFileResource.getStorageGroupName());
           } else {
-            fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
+            fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(newTsFileResource.getStorageGroupName());
           }
           fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(newTsFileResource));
         } catch (IllegalPathException e) {
@@ -2387,9 +2386,9 @@ public class StorageGroupProcessor {
         try {
           FileTimeIndexer fileTimeIndexer = null;
           if (tsFileResourceToBeDeleted.isSeq()) {
-            fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           } else {
-            fileTimeIndexer = FileIndexerManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
+            fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           }
           if (fileTimeIndexer != null) {
             fileTimeIndexer.deleteIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResourceToBeDeleted));

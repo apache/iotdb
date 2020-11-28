@@ -31,12 +31,12 @@ public class IndexConstants {
    * the sub type of Indexer, we may has different implement of Indexer
    */
   public enum IndexSubType {
-
     /**
      * sub type of device Indexer
      */
-    // load all file
-    LOADALL,
+    // load all file into memory
+    IN_MEMORY,
+
     // use rocksdb to store the index
     ROCKSDB
   }

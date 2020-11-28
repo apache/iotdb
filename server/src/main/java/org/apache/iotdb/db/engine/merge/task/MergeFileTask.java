@@ -23,7 +23,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,17 +41,14 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +202,7 @@ class MergeFileTask {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         // add new device index
         // may Indexer need delete old index background, or just overwrite old index
-        FileTimeIndexer fileTimeIndexer = FileIndexerManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
+        FileTimeIndexer fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
         fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(seqFile));
       }
     } catch (Exception e) {
