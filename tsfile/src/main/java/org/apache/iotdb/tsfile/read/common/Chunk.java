@@ -65,7 +65,8 @@ public class Chunk implements Accountable {
     ByteBuffer newChunkData = ByteBuffer
         .allocate(chunkData.array().length + chunk.chunkData.array().length);
     newChunkData.put(chunkData.array());
-    newChunkData.put(chunk.chunkData.array());
+    newChunkData
+        .put(chunk.chunkData.array(), chunkData.array().length, chunk.chunkData.array().length);
     chunkData = newChunkData;
   }
 
