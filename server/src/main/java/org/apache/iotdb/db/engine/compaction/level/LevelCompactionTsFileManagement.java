@@ -92,7 +92,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInList(long timePartitionId, Collection<TsFileResource> mergeTsFiles) {
+  private void deleteLevelFilesInList(long timePartitionId,
+      Collection<TsFileResource> mergeTsFiles) {
     logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
     for (int i = 0; i < seqLevelNum - 1; i++) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
