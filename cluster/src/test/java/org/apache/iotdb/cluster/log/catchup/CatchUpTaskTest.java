@@ -242,7 +242,7 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setMatchIndex(0);
-    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 0);
+    CatchUpTask task = new CatchUpTask(receiver, peer, sender, 5);
     task.run();
 
     assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
@@ -273,7 +273,7 @@ public class CatchUpTaskTest {
       sender.setCharacter(NodeCharacter.LEADER);
       Peer peer = new Peer(10);
       peer.setMatchIndex(0);
-      CatchUpTask task = new CatchUpTask(receiver, peer, sender, 0);
+      CatchUpTask task = new CatchUpTask(receiver, peer, sender, 5);
       task.run();
 
       assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
