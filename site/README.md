@@ -32,11 +32,11 @@ See https://iotdb.apache.org/
 ## Build Setup
 
 
-run `mvn package -DskipTests` for doing the following steps automatically:
+run `mvn package -DskipTests  -P compile-site` for doing the following steps automatically:
 
 - get docs from the master branch and all lagecy docs remotely.
 - download node.js and npm;
-- run `npm install` and `npm run build`
+- run `npm install` and `npm run build  -P compile-site`
 
 
 ## How to Debug
@@ -58,11 +58,11 @@ All changes in the target folder will be ignored by Git.
 
 ## Deploy Manually
 
-run `mvn package scm-publish:publish-scm`.
+run `mvn package scm-publish:publish-scm -P compile-site`.
 
 Apache ID and passwored is needed.
 
-Or run `mvn package scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}`
+Or run `mvn package scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}  -P compile-site`
 
 ## FAQ
 

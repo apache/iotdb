@@ -282,7 +282,7 @@ public class IoTDBDaemonIT {
       boolean hasResultSet = statement.execute("select s2 from root.vehicle.*");
       Assert.assertTrue(hasResultSet);
 
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0 + IoTDBConstant.PATH_SEPARATOR + s2);

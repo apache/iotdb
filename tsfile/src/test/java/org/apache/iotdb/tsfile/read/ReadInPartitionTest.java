@@ -81,8 +81,8 @@ public class ReadInPartitionTest {
       startEndOffsets[0] = chunkMetaData.getOffsetOfChunkHeader();
       startEndOffsets[1] = chunkMetaData.getOffsetOfChunkHeader()
           + chunkMetaData.getMeasurementUid().getBytes().length
-          + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();;
-      d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
+          + Long.BYTES + Short.BYTES + chunkMetaData.getStatistics().getSerializedSize();
+        d1chunkGroupMetaDataOffsetList.add(startEndOffsets);
     }
     
     List<ChunkMetadata> d2s1List = reader.getChunkMetadataList(new Path("d2", "s1"));

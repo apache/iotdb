@@ -25,16 +25,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
@@ -46,9 +39,13 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cli.AbstractCli;
 import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.thrift.TException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 /**
  * Export CSV file.
@@ -75,20 +72,16 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
-  private static String TIMESTAMP_PRECISION = "ms";
-
-  private static List<Integer> typeList = new ArrayList<>();
-
   /**
    * main function of export csv tool.
    */
-  public static void main(String[] args) throws IOException, SQLException {
+  public static void main(String[] args) throws IOException {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
-    hf.setOptionComparator(null); // avoid reordering
-    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     CommandLine commandLine;
     CommandLineParser parser = new DefaultParser();
+    hf.setOptionComparator(null); // avoid reordering
+    hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
       System.out.println("Too few params input, please check the following hint.");
@@ -116,13 +109,11 @@ public class ExportCsv extends AbstractCsvTool {
       if (!checkTimeFormat()) {
         return;
       }
-      Class.forName(Config.JDBC_DRIVER_NAME);
 
       String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
       String sql;
-
-      connection = (IoTDBConnection) DriverManager
-          .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password);
+      session = new Session(host, Integer.parseInt(port), username, password);
+      session.open(false);
       setTimeZone();
 
       if (sqlFile == null) {
@@ -134,21 +125,21 @@ public class ExportCsv extends AbstractCsvTool {
       } else {
         dumpFromSqlFile(sqlFile);
       }
-    } catch (ClassNotFoundException e) {
-      System.out.println("Failed to export data because cannot find IoTDB JDBC Driver, "
-          + "please check whether you have imported driver or not: " + e.getMessage());
-    } catch (TException e) {
-      System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
-    } catch (SQLException e) {
-      System.out.println("Encounter an error when exporting data, error is: " + e.getMessage());
     } catch (IOException e) {
       System.out.println("Failed to operate on file, because " + e.getMessage());
     } catch (ArgsErrorException e) {
       System.out.println("Invalid args: " + e.getMessage());
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      System.out.println("Connect failed because " + e.getMessage());
     } finally {
       reader.close();
-      if (connection != null) {
-        connection.close();
+      if (session != null) {
+        try {
+          session.close();
+        } catch (IoTDBConnectionException e) {
+          System.out
+              .println("Encounter an error when closing session, error is: " + e.getMessage());
+        }
       }
     }
   }
@@ -176,26 +167,7 @@ public class ExportCsv extends AbstractCsvTool {
    * @return object Options
    */
   private static Options createOptions() {
-    Options options = new Options();
-
-    Option opHost = Option.builder(HOST_ARGS).longOpt(HOST_NAME).required().argName(HOST_NAME)
-        .hasArg()
-        .desc("Host Name (required)").build();
-    options.addOption(opHost);
-
-    Option opPort = Option.builder(PORT_ARGS).longOpt(PORT_NAME).required().argName(PORT_NAME)
-        .hasArg()
-        .desc("Port (required)").build();
-    options.addOption(opPort);
-
-    Option opUsername = Option.builder(USERNAME_ARGS).longOpt(USERNAME_NAME).required()
-        .argName(USERNAME_NAME)
-        .hasArg().desc("Username (required)").build();
-    options.addOption(opUsername);
-
-    Option opPassword = Option.builder(PASSWORD_ARGS).longOpt(PASSWORD_NAME).optionalArg(true)
-        .argName(PASSWORD_NAME).hasArg().desc("Password (optional)").build();
-    options.addOption(opPassword);
+    Options options = createNewOptions();
 
     Option opTargetFile = Option.builder(TARGET_DIR_ARGS).required().argName(TARGET_DIR_NAME)
         .hasArg()
@@ -234,12 +206,7 @@ public class ExportCsv extends AbstractCsvTool {
       String sql;
       int index = 0;
       while ((sql = reader.readLine()) != null) {
-        try {
-          dumpResult(sql, index);
-        } catch (SQLException e) {
-          System.out
-              .println("Cannot dump data for statement " + sql + ", because : " + e.getMessage());
-        }
+        dumpResult(sql, index);
         index++;
       }
     }
@@ -248,12 +215,10 @@ public class ExportCsv extends AbstractCsvTool {
   /**
    * Dump files from database to CSV file.
    *
-   * @param sql export the result of executing the sql
+   * @param sql   export the result of executing the sql
    * @param index use to create dump file name
-   * @throws SQLException if SQL is not valid
    */
-  private static void dumpResult(String sql, int index)
-      throws SQLException {
+  private static void dumpResult(String sql, int index) {
 
     final String path = targetDirectory + targetFile + index + ".csv";
     File tf = new File(path);
@@ -263,82 +228,73 @@ public class ExportCsv extends AbstractCsvTool {
         return;
       }
     } catch (IOException e) {
-      System.out.println("Cannot create dump file " + path + "because: " + e.getMessage());
+      System.out.println("Cannot create dump file " + path + " " + "because: " + e.getMessage());
       return;
     }
     System.out.println("Start to export data from sql statement: " + sql);
-    try (Statement statement = connection.createStatement();
-        ResultSet rs = statement.executeQuery(sql);
-        BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
-      ResultSetMetaData metadata = rs.getMetaData();
+    try (BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
+      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
       long startTime = System.currentTimeMillis();
-
-      int count = metadata.getColumnCount();
       // write data in csv file
-      writeMetadata(bw, count, metadata);
+      writeMetadata(bw, sessionDataSet.getColumnNames());
 
-      int line = writeResultSet(rs, bw, count);
+      int line = writeResultSet(sessionDataSet, bw);
       System.out
-          .println(String.format("Statement [%s] has dumped to file %s successfully! It costs "
-                  + "%dms to export %d lines.", sql, path, System.currentTimeMillis() - startTime,
-              line));
-    } catch (IOException e) {
+          .printf("Statement [%s] has dumped to file %s successfully! It costs "
+                  + "%dms to export %d lines.%n", sql, path, System.currentTimeMillis() - startTime,
+              line);
+    } catch (IOException | StatementExecutionException | IoTDBConnectionException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
   }
 
-  private static void writeMetadata(BufferedWriter bw, int count, ResultSetMetaData metadata)
-      throws SQLException, IOException {
-    for (int i = 1; i <= count; i++) {
-      if (i < count) {
-        bw.write(metadata.getColumnLabel(i) + ",");
-      } else {
-        bw.write(metadata.getColumnLabel(i) + "\n");
-      }
-      typeList.add(metadata.getColumnType(i));
+  private static void writeMetadata(BufferedWriter bw, List<String> columnNames)
+      throws IOException {
+    if (!columnNames.get(0).equals("Time")) {
+      bw.write("Time" + ",");
     }
+    for (int i = 0; i < columnNames.size() - 1; i++) {
+      bw.write(columnNames.get(i) + ",");
+    }
+    bw.write(columnNames.get(columnNames.size() - 1) + "\n");
   }
 
-  private static int writeResultSet(ResultSet rs, BufferedWriter bw, int count)
-      throws SQLException, IOException {
+  private static int writeResultSet(SessionDataSet rs, BufferedWriter bw)
+      throws IOException, StatementExecutionException, IoTDBConnectionException {
     int line = 0;
     long timestamp = System.currentTimeMillis();
-    while (rs.next()) {
-      if (rs.getString(1) == null ||
-          "null".equalsIgnoreCase(rs.getString(1))) {
-        bw.write(",");
-      } else {
-        writeTime(rs, bw);
-        writeValue(rs, count, bw);
-      }
+    while (rs.hasNext()) {
+      RowRecord rowRecord = rs.next();
+      List<Field> fields = rowRecord.getFields();
+      writeTime(rowRecord.getTimestamp(), bw);
+      writeValue(fields, bw);
       line++;
       if (line % EXPORT_PER_LINE_COUNT == 0) {
         long tmp = System.currentTimeMillis();
-        System.out.println(
-            String.format("%d lines have been exported, it takes %dms", line, (tmp - timestamp)));
+        System.out.printf("%d lines have been exported, it takes %dms%n", line, (tmp - timestamp));
         timestamp = tmp;
       }
     }
     return line;
   }
 
-  private static void writeTime(ResultSet rs, BufferedWriter bw) throws SQLException, IOException {
+  private static void writeTime(Long time, BufferedWriter bw) throws IOException {
     ZonedDateTime dateTime;
+    String timestampPrecision = "ms";
     switch (timeFormat) {
       case "default":
-        long timestamp = rs.getLong(1);
         String str = AbstractCli
-            .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId,
-                TIMESTAMP_PRECISION);
+            .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId,
+                timestampPrecision);
         bw.write(str + ",");
         break;
       case "timestamp":
       case "long":
       case "nubmer":
-        bw.write(rs.getLong(1) + ",");
+        bw.write(time + ",");
         break;
       default:
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(rs.getLong(1)),
+        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time),
             zoneId);
         bw.write(dateTime.format(DateTimeFormatter.ofPattern(timeFormat)) + ",");
         break;
@@ -346,29 +302,49 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static void writeValue(ResultSet rs, int count, BufferedWriter bw)
-      throws SQLException, IOException {
-    for (int j = 2; j <= count; j++) {
-      if (j < count) {
-        if ("null".equals(rs.getString(j))) {
-          bw.write(",");
-        } else {
-          if(typeList.get(j-1) == Types.VARCHAR) {
-            bw.write("\'" + rs.getString(j) + "\'"+ ",");
+  private static void writeValue(List<Field> fields, BufferedWriter bw) throws IOException {
+    for (int j = 0; j < fields.size() - 1; j++) {
+      String value = fields.get(j).getStringValue();
+      if ("null".equalsIgnoreCase(value)) {
+        bw.write(",");
+      } else {
+        if (fields.get(j).getDataType() == TSDataType.TEXT) {
+          int location = value.indexOf("\"");
+          if (location > -1) {
+            if (location == 0 || value.charAt(location - 1) != '\\') {
+              bw.write("\"" + value.replace("\"", "\\\"") + "\",");
+            } else {
+              bw.write("\"" + value + "\",");
+            }
+          } else if (value.contains(",")) {
+            bw.write("\"" + value + "\",");
           } else {
-            bw.write(rs.getString(j) + ",");
+            bw.write(value + ",");
           }
+        } else {
+          bw.write(value + ",");
+        }
+      }
+    }
+    String lastValue = fields.get(fields.size() - 1).getStringValue();
+    if ("null".equalsIgnoreCase(lastValue)) {
+      bw.write("\n");
+    } else {
+      if (fields.get(fields.size() - 1).getDataType() == TSDataType.TEXT) {
+        int location = lastValue.indexOf("\"");
+        if (location > -1) {
+          if (location == 0 || lastValue.charAt(location - 1) != '\\') {
+            bw.write("\"" + lastValue.replace("\"", "\\\"") + "\"\n");
+          } else {
+            bw.write("\"" + lastValue + "\"\n");
+          }
+        } else if (lastValue.contains(",")) {
+          bw.write("\"" + lastValue + "\"\n");
+        } else {
+          bw.write(lastValue + "\n");
         }
       } else {
-        if ("null".equals(rs.getString(j))) {
-          bw.write("\n");
-        } else {
-          if(typeList.get(j-1) == Types.VARCHAR) {
-            bw.write("\'" + rs.getString(j) + "\'"+ "\n");
-          } else {
-            bw.write(rs.getString(j) + "\n");
-          }
-        }
+        bw.write(lastValue + "\n");
       }
     }
   }

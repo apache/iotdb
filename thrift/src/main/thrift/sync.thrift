@@ -17,6 +17,7 @@
  * under the License.
  */
 namespace java org.apache.iotdb.service.sync.thrift
+namespace py iotdb.thrift.sync
 
 struct SyncStatus{
   1:required i32 code
@@ -39,12 +40,12 @@ struct ConfirmInfo{
 }
 
 service SyncService{
-	SyncStatus check(ConfirmInfo info)
-	SyncStatus startSync();
-	SyncStatus init(1:string storageGroupName)
-	SyncStatus syncDeletedFileName(1:string fileName)
-	SyncStatus initSyncData(1:string filename)
-	SyncStatus syncData(1:binary buff)
-	SyncStatus checkDataMD5(1:string md5)
-	SyncStatus endSync()
+  SyncStatus check(ConfirmInfo info)
+  SyncStatus startSync();
+  SyncStatus init(1:string storageGroupName)
+  SyncStatus syncDeletedFileName(1:string fileName)
+  SyncStatus initSyncData(1:string filename)
+  SyncStatus syncData(1:binary buff)
+  SyncStatus checkDataDigest(1:string md5)
+  SyncStatus endSync()
 }

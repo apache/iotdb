@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Map;
+import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,9 +57,29 @@ public class QueryOperator extends SFWOperator {
 
   private boolean ascending = true;
 
+  private Map<String, Object> props;
+
+  private IndexType indexType;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  public Map<String, Object> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, Object> props) {
+    this.props = props;
+  }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
   }
 
   public boolean isFill() {

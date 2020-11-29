@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -68,6 +67,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.MonitorConstants;
+import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -185,9 +187,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+      futures.add(recoveryThreadPool.submit(() -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
@@ -204,7 +206,7 @@ public class StorageEngine implements IService {
         return null;
       }));
     }
-    for (Future future : futures) {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (ExecutionException e) {
@@ -292,7 +294,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) throws ShutdownException {
+  public void shutdown(long milliseconds) throws ShutdownException {
     try {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -321,8 +323,7 @@ public class StorageEngine implements IService {
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupPath);
+      StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
@@ -373,6 +374,9 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
+      if (config.isEnableStatMonitor()) {
+        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -380,8 +384,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -395,6 +397,19 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
+    if (config.isEnableStatMonitor()) {
+      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
+    }
+  }
+
+  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    int successPointsNum =
+        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    // update to storage group statistics
+    processor.updateMonitorSeriesValue(successPointsNum);
+    // update to global statistics
+    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /**
