@@ -106,6 +106,7 @@ public class TElasticFramedTransport extends TFastFramedTransport {
       readCompressBuffer = resizeCompressBuf(uncompressedLength, readCompressBuffer);
       Snappy.uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getByteBuffer().array(), 0);
       readCompressBuffer.getByteBuffer().limit(uncompressedLength);
+      readCompressBuffer.getByteBuffer().position(0);
 
       if (uncompressedLength < maxLength) {
         readBuffer.shrinkSizeIfNecessary(maxLength);
