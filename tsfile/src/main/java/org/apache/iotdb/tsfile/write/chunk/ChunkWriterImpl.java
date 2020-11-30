@@ -213,9 +213,9 @@ public class ChunkWriterImpl implements IChunkWriter {
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         byte[] b = pageBuffer.toByteArray();
         pageBuffer.reset();
-        pageBuffer.write(b, 0, sizeWithoutStatistic);
+        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
         firstPageStatistics.serialize(pageBuffer);
-        pageBuffer.write(b, sizeWithoutStatistic, b.length - sizeWithoutStatistic);
+        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
         firstPageStatistics = null;
       }
 

@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
-  private static final short TYPE_RAW_STRING = -1;
+  private static final byte TYPE_RAW_STRING = -1;
 
   private long time;
   private Object[] values;
@@ -357,7 +357,7 @@ public class InsertRowPlan extends InsertPlan {
     for (int i = 0; i < measurements.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
-      short typeNum = ReadWriteIOUtils.readShort(buffer);
+      byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
       if (typeNum == TYPE_RAW_STRING) {
         values[i] = ReadWriteIOUtils.readString(buffer);
         continue;

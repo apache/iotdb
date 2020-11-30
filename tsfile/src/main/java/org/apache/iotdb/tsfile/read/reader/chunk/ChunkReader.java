@@ -45,7 +45,7 @@ public class ChunkReader implements IChunkReader {
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
   private IUnCompressor unCompressor;
-  private Decoder timeDecoder = Decoder.getDecoderByType(
+  private final Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
       TSDataType.INT64);
 

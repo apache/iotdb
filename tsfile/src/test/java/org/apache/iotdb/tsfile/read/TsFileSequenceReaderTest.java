@@ -75,7 +75,8 @@ public class TsFileSequenceReaderTest {
         case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           ChunkHeader header = reader.readChunkHeader(marker);
           for (int j = 0; j < header.getNumOfPages(); j++) {
-            PageHeader pageHeader = reader.readPageHeader(header.getDataType());
+            PageHeader pageHeader = reader.readPageHeader(header.getDataType(),
+                header.getChunkType() == MetaMarker.CHUNK_HEADER);
             reader.readPage(pageHeader, header.getCompressionType());
           }
           break;

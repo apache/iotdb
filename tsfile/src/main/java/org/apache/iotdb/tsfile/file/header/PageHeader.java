@@ -47,11 +47,14 @@ public class PageHeader {
     return 2 * (Integer.BYTES + 1); // uncompressedSize, compressedSize
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
-      throws IOException {
+  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
+      boolean hasStatistic) throws IOException {
     int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
     int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
-    Statistics statistics = Statistics.deserialize(inputStream, dataType);
+    Statistics statistics = null;
+    if (hasStatistic) {
+      statistics = Statistics.deserialize(inputStream, dataType);
+    }
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
@@ -118,5 +121,15 @@ public class PageHeader {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  /**
+   * max page header size without statistics
+   */
+  public int getSerializedPageSize() {
+    return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize)
+        + ReadWriteForEncodingUtils.uVarIntSize(compressedSize)
+        + (statistics == null ? 0 : statistics.getSerializedSize()) // page header
+        + compressedSize; // page data
   }
 }

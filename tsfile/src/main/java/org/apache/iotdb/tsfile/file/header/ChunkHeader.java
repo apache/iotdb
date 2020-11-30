@@ -81,9 +81,10 @@ public class ChunkHeader {
    */
   public static int getSerializedSize(String measurementID, int dataSize) {
     int measurementIdLength = measurementID.getBytes(TSFileConfig.STRING_CHARSET).length;
-    return ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
+    return Byte.BYTES // chunkType
+        + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
         + measurementIdLength // measurementID
-        + ReadWriteForEncodingUtils.varIntSize(dataSize) // dataSize
+        + ReadWriteForEncodingUtils.uVarIntSize(dataSize) // dataSize
         + TSDataType.getSerializedSize() // dataType
         + CompressionType.getSerializedSize() // compressionType
         + TSEncoding.getSerializedSize(); // encodingType
@@ -96,9 +97,10 @@ public class ChunkHeader {
   public static int getSerializedSize(String measurementID) {
 
     int measurementIdLength = measurementID.getBytes(TSFileConfig.STRING_CHARSET).length;
-    return ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
+    return  Byte.BYTES // chunkType
+        + ReadWriteForEncodingUtils.varIntSize(measurementIdLength) // measurementID length
         + measurementIdLength // measurementID
-        + Integer.BYTES + 1 // varInr dataSize
+        + Integer.BYTES + 1 // uVarInt dataSize
         + TSDataType.getSerializedSize() // dataType
         + CompressionType.getSerializedSize() // compressionType
         + TSEncoding.getSerializedSize(); // encodingType
@@ -142,7 +144,7 @@ public class ChunkHeader {
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
     chunkHeaderSize =
-        chunkHeaderSize - Integer.BYTES + ReadWriteForEncodingUtils.varIntSize(dataSize);
+        chunkHeaderSize - Integer.BYTES - 1 + ReadWriteForEncodingUtils.uVarIntSize(dataSize);
     return new ChunkHeader(chunkType, measurementID, dataSize, chunkHeaderSize, dataType, type,
         encoding);
   }
@@ -226,5 +228,9 @@ public class ChunkHeader {
 
   public byte getChunkType() {
     return chunkType;
+  }
+
+  public void increasePageNums(int i) {
+    numOfPages += i;
   }
 }
