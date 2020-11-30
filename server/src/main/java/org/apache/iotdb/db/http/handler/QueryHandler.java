@@ -68,18 +68,18 @@ public class QueryHandler extends Handler {
     }
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
-    for (JsonElement o : timeSeries) {
-      selectOp.addSelectPath(new PartialPath(o.getAsString()));
+    String[] timeSeriesPath = new String[timeSeries.size()];
+    for(int i = 0; i < timeSeries.size(); i++) {
+      timeSeriesPath[i] = timeSeries.get(i).getAsString();
     }
+    selectOp.addSelectPath(new PartialPath(timeSeriesPath));
     boolean isAggregated;
     fromOp.addPrefixTablePath(new PartialPath(new String[]{""}));
-    if (json.get(HttpConstant.IS_AGGREGATED) != null) {
-      isAggregated = json.get(HttpConstant.IS_AGGREGATED).getAsBoolean();
-      JsonArray aggregations = json.getAsJsonArray(HttpConstant.AGGREGATIONS);
+    if (json.get(HttpConstant.AGGREGATION) != null) {
+      isAggregated = true;
+      String aggregation = json.getAsJsonPrimitive(HttpConstant.AGGREGATION).getAsString();
       List<String> aggregationsList = new ArrayList<>();
-      for (JsonElement o : aggregations) {
-        aggregationsList.add(o.getAsString());
-      }
+      aggregationsList.add(aggregation);
       selectOp.setAggregations(aggregationsList);
     } else {
       isAggregated = false;
@@ -106,7 +106,6 @@ public class QueryHandler extends Handler {
 
     if (isAggregated) {
       JsonArray fills = json.getAsJsonArray(HttpConstant.FILLS);
-      boolean isPoint = json.get(HttpConstant.isPoint).getAsBoolean();
       JsonObject groupBy = json.getAsJsonObject(HttpConstant.GROUP_BY);
       String step = null;
       if (groupBy != null) {
@@ -115,14 +114,14 @@ public class QueryHandler extends Handler {
         queryOp.setEndTime(to);
         queryOp.setGroupByTime(true);
 
+        JsonElement jsonUnit = groupBy.get(HttpConstant.SAMPLING_INTERVAL);
+        String unit = "";
+        if(jsonUnit != null) {
+          unit = jsonUnit.getAsString();
+        }
         // set unit and sliding step
-        if (isPoint) {
-          int points = groupBy.get(HttpConstant.SAMPLING_POINTS).getAsInt();
-          long unit = Math.abs(to - from) / points;
-          queryOp.setUnit(unit);
-          queryOp.setSlidingStep(unit);
-        } else {
-          String unit = groupBy.get(HttpConstant.SAMPLING_INTERVAL).getAsString();
+        if (jsonUnit != null && !unit.equals("")) {
+          unit = groupBy.get(HttpConstant.SAMPLING_INTERVAL).getAsString();
           queryOp.setUnit(parseDuration(unit));
           step = groupBy.get(HttpConstant.STEP).getAsString();
           if (step != null && !step.equals("")) {
@@ -130,7 +129,13 @@ public class QueryHandler extends Handler {
           } else {
             queryOp.setSlidingStep(queryOp.getUnit());
           }
+        } else {
+          int points = groupBy.get(HttpConstant.SAMPLING_POINTS).getAsInt();
+          long samplingPointsUnit = Math.abs(to - from) / points;
+          queryOp.setUnit(samplingPointsUnit);
+          queryOp.setSlidingStep(samplingPointsUnit);
         }
+
         if (fills != null && (step == null || step.equals(""))) {
           queryOp.setFill(true);
           Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);

@@ -231,25 +231,17 @@ public abstract class HttpPrepData {
 
     //add timeSeries
     JsonArray timeSeries = new JsonArray();
-    timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[0]);
-    timeSeries.add(processorName + TsFileConstant.PATH_SEPARATOR + measurements[9]);
+    timeSeries.add("root");
+    timeSeries.add("test");
+    timeSeries.add(measurements[0]);
     query.add(HttpConstant.TIME_SERIES, timeSeries);
 
-    //set isAggregated
-    query.addProperty(HttpConstant.IS_AGGREGATED, true);
-
     // add functions
-    JsonArray aggregations = new JsonArray();
-    aggregations.add("COUNT");
-    aggregations.add("COUNT");
-    query.add(HttpConstant.AGGREGATIONS, aggregations);
+    query.addProperty(HttpConstant.AGGREGATION, "COUNT");
 
     //set time filter
     query.addProperty(HttpConstant.FROM, 1L);
     query.addProperty(HttpConstant.TO, 20L);
-
-    //Sets the number of partition
-    query.addProperty(HttpConstant.isPoint, true);
 
     //set Group by
     JsonObject groupBy = new JsonObject();

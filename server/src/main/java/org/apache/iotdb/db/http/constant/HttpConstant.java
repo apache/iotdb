@@ -36,7 +36,7 @@ public class HttpConstant {
   public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
   public static final String ROUTING_GET_CHILD_PATHS = "/getChildPaths";
 
-  public static final String AGGREGATIONS = "aggregations";
+  public static final String AGGREGATION = "aggregation";
   public static final String PREVIOUS = "previous";
   public static final String DURATION = "duration";
   public static final String PREVIOUS_UNTIL_LAST = "previousUntilLast";
@@ -74,7 +74,6 @@ public class HttpConstant {
   public static final String VALUES = "values";
   public static final String FROM = "from";
   public static final String SELECT = "select";
-  public static final String END = "end";
   public static final String ERROR = "error";
   public static final String ERROR_CLASS = "errorClass";
   public static final String IS_NEED_INFER_TYPE = "isNeedInferType";
