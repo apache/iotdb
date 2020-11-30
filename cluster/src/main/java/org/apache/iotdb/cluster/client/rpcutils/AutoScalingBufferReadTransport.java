@@ -38,4 +38,8 @@ public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTrans
   public void shrinkSizeIfNecessary(int size) {
     buf.shrinkSizeIfNecessary(size);
   }
+
+  public void expandIfNecessary(int size) {
+    buf.resizeIfNecessary(size);
+  }
 }
