@@ -272,15 +272,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
-* enable\_mem\_control
-
-|Name| enable\_mem\_control |
-|:---:|:---|
-|Description| enable memory control to avoid OOM|
-|Type|Bool|
-|Default| true |
-|Effective|After restart system|
-
 * memtable\_size\_threshold
 
 |Name| memtable\_size\_threshold |
@@ -589,6 +580,17 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| the openID server if OpenIdAuthorizer is enabled|
 |Type| String (a http url) |
 |Default|no |
+|Effective|After restart system|
+
+### Memory Control Configuration
+
+* enable\_mem\_control
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| enable memory control to avoid OOM|
+|Type|Bool|
+|Default| true |
 |Effective|After restart system|
 
 ## Automatic Schema Creation and Type Inference

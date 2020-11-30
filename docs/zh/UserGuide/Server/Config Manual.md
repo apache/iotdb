@@ -271,24 +271,6 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
-* enable\_mem\_comtrol
-
-|Name| enable\_mem\_control |
-|:---:|:---|
-|Description| 开启内存控制，避免爆内存|
-|Type|Bool|
-|Default| true |
-|Effective|重启服务器生效|
-
-* enable\_mem\_comtrol
-
-|Name| enable\_mem\_control |
-|:---:|:---|
-|Description| 开启内存控制，避免爆内存|
-|Type|Bool|
-|Default| true |
-|Effective|重启服务器生效|
-
 * memtable\_size\_threshold
 
 |Name| memtable\_size\_threshold |
@@ -544,6 +526,18 @@
 |类型| String （一个http地址） |
 |默认值| 无 |
 |改后生效方式|重启服务器生效|
+
+### 内存控制
+
+* enable\_mem\_control
+
+|Name| enable\_mem\_control |
+|:---:|:---|
+|Description| 开启内存控制，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
 
 
 ## 数据类型自动推断
