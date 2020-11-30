@@ -112,6 +112,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     logger.info("{}: sending a snapshot request size={} to {}", raftMember.getName(),
         request.getSnapshotBytes().length, node);
     Client client = raftMember.getSyncClient(node);
+    if (client == null) {
+      return false;
+    }
     try {
       try {
         client.sendSnapshot(request);

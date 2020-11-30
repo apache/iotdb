@@ -107,6 +107,10 @@ public class QueryCoordinator {
   private TNodeStatus getNodeStatusWithSyncServer(Node node) {
     TNodeStatus status = null;
     SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+    if (syncMetaClient == null) {
+      logger.error("Cannot query the node status of {} for no available client", node);
+      return null;
+    }
     try {
       status = syncMetaClient.queryNodeStatus();
     } catch (TException e) {

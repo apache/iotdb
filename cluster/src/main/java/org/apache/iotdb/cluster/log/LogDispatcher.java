@@ -273,6 +273,10 @@ public class LogDispatcher {
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
       Client client = member.getSyncClient(receiver);
+      if (client == null) {
+        logger.error("No available client for {}", receiver);
+        return;
+      }
       AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {

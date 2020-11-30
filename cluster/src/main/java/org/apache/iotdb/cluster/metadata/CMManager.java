@@ -426,6 +426,7 @@ public class CMManager extends MManager {
     }
   }
 
+  @SuppressWarnings("squid:S3776")
   private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan) throws MetadataException {
     long startTime = System.currentTimeMillis();
     boolean[] ready = new boolean[deviceIds.size()];

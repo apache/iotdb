@@ -463,10 +463,21 @@ public class MetaGroupMember extends RaftMember {
 
   private void threadTaskInit() {
     heartBeatService.submit(new MetaHeartbeatThread(this));
-    reportThread.scheduleAtFixedRate(() -> logger.info(genNodeReport().toString()),
+    reportThread.scheduleAtFixedRate(this::generateNodeReport,
         REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
     hardLinkCleanerThread.scheduleAtFixedRate(new HardLinkCleaner(),
         CLEAN_HARDLINK_INTERVAL_SEC, CLEAN_HARDLINK_INTERVAL_SEC, TimeUnit.SECONDS);
+  }
+
+  private void generateNodeReport() {
+    try {
+      if (logger.isInfoEnabled()) {
+        NodeReport report = genNodeReport();
+        logger.info(report.toString());
+      }
+    } catch (Exception e) {
+      logger.error("{} exception occurred when generating node report", name, e);
+    }
   }
 
   /**
@@ -1135,6 +1146,10 @@ public class MetaGroupMember extends RaftMember {
       }
     } else {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
+      if (client == null) {
+        logger.error("No available client for {}", node);
+        return;
+      }
       getSerialToParallelPool().submit(() -> {
         try {
           handler.onComplete(client.appendEntry(request));

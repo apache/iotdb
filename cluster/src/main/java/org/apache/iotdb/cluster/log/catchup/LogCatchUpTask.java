@@ -147,6 +147,11 @@ public class LogCatchUpTask implements Callable<Boolean> {
     LogCatchUpHandler handler = getCatchUpHandler(log, request);
 
     Client client = raftMember.getSyncClient(node);
+    if (client == null) {
+      logger.error("No available client for {} when append entry", node);
+      return false;
+    }
+
     try {
       long result = client.appendEntry(request);
       handler.onComplete(result);
@@ -300,6 +305,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
     handler.setLogs(logList);
 
     Client client = raftMember.getSyncClient(node);
+    if (client == null) {
+      logger.error("No available client for {} when append entries", node);
+      return false;
+    }
     try {
       long result = client.appendEntries(request);
       handler.onComplete(result);

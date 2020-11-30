@@ -66,12 +66,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * FileSnapshot records the data files in a slot and their md5 (or other verification).
- * When the snapshot is used to perform a catch-up, the receiver should:
+ * FileSnapshot records the data files in a slot and their md5 (or other verification). When the
+ * snapshot is used to perform a catch-up, the receiver should:
+ * <p>
  * 1. create a remote snapshot indicating that the slot is being pulled from the remote
+ * <p>
  * 2. traverse the file list, for each file:
- *  2.1 if the file exists locally and the md5 is correct, skip it.
- *  2.2 otherwise pull the file from the remote.
+ * <p>
+ * 2.1 if the file exists locally and the md5 is correct, skip it.
+ * <p>
+ * 2.2 otherwise pull the file from the remote.
+ * <p>
  * 3. replace the remote snapshot with a FileSnapshot indicating that the slot of this node is
  * synchronized with the remote one.
  */
@@ -262,7 +267,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       for (int i = 0, remoteTsFileResourcesSize = remoteTsFileResources.size();
           i < remoteTsFileResourcesSize; i++) {
         RemoteTsFileResource resource = remoteTsFileResources.get(i);
-        logger.info("Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(), resource);
+        logger.info("Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(),
+            resource);
         try {
           if (!isFileAlreadyPulled(resource)) {
             loadRemoteFile(resource);
@@ -314,6 +320,11 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         }
       } else {
         SyncDataClient client = (SyncDataClient) dataGroupMember.getSyncClient(sourceNode);
+        if (client == null) {
+          logger.error("Cannot remove hardlink {} from {}, due to can not get client",
+              resource.getTsFile().getAbsolutePath(), sourceNode);
+          return;
+        }
         try {
           client.removeHardLink(resource.getTsFile().getAbsolutePath());
         } catch (TException te) {
