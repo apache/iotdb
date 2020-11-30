@@ -82,18 +82,33 @@ public class HttpRouter {
           throw new AuthException(String.format("%s can't log out", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_QUERY:
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+        }
         QueryHandler queryHandler = new QueryHandler();
         return queryHandler.handle(json.getAsJsonObject());
       case HttpConstant.ROUTING_INSERT:
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+        }
         InsertHandler insertHandler = new InsertHandler();
         return insertHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_STORAGE_GROUPS_DELETE:
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+        }
         DeleteStorageGroupsHandler deleteStorageGroupsHandler = new DeleteStorageGroupsHandler();
         return deleteStorageGroupsHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_TIME_SERIES_DELETE:
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+        }
         DeleteTimeSeriesHandler deleteTimeSeriesHandler = new DeleteTimeSeriesHandler();
         return deleteTimeSeriesHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_GET_TIME_SERIES:
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+        }
         GetTimeSeriesHandler getTimeSeriesHandler = new GetTimeSeriesHandler();
         return getTimeSeriesHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_GET_CHILD_PATHS:

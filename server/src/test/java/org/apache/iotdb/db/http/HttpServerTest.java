@@ -20,6 +20,7 @@ package org.apache.iotdb.db.http;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.netty.handler.codec.http.HttpMethod;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,6 +29,8 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -64,6 +67,9 @@ public class HttpServerTest extends HttpPrepData {
 
   private static final String USER_LOGIN
       = "http://localhost:8282/user/login?username=root&password=root";
+
+  private static final String GET_CHILD_PATH_URL
+      = "http://localhost:8282/getChildPaths?path=root.test";
 
 
   @Before
@@ -179,12 +185,7 @@ public class HttpServerTest extends HttpPrepData {
     Response response = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON)
         .post(Entity.entity(query.toString(), MediaType.APPLICATION_JSON));
-    Assert.assertEquals(
-        "["
-            + "{\"target\":\"root.test.m0\","
-            + "\"points\":[[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],[1,11],[1,12],[1,13],[1,14],[1,15],[1,16],[1,17],[1,18],[1,19],[0,20]]},"
-            + "{\"target\":\"root.test.m9\","
-            + "\"points\":[[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],[1,11],[1,12],[1,13],[1,14],[1,15],[1,16],[1,17],[1,18],[1,19],[0,20]]}]"
+    Assert.assertEquals("[{\"target\":\"root.test.m0\",\"points\":[[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],[1,11],[1,12],[1,13],[1,14],[1,15],[1,16],[1,17],[1,18],[1,19],[0,20]]}]"
         , response.readEntity(String.class));
   }
 
@@ -207,6 +208,16 @@ public class HttpServerTest extends HttpPrepData {
         }
       });
     }
+  }
+
+  @Test
+  public void getChildPath() throws MetadataException, StorageEngineException {
+    login();
+    prepareData();
+    Response response = client.target(GET_CHILD_PATH_URL)
+        .request(MediaType.APPLICATION_JSON)
+        .get();
+    Assert.assertEquals("[\"m0\",\"m1\",\"m2\",\"m3\",\"m4\",\"m5\",\"m6\",\"m7\",\"m8\",\"m9\"]", response.readEntity(String.class));
   }
 
 }
