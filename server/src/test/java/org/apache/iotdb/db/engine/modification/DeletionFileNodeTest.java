@@ -66,6 +66,7 @@ public class DeletionFileNodeTest {
   private static String[] measurements = new String[10];
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
+  private static boolean enableVirtualPartition = false;
 
   private int prevUnseqLevelNum = 0;
 
@@ -89,12 +90,15 @@ public class DeletionFileNodeTest {
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
     }
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
+    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
   }
 
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   private void insertToStorageEngine(TSRecord record)

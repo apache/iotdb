@@ -29,6 +29,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -42,6 +43,7 @@ import org.junit.Test;
 public class IoTDBRemovePartitionIT {
 
   private static int partitionInterval = 100;
+  private static boolean enableVirtualPartition = false;
 
   @Before
   public void setUp() throws Exception {
@@ -49,6 +51,8 @@ public class IoTDBRemovePartitionIT {
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
+    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
     insertData();
   }
 
@@ -57,6 +61,7 @@ public class IoTDBRemovePartitionIT {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   @Test

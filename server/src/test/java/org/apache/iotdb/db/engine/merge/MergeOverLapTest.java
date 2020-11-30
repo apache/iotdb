@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
@@ -54,6 +55,7 @@ import org.junit.Test;
 public class MergeOverLapTest extends MergeTest {
 
   private File tempSGDir;
+  private static boolean enableVirtualPartition = false;
 
   @Before
   public void setUp()
@@ -62,12 +64,15 @@ public class MergeOverLapTest extends MergeTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
+    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   @Override

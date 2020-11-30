@@ -29,10 +29,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.storagegroup.HashVirtualPartitioner;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -45,31 +48,28 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
+  private static final VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
 
   MergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
-
-  private MergeCallback callback;
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
-
   States states = States.START;
-
   MergeMultiChunkTask chunkTask;
   MergeFileTask fileTask;
+  private MergeCallback callback;
 
   MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
@@ -126,7 +126,15 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Set<PartialPath> devices;
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+      devices = partitioner.storageGroupToDevice(new PartialPath(storageGroupName));
+    } else {
+      devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    }
+    System.out.println(devices);
+
     Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {
@@ -212,14 +220,6 @@ public class MergeTask implements Callable<Void> {
     return storageGroupName;
   }
 
-  enum States {
-    START,
-    MERGE_CHUNKS,
-    MERGE_FILES,
-    CLEAN_UP,
-    ABORTED
-  }
-
   public String getProgress() {
     switch (states) {
       case ABORTED:
@@ -238,5 +238,13 @@ public class MergeTask implements Callable<Void> {
 
   public String getTaskName() {
     return taskName;
+  }
+
+  enum States {
+    START,
+    MERGE_CHUNKS,
+    MERGE_FILES,
+    CLEAN_UP,
+    ABORTED
   }
 }

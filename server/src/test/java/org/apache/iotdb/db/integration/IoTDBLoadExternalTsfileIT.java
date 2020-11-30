@@ -117,6 +117,7 @@ public class IoTDBLoadExternalTsfileIT {
   private static final String TEST_D0_S0_STR = "root.test.d0.s0";
   private static final String TEST_D0_S1_STR = "root.test.d0.s1";
   private static final String TEST_D1_STR = "root.test.d1.g0.s0";
+  private static boolean enableVirtualPartition = false;
 
   private static String[] deleteSqls = new String[]{
       "DELETE STORAGE GROUP root.vehicle",
@@ -131,6 +132,8 @@ public class IoTDBLoadExternalTsfileIT {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
+    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
   }
 
   @After
@@ -138,6 +141,7 @@ public class IoTDBLoadExternalTsfileIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   @Test

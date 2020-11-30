@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -113,6 +114,11 @@ public class IoTDBRestartIT {
 
     try {
       EnvironmentUtils.restartDaemon();
+      StorageEngine.getInstance().recover();
+      // wait for recover
+      while(!StorageEngine.getInstance().isAllSgReady()){
+        Thread.sleep(500);
+      }
     } catch (Exception e) {
       Assert.fail();
     }

@@ -782,6 +782,11 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * whether we enable virtual partition
+   */
+  private boolean enableVirtualPartition = true;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2092,5 +2097,13 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public boolean isEnableVirtualPartition() {
+    return enableVirtualPartition;
+  }
+
+  public void setEnableVirtualPartition(boolean enableVirtualPartition) {
+    this.enableVirtualPartition = enableVirtualPartition;
   }
 }

@@ -1514,11 +1514,16 @@ public class StorageGroupProcessor {
             lastUpdateTime = curTime;
           }
         }
-        // There is no tsfile data, the delete operation is invalid
-        if (lastUpdateTime == null) {
-          logger.debug("No device {} in SG {}, deletion invalid", device, storageGroupName);
-          return;
+
+        // virtual partition will push deletion to all sg
+        if(!IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()){
+          // There is no tsfile data, the delete operation is invalid
+          if (lastUpdateTime == null) {
+            logger.debug("No device {} in SG {}, deletion invalid", device, storageGroupName);
+            return;
+          }
         }
+
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
       }
