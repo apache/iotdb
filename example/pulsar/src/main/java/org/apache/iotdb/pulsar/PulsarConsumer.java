@@ -55,7 +55,7 @@ public class PulsarConsumer {
     this.consumerList = consumerList;
   }
 
-  public void consumeInParallel() {
+  public void consumeInParallel() throws ClassNotFoundException {
     ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
       PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
@@ -63,12 +63,13 @@ public class PulsarConsumer {
     }
   }
 
+  @SuppressWarnings("squid:S2068")
   private static void prepareSchema() {
     try {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
       try (Connection connection = DriverManager
           .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
-              "root");
+              Constant.IOTDB_CONNECTION_PASSWORD);
            Statement statement = connection.createStatement()) {
 
         statement.execute(String.format(CREATE_SG_TEMPLATE, Constant.STORAGE_GROUP));
@@ -84,7 +85,7 @@ public class PulsarConsumer {
     }
   }
 
-  public static void main(String[] args) throws PulsarClientException {
+  public static void main(String[] args) throws PulsarClientException, ClassNotFoundException {
     PulsarClient client = PulsarClient.builder()
         .serviceUrl(SERVICE_URL)
         .build();
