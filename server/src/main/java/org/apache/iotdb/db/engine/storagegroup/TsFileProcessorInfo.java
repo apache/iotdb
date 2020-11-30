@@ -35,6 +35,10 @@ public class TsFileProcessorInfo {
    */
   private long memCost;
 
+  /**
+   * memory occupation of ChunkMetadata
+   */
+  private long metadataMemCost = 0L;
 
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
@@ -58,10 +62,29 @@ public class TsFileProcessorInfo {
   }
 
   /**
+   * called in each insert
+   */
+  public void addMetadataMemCost(long cost) {
+    metadataMemCost += cost;
+  }
+
+  /**
+   * called when meet exception
+   */
+  public void releaseMetadataMemCost(long cost) {
+    metadataMemCost -= cost;
+  }
+
+  public long getMetadataMemCost() {
+    return metadataMemCost;
+  }
+
+  /**
    * called when closing TSP
    */
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
-    memCost = 0;
+    memCost = 0L;
+    metadataMemCost = 0L;
   }
 }

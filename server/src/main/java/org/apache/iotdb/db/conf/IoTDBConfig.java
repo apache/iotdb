@@ -169,7 +169,13 @@ public class IoTDBConfig {
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 0;
+
+  /**
+   * If the proportion of metadata size in a TsFile is over than this, close this TsFile
+   */
+  private double metadataFileSizeProportion = 0.1;
+
   /**
    * Is the write ahead log enable.
    */
@@ -2020,6 +2026,14 @@ public class IoTDBConfig {
 
   public void setMaxWaitingTimeWhenInsertBlocked(int maxWaitingTimeWhenInsertBlocked) {
     this.maxWaitingTimeWhenInsertBlockedInMs = maxWaitingTimeWhenInsertBlocked;
+  }
+  
+  public double getMetadataFileSizeProportion() {
+    return metadataFileSizeProportion;
+  }
+
+  public void setMetadataFileSizeProportion(double metadataFileSizeProportion) {
+    this.metadataFileSizeProportion = metadataFileSizeProportion;
   }
 
   public int getFrequencyIntervalInMinute() {

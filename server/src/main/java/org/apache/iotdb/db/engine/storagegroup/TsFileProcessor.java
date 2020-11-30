@@ -286,6 +286,7 @@ public class TsFileProcessor {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+    tsFileProcessorInfo.addMetadataMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
@@ -293,6 +294,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+        tsFileProcessorInfo.releaseMetadataMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
         throw e;
       }
@@ -350,6 +352,7 @@ public class TsFileProcessor {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+    tsFileProcessorInfo.addMetadataMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
@@ -357,6 +360,7 @@ public class TsFileProcessor {
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
+        tsFileProcessorInfo.releaseMetadataMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
         throw e;
       }
@@ -445,11 +449,22 @@ public class TsFileProcessor {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
-        .getTsFileSizeThreshold();
+    long fileSizeThreshold = config.getTsFileSizeThreshold();
     if (fileSize >= fileSizeThreshold) {
       logger.info("{} fileSize {} >= fileSizeThreshold {}", tsFileResource.getTsFilePath(),
           fileSize, fileSizeThreshold);
+      return true;
+    }
+    if (enableMemControl) {
+      double metadataFileSizeProportion = config.getMetadataFileSizeProportion();
+      if ((double) tsFileProcessorInfo.getMetadataMemCost() / fileSize 
+          >= metadataFileSizeProportion) {
+        logger.info("{} MetadataSize {} / FileSize {} >= MetadataFileSizeProportion {}",
+            tsFileResource.getTsFilePath(),
+            tsFileProcessorInfo.getMetadataMemCost(),
+            fileSize, metadataFileSizeProportion);
+        return true;
+      }
     }
     return fileSize >= fileSizeThreshold;
   }

@@ -291,6 +291,10 @@ public class IoTDBDescriptor {
           .getProperty("max_waiting_time_when_insert_blocked",
               Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
 
+      conf.setMetadataFileSizeProportion(Double.parseDouble(properties
+          .getProperty("metadata_file_size_proportion",
+              Double.toString(conf.getMetadataFileSizeProportion()))));
+
       conf.setEstimatedSeriesSize(Integer.parseInt(properties
           .getProperty("estimated_series_size",
               Integer.toString(conf.getEstimatedSeriesSize()))));

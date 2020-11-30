@@ -631,6 +631,7 @@ public class StorageGroupProcessor {
             }
           }
           tsFileProcessor.getTsFileProcessorInfo().addTSPMemCost(chunkMetadataSize);
+          tsFileProcessor.getTsFileProcessorInfo().releaseMetadataMemCost(chunkMetadataSize);
         }
       }
       tsFileManagement.add(tsFileResource, isSeq);
