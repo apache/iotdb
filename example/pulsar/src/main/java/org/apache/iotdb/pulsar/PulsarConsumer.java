@@ -31,6 +31,8 @@ import org.apache.pulsar.client.api.KeySharedPolicy;
 import org.apache.pulsar.client.api.PulsarClient;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.client.api.SubscriptionType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PulsarConsumer {
   private static final String SERVICE_URL = "pulsar://localhost:6650";
@@ -39,6 +41,7 @@ public class PulsarConsumer {
   private List<Consumer<?>> consumerList;
   private static final String CREATE_SG_TEMPLATE = "SET STORAGE GROUP TO %s";
   private static final String CREATE_TIMESERIES_TEMPLATE = "CREATE TIMESERIES %s WITH DATATYPE=TEXT, ENCODING=PLAIN";
+  private static final Logger logger = LoggerFactory.getLogger(PulsarConsumer.class);
   protected static final String[] ALL_TIMESERIES = {
       "root.vehicle.device1.sensor1",
       "root.vehicle.device1.sensor2",
@@ -52,7 +55,7 @@ public class PulsarConsumer {
     this.consumerList = consumerList;
   }
 
-  public void consumeInParallel() throws PulsarClientException {
+  public void consumeInParallel() {
     ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
       PulsarConsumerThread consumerExecutor = new PulsarConsumerThread(consumerList.get(i));
@@ -65,7 +68,7 @@ public class PulsarConsumer {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
       try (Connection connection = DriverManager
           .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
+              "root");
            Statement statement = connection.createStatement()) {
 
         statement.execute(String.format(CREATE_SG_TEMPLATE, Constant.STORAGE_GROUP));
@@ -77,7 +80,7 @@ public class PulsarConsumer {
         statement.clearBatch();
       }
     } catch (ClassNotFoundException | SQLException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
     }
   }
 

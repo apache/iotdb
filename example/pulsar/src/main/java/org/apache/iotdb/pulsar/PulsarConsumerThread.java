@@ -24,12 +24,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.pulsar.client.api.Consumer;
 import org.apache.pulsar.client.api.Message;
-import org.apache.pulsar.client.api.PulsarClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PulsarConsumerThread implements Runnable {
-  private Connection connection = null;
   private Statement statement = null;
   private static final String INSERT_TEMPLATE = "INSERT INTO root.vehicle.%s(timestamp,%s) VALUES (%s,'%s')";
 
@@ -60,21 +58,15 @@ public class PulsarConsumerThread implements Runnable {
   public void run() {
     try {
       Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
-      connection = DriverManager
+      Connection connection = DriverManager
           .getConnection(Constant.IOTDB_CONNECTION_URL, Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
+              "root");
       statement = connection.createStatement();
-
       do {
-        try {
-          Message<?> msg = consumer.receive();
-          writeData(new String(msg.getData()));
+        Message<?> msg = consumer.receive();
+        writeData(new String(msg.getData()));
 
-          consumer.acknowledge(msg);
-        } catch (PulsarClientException e) {
-          logger.error(e.getMessage());
-          break;
-        }
+        consumer.acknowledge(msg);
       } while (true);
     } catch (Exception e) {
       logger.error(e.getMessage());
