@@ -110,7 +110,7 @@ public class TElasticFramedTransport extends TFastFramedTransport {
       if (uncompressedLength < maxLength) {
         readBuffer.shrinkSizeIfNecessary(maxLength);
       }
-      readBuffer.fill(readBuffer, uncompressedLength);
+      readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
     }
