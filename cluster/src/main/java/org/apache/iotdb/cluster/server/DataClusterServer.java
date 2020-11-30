@@ -202,7 +202,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     partitionGroup = partitionTable.getHeaderGroup(header);
     if (partitionGroup == null || !partitionGroup.contains(thisNode)) {
       // if the partition table is old, this node may have not been moved to the new group
-      metaGroupMember.syncLeaderWithConsistencyCheck();
+      metaGroupMember.syncLeaderWithConsistencyCheck(true);
       partitionGroup = partitionTable.getHeaderGroup(header);
     }
     if (partitionGroup != null && partitionGroup.contains(thisNode)) {

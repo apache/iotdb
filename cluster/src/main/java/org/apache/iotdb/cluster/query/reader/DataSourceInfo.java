@@ -24,13 +24,19 @@ import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,11 +87,7 @@ public class DataSourceInfo {
       Node node = nodes.get(nextNodePos);
       logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
       try {
-
-        AsyncDataClient client = this.metaGroupMember
-            .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-        Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
-
+        Long newReaderId = getReaderId(node, byTimestamp, timestamp);
         if (newReaderId != null) {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
           if (newReaderId != -1) {
@@ -121,8 +123,18 @@ public class DataSourceInfo {
     return false;
   }
 
-  private Long applyForReaderId(AsyncDataClient client, boolean byTimestamp, long timestamp)
-      throws TException, InterruptedException {
+  private Long getReaderId(Node node, boolean byTimestamp, long timestamp)
+      throws TException, InterruptedException, IOException {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return applyForReaderIdAsync(node, byTimestamp, timestamp);
+    }
+    return applyForReaderIdSync(node, byTimestamp, timestamp);
+  }
+
+  private Long applyForReaderIdAsync(Node node, boolean byTimestamp, long timestamp)
+      throws TException, InterruptedException, IOException {
+    AsyncDataClient client = this.metaGroupMember
+        .getClientProvider().getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
     Long newReaderId;
     if (byTimestamp) {
       newReaderId = SyncClientAdaptor.querySingleSeriesByTimestamp(client, request);
@@ -130,6 +142,32 @@ public class DataSourceInfo {
       newReaderId = SyncClientAdaptor.querySingleSeries(client, request, timestamp);
     }
     return newReaderId;
+  }
+
+  private Long applyForReaderIdSync(Node node, boolean byTimestamp, long timestamp)
+      throws TException {
+    SyncDataClient client = this.metaGroupMember
+        .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+    Long newReaderId;
+    try {
+      if (byTimestamp) {
+        newReaderId = client.querySingleSeriesByTimestamp(request);
+      } else {
+        Filter newFilter;
+        // add timestamp to as a timeFilter to skip the data which has been read
+        if (request.isSetTimeFilterBytes()) {
+          Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+          newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
+        } else {
+          newFilter = TimeFilter.gt(timestamp);
+        }
+        request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
+        newReaderId = client.querySingleSeries(request);
+      }
+      return newReaderId;
+    } finally {
+      client.putBack();
+    }
   }
 
   public long getReaderId() {
@@ -149,7 +187,8 @@ public class DataSourceInfo {
   }
 
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
-    return isNoClient ? null : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
+    return isNoClient ? null
+        : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) {
@@ -161,7 +200,7 @@ public class DataSourceInfo {
     return this.isNoData;
   }
 
-  private boolean isNoClient(){
+  private boolean isNoClient() {
     return this.isNoClient;
   }
 

@@ -215,7 +215,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   public GetAllPathsResult getAllPaths(Node header, List<String> paths, boolean withAlias)
       throws TException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
@@ -225,7 +225,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public Set<String> getAllDevices(Node header, List<String> path) throws TException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllDevices(path);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TException(e);
@@ -235,7 +235,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);
@@ -245,7 +245,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   @Override
   public Set<String> getChildNodePathInNextLevel(Node header, String path) throws TException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
       throw new TException(e);

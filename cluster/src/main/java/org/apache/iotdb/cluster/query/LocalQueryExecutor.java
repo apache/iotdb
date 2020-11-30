@@ -160,7 +160,7 @@ public class LocalQueryExecutor {
       throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
     logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
         request.getPath(), request.getQueryId());
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     PartialPath path = null;
     try {
@@ -218,7 +218,7 @@ public class LocalQueryExecutor {
       throws CheckConsistencyException, MetadataException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
@@ -259,7 +259,7 @@ public class LocalQueryExecutor {
       throws CheckConsistencyException, IllegalPathException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
@@ -301,7 +301,7 @@ public class LocalQueryExecutor {
     logger
         .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
             request.getPath(), request.getQueryId());
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     PartialPath path = null;
     try {
@@ -334,7 +334,7 @@ public class LocalQueryExecutor {
 
   public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
       throws CheckConsistencyException, IOException, MetadataException {
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
@@ -413,7 +413,7 @@ public class LocalQueryExecutor {
       Filter timeFilter, QueryContext context, boolean ascending)
       throws IOException, StorageEngineException, QueryProcessException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -447,7 +447,7 @@ public class LocalQueryExecutor {
    */
   public List<String> getUnregisteredTimeseries(List<String> timeseriesList)
       throws CheckConsistencyException {
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
@@ -483,7 +483,7 @@ public class LocalQueryExecutor {
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
@@ -628,7 +628,7 @@ public class LocalQueryExecutor {
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
     try {
-      dataGroupMember.syncLeaderWithConsistencyCheck();
+      dataGroupMember.syncLeaderWithConsistencyCheck(false);
     } catch (CheckConsistencyException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -640,7 +640,7 @@ public class LocalQueryExecutor {
 
   public int getPathCount(List<String> pathsToQuery, int level)
       throws CheckConsistencyException, MetadataException {
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     int count = 0;
     for (String s : pathsToQuery) {
@@ -656,7 +656,7 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException, IllegalPathException {
-    dataGroupMember.syncLeaderWithConsistencyCheck();
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);

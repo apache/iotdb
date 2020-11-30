@@ -217,7 +217,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         throws SnapshotInstallationException {
       // ensure StorageGroups are synchronized
       try {
-        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck();
+        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(true);
       } catch (CheckConsistencyException e) {
         throw new SnapshotInstallationException(e);
       }
