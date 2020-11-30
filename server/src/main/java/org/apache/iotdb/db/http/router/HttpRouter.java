@@ -35,6 +35,7 @@ import org.apache.iotdb.db.http.handler.DeleteStorageGroupsHandler;
 import org.apache.iotdb.db.http.handler.DeleteTimeSeriesHandler;
 import org.apache.iotdb.db.http.handler.GetChildPathsHandler;
 import org.apache.iotdb.db.http.handler.GetTimeSeriesHandler;
+import org.apache.iotdb.db.http.handler.Handler;
 import org.apache.iotdb.db.http.handler.InsertHandler;
 import org.apache.iotdb.db.http.handler.QueryHandler;
 import org.apache.iotdb.db.http.handler.StorageGroupsHandlers;
@@ -71,43 +72,43 @@ public class HttpRouter {
         return timeSeriesHandler.handle(method, json);
       case HttpConstant.ROUTING_USER_LOGIN:
         if (UsersHandler.userLogin(decoder.parameters())) {
-          return UsersHandler.getSuccessfulObject();
+          return Handler.getSuccessfulObject();
         } else {
           throw new AuthException(String.format("%s can't log in", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_USER_LOGOUT:
         if (UsersHandler.userLogout(decoder.parameters())) {
-          return UsersHandler.getSuccessfulObject();
+          return Handler.getSuccessfulObject();
         } else {
           throw new AuthException(String.format("%s can't log out", UsersHandler.getUsername()));
         }
       case HttpConstant.ROUTING_QUERY:
         if(!method.equals(HttpMethod.POST)) {
-          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + HttpConstant.ONLY_SUPPORT_POST);
         }
         QueryHandler queryHandler = new QueryHandler();
         return queryHandler.handle(json.getAsJsonObject());
       case HttpConstant.ROUTING_INSERT:
         if(!method.equals(HttpMethod.POST)) {
-          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + HttpConstant.ONLY_SUPPORT_POST);
         }
         InsertHandler insertHandler = new InsertHandler();
         return insertHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_STORAGE_GROUPS_DELETE:
         if(!method.equals(HttpMethod.POST)) {
-          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + HttpConstant.ONLY_SUPPORT_POST);
         }
         DeleteStorageGroupsHandler deleteStorageGroupsHandler = new DeleteStorageGroupsHandler();
         return deleteStorageGroupsHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_TIME_SERIES_DELETE:
         if(!method.equals(HttpMethod.POST)) {
-          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + HttpConstant.ONLY_SUPPORT_POST);
         }
         DeleteTimeSeriesHandler deleteTimeSeriesHandler = new DeleteTimeSeriesHandler();
         return deleteTimeSeriesHandler.handle(json.getAsJsonArray());
       case HttpConstant.ROUTING_GET_TIME_SERIES:
         if(!method.equals(HttpMethod.POST)) {
-          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support POST");
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + HttpConstant.ONLY_SUPPORT_POST);
         }
         GetTimeSeriesHandler getTimeSeriesHandler = new GetTimeSeriesHandler();
         return getTimeSeriesHandler.handle(json.getAsJsonArray());

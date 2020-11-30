@@ -35,6 +35,7 @@ public class HttpConstant {
   public static final String ROUTING_TIME_SERIES_DELETE = "/timeSeries/delete";
   public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
   public static final String ROUTING_GET_CHILD_PATHS = "/getChildPaths";
+  public static final String ONLY_SUPPORT_POST = " only support POST";
 
   public static final String AGGREGATION = "aggregation";
   public static final String PREVIOUS = "previous";
@@ -45,7 +46,6 @@ public class HttpConstant {
   public static final String SAMPLING_INTERVAL = "samplingInterval";
   public static final String STEP = "step";
   public static final String GROUP_BY = "groupBy";
-  public static final String isPoint = "isPoint";
   public static final String FILLS = "fills";
   public static final String TO = "to";
   public static final char QUESTION_MARK = '?';

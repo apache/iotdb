@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract class Handler {
+public abstract class Handler {
 
   protected static final Logger logger = LoggerFactory.getLogger(Handler.class);
   protected static String username;

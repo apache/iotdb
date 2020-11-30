@@ -48,8 +48,8 @@ public class TimeSeriesHandler extends Handler {
     checkLogin();
     if (HttpMethod.POST.equals(httpMethod)) {
       JsonArray jsonArray = json.getAsJsonArray();
-      for (Object object : jsonArray) {
-        JsonObject jsonObject = (JsonObject) object;
+      for (JsonElement object : jsonArray) {
+        JsonObject jsonObject = object.getAsJsonObject();
         String path = jsonObject.get(HttpConstant.TIME_SERIES).getAsString();
         String dataType = jsonObject.get(HttpConstant.DATATYPE).getAsString();
         String encoding = jsonObject.get(HttpConstant.ENCODING).getAsString();
