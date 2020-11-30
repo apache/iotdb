@@ -128,7 +128,7 @@ public abstract class RaftLogManager {
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
     }
-    long first = getCommittedEntryManager().getFirstIndex();
+    long first = getCommittedEntryManager().getDummyIndex();
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
 
@@ -295,7 +295,10 @@ public abstract class RaftLogManager {
     }
 
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
-      return getUnCommittedEntryManager().maybeTerm(index);
+      long term = getUnCommittedEntryManager().maybeTerm(index);
+      if (term != -1) {
+        return term;
+      }
     }
 
     // search in memory
@@ -595,7 +598,7 @@ public abstract class RaftLogManager {
       if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
         logger.debug("There are too many unapplied logs [{}], wait for a while to avoid memory "
             + "overflow", unappliedLogSize);
-        Thread.sleep(unappliedLogSize);
+        Thread.sleep(unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       }
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);

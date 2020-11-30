@@ -492,53 +492,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    String[] measurementList = insertPlan.getMeasurements();
-    PartialPath deviceId = insertPlan.getDeviceId();
-
-    if (getSeriesSchemas(deviceId, measurementList)) {
-      return super.getSeriesSchemas(insertPlan);
-    }
-
-    // some schemas does not exist locally, fetch them from the remote side
-    pullSeriesSchemas(deviceId, measurementList);
-
-    // we have pulled schemas as much as we can, those not pulled will depend on whether
-    // auto-creation is enabled
-    return super.getSeriesSchemas(insertPlan);
-  }
-
-  private boolean getSeriesSchemas(PartialPath deviceId, String[] measurementList)
-      throws MetadataException {
-    MNode node = null;
-    boolean allSeriesExists = true;
-    try {
-      node = IoTDB.metaManager.getDeviceNodeWithAutoCreate(deviceId);
-    } catch (PathNotExistException e) {
-      allSeriesExists = false;
-    }
-
-    if (node != null) {
-      for (String measurement : measurementList) {
-        if (!node.hasChild(measurement)) {
-          allSeriesExists = false;
-          break;
-        }
-      }
-    }
-    return allSeriesExists;
-  }
-
-  private void pullSeriesSchemas(PartialPath deviceId, String[] measurementList)
-      throws MetadataException {
-    List<PartialPath> schemasToPull = new ArrayList<>();
-    for (String s : measurementList) {
-      schemasToPull.add(deviceId.concatNode(s));
-    }
-    ((CMManager) IoTDB.metaManager).pullTimeSeriesSchemas(schemasToPull, null);
-  }
-
-  @Override
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
     metaGroupMember.syncLeader();
     return IoTDB.metaManager.getAllStorageGroupNodes();

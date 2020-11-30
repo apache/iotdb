@@ -92,10 +92,10 @@ public class UnCommittedEntryManager {
     try {
       log = entries.get(entryPos);
     } catch (IndexOutOfBoundsException e) {
-      return -1;
+      return maybeTerm(index);
     }
     if (log.getCurrLogIndex() != index) {
-      return -1;
+      return maybeTerm(index);
     }
     return log.getCurrLogTerm();
   }

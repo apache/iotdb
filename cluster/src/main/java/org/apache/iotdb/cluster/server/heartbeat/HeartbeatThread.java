@@ -92,7 +92,7 @@ public class HeartbeatThread implements Runnable {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
-              localMember.setLeader(null);
+              localMember.setLeader(ClusterConstant.EMPTY_NODE);
             } else {
               logger.debug("{}: Heartbeat from leader {} is still valid", memberName,
                   localMember.getLeader());

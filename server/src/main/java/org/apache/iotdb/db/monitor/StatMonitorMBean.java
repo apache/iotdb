@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,31 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.monitor;
 
-public interface MonitorMBean {
+public interface StatMonitorMBean {
 
-  long getDataSizeInByte();
+  long getGlobalTotalPointsNum();
 
-  int getFileNodeNum();
+  long getGlobalReqSuccessNum();
 
-  long getOverflowCacheSize();
+  long getGlobalReqFailNum();
 
-  long getBufferWriteCacheSize();
+  long getStorageGroupTotalPointsNum(String storageGroupName);
 
   String getSystemDirectory();
 
+  long getDataSizeInByte();
+
   boolean getWriteAheadLogStatus();
 
-  int getTotalOpenFileNum();
-
-  int getDataOpenFileNum();
-
-  int getWalOpenFileNum();
-
-  int getDigestOpenFileNum();
-
-  int getMetadataOpenFileNum();
-
-  int getSocketOpenFileNum();
+  boolean getEnableStatMonitor();
 }
+

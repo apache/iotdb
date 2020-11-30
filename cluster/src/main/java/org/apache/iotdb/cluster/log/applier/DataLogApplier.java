@@ -76,7 +76,7 @@ public class DataLogApplier extends BaseApplier {
         logger.error("Unsupported log: {}", log);
       }
     } catch (Exception e) {
-      logger.debug("Exception occured when applying {}", log, e);
+      logger.debug("Exception occurred when applying {}", log, e);
       log.setException(e);
     } finally {
       log.setApplied(true);

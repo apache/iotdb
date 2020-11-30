@@ -398,23 +398,14 @@ public class IoTDBConfig {
   private boolean lastCacheEnable = true;
 
   /**
-   * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
-   * value is 5s.
-   */
-  private int backLoopPeriodSec = 5;
-  /**
    * Set true to enable statistics monitor service, false to disable statistics service.
    */
   private boolean enableStatMonitor = false;
+
   /**
-   * Set the time interval when StatMonitor performs delete detection. The default value is 600s.
+   * Set true to enable writing monitor time series.
    */
-  private int statMonitorDetectFreqSec = 60 * 10;
-  /**
-   * Set the maximum time to keep monitor statistics information in IoTDB. The default value is
-   * 600s.
-   */
-  private int statMonitorRetainIntervalSec = 60 * 10;
+  private boolean enableMonitorSeriesWrite = false;
 
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
@@ -1110,14 +1101,6 @@ public class IoTDBConfig {
     this.tsFileSizeThreshold = tsFileSizeThreshold;
   }
 
-  public int getBackLoopPeriodSec() {
-    return backLoopPeriodSec;
-  }
-
-  void setBackLoopPeriodSec(int backLoopPeriodSec) {
-    this.backLoopPeriodSec = backLoopPeriodSec;
-  }
-
   public boolean isEnableStatMonitor() {
     return enableStatMonitor;
   }
@@ -1126,28 +1109,20 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
+  public boolean isEnableMonitorSeriesWrite() {
+    return enableMonitorSeriesWrite;
+  }
+
+  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
+    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
+  }
+
   public int getRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
   void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public int getStatMonitorDetectFreqSec() {
-    return statMonitorDetectFreqSec;
-  }
-
-  void setStatMonitorDetectFreqSec(int statMonitorDetectFreqSec) {
-    this.statMonitorDetectFreqSec = statMonitorDetectFreqSec;
-  }
-
-  public int getStatMonitorRetainIntervalSec() {
-    return statMonitorRetainIntervalSec;
-  }
-
-  void setStatMonitorRetainIntervalSec(int statMonitorRetainIntervalSec) {
-    this.statMonitorRetainIntervalSec = statMonitorRetainIntervalSec;
   }
 
   public int getmManagerCacheSize() {
