@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.writelog.io;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -43,11 +44,11 @@ public class LogWriter implements ILogWriter {
   private long forcePeriodInMs = 0;
 
   /**
-   * only used by tests
    * @param logFilePath
    * @param forcePeriodInMs
    * @throws FileNotFoundException
    */
+  @TestOnly
   public LogWriter(String logFilePath, long forcePeriodInMs) throws FileNotFoundException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     this.forcePeriodInMs = forcePeriodInMs;

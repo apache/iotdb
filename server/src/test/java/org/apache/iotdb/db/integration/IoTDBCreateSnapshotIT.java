@@ -99,12 +99,12 @@ public class IoTDBCreateSnapshotIT {
         "0,root,1"
       };
 
-      HashSet<PhysicalPlan> d0Plans = new HashSet<>(6);
+      Set<PhysicalPlan> d0Plans = new HashSet<>(6);
       for (int i = 0; i < 6; i++) {
         d0Plans.add(MLogWriter.convertFromString(exp[i]));
       }
 
-      HashSet<PhysicalPlan> d1Plans = new HashSet<>(6);
+      Set<PhysicalPlan> d1Plans = new HashSet<>(6);
       for (int i = 0; i < 6; i++) {
         d1Plans.add(MLogWriter.convertFromString(exp[i+6]));
       }
