@@ -787,6 +787,11 @@ public class IoTDBConfig {
    */
   private boolean enableVirtualPartition = true;
 
+  /**
+   * the number of virtual partition
+   */
+  private int virtualPartitionNum = 2;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2105,5 +2110,13 @@ public class IoTDBConfig {
 
   public void setEnableVirtualPartition(boolean enableVirtualPartition) {
     this.enableVirtualPartition = enableVirtualPartition;
+  }
+
+  public int getVirtualPartitionNum() {
+    return virtualPartitionNum;
+  }
+
+  public void setVirtualPartitionNum(int virtualPartitionNum) {
+    this.virtualPartitionNum = virtualPartitionNum;
   }
 }

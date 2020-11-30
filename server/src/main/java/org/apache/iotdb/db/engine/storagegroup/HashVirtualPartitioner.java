@@ -18,35 +18,48 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 public class HashVirtualPartitioner implements VirtualPartitioner {
 
-  public static final int STORGARE_GROUP_NUM = 2;
-  HashMap<Integer, Set<PartialPath>> sgToDevice;
+  public static final int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig()
+      .getVirtualPartitionNum();
+
+  // storage id -> set (device id)
+  private final Set<PartialPath>[] sgToDevice;
 
   private HashVirtualPartitioner() {
-    sgToDevice = new HashMap<>();
+    sgToDevice = new Set[STORAGE_GROUP_NUM];
+    for (int i = 0; i < STORAGE_GROUP_NUM; i++) {
+      sgToDevice[i] = new HashSet<>();
+    }
   }
 
   public static HashVirtualPartitioner getInstance() {
     return HashVirtualPartitionerHolder.INSTANCE;
   }
 
-  private int toPartitionId(PartialPath deviceId){
-    return deviceId.hashCode() % STORGARE_GROUP_NUM;
-  }
-
   @Override
   public PartialPath deviceToStorageGroup(PartialPath deviceId) {
-    int partitionId = toPartitionId(deviceId);
-    sgToDevice.computeIfAbsent(partitionId, id -> new HashSet<>()).add(deviceId);
+    int storageGroupId = toStorageGroupId(deviceId);
+
+    // check if we record the mapping between device id and storage group id
+    if (!sgToDevice[storageGroupId].contains(deviceId)) {
+      synchronized (sgToDevice) {
+        // double check
+        if (!sgToDevice[storageGroupId].add(deviceId)) {
+          // add new mapping to file
+          // TODO write to file
+        }
+      }
+    }
+
     try {
-      return new PartialPath("" + partitionId);
+      return new PartialPath(String.valueOf(storageGroupId));
     } catch (IllegalPathException e) {
       e.printStackTrace();
     }
@@ -56,17 +69,27 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
 
   @Override
   public Set<PartialPath> storageGroupToDevice(PartialPath storageGroup) {
-    return sgToDevice.get(Integer.parseInt(storageGroup.getFullPath()));
+    return sgToDevice[Integer.parseInt(storageGroup.getFullPath())];
   }
 
   @Override
-  public void clear(){
-    sgToDevice.clear();
+  public void clear() {
+    for (int i = 0; i < STORAGE_GROUP_NUM; i++) {
+      sgToDevice[i] = new HashSet<>();
+    }
   }
 
   @Override
   public int getPartitionCount() {
-    return STORGARE_GROUP_NUM;
+    return STORAGE_GROUP_NUM;
+  }
+
+  public void recover() {
+
+  }
+
+  private int toStorageGroupId(PartialPath deviceId) {
+    return Math.abs(deviceId.hashCode() % STORAGE_GROUP_NUM);
   }
 
   private static class HashVirtualPartitionerHolder {

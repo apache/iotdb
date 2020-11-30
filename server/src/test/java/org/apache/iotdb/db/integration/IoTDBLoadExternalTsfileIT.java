@@ -130,10 +130,10 @@ public class IoTDBLoadExternalTsfileIT {
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    prepareData(insertSequenceSqls);
     enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
     IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    prepareData(insertSequenceSqls);
   }
 
   @After

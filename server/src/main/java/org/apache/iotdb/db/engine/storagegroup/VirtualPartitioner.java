@@ -22,11 +22,37 @@ import java.util.Set;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 public interface VirtualPartitioner {
-    public PartialPath deviceToStorageGroup(PartialPath deviceId);
 
-    public Set<PartialPath> storageGroupToDevice(PartialPath storageGroup);
+  /**
+   * use device id to determine storage group id
+   *
+   * @param deviceId device id
+   * @return virtual storage group id
+   */
+  public PartialPath deviceToStorageGroup(PartialPath deviceId);
 
-    public void clear();
+  /**
+   * use storage group id to get all device ids within this storage group
+   *
+   * @param storageGroup storage group id
+   * @return all device ids within this storage group
+   */
+  public Set<PartialPath> storageGroupToDevice(PartialPath storageGroup);
 
-    public int getPartitionCount();
+  /**
+   * release resource
+   */
+  public void clear();
+
+  /**
+   * get total number of virtual storage group
+   *
+   * @return total number of virtual storage group
+   */
+  public int getPartitionCount();
+
+  /**
+   * recover virtual partitioner
+   */
+  public void recover();
 }

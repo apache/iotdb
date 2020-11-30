@@ -210,6 +210,7 @@ public class StorageEngine implements IService {
 
   public void recover() {
     setAllSgReady(false);
+    partitioner.recover();
     recoveryThreadPool = IoTDBThreadPoolFactory
         .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
     recoverAllSgThreadPool = IoTDBThreadPoolFactory
