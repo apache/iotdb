@@ -23,8 +23,15 @@ import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HashVirtualPartitioner implements VirtualPartitioner {
+
+  private static final Logger logger = LoggerFactory.getLogger(HashVirtualPartitioner.class);
+
 
   public static final int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig()
       .getVirtualPartitionNum();
@@ -32,11 +39,18 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   // storage id -> set (device id)
   private final Set<PartialPath>[] sgToDevice;
 
+  // log writer
+  private VirtualPartitionerWriter writer;
+
   private HashVirtualPartitioner() {
     sgToDevice = new Set[STORAGE_GROUP_NUM];
     for (int i = 0; i < STORAGE_GROUP_NUM; i++) {
       sgToDevice[i] = new HashSet<>();
     }
+
+    recover();
+
+    writer = new VirtualPartitionerWriter();
   }
 
   public static HashVirtualPartitioner getInstance() {
@@ -51,9 +65,9 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
     if (!sgToDevice[storageGroupId].contains(deviceId)) {
       synchronized (sgToDevice) {
         // double check
-        if (!sgToDevice[storageGroupId].add(deviceId)) {
+        if (sgToDevice[storageGroupId].add(deviceId)) {
           // add new mapping to file
-          // TODO write to file
+          writer.writeMapping(String.valueOf(storageGroupId), deviceId.getFullPath());
         }
       }
     }
@@ -77,6 +91,8 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
     for (int i = 0; i < STORAGE_GROUP_NUM; i++) {
       sgToDevice[i] = new HashSet<>();
     }
+    writer.clear();
+    writer = new VirtualPartitionerWriter();
   }
 
   @Override
@@ -84,8 +100,30 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
     return STORAGE_GROUP_NUM;
   }
 
-  public void recover() {
+  @TestOnly
+  public void restart() {
+    for (int i = 0; i < STORAGE_GROUP_NUM; i++) {
+      sgToDevice[i] = new HashSet<>();
+    }
 
+    recover();
+  }
+
+  public void recover() {
+    VirtualPartitionerReader reader = new VirtualPartitionerReader();
+    Pair<String, String> mapping = null;
+    mapping = reader.readMapping();
+
+    while(mapping != null){
+      int storageGroupId = Integer.parseInt(mapping.left);
+      try {
+        sgToDevice[storageGroupId].add(new PartialPath(mapping.right));
+      } catch (IllegalPathException e) {
+        logger.error("can not recover virtual partitioner when reading: " + mapping, e);
+      }
+
+      mapping = reader.readMapping();
+    }
   }
 
   private int toStorageGroupId(PartialPath deviceId) {

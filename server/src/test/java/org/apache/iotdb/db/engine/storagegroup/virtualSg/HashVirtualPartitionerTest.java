@@ -1,0 +1,97 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.engine.storagegroup.virtualSg;
+
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+public class HashVirtualPartitionerTest {
+  @Before
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
+    // init file dir
+    StorageEngine.getInstance();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void basicTest() throws IllegalPathException {
+    HashVirtualPartitioner hashVirtualPartitioner = HashVirtualPartitioner.getInstance();
+
+    // sg -> deviceId
+    HashMap<PartialPath, Set<PartialPath>> realMap = new HashMap<>();
+    PartialPath d1 = new PartialPath("root.sg1.d1");
+    PartialPath d2 = new PartialPath("root.sg1.d2");
+
+
+    PartialPath sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
+    PartialPath sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
+
+    realMap.computeIfAbsent(sg1, id -> new HashSet<>()).add(d1);
+    realMap.computeIfAbsent(sg2, id -> new HashSet<>()).add(d2);
+
+    for(PartialPath sg : realMap.keySet()){
+      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
+    }
+  }
+
+
+  @Test
+  public void basicRecoverTest() throws IllegalPathException {
+    HashVirtualPartitioner hashVirtualPartitioner = HashVirtualPartitioner.getInstance();
+
+    // sg -> deviceId
+    HashMap<PartialPath, Set<PartialPath>> realMap = new HashMap<>();
+    PartialPath d1 = new PartialPath("root.sg1.d1");
+    PartialPath d2 = new PartialPath("root.sg1.d2");
+
+
+    PartialPath sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
+    PartialPath sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
+
+    realMap.computeIfAbsent(sg1, id -> new HashSet<>()).add(d1);
+    realMap.computeIfAbsent(sg2, id -> new HashSet<>()).add(d2);
+
+    for(PartialPath sg : realMap.keySet()){
+      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
+    }
+
+    hashVirtualPartitioner.restart();
+
+    for(PartialPath sg : realMap.keySet()){
+      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
+    }
+  }
+}

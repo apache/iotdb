@@ -92,7 +92,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private static final VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
+  private final VirtualPartitioner partitioner;
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -146,6 +146,7 @@ public class StorageEngine implements IService {
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
 
+    partitioner = HashVirtualPartitioner.getInstance();
     recover();
   }
 
@@ -210,7 +211,6 @@ public class StorageEngine implements IService {
 
   public void recover() {
     setAllSgReady(false);
-    partitioner.recover();
     recoveryThreadPool = IoTDBThreadPoolFactory
         .newFixedThreadPool(Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
     recoverAllSgThreadPool = IoTDBThreadPoolFactory
