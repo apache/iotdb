@@ -132,7 +132,6 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
-    TFramedTransport.encodeFrameSize(length, i32buf);
     try {
       int maxCompressedLength = Snappy.maxCompressedLength(length);
       writeCompressBuffer = resizeCompressBuf(maxCompressedLength, writeCompressBuffer);

@@ -19,15 +19,70 @@
 
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
-public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTransport {
+public class AutoScalingBufferReadTransport extends TTransport {
 
   private final AutoExpandingBuffer buf;
+  private int pos = 0;
+  private int limit = 0;
 
   public AutoScalingBufferReadTransport(int initialCapacity) {
-    super(initialCapacity);
     this.buf = new AutoExpandingBuffer(initialCapacity);
+  }
+
+  public void fill(TTransport inTrans, int length) throws TTransportException {
+    buf.resizeIfNecessary(length);
+    inTrans.readAll(buf.array(), 0, length);
+    pos = 0;
+    limit = length;
+  }
+
+  @Override
+  public void close() {
+    // do nothing
+  }
+
+  @Override
+  public boolean isOpen() { return true; }
+
+  @Override
+  public void open() {
+    // do nothing
+  }
+
+  @Override
+  public final int read(byte[] target, int off, int len) {
+    int amtToRead = Math.min(len, getBytesRemainingInBuffer());
+    System.arraycopy(buf.array(), pos, target, off, amtToRead);
+    consumeBuffer(amtToRead);
+    return amtToRead;
+  }
+
+  @Override
+  public void write(byte[] buf, int off, int len) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public final void consumeBuffer(int len) {
+    pos += len;
+  }
+
+  @Override
+  public final byte[] getBuffer() {
+    return buf.array();
+  }
+
+  @Override
+  public final int getBufferPosition() {
+    return pos;
+  }
+
+  @Override
+  public final int getBytesRemainingInBuffer() {
+    return limit - pos;
   }
 
   public void resizeIfNecessary(int size) {
