@@ -45,7 +45,11 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+      if (trans instanceof TSocket) {
+        return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+      } else {
+        return new TSnappyElasticFramedTransport(trans);
+      }
     }
   }
 }
