@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup;
+package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import java.util.Set;
 import org.apache.iotdb.db.metadata.PartialPath;
