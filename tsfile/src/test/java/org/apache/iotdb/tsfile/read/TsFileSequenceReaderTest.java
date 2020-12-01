@@ -96,22 +96,6 @@ public class TsFileSequenceReaderTest {
           MetaMarker.handleUnexpectedMarker(marker);
       }
     }
-    /*
-     *
-     * for (Entry<String, TsDeviceMetadataIndex> entry:
-     * metaData.getDeviceMap().entrySet()) { int chunkGroupIndex = 0;
-     * TsDeviceMetadata deviceMetadata =
-     * reader.readTsDeviceMetaData(entry.getValue()); List<ChunkGroupMetaData>
-     * chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-     * List<Pair<Long, Long>> offsets =
-     * deviceChunkGroupMetadataOffsets.get(entry.getKey()); for (ChunkGroupMetaData
-     * chunkGroupMetaData : chunkGroupMetaDataList) { Pair<Long, Long> pair =
-     * offsets.get(chunkGroupIndex++);
-     * Assert.assertEquals(chunkGroupMetaData.getStartOffsetOfChunkGroup(), (long)
-     * pair.left);
-     * Assert.assertEquals(chunkGroupMetaData.getEndOffsetOfChunkGroup(), (long)
-     * pair.right); } }
-     */
     reader.close();
   }
 
@@ -143,6 +127,36 @@ public class TsFileSequenceReaderTest {
       }
     }
 
+    reader.close();
+  }
+
+  @Test
+  public void testReadChunkMetadataInDevice() throws IOException {
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
+
+    // test for non-exist device "d2"
+    Map<String, List<ChunkMetadata>> chunkMetadataMap = reader
+        .readChunkMetadataInDevice("d2");
+    Set<String> expectedMeasurements = new HashSet<>();
+    expectedMeasurements.add("s1, s1, 20");
+    expectedMeasurements.add("s2, s2, 75");
+    expectedMeasurements.add("s3, s3, 100");
+    expectedMeasurements.add("s4, s4, 13");
+
+    Assert.assertEquals(4, chunkMetadataMap.size());
+    for (Entry<String, List<ChunkMetadata>> entry : chunkMetadataMap.entrySet()) {
+      StringBuilder measurementInfo = new StringBuilder(entry.getKey() + ", ");
+      for (ChunkMetadata chunkMetadata : entry.getValue()) {
+        measurementInfo.append(chunkMetadata.getMeasurementUid()).append(", ");
+        measurementInfo.append(chunkMetadata.getNumOfPoints());
+      }
+      Assert.assertTrue(
+          expectedMeasurements.removeIf(candidate -> candidate.equals(measurementInfo.toString())));
+    }
+    Assert.assertTrue(expectedMeasurements.isEmpty());
+
+    // test for non-exist device "d3"
+    Assert.assertTrue(reader.readChunkMetadataInDevice("d3").isEmpty());
     reader.close();
   }
 }
