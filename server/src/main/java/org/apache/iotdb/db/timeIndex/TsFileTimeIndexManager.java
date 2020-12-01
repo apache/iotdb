@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.db.timeIndex;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.timeIndex.device.LoadAllDeviceTimeIndexer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Manage all indexers
  */
 public class TsFileTimeIndexManager {
+
   private String indexerFilePath;
   private Map<PartialPath, FileTimeIndexer> seqIndexers;
   private Map<PartialPath, FileTimeIndexer> unseqIndexers;
@@ -54,7 +55,7 @@ public class TsFileTimeIndexManager {
 
   private TsFileTimeIndexManager() {
     indexerFilePath = IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-      + File.pathSeparator + IndexConstants.INDEXER_FILE;
+        + File.pathSeparator + IndexConstants.INDEXER_FILE;
     seqIndexers = new ConcurrentHashMap<>();
     unseqIndexers = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
@@ -62,6 +63,7 @@ public class TsFileTimeIndexManager {
 
   /**
    * init all indexer
+   *
    * @return whether success
    */
   public boolean init() {
@@ -121,12 +123,17 @@ public class TsFileTimeIndexManager {
     try {
       sgName = new PartialPath(storageGroup);
     } catch (IllegalPathException e) {
-      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup,
+          e.getMessage());
       throw e;
     }
     lock.readLock().lock();
     try {
-      return seqIndexers.get(sgName);
+      FileTimeIndexer fileTimeIndexer = seqIndexers.get(sgName);
+      if(fileTimeIndexer == null) {
+        fileTimeIndexer = new LoadAllDeviceTimeIndexer();
+      }
+      return fileTimeIndexer;
     } finally {
       lock.readLock().unlock();
     }
@@ -146,12 +153,17 @@ public class TsFileTimeIndexManager {
     try {
       sgName = new PartialPath(storageGroup);
     } catch (IllegalPathException e) {
-      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup, e.getMessage());
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup,
+          e.getMessage());
       throw e;
     }
     lock.readLock().lock();
     try {
-      return unseqIndexers.get(sgName);
+      FileTimeIndexer fileTimeIndexer = unseqIndexers.get(sgName);
+      if(fileTimeIndexer == null) {
+        fileTimeIndexer = new LoadAllDeviceTimeIndexer();
+      }
+      return fileTimeIndexer;
     } finally {
       lock.readLock().unlock();
     }

@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -50,8 +49,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -59,10 +58,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
+import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
+import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -819,13 +818,16 @@ public class TsFileProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // update device index
       try {
-        FileTimeIndexer fileTimeIndexer = null;
+        FileTimeIndexer fileTimeIndexer;
         if (sequence) {
           fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(storageGroupName);
         } else {
           fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(storageGroupName);
         }
-        fileTimeIndexer.addIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResource));
+        if (fileTimeIndexer != null) {
+          fileTimeIndexer
+              .addIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResource));
+        }
       } catch (IllegalPathException e) {
         logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),
             tsFileResource.getStorageGroupName(), e.getMessage());

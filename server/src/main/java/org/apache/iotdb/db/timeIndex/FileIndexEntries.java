@@ -18,16 +18,16 @@
  */
 package org.apache.iotdb.db.timeIndex;
 
+import java.util.Map;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-
-import java.util.Map;
 
 /**
  * Time Index, like deviceIndex: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query
  */
 public class FileIndexEntries {
+
   private TimeIndexEntry[] indexEntries;
   private String tsFilePath;
 
@@ -47,16 +47,17 @@ public class FileIndexEntries {
     this.tsFilePath = tsFilePath;
   }
 
-  public static FileIndexEntries convertFromTsFileResource(TsFileResource resource) throws IllegalPathException {
+  public static FileIndexEntries convertFromTsFileResource(TsFileResource resource)
+      throws IllegalPathException {
     FileIndexEntries fileIndexEntries = new FileIndexEntries();
     TimeIndexEntry[] timeIndexEntries = new TimeIndexEntry[resource.getDeviceToIndexMap().size()];
     int i = 0;
     for (Map.Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
       TimeIndexEntry timeIndexEntry = new TimeIndexEntry();
       timeIndexEntry.setAllElem(
-        new PartialPath(entry.getKey()),
-        resource.getStartTime(entry.getValue()),
-        resource.getEndTime(entry.getValue()));
+          new PartialPath(entry.getKey()),
+          resource.getStartTime(entry.getValue()),
+          resource.getEndTime(entry.getValue()));
       timeIndexEntries[i++] = timeIndexEntry;
     }
     fileIndexEntries.setIndexEntries(timeIndexEntries);

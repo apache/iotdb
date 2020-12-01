@@ -68,7 +68,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -78,7 +77,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.timeIndex.FileIndexerManager;
+import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -629,8 +628,8 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-        FileIndexerManager.getInstance().deleteSeqIndexer(storageGroup);
-        FileIndexerManager.getInstance().deleteUnseqIndexer(storageGroup);
+        TsFileTimeIndexManager.getInstance().deleteSeqIndexer(storageGroup);
+        TsFileTimeIndexManager.getInstance().deleteUnseqIndexer(storageGroup);
       }
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
@@ -646,8 +645,8 @@ public class StorageEngine implements IService {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupProcessor processor = processorMap.remove(storageGroupPath);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-      FileIndexerManager.getInstance().deleteSeqIndexer(storageGroupPath);
-      FileIndexerManager.getInstance().deleteUnseqIndexer(storageGroupPath);
+      TsFileTimeIndexManager.getInstance().deleteSeqIndexer(storageGroupPath);
+      TsFileTimeIndexManager.getInstance().deleteUnseqIndexer(storageGroupPath);
     }
     if (processor != null) {
       processor.deleteFolder(systemDir);

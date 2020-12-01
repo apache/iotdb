@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
  * time index entry, contains path, startTime, endTime
  */
 public class TimeIndexEntry {
+
   private PartialPath path;
   private long startTime;
   private long endTime;

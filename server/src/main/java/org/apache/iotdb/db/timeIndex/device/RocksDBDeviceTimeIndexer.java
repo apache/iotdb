@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.timeIndex.device;
 
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.List;
-
 public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
+
   @Override
   public boolean init() {
     return false;
@@ -53,6 +54,6 @@ public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
 
   @Override
   public List<FileIndexEntries> filterByPath(PartialPath path, Filter timeFilter) {
-    return null;
+    return Collections.emptyList();
   }
 }
