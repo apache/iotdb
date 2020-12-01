@@ -717,17 +717,19 @@ public class StorageGroupProcessor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
-    TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
-    Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
     if (enableMemControl) {
       try {
         blockInsertionIfReject();
       } catch (WriteProcessException e) {
+        TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+        Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
         throw new BatchInsertionException(results);
       }
     }
     writeLock();
     try {
+      TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
       boolean noFailure = true;
 
       /*
