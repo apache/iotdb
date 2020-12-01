@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
+import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -93,6 +94,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -105,6 +107,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -173,7 +176,7 @@ public class PhysicalGenerator {
       case CREATE_INDEX:
         CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
         return new CreateIndexPlan(createIndexOp.getSelectedPaths(), createIndexOp.getProps(),
-            createIndexOp.getTime(),createIndexOp.getIndexType());
+            createIndexOp.getTime(), createIndexOp.getIndexType());
       case DROP_INDEX:
         DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
         return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
@@ -269,6 +272,8 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(
                 ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_QUERY_PROCESSLIST:
+              return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
           default:
             throw new LogicalOperatorException(
                 String.format(
@@ -293,6 +298,8 @@ public class PhysicalGenerator {
         return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
+      case KILL:
+        return new KillQueryPlan(((KillQueryOperator) operator).getQueryId());
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -604,8 +611,8 @@ public class PhysicalGenerator {
         }
       }
     }
-    if(queryOperator.getIndexType() != null) {
-      if(queryPlan instanceof QueryIndexPlan) {
+    if (queryOperator.getIndexType() != null) {
+      if (queryPlan instanceof QueryIndexPlan) {
         ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
         ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
       }
@@ -797,7 +804,7 @@ public class PhysicalGenerator {
   }
 
   private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
-      throws MetadataException{
+      throws MetadataException {
     List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
     if (aggregations.isEmpty()) {
       return true;
@@ -816,7 +823,7 @@ public class PhysicalGenerator {
         return true;
     }
   }
-  
+
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }

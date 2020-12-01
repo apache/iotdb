@@ -34,6 +34,10 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_FOLDER_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
+import static org.apache.iotdb.db.conf.IoTDBConstant.START_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -107,6 +111,7 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
@@ -120,6 +125,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
@@ -275,6 +281,9 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException("Create index hasn't been supported yet");
       case DROP_INDEX:
         throw new QueryProcessException("Drop index hasn't been supported yet");
+      case KILL:
+        operateKillQuery((KillQueryPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -300,6 +309,18 @@ public class PlanExecutor implements IPlanExecutor {
     IoTDB.metaManager.createMTreeSnapshot();
   }
 
+  private void operateKillQuery(KillQueryPlan killQueryPlan) {
+    QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+    if (killQueryPlan.getQueryId() != -1) {
+      queryTimeManager.killQuery(killQueryPlan.getQueryId());
+    } else {
+      // if queryId is not specified, kill all running queries
+      for (Long queryId : queryTimeManager.getQueryThreadMap().keySet()) {
+        queryTimeManager.killQuery(queryId);
+      }
+    }
+  }
+
   private void operateTracing(TracingPlan plan) {
     IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
@@ -323,14 +344,17 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void flushSpecifiedStorageGroups(FlushPlan plan) throws StorageGroupNotSetException {
-    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan.getStorageGroupPartitionIds();
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap = plan
+        .getStorageGroupPartitionIds();
     for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
       PartialPath storageGroupName = entry.getKey();
       // normal flush
       if (entry.getValue() == null) {
         if (plan.isSeq() == null) {
-          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
-          StorageEngine.getInstance().closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, true, plan.isSync());
+          StorageEngine.getInstance()
+              .closeStorageGroupProcessor(storageGroupName, false, plan.isSync());
         } else {
           StorageEngine.getInstance()
               .closeStorageGroupProcessor(storageGroupName, plan.isSeq(), plan.isSync());
@@ -416,6 +440,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodes((CountPlan) showPlan);
       case MERGE_STATUS:
         return processShowMergeStatus();
+      case QUERY_PROCESSLIST:
+        return processShowQueryProcesslist();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -1384,6 +1410,21 @@ public class PlanExecutor implements IPlanExecutor {
     record.addField(status.isCancelled(), TSDataType.BOOLEAN);
     record.addField(status.isDone(), TSDataType.BOOLEAN);
     return record;
+  }
+
+  private QueryDataSet processShowQueryProcesslist() {
+    ListDataSet listDataSet = new ListDataSet(Arrays
+        .asList(new PartialPath(QUERY_ID, false), new PartialPath(STATEMENT, false)),
+        Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
+    QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+    for (Entry<Long, Pair<Long, String>> queryInfo : queryTimeManager.getQueryInfoMap().entrySet()) {
+      // TODO: time format
+      RowRecord record = new RowRecord(queryInfo.getValue().left);
+      record.addField(queryInfo.getKey(), TSDataType.INT64);
+      record.addField(queryInfo.getValue().right, TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   /**

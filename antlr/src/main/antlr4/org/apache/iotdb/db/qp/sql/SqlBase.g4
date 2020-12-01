@@ -79,6 +79,8 @@ statement
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
+    | SHOW QUERY PROCESSLIST #showQueryProcesslist
+    | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
@@ -698,6 +700,15 @@ SELECT
 SHOW
     : S H O W
     ;
+
+QUERY
+    : Q U E R Y
+    ;
+
+PROCESSLIST
+    : P R O C E S S L I S T
+    ;
+
 
 GRANT
     : G R A N T
