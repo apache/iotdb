@@ -93,8 +93,7 @@ public class StorageEngine implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
-  // avoid final for test
-  private static ExecutorService recoveryThreadPool;
+
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -122,6 +121,7 @@ public class StorageEngine implements IService {
   private ExecutorService recoverAllSgThreadPool;
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+  private ExecutorService recoveryThreadPool;
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
@@ -223,52 +223,10 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<Future<Void>> futures = new ArrayList<>();
-    if(!IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
-      List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-      for (StorageGroupMNode storageGroup : sgNodes) {
-        futures.add(recoveryThreadPool.submit(() -> {
-          try {
-            StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-                storageGroup.getFullPath(), fileFlushPolicy);
-            processor.setDataTTL(storageGroup.getDataTTL());
-            processor.setCustomCloseFileListeners(customCloseFileListeners);
-            processor.setCustomFlushListeners(customFlushListeners);
-            processorMap.put(storageGroup.getPartialPath(), processor);
-            logger.info("Storage Group Processor {} is recovered successfully",
-                storageGroup.getFullPath());
-          } catch (Exception e) {
-            logger
-                .error("meet error when recovering storage group: {}", storageGroup.getFullPath(),
-                    e);
-          }
-          return null;
-        }));
-      }
-    }
-    else{
-      List<String> sgNames = new ArrayList<>();
-      for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-        sgNames.add(String.valueOf(i));
-      }
-
-      for (String sgName : sgNames) {
-        futures.add(recoveryThreadPool.submit(() -> {
-          try {
-            StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-                sgName, fileFlushPolicy);
-            processor.setCustomCloseFileListeners(customCloseFileListeners);
-            processor.setCustomFlushListeners(customFlushListeners);
-            processorMap.put(new PartialPath(sgName), processor);
-            logger.info("Storage Group Processor {} is recovered successfully",
-                sgName);
-          } catch (Exception e) {
-            logger
-                .error("meet error when recovering storage group: {}", sgName,
-                    e);
-          }
-          return null;
-        }));
-      }
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+      recoverStorageGroupProcessor(futures);
+    } else {
+      recoverVirtualStorageGroupProcessor(futures);
     }
     for (Future<Void> future : futures) {
       try {
@@ -282,6 +240,63 @@ public class StorageEngine implements IService {
     }
     recoveryThreadPool.shutdown();
     setAllSgReady(true);
+  }
+
+  /**
+   * recover logic storage group processor
+   * @param futures recover future task
+   */
+  private void recoverStorageGroupProcessor(List<Future<Void>> futures) {
+    List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    for (StorageGroupMNode storageGroup : sgNodes) {
+      futures.add(recoveryThreadPool.submit(() -> {
+        try {
+          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+              storageGroup.getFullPath(), fileFlushPolicy);
+          processor.setDataTTL(storageGroup.getDataTTL());
+          processor.setCustomCloseFileListeners(customCloseFileListeners);
+          processor.setCustomFlushListeners(customFlushListeners);
+          processorMap.put(storageGroup.getPartialPath(), processor);
+          logger.info("Storage Group Processor {} is recovered successfully",
+              storageGroup.getFullPath());
+        } catch (Exception e) {
+          logger
+              .error("meet error when recovering storage group: {}", storageGroup.getFullPath(),
+                  e);
+        }
+        return null;
+      }));
+    }
+  }
+
+  /**
+   * recover virtual storage group processor
+   * @param futures recover future task
+   */
+  private void recoverVirtualStorageGroupProcessor(List<Future<Void>> futures) {
+    List<String> sgNames = new ArrayList<>();
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      sgNames.add(String.valueOf(i));
+    }
+
+    for (String sgName : sgNames) {
+      futures.add(recoveryThreadPool.submit(() -> {
+        try {
+          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+              sgName, fileFlushPolicy);
+          processor.setCustomCloseFileListeners(customCloseFileListeners);
+          processor.setCustomFlushListeners(customFlushListeners);
+          processorMap.put(new PartialPath(sgName), processor);
+          logger.info("Storage Group Processor {} is recovered successfully",
+              sgName);
+        } catch (Exception e) {
+          logger
+              .error("meet error when recovering storage group: {}", sgName,
+                  e);
+        }
+        return null;
+      }));
+    }
   }
 
   @Override
@@ -364,6 +379,7 @@ public class StorageEngine implements IService {
   /**
    * This method is for sync, delete tsfile or sth like them, just get storage group directly by sg
    * name
+   *
    * @param path storage group path
    * @return storage group processor
    */
@@ -381,6 +397,7 @@ public class StorageEngine implements IService {
 
   /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
+   *
    * @param path device path
    * @return storage group processor
    */
