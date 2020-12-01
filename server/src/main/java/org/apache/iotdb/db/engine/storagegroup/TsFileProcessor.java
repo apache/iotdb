@@ -177,7 +177,6 @@ public class TsFileProcessor {
       workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     if (enableMemControl) {
-      blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
 
@@ -220,7 +219,6 @@ public class TsFileProcessor {
       workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     if (enableMemControl) {
-      blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
     }
 
