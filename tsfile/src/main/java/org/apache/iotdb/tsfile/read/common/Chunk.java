@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import java.util.List;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 /**
  * used in query.
@@ -63,12 +66,51 @@ public class Chunk implements Accountable {
     this.deleteIntervalList = list;
   }
 
-  public void mergeChunk(Chunk chunk) {
-    chunkHeader.mergeChunkHeader(chunk.chunkHeader);
-    ByteBuffer newChunkData = ByteBuffer
-        .allocate(chunkData.array().length + chunk.chunkData.array().length);
-    newChunkData.put(chunkData.array());
-    newChunkData.put(chunk.chunkData.array());
+  public void mergeChunk(Chunk chunk) throws IOException {
+    int dataSize = 0;
+    int offset1 = -1;
+    if (chunk.chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
+      ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
+      offset1 = chunk.chunkData.position();
+      chunk.chunkData.flip();
+      dataSize += (chunk.chunkData.array().length + chunk.chunkStatistic.getSerializedSize());
+    } else {
+      dataSize += chunk.chunkData.array().length;
+    }
+    int offset2 = -1;
+    if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      chunkHeader.setChunkType(MetaMarker.CHUNK_HEADER);
+      ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
+      ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
+      offset2 = chunkData.position();
+      chunkData.flip();
+      dataSize += (chunkData.array().length + chunkStatistic.getSerializedSize());
+    } else {
+      dataSize += chunkData.array().length;
+    }
+    chunkHeader.setDataSize(dataSize);
+    ByteBuffer newChunkData = ByteBuffer.allocate(dataSize);
+    if (offset2 == -1) {
+      newChunkData.put(chunkData.array());
+    } else {
+      byte[] b = chunkData.array();
+      newChunkData.put(b, 0, offset2);
+      PublicBAOS a = new PublicBAOS();
+      chunkStatistic.serialize(a);
+      newChunkData.put(a.getBuf(), 0, a.size());
+      newChunkData.put(b, offset2, b.length - offset2);
+    }
+    if (offset1 == -1) {
+      newChunkData.put(chunk.chunkData.array());
+    } else {
+      byte[] b = chunk.chunkData.array();
+      newChunkData.put(b, 0, offset1);
+      PublicBAOS a = new PublicBAOS();
+      chunk.chunkStatistic.serialize(a);
+      newChunkData.put(a.getBuf(), 0, a.size());
+      newChunkData.put(b, offset1, b.length - offset1);
+    }
     chunkData = newChunkData;
   }
 

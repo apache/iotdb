@@ -41,7 +41,7 @@ public class TsFileSequenceRead {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void main(String[] args) throws IOException {
-    String filename = "/Users/jackietien/Desktop/1-1-1-after.tsfile";
+    String filename = "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -65,6 +65,7 @@ public class TsFileSequenceRead {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             System.out.println("\t[Chunk]");
+            System.out.println("\tchunk type: " + marker);
             System.out.println("\tposition: " + reader.position());
             ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());

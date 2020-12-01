@@ -72,7 +72,11 @@ public class PlainEncoder extends Encoder {
 
   @Override
   public void encode(float value, ByteArrayOutputStream out) {
-    encode(Float.floatToIntBits(value), out);
+    int floatInt = Float.floatToIntBits(value);
+    out.write((floatInt >> 24) & 0xFF);
+    out.write((floatInt >> 16) & 0xFF);
+    out.write((floatInt >> 8) & 0xFF);
+    out.write(floatInt & 0xFF);
   }
 
   @Override

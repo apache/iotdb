@@ -220,10 +220,9 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    return "BooleanStatistics{" +
-        "firstValue=" + firstValue +
+    return super.toString() + " [firstValue=" + firstValue +
         ", lastValue=" + lastValue +
         ", sumValue=" + sumValue +
-        '}';
+        ']';
   }
 }

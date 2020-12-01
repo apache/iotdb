@@ -35,6 +35,11 @@ import java.nio.ByteBuffer;
 public class ChunkHeader {
 
 
+  /**
+   * 1 means this chunk has more than one page, so each page has its own page statistic 4 means this
+   * chunk has only one page, and this page has no page statistic
+   */
+  private byte chunkType;
   private String measurementID;
   private int dataSize;
   private TSDataType dataType;
@@ -42,11 +47,6 @@ public class ChunkHeader {
   private TSEncoding encodingType;
 
   // the following fields do not need to be serialized.
-  /**
-   * 1 means this chunk has more than one page, so each page has its own page statistic 4 means this
-   * chunk has only one page, and this page has no page statistic
-   */
-  private byte chunkType;
   private int numOfPages;
   private int serializedSize;
 
@@ -226,8 +226,16 @@ public class ChunkHeader {
     this.numOfPages += chunkHeader.getNumOfPages();
   }
 
+  public void setDataSize(int dataSize) {
+    this.dataSize = dataSize;
+  }
+
   public byte getChunkType() {
     return chunkType;
+  }
+
+  public void setChunkType(byte chunkType) {
+    this.chunkType = chunkType;
   }
 
   public void increasePageNums(int i) {
