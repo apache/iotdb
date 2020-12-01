@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,7 +28,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.xerial.snappy.Snappy;
 
-public class TElasticFramedTransport extends TFastFramedTransport {
+public class TSnappyElasticFramedTransport extends TFastFramedTransport {
 
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
@@ -53,20 +53,20 @@ public class TElasticFramedTransport extends TFastFramedTransport {
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TElasticFramedTransport(trans, initialCapacity, maxLength);
+      return new TSnappyElasticFramedTransport(trans, initialCapacity, maxLength);
     }
   }
 
-  public TElasticFramedTransport(TTransport underlying) {
+  public TSnappyElasticFramedTransport(TTransport underlying) {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
   }
 
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
+  public TSnappyElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
     super(underlying, initialBufferCapacity, maxLength);
     this.underlying = underlying;
     this.maxLength = maxLength;
-    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity, 1.5);
-    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity, 1.5);
+    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
+    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
     writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
@@ -109,7 +109,7 @@ public class TElasticFramedTransport extends TFastFramedTransport {
       readCompressBuffer.getByteBuffer().position(0);
 
       if (uncompressedLength < maxLength) {
-        readBuffer.shrinkSizeIfNecessary(maxLength);
+        readBuffer.resizeIfNecessary(maxLength);
       }
       readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
@@ -147,7 +147,7 @@ public class TElasticFramedTransport extends TFastFramedTransport {
     }
 
     writeBuffer.reset();
-    writeBuffer.shrinkSizeIfNecessary(maxLength);
+    writeBuffer.resizeIfNecessary(maxLength);
     underlying.flush();
   }
 

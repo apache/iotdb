@@ -36,11 +36,11 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
@@ -280,7 +280,7 @@ public class ClientMain {
   @SuppressWarnings({"java:S2095"}) // the transport is used later
   private static Client getClient(String ip, int port) throws TTransportException {
     TSIService.Client.Factory factory = new Factory();
-    TTransport transport = new TElasticFramedTransport(new TSocket(ip, port));
+    TTransport transport = RpcTransportFactory.INSTANCE.getTransport(new TSocket(ip, port));
     transport.open();
     TProtocol protocol =
         IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable() ?

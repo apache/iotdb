@@ -27,7 +27,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -37,11 +36,11 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
@@ -253,9 +252,7 @@ public class ClusterUtils {
     poolArgs.processor(processor);
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
-    poolArgs.transportFactory(new TElasticFramedTransport.Factory(
-        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
+    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
 
     // run the thrift server in a separate thread so that the main thread is not blocked
     return new TThreadPoolServer(poolArgs);

@@ -34,7 +34,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.rpcutils.TElasticFramedTransport;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -55,6 +54,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
@@ -164,9 +164,7 @@ public class ClientServer extends TSServiceImpl {
     poolArgs.processor(new Processor<>(this));
     poolArgs.protocolFactory(protocolFactory);
     // nonblocking server requests FramedTransport
-    poolArgs.transportFactory(new TElasticFramedTransport.Factory(
-        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
-        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
+    poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
 
     poolServer = new TThreadPoolServer(poolArgs);
     // mainly for handling client exit events

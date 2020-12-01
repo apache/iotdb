@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
 import java.net.SocketException;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportFactory;
 
-public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport {
+public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport implements TimeoutChangeableTransport {
 
   private TSocket underlying;
 
@@ -36,8 +37,15 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
     underlying.setTimeout(timeout);
   }
 
-  @TestOnly
   public int getTimeOut() throws SocketException {
     return underlying.getSocket().getSoTimeout();
+  }
+
+  public static class Factory extends TTransportFactory {
+
+    @Override
+    public TTransport getTransport(TTransport trans) {
+      return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+    }
   }
 }

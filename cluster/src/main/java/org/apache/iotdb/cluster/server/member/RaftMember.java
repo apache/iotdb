@@ -107,7 +107,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
 
-  public static final boolean USE_LOG_DISPATCHER = true;
+  public static final boolean USE_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
   private static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"

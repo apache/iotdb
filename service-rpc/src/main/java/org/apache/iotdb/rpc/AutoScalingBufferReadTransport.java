@@ -17,23 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
-import java.util.Arrays;
-import org.apache.thrift.transport.AutoExpandingBuffer;
+import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
 
-public class AutoScalingBuffer extends AutoExpandingBuffer {
+public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTransport {
 
-  private byte[] array;
+  private final AutoExpandingBuffer buf;
 
-  public AutoScalingBuffer(int initialCapacity, double growthCoefficient) {
-    super(initialCapacity, growthCoefficient);
-    this.array = new byte[initialCapacity];
+  public AutoScalingBufferReadTransport(int initialCapacity) {
+    super(initialCapacity);
+    this.buf = new AutoExpandingBuffer(initialCapacity);
   }
 
-  public void shrinkSizeIfNecessary(int size) {
-    if (array.length > size) {
-      array = Arrays.copyOf(array, size);
-    }
+  public void resizeIfNecessary(int size) {
+    buf.resizeIfNecessary(size);
   }
 }
