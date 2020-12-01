@@ -246,6 +246,7 @@ public class EnvironmentUtils {
     config.setEnableStatMonitor(false);
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    HashVirtualPartitioner.getInstance().recover();
   }
 
   public static void stopDaemon() {
@@ -292,6 +293,9 @@ public class EnvironmentUtils {
     }
     // create storage group
     createDir(config.getSystemDir());
+    // create sg dir
+    String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+    createDir(sgDir);
     // create wal
     createDir(config.getWalDir());
     // create query

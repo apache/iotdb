@@ -146,7 +146,13 @@ public class StorageEngine implements IService {
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
 
-    partitioner = HashVirtualPartitioner.getInstance();
+    if(config.isEnableVirtualPartition()){
+      partitioner = HashVirtualPartitioner.getInstance();
+    }
+    else{
+      partitioner = null;
+    }
+
     recover();
   }
 
@@ -223,7 +229,7 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<Future<Void>> futures = new ArrayList<>();
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+    if (!config.isEnableVirtualPartition()) {
       recoverStorageGroupProcessor(futures);
     } else {
       recoverVirtualStorageGroupProcessor(futures);
@@ -405,7 +411,7 @@ public class StorageEngine implements IService {
     PartialPath storageGroupPath;
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+      if (config.isEnableVirtualPartition()) {
         storageGroupPath = partitioner.deviceToStorageGroup(path);
       } else {
         storageGroupPath = storageGroupMNode.getPartialPath();
@@ -612,7 +618,7 @@ public class StorageEngine implements IService {
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws StorageEngineException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+      if (config.isEnableVirtualPartition()) {
         // Distribute the request to all sg, this can be improved in future
         for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
           storageGroupProcessor.delete(path, startTime, endTime, planIndex);
@@ -636,7 +642,7 @@ public class StorageEngine implements IService {
   public void deleteTimeseries(PartialPath path, long planIndex)
       throws StorageEngineException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
+      if (config.isEnableVirtualPartition()) {
         // Distribute the request to all sg, this can be improved in future
         for (StorageGroupProcessor storageGroupProcessor : processorMap.values()) {
           storageGroupProcessor.delete(path, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);

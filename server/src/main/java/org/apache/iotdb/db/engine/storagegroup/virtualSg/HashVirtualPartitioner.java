@@ -49,8 +49,6 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
     }
 
     recover();
-
-    writer = new VirtualPartitionerWriter();
   }
 
   public static HashVirtualPartitioner getInstance() {
@@ -92,7 +90,6 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
       sgToDevice[i] = new HashSet<>();
     }
     writer.clear();
-    writer = new VirtualPartitionerWriter();
   }
 
   @Override
@@ -124,6 +121,8 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
 
       mapping = reader.readMapping();
     }
+
+    writer = new VirtualPartitionerWriter();
   }
 
   private int toStorageGroupId(PartialPath deviceId) {
