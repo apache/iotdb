@@ -31,6 +31,6 @@ To use go client, add "import github.com/yanhongwangg/incubator-iotdb/client-go"
 
 *Download dependency : go get github.com/yanhongwangg/incubator-iotdb@b23e5f8c7f4326bfb12a8c81a0949f287b363a6e
 
-*eg:https://github.com/yanhongwangg/incubator-iotdb/blob/client-go/client-go/src/main/client/example/session_example.go
+*eg:https://github.com/yanhongwangg/incubator-iotdb/tree/client-go/client-go/example/session_example.go
 
 
