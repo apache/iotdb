@@ -21,8 +21,8 @@ package test
 
 import (
 	"fmt"
-	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client"
-	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client/utils"
+	"github.com/yanhongwangg/incubator-iotdb/client-go/client"
+	"github.com/yanhongwangg/incubator-iotdb/client-go/client/utils"
 	"strings"
 	"testing"
 )

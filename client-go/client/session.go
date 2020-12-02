@@ -27,7 +27,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	log "github.com/sirupsen/logrus"
 	"github.com/yanhongwangg/go-thrift/rpc"
-	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client/utils"
+	"github.com/yanhongwangg/incubator-iotdb/client-go/client/utils"
 	"net"
 	"os"
 	"strings"
