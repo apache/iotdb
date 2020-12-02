@@ -730,7 +730,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
-        resp = getListDataResp(newDataSet);
+        resp = getListDataSetHeaders(newDataSet);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
@@ -797,7 +797,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private TSExecuteStatementResp getListDataResp(QueryDataSet dataSet) {
+  private TSExecuteStatementResp getListDataSetHeaders(QueryDataSet dataSet) {
     return StaticResps
         .getNoTimeExecuteResp(dataSet.getPaths().stream().map(Path::getFullPath).collect(
             Collectors.toList()), dataSet.getDataTypes().stream().map(Enum::toString).collect(
