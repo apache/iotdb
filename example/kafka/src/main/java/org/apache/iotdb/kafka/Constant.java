@@ -21,6 +21,8 @@ package org.apache.iotdb.kafka;
 import org.apache.iotdb.jdbc.Config;
 
 public class Constant {
+  private Constant() {
+  }
 
   public static final String TOPIC = "Kafka-Test";
   public static final int CONSUMER_THREAD_NUM = 5;

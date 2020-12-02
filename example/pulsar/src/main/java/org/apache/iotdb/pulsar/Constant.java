@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.pulsar;
 
-package org.apache.iotdb.db.engine.flush;
-
-public interface FlushManagerMBean {
-
-  int getNumberOfWorkingTasks();
-
-  int getNumberOfPendingTasks();
-
-  int getNumberOfWorkingSubTasks();
-
-  int getNumberOfPendingSubTasks();
+@SuppressWarnings("squid:S2068")
+public class Constant {
+  private Constant() {
+  }
+  public static final String TOPIC_NAME = "persistent://public/default/regions-partitioned";
+  public static final String IOTDB_CONNECTION_URL = "jdbc:iotdb://localhost:6667/";
+  public static final String IOTDB_CONNECTION_USER = "root";
+  public static final String IOTDB_CONNECTION_PASSWORD = "root";
+  public static final String STORAGE_GROUP = "root.vehicle";
 }
