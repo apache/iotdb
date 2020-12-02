@@ -490,7 +490,7 @@ var config = {
 				],
 				'/UserGuide/V0.11.x/': [
 					{
-						title:'IoTDB User Guide (V0.10.x)',
+						title:'IoTDB User Guide (V0.11.x)',
 						collapsable: false,
 					},
 					{
