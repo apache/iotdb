@@ -1,0 +1,44 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: E2E Tests
+
+on:
+  push:
+    branches: 
+      - master
+      - 'rel/*'
+      - test/e2e
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches: 
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+        
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build Distribution Zip
+        run: ./mvnw.sh -B -DskipTests clean package
+
+      - name: Build Docker Image
+        run: |
+          docker build . -f docker/src/main/Dockerfile -t "iotdb:$GITHUB_SHA"
+          docker images
+
+      - name: Run E2E Tests
+        run: echo "TODO"
