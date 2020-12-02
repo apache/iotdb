@@ -33,29 +33,39 @@ tutorial of installation, eventually, you should have a thrift executable.
 http://thrift.apache.org/docs/install/
 ```
 
-## Compile the thrift library
-If you have added Thrift executable into your path, you may just run `client-py/compile.sh` or
- `client-py\compile.bat`, or you will have to modify it to set variable `THRIFT_EXE` to point to
-your executable. This will generate thrift sources under folder `target`, you can add it to your
-`PYTHONPATH` so that you would be able to use the library in your code. Notice that the scripts
-locate the thrift source file by relative path, so if you move the scripts else where, they are
-no longer valid.
+## Compile the thrift library and Debug
 
-Optionally, if you know the basic usage of thrift, you can only download the thrift source file in
-`thrift\src\main\thrift\rpc.thrift`, and simply use `thrift -gen py -out ./target/iotdb rpc.thrift` 
-to generate the python library.
+In the root of IoTDB's source code folder,  run `mvn generate-sources -pl client-py -am`.
 
-## Session Client & Example
-We packed up the Thrift interface in `client-py/src/Session.py` (similar with its Java counterpart), also provided 
-an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
-
-## How to Debug
-
-To debug the python API module, run `mvn generate-sources -pl thrift,client-py`
-
-Then, go to target/pypi to get the complete projects.
-
+Then a complete project will be generated at `client-py/target/pypi` folder. 
 But !BE CAUTIOUS!
-All your modifications in target/pypi must be copied manually to src/ folder.
+All your modifications in `client-py/target/pypi` must be copied manually to `client-py/src/` folder.
 Otherwise once you run `mvn clean`, you will lose all your effort.
 
+Or, you can also copy `client-py/target/pypi/iotdb/thrift` folder to `client-py/src/thrift`, then the 
+`src` folder will become also a complete python project. 
+But !BE CAUTIOUS!
+Do not upload `client-py/src/thrift` to the git repo.
+
+
+## Session Client & Example
+We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided 
+an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
+
+
+Or, another simple example:
+
+```$python
+
+from iotdb.Session import Session
+
+ip = "127.0.0.1"
+port_ = "6667"
+username_ = 'root'
+password_ = 'root'
+session = Session(ip, port_, username_, password_)
+session.open(False)
+zone = session.get_time_zone()
+session.close()
+
+```

@@ -245,7 +245,7 @@ public abstract class AggregateResult {
     return booleanValue;
   }
 
-  protected void setBooleanValue(boolean booleanValue) {
+  public void setBooleanValue(boolean booleanValue) {
     this.hasCandidateResult = true;
     this.booleanValue = booleanValue;
   }
@@ -254,7 +254,7 @@ public abstract class AggregateResult {
     return intValue;
   }
 
-  protected void setIntValue(int intValue) {
+  public void setIntValue(int intValue) {
     this.hasCandidateResult = true;
     this.intValue = intValue;
   }
@@ -263,7 +263,7 @@ public abstract class AggregateResult {
     return longValue;
   }
 
-  protected void setLongValue(long longValue) {
+  public void setLongValue(long longValue) {
     this.hasCandidateResult = true;
     this.longValue = longValue;
   }
@@ -272,7 +272,7 @@ public abstract class AggregateResult {
     return floatValue;
   }
 
-  protected void setFloatValue(float floatValue) {
+  public void setFloatValue(float floatValue) {
     this.hasCandidateResult = true;
     this.floatValue = floatValue;
   }
@@ -281,7 +281,7 @@ public abstract class AggregateResult {
     return doubleValue;
   }
 
-  protected void setDoubleValue(double doubleValue) {
+  public void setDoubleValue(double doubleValue) {
     this.hasCandidateResult = true;
     this.doubleValue = doubleValue;
   }
@@ -290,7 +290,7 @@ public abstract class AggregateResult {
     return binaryValue;
   }
 
-  protected void setBinaryValue(Binary binaryValue) {
+  public void setBinaryValue(Binary binaryValue) {
     this.hasCandidateResult = true;
     this.binaryValue = binaryValue;
   }

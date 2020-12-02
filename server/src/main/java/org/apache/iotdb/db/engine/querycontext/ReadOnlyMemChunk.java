@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReadOnlyMemChunk {
 
@@ -38,6 +40,7 @@ public class ReadOnlyMemChunk {
   private TSDataType dataType;
   private TSEncoding encoding;
 
+  private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
   private long version;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -56,7 +59,18 @@ public class ReadOnlyMemChunk {
     this.encoding = encoding;
     this.version = version;
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-      this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+      try {
+        this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+      } catch (NumberFormatException e) {
+        logger.warn("The format of MAX_POINT_NUMBER {}  is not correct."
+            + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+      }
+      if (floatPrecision < 0) {
+        logger.warn("The MAX_POINT_NUMBER shouldn't be less than 0."
+            + " Using default float precision {}.",
+            TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
+        floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
+      }
     }
     tvList.sort();
     this.chunkData = tvList;

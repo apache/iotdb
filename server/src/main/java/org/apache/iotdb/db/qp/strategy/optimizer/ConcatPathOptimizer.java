@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -86,6 +85,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     checkAggrOfSelectOperator(select);
+    if (((QueryOperator) operator).isGroupByLevel()) {
+      checkAggrOfGroupByLevel(select);
+    }
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
@@ -95,7 +97,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
         concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum,
-            !(operator instanceof QueryIndexOperator));
+            ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -147,6 +149,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         && selectOperator.getSuffixPaths().size() != selectOperator.getAggregations().size()) {
       throw new LogicalOptimizeException(
           "Common queries and aggregated queries are not allowed to appear at the same time");
+    }
+  }
+
+  private void checkAggrOfGroupByLevel(SelectOperator selectOperator) throws LogicalOptimizeException {
+    if (selectOperator.getAggregations().size() != 1) {
+      throw new LogicalOptimizeException(
+          "Aggregation function is restricted to one if group by level clause exists");
     }
   }
 
