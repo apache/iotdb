@@ -51,5 +51,8 @@ public interface VirtualPartitioner {
    */
   public int getPartitionCount();
 
+  /**
+   * recover virtual storage group partitioner
+   */
   public void recover();
 }
