@@ -494,6 +494,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   toMergeTsFile);
             }
 
+            try{
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
+            }
             TsFileResource newResource = new TsFileResource(newLevelFile);
             CompactionUtils
                 .merge(newResource, toMergeTsFiles, storageGroupName, compactionLogger,
@@ -509,12 +514,27 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               } else {
                 unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               }
+              try{
+                Thread.sleep(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
               deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
+              try{
+                Thread.sleep(10);
+              } catch (InterruptedException e) {
+                e.printStackTrace();
+              }
               if (mergeResources.size() > i + 1) {
                 mergeResources.get(i + 1).add(newResource);
               }
             } finally {
               writeUnlock();
+            }
+            try{
+              Thread.sleep(10);
+            } catch (InterruptedException e) {
+              e.printStackTrace();
             }
             deleteLevelFilesInDisk(toMergeTsFiles);
             compactionLogger.close();
