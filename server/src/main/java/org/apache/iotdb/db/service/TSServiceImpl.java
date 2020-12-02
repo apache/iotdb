@@ -722,6 +722,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       TSExecuteStatementResp resp = null;
 
+      // execute it before createDataSet since it may change the content of query plan
       if (plan instanceof QueryPlan) {
         resp = getQueryColumnHeaders(plan, username);
       }
