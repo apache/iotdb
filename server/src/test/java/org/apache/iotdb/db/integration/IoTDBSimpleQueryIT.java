@@ -57,7 +57,7 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testCreatTimeseries() throws SQLException, ClassNotFoundException, MetadataException {
+  public void testCreateTimeseries1() throws ClassNotFoundException, MetadataException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
@@ -73,6 +73,383 @@ public class IoTDBSimpleQueryIT {
     MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
         .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
+  }
+
+  @Test
+  public void testCreateTimeseriesSDTProperties() throws ClassNotFoundException, MetadataException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
+        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+
+    //check if SDT property is set
+    assertEquals(2, mNode.getSchema().getProps().size());
+  }
+
+  @Test
+  public void testCreateTimeseriesWithSDTProperties2() throws ClassNotFoundException, MetadataException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
+          + "LOSS=SDT,COMPDEV=2,COMPMIN=2,COMPMAX=10");
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+
+    MeasurementMNode mNode = (MeasurementMNode) MManager.getInstance()
+        .getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+
+    //check if SDT property is set
+    assertEquals(4, mNode.getSchema().getProps().size());
+  }
+
+  @Test
+  public void testSDTEncodingSeq() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+
+      int degree = 0;
+      for (int time = 0; time < 100; time++) {
+        //generate data in sine wave pattern
+        double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        statement.execute(sql);
+      }
+
+      //before SDT encoding
+      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(count, 100);
+
+      //after flush and SDT encoding
+      statement.execute("flush");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(14, count);
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingCompDev() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+
+      for (int time = 1; time < 8; time++) {
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        statement.execute(sql);
+      }
+      statement.execute("flush");
+
+      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      statement.execute(sql);
+      statement.execute("flush");
+
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      int count = 0;
+
+      String[] timestamps = {"1", "15", "16", "17"};
+      String[] values = {"1", "10", "20", "1"};
+
+      while (resultSet.next()) {
+        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        count++;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingCompMin() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMIN=1.5");
+
+      for (int time = 1; time < 8; time++) {
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        statement.execute(sql);
+      }
+      statement.execute("flush");
+
+      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      statement.execute(sql);
+      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      statement.execute(sql);
+      statement.execute("flush");
+
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      int count = 0;
+
+      String[] timestamps = {"1", "15", "17"};
+      String[] values = {"1", "10", "1"};
+
+      while (resultSet.next()) {
+        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        count++;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingCompMax() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAX=20");
+
+      for (int time = 1; time < 50; time++) {
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        statement.execute(sql);
+      }
+      statement.execute("flush");
+
+
+      statement.execute("flush");
+      ResultSet resultSet = statement.executeQuery("select * from root");
+      int count = 0;
+
+      String[] timestamps = {"1", "21", "41"};
+      String[] values = {"1", "1", "1"};
+
+      while (resultSet.next()) {
+        assertEquals(timestamps[count], resultSet.getString("Time"));
+        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        count++;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingUnseq() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+
+      int degree = 0;
+      for (int time = 0; time < 100; time++) {
+        //generate data in sine wave pattern
+        double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        statement.execute(sql);
+      }
+
+      //insert unseq
+      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      statement.execute(sql);
+
+      //before SDT encoding
+      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(count, 100);
+
+      //after flush and SDT encoding
+      statement.execute("flush");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(17, count);
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingMergeSeq() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+
+      int degree = 0;
+      for (int time = 0; time < 100; time++) {
+        //generate data in sine wave pattern
+        double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        statement.execute(sql);
+      }
+
+      //before SDT encoding
+      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(100, count);
+
+      //after flush and SDT encoding
+      statement.execute("flush");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(14, count);
+
+      //no sdt encoding when merging
+      statement.execute("merge");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(14, count);
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingMergeUnseq() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      //test set sdt property
+      statement
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+
+      int degree = 0;
+      for (int time = 0; time < 100; time++) {
+        //generate data in sine wave pattern
+        double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        statement.execute(sql);
+      }
+
+      //insert unseq
+      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      statement.execute(sql);
+
+      //before SDT encoding
+      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(100, count);
+
+      //after flush and SDT encoding
+      statement.execute("flush");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(17, count);
+
+      //no sdt encoding when merging
+      statement.execute("merge");
+      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(17, count);
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -638,6 +1015,49 @@ public class IoTDBSimpleQueryIT {
       Assert.assertEquals(r3.getLong(1), 10L);
       Assert.assertEquals(r3.getLong(2), 10L);
       Assert.assertEquals(r3.getLong(3), 10L);
+    }
+  }
+
+  @Test
+  public void testInvalidMaxPointNumber() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
+          + "max_point_number=4");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
+          + "max_point_number=2.5");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
+          + "max_point_number=q");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
+          + "max_point_number=-1");
+      statement.execute("insert into root.sg1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+
+      try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.d1")) {
+        r1.next();
+        Assert.assertEquals(1.1234f, r1.getFloat(2), 0);
+      }
+
+      try (ResultSet r2 = statement.executeQuery("select s3 from root.sg1.d1")) {
+        r2.next();
+        Assert.assertEquals(1.12f, r2.getFloat(2), 0);
+      }
+
+      try (ResultSet r3 = statement.executeQuery("select s3 from root.sg1.d1")) {
+        r3.next();
+        Assert.assertEquals(1.12f, r3.getFloat(2), 0);
+      }
+
+      try (ResultSet r4 = statement.executeQuery("select s4 from root.sg1.d1")) {
+        r4.next();
+        Assert.assertEquals(1.12f, r4.getFloat(2), 0);
+      }
+
+    } catch (SQLException e) {
+      fail();
     }
   }
 }

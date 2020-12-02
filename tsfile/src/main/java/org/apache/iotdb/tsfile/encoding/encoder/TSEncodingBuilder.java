@@ -155,7 +155,12 @@ public abstract class TSEncodingBuilder {
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+        try {
+          this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        } catch (NumberFormatException e) {
+          logger.warn("The format of max point number {} is not correct."
+              + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+        }
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger
@@ -203,7 +208,12 @@ public abstract class TSEncodingBuilder {
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+        try {
+          this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        } catch (NumberFormatException e) {
+          logger.warn("The format of max point number {} is not correct."
+              + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+        }
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger

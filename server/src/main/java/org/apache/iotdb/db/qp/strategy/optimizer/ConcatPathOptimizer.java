@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -98,7 +97,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
         concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum,
-            !(operator instanceof QueryIndexOperator));
+            ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
