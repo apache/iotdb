@@ -42,6 +42,7 @@
         <module>hadoop</module>
         <module>flink</module>
         <module>mqtt</module>
+        <module>pulsar</module>
     </modules>
     <build>
         <pluginManagement>
