@@ -98,10 +98,11 @@ public class ReadWriteForEncodingUtils {
   public static int readUnsignedVarInt(InputStream in) throws IOException {
     int value = 0;
     int i = 0;
-    int b;
-    while (((b = in.read()) & 0x80) != 0) {
+    int b = in.read();
+    while (b != -1 && (b & 0x80) != 0) {
       value |= (b & 0x7F) << i;
       i += 7;
+      b = in.read();
     }
     return value | (b << i);
   }

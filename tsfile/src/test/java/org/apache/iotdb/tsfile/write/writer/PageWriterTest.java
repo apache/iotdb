@@ -46,7 +46,7 @@ public class PageWriterTest {
     int timeCount = 0;
     try {
       writer.write(timeCount++, value);
-      assertEquals(12, writer.estimateMaxMemSize());
+      assertEquals(9, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
       writer.reset(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
@@ -165,7 +165,7 @@ public class PageWriterTest {
     int timeCount = 0;
     try {
       writer.write(timeCount++, new Binary(value));
-      assertEquals(26, writer.estimateMaxMemSize());
+      assertEquals(23, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
       writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));

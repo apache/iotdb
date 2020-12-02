@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,19 +75,21 @@ public class TsFileSequenceReaderTest {
         case MetaMarker.CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           ChunkHeader header = reader.readChunkHeader(marker);
-          for (int j = 0; j < header.getNumOfPages(); j++) {
+          int dataSize = header.getDataSize();
+          while (dataSize > 0) {
             PageHeader pageHeader = reader.readPageHeader(header.getDataType(),
                 header.getChunkType() == MetaMarker.CHUNK_HEADER);
-            reader.readPage(pageHeader, header.getCompressionType());
+            ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+            dataSize -= pageHeader.getSerializedPageSize();
           }
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
-          ChunkGroupHeader footer = reader.readChunkGroupHeader();
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
           long endOffset = reader.position();
           Pair<Long, Long> pair = new Pair<>(startOffset, endOffset);
-          deviceChunkGroupMetadataOffsets.putIfAbsent(footer.getDeviceID(), new ArrayList<>());
+          deviceChunkGroupMetadataOffsets.putIfAbsent(chunkGroupHeader.getDeviceID(), new ArrayList<>());
           List<Pair<Long, Long>> metadatas = deviceChunkGroupMetadataOffsets
-              .get(footer.getDeviceID());
+              .get(chunkGroupHeader.getDeviceID());
           metadatas.add(pair);
           startOffset = endOffset;
           break;

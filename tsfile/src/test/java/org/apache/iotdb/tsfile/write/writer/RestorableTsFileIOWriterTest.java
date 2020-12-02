@@ -85,8 +85,7 @@ public class RestorableTsFileIOWriterTest {
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER_V2
-        .getBytes().length, rWriter.getTruncatedSize());
+    assertEquals(TSFileConfig.MAGIC_STRING.getBytes().length + 1, rWriter.getTruncatedSize());
 
     rWriter = new RestorableTsFileIOWriter(file);
     assertEquals(TsFileCheckStatus.COMPLETE_FILE, rWriter.getTruncatedSize());
@@ -128,6 +127,7 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneChunkHeader() throws Exception {
     File file = new File(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
+    writer.getIOWriter().startChunkGroup("root.sg1.d1");
     writer.getIOWriter()
         .startFlushChunk(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.PLAIN),
             CompressionType.SNAPPY, TSDataType.FLOAT, TSEncoding.PLAIN, new FloatStatistics(), 100,
@@ -181,6 +181,7 @@ public class RestorableTsFileIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
+    writer.writeVersion(0);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);

@@ -390,11 +390,11 @@ public class ReadWriteIOUtils {
 
   public static int writeVar(String s, ByteBuffer buffer) {
     if (s == null) {
-      return write(-1, buffer);
+      return ReadWriteForEncodingUtils.writeVarInt(-1, buffer);
     }
     int len = 0;
     byte[] bytes = s.getBytes();
-    len += write(bytes.length, buffer);
+    len += ReadWriteForEncodingUtils.writeVarInt(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
     return len;

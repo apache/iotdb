@@ -87,13 +87,14 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumber());
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+
     // chunk group header
     Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
-    ChunkGroupHeader footer = reader.readChunkGroupHeader();
-    Assert.assertEquals(deviceId, footer.getDeviceID());
+    ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+    Assert.assertEquals(deviceId, chunkGroupHeader.getDeviceID());
 
     // chunk header
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
     Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, reader.readMarker());
     ChunkHeader header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());

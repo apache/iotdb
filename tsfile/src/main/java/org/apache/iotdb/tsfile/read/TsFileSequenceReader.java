@@ -209,8 +209,14 @@ public class TsFileSequenceReader implements AutoCloseable {
    * whether the file is a complete TsFile: only if the head magic and tail magic string exists.
    */
   public boolean isComplete() throws IOException {
-    return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + Byte.BYTES
-        && (readTailMagic().equals(readHeadMagic()));
+    long size = tsFileInput.size();
+    if (size >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + Byte.BYTES) {
+      String tailMagic = readTailMagic();
+      String headMagic = readHeadMagic();
+      return tailMagic.equals(headMagic);
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -999,6 +1005,9 @@ public class TsFileSequenceReader implements AutoCloseable {
             chunkMetadataList.add(currentChunk);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            // if there is something wrong with the ChunkGroup Header, we will drop this ChunkGroup
+            // because we can not guarantee the correctness of the deviceId.
+            truncatedSize = this.position() - 1;
             if (lastDeviceId != null) {
               // schema of last chunk group
               if (newSchema != null) {
@@ -1011,15 +1020,13 @@ public class TsFileSequenceReader implements AutoCloseable {
               // last chunk group Metadata
               chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
             }
-            // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
-            // because we can not guarantee the correctness of the deviceId.
-            truncatedSize = this.position() - 1;
             // this is a chunk group
             chunkMetadataList = new ArrayList<>();
             ChunkGroupHeader chunkGroupHeader = this.readChunkGroupHeader();
             lastDeviceId = chunkGroupHeader.getDeviceID();
             break;
           case MetaMarker.VERSION:
+            truncatedSize = this.position() - 1;
             if (lastDeviceId != null) {
               // schema of last chunk group
               if (newSchema != null) {
@@ -1046,6 +1053,18 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       // now we read the tail of the data section, so we are sure that the last
       // ChunkGroupFooter is complete.
+      if (lastDeviceId != null) {
+        // schema of last chunk group
+        if (newSchema != null) {
+          for (MeasurementSchema tsSchema : measurementSchemaList) {
+            newSchema
+                .putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+          }
+        }
+        measurementSchemaList = new ArrayList<>();
+        // last chunk group Metadata
+        chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+      }
       truncatedSize = this.position() - 1;
     } catch (Exception e) {
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
