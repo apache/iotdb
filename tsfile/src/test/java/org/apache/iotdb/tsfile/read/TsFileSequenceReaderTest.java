@@ -96,22 +96,6 @@ public class TsFileSequenceReaderTest {
           MetaMarker.handleUnexpectedMarker(marker);
       }
     }
-    /*
-     *
-     * for (Entry<String, TsDeviceMetadataIndex> entry:
-     * metaData.getDeviceMap().entrySet()) { int chunkGroupIndex = 0;
-     * TsDeviceMetadata deviceMetadata =
-     * reader.readTsDeviceMetaData(entry.getValue()); List<ChunkGroupMetaData>
-     * chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-     * List<Pair<Long, Long>> offsets =
-     * deviceChunkGroupMetadataOffsets.get(entry.getKey()); for (ChunkGroupMetaData
-     * chunkGroupMetaData : chunkGroupMetaDataList) { Pair<Long, Long> pair =
-     * offsets.get(chunkGroupIndex++);
-     * Assert.assertEquals(chunkGroupMetaData.getStartOffsetOfChunkGroup(), (long)
-     * pair.left);
-     * Assert.assertEquals(chunkGroupMetaData.getEndOffsetOfChunkGroup(), (long)
-     * pair.right); } }
-     */
     reader.close();
   }
 
@@ -143,6 +127,26 @@ public class TsFileSequenceReaderTest {
       }
     }
 
+    reader.close();
+  }
+
+  @Test
+  public void testReadChunkMetadataInDevice() throws IOException {
+    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
+
+    // test for exist device "d2"
+    Map<String, List<ChunkMetadata>> chunkMetadataMap = reader
+        .readChunkMetadataInDevice("d2");
+    int[] res = new int[]{20, 75, 100, 13};
+
+    Assert.assertEquals(4, chunkMetadataMap.size());
+    for (int i = 0; i < chunkMetadataMap.size(); i++) {
+      int id = i + 1;
+      Assert.assertEquals(res[i], chunkMetadataMap.get("s" + id).get(0).getNumOfPoints());
+    }
+
+    // test for non-exist device "d3"
+    Assert.assertTrue(reader.readChunkMetadataInDevice("d3").isEmpty());
     reader.close();
   }
 }
