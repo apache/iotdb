@@ -43,6 +43,7 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S2 = "root.sg1.d1.s2";
   private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
+  private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
 
 
@@ -97,6 +98,19 @@ public class SessionExample {
       tags.put("description", "v1");
       session.createTimeseries(ROOT_SG1_D1_S4, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY, null, tags, attributes, "temperature");
+    }
+
+    // create timeseries with SDT property, SDT will take place when flushing
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
+      // compDev is required
+      // compMax and compMin are optional and their unit is ms
+      Map<String, String> props = new HashMap<>();
+      props.put("loss", "sdt");
+      props.put("compDev", "0.01");
+      props.put("compMin", "2");
+      props.put("compMax", "10");
+      session.createTimeseries(ROOT_SG1_D1_S5, TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY, props, null, null, null);
     }
   }
 
