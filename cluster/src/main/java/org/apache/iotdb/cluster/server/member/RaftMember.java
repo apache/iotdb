@@ -952,9 +952,9 @@ public abstract class RaftMember {
       switch (appendLogResult) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG_V2.getOperationStartTime();
+          startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           commitLog(log);
-          Timer.Statistic.RAFT_SENDER_COMMIT_LOG_V2.calOperationCostTimeFromStart(startTime);
+          Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
           return StatusUtils.OK;
         case TIME_OUT:
           logger.debug("{}: log {} timed out...", name, log);
@@ -1359,19 +1359,19 @@ public abstract class RaftMember {
 
   @SuppressWarnings("java:S2445")
   void commitLog(Log log) throws LogExecutionException {
-    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2
+    long startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT
         .getOperationStartTime();
     synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT_V2
+      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT
           .calOperationCostTimeFromStart(startTime);
 
-      startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.getOperationStartTime();
+      startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
       logManager.commitTo(log.getCurrLogIndex());
     }
-    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER_V2.calOperationCostTimeFromStart(startTime);
+    Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
-    startTime = Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.getOperationStartTime();
+    startTime = Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY.getOperationStartTime();
     synchronized (log) {
       while (!log.isApplied()) {
         // wait until the log is applied
@@ -1383,7 +1383,7 @@ public abstract class RaftMember {
         }
       }
     }
-    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY_V2.calOperationCostTimeFromStart(startTime);
+    Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY.calOperationCostTimeFromStart(startTime);
     if (log.getException() != null) {
       throw new LogExecutionException(log.getException());
     }
