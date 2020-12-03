@@ -21,6 +21,8 @@
 
 # Cluster Setup
 For installation prerequisites, please refer to [Installation Prerequisites](../Get%20Started/QuickStart.md)
+## Prerequisite
+Note: Please install MinGW or WSL or git bash if you are using Windows.
 ## Start Service
 Users can build clusters in pseudo-distributed mode or distributed mode. 
 The main difference between pseudo-distributed mode and distributed mode is the difference in `seed_nodes` in the configuration file. 
@@ -35,9 +37,9 @@ or
 > nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
 
 # Windows
-> nohup sbin/start-node.bat
+> sbin\start-node.bat
 or
-> nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
+> sbin\start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
 
 `-c <conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file; 
@@ -45,6 +47,34 @@ or
 The currently supported items to overwrite the original configurations when starting IoTDB are the followings :
 `internal_meta_port, internal_data_port, cluster_rpc_port, seed_nodes`. 
 When both exist, the specified configuration item will overwrite the configurations in the configuration file.
+
+## Example of pseudo-distributed scaffolding for 3 nodes and 2 replicas
+```bash
+# First step (Note that this path is not suitable for Windows MinGW)
+> mvn clean package -pl cluster -am -Dmaven.test.skip=true
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT1
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT2
+> sed -i -e 's/6667/6668/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-engine.properties
+> sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
+
+# Second step: Unix/OS X/Windows (git bash or WSL)
+> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/cluster-env.sh
+> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
+> chmod -R 777 ./cluster/target/
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
+
+# Second step: Windows (MinGW)
+> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
+```
+
+Note: The distributed version uses the 707 identifier to instruct the client to do the appropriate metadata cache so that the data can then be sent directly to the leader of the corresponding data group later.
+Therefore, it is recommended to re-install `mvn install -pl jdbc -am -Dmaven.test.skip=true` and `mvn install -pl jdbc -am -Dmaven.test.skip=true` on current branch to update the latest client.
 
 ## OverWrite the configurations of Stand-alone node
 

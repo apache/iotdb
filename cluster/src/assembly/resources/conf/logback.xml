@@ -27,7 +27,6 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_WARN">
         <file>${IOTDB_HOME}/logs/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -49,7 +48,6 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_INFO">
         <file>${IOTDB_HOME}/logs/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -71,7 +69,6 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_DEBUG">
         <file>${IOTDB_HOME}/logs/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -93,7 +90,6 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_TRACE">
         <file>${IOTDB_HOME}/logs/log_trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -115,7 +111,6 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.ConsoleAppender" name="FILE_STDOUT">
         <Target>System.out</Target>
         <encoder>
@@ -126,7 +121,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-
     <logger level="info" name="org.apache.iotdb.db.service"/>
     <logger level="info" name="org.apache.iotdb.db.conf"/>
     <!-- a log appender that collect all log records whose level is greather than debug-->
@@ -149,7 +143,6 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
         <file>${IOTDB_HOME}/logs/log_measure.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -169,7 +162,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_DYNAMIC_PARAMETER">
         <file>${IOTDB_HOME}/logs/log_dynamic_adapter.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -189,7 +181,6 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-
     <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
         <queueSize>1024</queueSize>
         <neverBlock>true</neverBlock>

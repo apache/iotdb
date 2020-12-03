@@ -21,6 +21,8 @@
 
 # 集群设置
 安装环境请参考[安装环境](../Get%20Started/QuickStart.md)
+## 前提条件
+如果您在使用Windows系统，请安装MinGW，WSL或者git bash。
 ## 集群环境搭建
 您可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
@@ -32,14 +34,42 @@ or
 > nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
 
 # Windows
-> nohup sbin/start-node.bat
+> sbin\start-node.bat
 or
-> nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
+> sbin\start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
 
 `-c <conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件; `-internal_meta_port 9003`覆盖特定配置项`internal_meta_port`的配置，
 目前支持的启动覆盖原有配置的配置项有：
 `internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
+
+## 3节点2副本伪分布式搭建示例
+```bash
+# 第一步 (注意以下路径在 Windows MinGW 中并不适用)
+> mvn clean package -pl cluster -am -Dmaven.test.skip=true
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT1
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT2
+> sed -i -e 's/6667/6668/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-engine.properties
+> sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
+
+# 第二步: Unix/OS X/Windows (git bash or WSL)
+> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/cluster-env.sh
+> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
+> chmod -R 777 ./cluster/target/
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
+
+# 第二步: Windows (MinGW)
+> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
+```
+
+注：分布式版使用了707标识符来指示客户端做相应的元数据缓存以便之后能够直接将数据发送给对应数据组的 leader。因此建议在当前分支重新 `mvn install -pl jdbc -am -Dmaven.test.skip=true` 和
+`mvn install -pl session -am -Dmaven.test.skip=true`以更新最新的客户端。
 
 ## 被覆盖的单机版选项
 
