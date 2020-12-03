@@ -1505,6 +1505,10 @@ public abstract class RaftMember {
   boolean appendLogInGroup(Log log) throws LogExecutionException {
     if (allNodes.size() == 1) {
       // single node group, no followers
+      long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
+      logger.debug("{}: log {} is accepted", name, log);
+      commitLog(log);
+      Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;
     }
 

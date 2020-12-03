@@ -59,12 +59,12 @@ class AutoResizingBuffer {
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-      logger.info("{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
+      logger.debug("{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
     } else if (size > initialCapacity && currentCapacity * loadFactor > size && bufTooLargeCounter-- <= 0) {
       // do not resize if it is reading the request size
       array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-      logger.info("{} shrink from {} to {}", this, currentCapacity, size);
+      logger.debug("{} shrink from {} to {}", this, currentCapacity, size);
     }
   }
 

@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TSnappyElasticFramedTransport;
+import org.xerial.snappy.Snappy;
 
 /**
  * A node report collects the current runtime information of the local node, which contains:
@@ -108,6 +112,21 @@ public class NodeReport {
 
     @Override
     public String toString() {
+      long readBytes = TSnappyElasticFramedTransport.getReadBytes();
+      long readCompressedBytes = TSnappyElasticFramedTransport.getReadCompressedBytes();
+      long writeBytes = TSnappyElasticFramedTransport.getWriteBytes();
+      long writeCompressedBytes = TSnappyElasticFramedTransport.getWriteCompressedBytes();
+      double readCompressionRatio
+          = (double) readBytes / readCompressedBytes;
+      double writeCompressionRatio = (double) writeBytes / writeCompressedBytes;
+      String transportCompressionReport = "";
+      if (RpcTransportFactory.USE_SNAPPY) {
+        transportCompressionReport =
+            ", readBytes=" + readBytes + "/" + readCompressedBytes + "(" + readCompressionRatio +
+                ")" +
+                ", writeBytes=" + writeBytes + "/" + writeCompressedBytes + "(" + writeCompressionRatio +
+                ")";
+      }
       return "MetaMemberReport{" +
           "character=" + character +
           ", Leader=" + leader +
@@ -120,6 +139,7 @@ public class NodeReport {
           ", readOnly=" + isReadOnly +
           ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           ", logIncrement=" + (lastLogIndex - prevLastLogIndex) +
+          transportCompressionReport +
           ", \n timer: "+ Timer.getReport() +
           '}';
     }

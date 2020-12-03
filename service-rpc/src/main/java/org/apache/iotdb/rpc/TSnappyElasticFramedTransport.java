@@ -20,6 +20,7 @@ package org.apache.iotdb.rpc;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
@@ -29,6 +30,11 @@ import org.apache.thrift.transport.TTransportFactory;
 import org.xerial.snappy.Snappy;
 
 public class TSnappyElasticFramedTransport extends TFastFramedTransport {
+
+  private static final AtomicLong writeBytes = new AtomicLong();
+  private static final AtomicLong writeCompressedBytes = new AtomicLong();
+  private static final AtomicLong readBytes = new AtomicLong();
+  private static final AtomicLong readCompressedBytes = new AtomicLong();
 
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
@@ -101,8 +107,10 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
     }
 
     readBuffer.fill(underlying, size);
+    readCompressedBytes.addAndGet(size);
     try {
       int uncompressedLength = Snappy.uncompressedLength(readBuffer.getBuffer(), 0, size);
+      readBytes.addAndGet(uncompressedLength);
       readCompressBuffer = resizeCompressBuf(uncompressedLength, readCompressBuffer);
       Snappy.uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getByteBuffer().array(), 0);
       readCompressBuffer.getByteBuffer().limit(uncompressedLength);
@@ -129,11 +137,13 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
   @Override
   public void flush() throws TTransportException {
     int length = writeBuffer.getPos();
+    writeBytes.addAndGet(length);
     try {
       int maxCompressedLength = Snappy.maxCompressedLength(length);
       writeCompressBuffer = resizeCompressBuf(maxCompressedLength, writeCompressBuffer);
       int compressedLength = Snappy.compress(writeBuffer.getBuf().array(), 0, length,
           writeCompressBuffer.getByteBuffer().array(), 0);
+      writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
 
@@ -152,5 +162,21 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
   @Override
   public void write(byte[] buf, int off, int len) {
     writeBuffer.write(buf, off, len);
+  }
+
+  public static long getReadBytes() {
+    return readBytes.get();
+  }
+
+  public static long getReadCompressedBytes() {
+    return readCompressedBytes.get();
+  }
+
+  public static long getWriteBytes() {
+    return writeBytes.get();
+  }
+
+  public static long getWriteCompressedBytes() {
+    return writeCompressedBytes.get();
   }
 }
