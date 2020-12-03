@@ -802,9 +802,23 @@ SQL语句是：
 select s1,s2 from root.sg1.* ALIGN BY DEVICE
 
 ```
+结果显示如下:
 
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26118649/100957517-94362200-3555-11eb-932c-511ea629f317.png"></center>
 
-“禁用对齐”指示结果集中每个时间序列都有3列。 有关更多语法描述，更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
+“禁用对齐”指示结果集中每个时间序列都有3列。
+ 
+SQL语句是:
+ 
+ ```
+ select * from root.sg1 where time > 10 disable align
+ ```
+
+结果显示如下:
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26118649/100957521-95ffe580-3555-11eb-8b26-14f36e106b13.png"></center>
+
+有关更多语法描述，更多语法请参照 [SQL REFERENCE](../Operation%20Manual/SQL%20Reference.md).
 
 #### 错误处理
 

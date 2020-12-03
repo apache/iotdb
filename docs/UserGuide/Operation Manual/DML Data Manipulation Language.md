@@ -752,6 +752,11 @@ The SQL statement is:
 select s1,s2 from root.sg1.* align by device
 ```
 
+The result shows below:
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26118649/100957517-94362200-3555-11eb-932c-511ea629f317.png"></center>
+
+
 For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
 The 'disable align' indicates that there are 2 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
@@ -761,6 +766,11 @@ The SQL statement is:
 ```
 select * from root.sg1 where time > 10 disable align
 ```
+
+The result shows below:
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/26118649/100957521-95ffe580-3555-11eb-8b26-14f36e106b13.png"></center>
+
 
 For more syntax description, please read [SQL Reference](../Operation%20Manual/SQL%20Reference.md).
 
