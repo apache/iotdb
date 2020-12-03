@@ -26,6 +26,13 @@ import org.apache.thrift.transport.TTransportFactory;
 
 public class TElasticFramedTransport extends TFastFramedTransport {
 
+  /**
+   * It is used to prevent the size of the parsing package from being too large and allotting the
+   * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
+   * reading. The default value is 512MB
+   */
+  private static final int PROTECT_MAX_LENGTH = 536870912;
+
   public static class Factory extends TTransportFactory {
 
     private final int initialCapacity;
@@ -90,6 +97,13 @@ public class TElasticFramedTransport extends TFastFramedTransport {
       throw new TTransportException(TTransportException.CORRUPTED_DATA,
           "Read a negative frame size (" + size + ")!");
     }
+
+    if (size > PROTECT_MAX_LENGTH) {
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA,
+          "Frame size (" + size + ") larger than protect max length (" + PROTECT_MAX_LENGTH + ")!");
+    }
+
     if (size < maxLength) {
       readBuffer.shrinkSizeIfNecessary(maxLength);
     }
