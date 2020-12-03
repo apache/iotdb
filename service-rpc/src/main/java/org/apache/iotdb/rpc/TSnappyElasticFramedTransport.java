@@ -108,9 +108,6 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
       readCompressBuffer.getByteBuffer().limit(uncompressedLength);
       readCompressBuffer.getByteBuffer().position(0);
 
-      if (uncompressedLength < maxLength) {
-        readBuffer.resizeIfNecessary(maxLength);
-      }
       readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
@@ -119,7 +116,7 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
 
   private TByteBuffer resizeCompressBuf(int size, TByteBuffer byteBuffer) {
     double expandFactor = 1.5;
-    double loadFactor = 0.5;
+    double loadFactor = 0.6;
     if (byteBuffer.getByteBuffer().capacity() < size) {
       int newCap = (int) Math.min(size * expandFactor, maxLength);
       byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCap));
