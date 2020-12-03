@@ -235,8 +235,9 @@ public class Tablet {
           break;
         case TEXT:
           valueOccupation += rowSize * 4;
-          for (Binary value : (Binary[]) values[i]) {
-            valueOccupation += value.getLength();
+          Binary[] binaries = (Binary[]) values[i];
+          for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
+            valueOccupation += binaries[rowIndex].getLength();
           }
           break;
         default:
