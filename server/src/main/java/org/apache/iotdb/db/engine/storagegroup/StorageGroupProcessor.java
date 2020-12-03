@@ -126,7 +126,7 @@ public class StorageGroupProcessor {
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final int waitingTimeWhenInsertBlocked = config.getWaitingTimeWhenInsertBlocked();
+  private final int waitingTimeWhenInsertBlocked = config.getWaitingPeriodWhenInsertBlocked();
   private final int maxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
