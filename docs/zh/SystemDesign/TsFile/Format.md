@@ -265,7 +265,7 @@ For Linux or MacOs:
 在Windows系统中的示例:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.12.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ｜````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​｜````````````````````````

@@ -328,7 +328,7 @@ After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-
 
 # Usage of CSV Import and Export Tool
 
-see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/System%20Tools/CSV%20Tool.html)
+see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)
