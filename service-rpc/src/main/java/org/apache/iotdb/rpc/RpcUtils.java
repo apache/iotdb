@@ -31,6 +31,15 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
 
+  /**
+   * How big should the default read and write buffers be?
+   */
+  public static final int DEFAULT_BUF_CAPACITY = 64 * 1024;
+  /**
+   * How big is the largest allowable frame? Defaults to 16MB.
+   */
+  public static final int DEFAULT_MAX_LENGTH = 16384000;
+
   private RpcUtils() {
     // util class
   }

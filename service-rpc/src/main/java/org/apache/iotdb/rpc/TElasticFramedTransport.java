@@ -16,7 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
+
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
 
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
@@ -24,7 +27,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
-public class TElasticFramedTransport extends TFastFramedTransport {
+public class TElasticFramedTransport extends TTransport {
 
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
@@ -62,11 +65,10 @@ public class TElasticFramedTransport extends TFastFramedTransport {
   }
 
   public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
     this.underlying = underlying;
     this.maxLength = maxLength;
-    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity, 1.5);
-    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity, 1.5);
+    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
+    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
   }
 
   private final int maxLength;
@@ -74,6 +76,21 @@ public class TElasticFramedTransport extends TFastFramedTransport {
   private AutoScalingBufferReadTransport readBuffer;
   private AutoScalingBufferWriteTransport writeBuffer;
   private final byte[] i32buf = new byte[4];
+
+  @Override
+  public boolean isOpen() {
+    return underlying.isOpen();
+  }
+
+  @Override
+  public void open() throws TTransportException {
+    underlying.open();
+  }
+
+  @Override
+  public void close() {
+    underlying.close();
+  }
 
   @Override
   public int read(byte[] buf, int off, int len) throws TTransportException {
@@ -105,7 +122,7 @@ public class TElasticFramedTransport extends TFastFramedTransport {
     }
 
     if (size < maxLength) {
-      readBuffer.shrinkSizeIfNecessary(maxLength);
+      readBuffer.resizeIfNecessary(maxLength);
     }
     readBuffer.fill(underlying, size);
   }
@@ -117,7 +134,9 @@ public class TElasticFramedTransport extends TFastFramedTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuf().array(), 0, length);
     writeBuffer.reset();
-    writeBuffer.shrinkSizeIfNecessary(maxLength);
+    if (length > maxLength) {
+      writeBuffer.resizeIfNecessary(maxLength);
+    }
     underlying.flush();
   }
 

@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.AutoExpandingBuffer;
 import org.apache.thrift.transport.TTransport;
 
 /**
@@ -28,11 +27,11 @@ import org.apache.thrift.transport.TTransport;
  */
 public class AutoScalingBufferWriteTransport extends TTransport {
 
-  private final AutoScalingBuffer buf;
+  private final AutoResizingBuffer buf;
   private int pos;
 
-  public AutoScalingBufferWriteTransport(int initialCapacity, double growthCoefficient) {
-    this.buf = new AutoScalingBuffer(initialCapacity, growthCoefficient);
+  public AutoScalingBufferWriteTransport(int initialCapacity) {
+    this.buf = new AutoResizingBuffer(initialCapacity);
     this.pos = 0;
   }
 
@@ -63,10 +62,6 @@ public class AutoScalingBufferWriteTransport extends TTransport {
     pos += len;
   }
 
-  public AutoExpandingBuffer getBuf() {
-    return buf;
-  }
-
   public int getPos() {
     return pos;
   }
@@ -75,12 +70,11 @@ public class AutoScalingBufferWriteTransport extends TTransport {
     pos = 0;
   }
 
-  /**
-   * shrink the buffer to the specific size
-   *
-   * @param size The size of the target you want to shrink to
-   */
-  public void shrinkSizeIfNecessary(int size) {
-    buf.shrinkSizeIfNecessary(size);
+  public void resizeIfNecessary(int size) {
+    buf.resizeIfNecessary(size);
+  }
+
+  public AutoResizingBuffer getBuf() {
+    return buf;
   }
 }

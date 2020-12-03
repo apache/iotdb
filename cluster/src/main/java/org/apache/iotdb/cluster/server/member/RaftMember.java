@@ -107,7 +107,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
 
-  public static final boolean USE_LOG_DISPATCHER = true;
+  public static final boolean USE_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
   private static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
@@ -894,6 +894,7 @@ public abstract class RaftMember {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       log.setPlan(plan);
+      plan.setIndex(log.getCurrLogIndex());
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -1505,6 +1506,10 @@ public abstract class RaftMember {
   boolean appendLogInGroup(Log log) throws LogExecutionException {
     if (allNodes.size() == 1) {
       // single node group, no followers
+      long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
+      logger.debug("{}: log {} is accepted", name, log);
+      commitLog(log);
+      Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;
     }
 

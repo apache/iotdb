@@ -20,11 +20,12 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import java.net.SocketException;
-import org.apache.iotdb.cluster.client.rpcutils.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -48,7 +49,7 @@ public class SyncDataClient extends Client {
   public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
-    super(protocolFactory.getProtocol(new TimeoutChangeableTFastFramedTransport(
+    super(protocolFactory.getProtocol(RpcTransportFactory.INSTANCE.getTransport(
         new TSocket(node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
@@ -57,13 +58,13 @@ public class SyncDataClient extends Client {
 
   public void setTimeout(int timeout) {
     // the same transport is used in both input and output
-    ((TimeoutChangeableTFastFramedTransport) (getInputProtocol().getTransport()))
+    ((TimeoutChangeableTransport) (getInputProtocol().getTransport()))
         .setTimeout(timeout);
   }
 
   @TestOnly
   public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTFastFramedTransport) getInputProtocol().getTransport()).getTimeOut();
+    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   public void putBack() {

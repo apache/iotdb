@@ -17,25 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.AutoExpandingBufferReadTransport;
+import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport.Factory;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportFactory;
 
-public class AutoScalingBufferReadTransport extends AutoExpandingBufferReadTransport {
+public class RpcTransportFactory extends TTransportFactory {
 
-  private final AutoScalingBuffer buf;
-
-  public AutoScalingBufferReadTransport(int initialCapacity, double overgrowthCoefficient) {
-    super(initialCapacity, overgrowthCoefficient);
-    this.buf = new AutoScalingBuffer(initialCapacity, overgrowthCoefficient);
+  // TODO: make it a config
+  public static final boolean USE_SNAPPY = true;
+  public static final RpcTransportFactory INSTANCE;
+  static {
+    INSTANCE = USE_SNAPPY ?
+        new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory()) :
+        new RpcTransportFactory(new Factory());
   }
 
-  /**
-   * shrink the buffer to the specific size
-   *
-   * @param size The size of the target you want to shrink to
-   */
-  public void shrinkSizeIfNecessary(int size) {
-    buf.shrinkSizeIfNecessary(size);
+  private TTransportFactory inner;
+
+  public RpcTransportFactory(TTransportFactory inner) {
+    this.inner = inner;
+  }
+
+  @Override
+  public TTransport getTransport(TTransport trans) {
+    return inner.getTransport(trans);
   }
 }

@@ -17,23 +17,34 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client.rpcutils;
+package org.apache.iotdb.rpc;
 
-import java.util.Arrays;
-import org.apache.thrift.transport.AutoExpandingBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class AutoScalingBuffer extends AutoExpandingBuffer {
+public class RpcStat {
 
-  private byte[] array;
-
-  public AutoScalingBuffer(int initialCapacity, double growthCoefficient) {
-    super(initialCapacity, growthCoefficient);
-    this.array = new byte[initialCapacity];
+  private RpcStat() {
+    // pure static class
   }
 
-  public void shrinkSizeIfNecessary(int size) {
-    if (array.length > size) {
-      array = Arrays.copyOf(array, size);
-    }
+  static final AtomicLong writeBytes = new AtomicLong();
+  static final AtomicLong writeCompressedBytes = new AtomicLong();
+  static final AtomicLong readBytes = new AtomicLong();
+  static final AtomicLong readCompressedBytes = new AtomicLong();
+
+  public static long getReadBytes() {
+    return readBytes.get();
+  }
+
+  public static long getReadCompressedBytes() {
+    return readCompressedBytes.get();
+  }
+
+  public static long getWriteBytes() {
+    return writeBytes.get();
+  }
+
+  public static long getWriteCompressedBytes() {
+    return writeCompressedBytes.get();
   }
 }
