@@ -68,8 +68,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -94,8 +92,8 @@ public class StorageEngine implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
-  private final static int WAITING_PERIOD_WHEN_INSERTION_BLOCKED = config.getWaitingPeriodWhenInsertBlocked();
-  private final static int MAX_WAITING_TIME_WHEN_INSERTION_BLOCKED = config.getMaxWaitingTimeWhenInsertBlocked();
+  private static final int WAITING_PERIOD_WHEN_INSERTION_BLOCKED = config.getWaitingPeriodWhenInsertBlocked();
+  private static final int MAX_WAITING_TIME_WHEN_INSERTION_BLOCKED = config.getMaxWaitingTimeWhenInsertBlocked();
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
