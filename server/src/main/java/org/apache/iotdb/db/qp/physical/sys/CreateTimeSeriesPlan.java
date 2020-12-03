@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -58,11 +59,14 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.props = props;
     this.tags = tags;
     this.attributes = attributes;
     this.alias = alias;
     canBeSplit = false;
+    if (props != null) {
+      this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      this.props.putAll(props);
+    }
   }
 
   public PartialPath getPath() {

@@ -48,13 +48,13 @@ If you use [Maven](http://search.maven.org/), you can search for the development
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.11.0-SNAPSHOT</version>
+  <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>tsfile</artifactId>
-  <version>0.11.0-SNAPSHOT</version>
+  <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -307,7 +307,7 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.11.0-SNAPSHOT/lib` .
+3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/lib` .
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
 The following shows the SQL syntax of how to register a UDF.

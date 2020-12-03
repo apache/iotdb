@@ -16,10 +16,19 @@
 # under the License.
 #
 
-from IoTDBConstants import *
+# for package
+from .IoTDBConstants import *
+
+# for debug
+# from IoTDBConstants import *
+
+import sys
+from os.path import dirname, abspath
+path = dirname(dirname(abspath(__file__)))
+sys.path.append(path)
 
 from thrift.transport import TTransport
-from iotdb.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
+from iotdb.thrift.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
 
 
 class IoTDBRpcDataSet(object):

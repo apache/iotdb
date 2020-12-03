@@ -91,6 +91,7 @@ Enter ```quit``` or `exit` can exit Cli. The cli will shows `quit normally`
 |-u <`username`>|string, no quotation marks|Yes|User name used for IoTDB to connect the server|-u root|
 |-maxPRC <`maxPrintRowCount`>|int|No|Set the maximum number of rows that IoTDB returns|-maxPRC 10|
 |-e <`execute`> |string|No|manipulate IoTDB in batches without entering cli input mode|-e "show storage group"|
+|-c | empty | No | If the server enables `rpc_thrift_compression_enable=true`, then cli must use `-c` | -c |
 
 Following is a cli command which connects the host with IP
 10.129.187.21, rpc port 6667, username "root", password "root", and prints the timestamp in digital form. The maximum number of lines displayed on the IoTDB command line is 10.

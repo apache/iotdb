@@ -92,19 +92,19 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInList(long timePartitionId, Collection<TsFileResource> mergeTsFiles) {
+  private void deleteLevelFilesInList(long timePartitionId,
+      Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
     logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
-    for (int i = 0; i < seqLevelNum; i++) {
+    if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
-        if (sequenceTsFileResources.get(timePartitionId).size() > i) {
-          sequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+        if (sequenceTsFileResources.get(timePartitionId).size() > level) {
+          sequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
         }
       }
-    }
-    for (int i = 0; i < unseqLevelNum; i++) {
+    } else {
       if (unSequenceTsFileResources.containsKey(timePartitionId)) {
-        if (unSequenceTsFileResources.get(timePartitionId).size() > i) {
-          unSequenceTsFileResources.get(timePartitionId).get(i).removeAll(mergeTsFiles);
+        if (unSequenceTsFileResources.get(timePartitionId).size() > level) {
+          unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
         }
       }
     }
@@ -340,16 +340,20 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
                     new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
             if (isSeq) {
-              for (TreeSet<TsFileResource> currMergeFile : sequenceTsFileResources
-                  .get(timePartition)) {
-                deleteLevelFilesInDisk(currMergeFile);
-                deleteLevelFilesInList(timePartition, currMergeFile);
+              for (int level = 0; level < sequenceTsFileResources.get(timePartition).size();
+                  level++) {
+                TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
+                    .get(timePartition).get(level);
+                deleteLevelFilesInDisk(currLevelMergeFile);
+                deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
               }
             } else {
-              for (List<TsFileResource> currMergeFile : unSequenceTsFileResources
-                  .get(timePartition)) {
-                deleteLevelFilesInDisk(currMergeFile);
-                deleteLevelFilesInList(timePartition, currMergeFile);
+              for (int level = 0; level < unSequenceTsFileResources.get(timePartition).size();
+                  level++) {
+                TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
+                    .get(timePartition).get(level);
+                deleteLevelFilesInDisk(currLevelMergeFile);
+                deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
               }
             }
           }
@@ -376,14 +380,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     .merge(targetResource, sourceTsFileResources, storageGroupName,
                         new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, true);
                 deleteLevelFilesInDisk(sourceTsFileResources);
-                deleteLevelFilesInList(timePartition, sourceTsFileResources);
+                deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
                 sequenceTsFileResources.get(timePartition).get(level + 1).add(targetResource);
               } else {
                 CompactionUtils
                     .merge(targetResource, sourceTsFileResources, storageGroupName,
                         new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, false);
                 deleteLevelFilesInDisk(sourceTsFileResources);
-                deleteLevelFilesInList(timePartition, sourceTsFileResources);
+                deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
                 unSequenceTsFileResources.get(timePartition).get(level + 1).add(targetResource);
               }
             }
@@ -505,7 +509,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               } else {
                 unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               }
-              deleteLevelFilesInList(timePartition, toMergeTsFiles);
+              deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
               if (mergeResources.size() > i + 1) {
                 mergeResources.get(i + 1).add(newResource);
               }

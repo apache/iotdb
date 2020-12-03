@@ -328,7 +328,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 # 导入导出CSV工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/System%20Tools/CSV%20Tool.html)
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

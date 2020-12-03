@@ -16,10 +16,18 @@
 # under the License.
 #
 
-from IoTDBConstants import TSDataType
-from IoTDBRpcDataSet import IoTDBRpcDataSet
-from Field import Field
-from RowRecord import RowRecord
+# for package
+from .IoTDBConstants import TSDataType
+from .IoTDBRpcDataSet import IoTDBRpcDataSet
+from .Field import Field
+from .RowRecord import RowRecord
+
+# for debug
+# from IoTDBConstants import TSDataType
+# from IoTDBRpcDataSet import IoTDBRpcDataSet
+# from Field import Field
+# from RowRecord import RowRecord
+
 import struct
 
 

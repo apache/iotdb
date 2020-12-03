@@ -48,13 +48,13 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>iotdb-server</artifactId>
-  <version>0.11.0-SNAPSHOT</version>
+  <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 <dependency>
   <groupId>org.apache.iotdb</groupId>
   <artifactId>tsfile</artifactId>
-  <version>0.11.0-SNAPSHOT</version>
+  <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
 ```
@@ -305,7 +305,7 @@ public class Counter implements UDTF {
 
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
-3. 将JAR包放置到目录 `iotdb-server-0.11.0-SNAPSHOT/lib` 下
+3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/lib` 下
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
 注册UDF的SQL语法如下：
