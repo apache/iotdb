@@ -19,6 +19,8 @@
 package org.apache.iotdb.rpc;
 
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Helper class that wraps a byte[] so that it can expand and be reused. Users
@@ -34,6 +36,8 @@ class AutoExpandingBuffer {
   private byte[] array;
   private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
 
+  private static final Logger logger = LoggerFactory.getLogger(AutoExpandingBuffer.class);
+
   public AutoExpandingBuffer(int initialCapacity) {
     this.array = new byte[initialCapacity];
   }
@@ -47,9 +51,12 @@ class AutoExpandingBuffer {
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-    } else if (array.length * loadFactor > size && bufTooLargeCounter-- <= 0) {
+      logger.info("{} expand from {} to {}", this, currentCapacity, newCapacity);
+    } else if (size > 8 && currentCapacity * loadFactor > size && bufTooLargeCounter-- <= 0) {
+      // do not resize if it is reading the request size
       array = Arrays.copyOf(array, size);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+      logger.info("{} shrink from {} to {}", this, currentCapacity, size);
     }
   }
 
