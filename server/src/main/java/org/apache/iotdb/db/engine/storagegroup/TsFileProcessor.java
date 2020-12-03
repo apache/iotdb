@@ -221,7 +221,7 @@ public class TsFileProcessor {
       if (enableMemControl) {
         checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
       }
-    } catch (WriteProcessRejectException e) {
+    } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
       }
