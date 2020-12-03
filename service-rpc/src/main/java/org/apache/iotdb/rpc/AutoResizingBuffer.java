@@ -47,6 +47,7 @@ class AutoResizingBuffer {
 
   public AutoResizingBuffer(int initialCapacity) {
     this.array = new byte[initialCapacity];
+    this.initialCapacity = initialCapacity;
   }
 
   public void resizeIfNecessary(int size) {
