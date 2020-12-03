@@ -24,12 +24,12 @@ import org.apache.thrift.transport.TTransportException;
 
 public class AutoScalingBufferReadTransport extends TTransport {
 
-  private final AutoExpandingBuffer buf;
+  private final AutoResizingBuffer buf;
   private int pos = 0;
   private int limit = 0;
 
   public AutoScalingBufferReadTransport(int initialCapacity) {
-    this.buf = new AutoExpandingBuffer(initialCapacity);
+    this.buf = new AutoResizingBuffer(initialCapacity);
   }
 
   public void fill(TTransport inTrans, int length) throws TTransportException {

@@ -27,11 +27,11 @@ import org.apache.thrift.transport.TTransport;
  */
 public class AutoScalingBufferWriteTransport extends TTransport {
 
-  private final AutoExpandingBuffer buf;
+  private final AutoResizingBuffer buf;
   private int pos;
 
   public AutoScalingBufferWriteTransport(int initialCapacity) {
-    this.buf = new AutoExpandingBuffer(initialCapacity);
+    this.buf = new AutoResizingBuffer(initialCapacity);
     this.pos = 0;
   }
 
@@ -74,7 +74,7 @@ public class AutoScalingBufferWriteTransport extends TTransport {
     buf.resizeIfNecessary(size);
   }
 
-  public AutoExpandingBuffer getBuf() {
+  public AutoResizingBuffer getBuf() {
     return buf;
   }
 }

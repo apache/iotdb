@@ -25,20 +25,27 @@ import org.slf4j.LoggerFactory;
 /**
  * Helper class that wraps a byte[] so that it can expand and be reused. Users
  * should call resizeIfNecessary to make sure the buffer has suitable capacity,
- * and then use the array as needed. Note that the internal array will grow at a
- * rate slightly faster than the requested capacity with the (untested)
- * objective of avoiding expensive buffer allocations and copies.
+ * and then use the array as needed.
+ *
+ * Resizing policies:
+ * Expanding:
+ *  If the required size > current capacity * 1.5, expand to the required size, otherwise expand
+ *  to current capacity * 1.5.
+ * Shrinking:
+ *  If initial size < the required size < current capacity * 0.6, and such small requests last
+ *  for more than 5 times, shrink to the middle of the required size and current capacity.
  */
-class AutoExpandingBuffer {
+class AutoResizingBuffer {
   // if resizeIfNecessary is called continuously with a small size for more than
   // MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space
   private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
   private byte[] array;
   private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+  private int initialCapacity;
 
-  private static final Logger logger = LoggerFactory.getLogger(AutoExpandingBuffer.class);
+  private static final Logger logger = LoggerFactory.getLogger(AutoResizingBuffer.class);
 
-  public AutoExpandingBuffer(int initialCapacity) {
+  public AutoResizingBuffer(int initialCapacity) {
     this.array = new byte[initialCapacity];
   }
 
@@ -51,10 +58,10 @@ class AutoExpandingBuffer {
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-      logger.info("{} expand from {} to {}", this, currentCapacity, newCapacity);
-    } else if (size > 8 && currentCapacity * loadFactor > size && bufTooLargeCounter-- <= 0) {
+      logger.info("{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
+    } else if (size > initialCapacity && currentCapacity * loadFactor > size && bufTooLargeCounter-- <= 0) {
       // do not resize if it is reading the request size
-      array = Arrays.copyOf(array, size);
+      array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
       logger.info("{} shrink from {} to {}", this, currentCapacity, size);
     }
