@@ -54,5 +54,10 @@
             <artifactId>flink-tsfile-connector</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_${scala.library.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
     </dependencies>
 </project>
