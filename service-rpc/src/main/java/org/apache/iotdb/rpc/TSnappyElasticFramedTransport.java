@@ -25,6 +25,14 @@ import org.xerial.snappy.Snappy;
 
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
 
+  /**
+   * How big should the default read and write buffers be?
+   */
+  public static final int DEFAULT_BUF_CAPACITY = 4 * 1024 * 1024;
+  /**
+   * How big is the largest allowable frame? Defaults to 16MB.
+   */
+  public static final int DEFAULT_MAX_LENGTH = 16384000;
 
   public static class Factory extends TTransportFactory {
 
