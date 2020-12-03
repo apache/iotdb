@@ -57,29 +57,15 @@ IoTDB > select * from root.ln.wf02 where time < 3
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51605021-c2ee1500-1f48-11e9-8f6b-ba9b48875a41.png"></center>
-
-### Error Handling of INSERT Statements
-If the user inserts data into a non-existent timeseries, for example, execute the following commands:
-
 ```
-IoTDB > insert into root.ln.wf02.wt02(timestamp, temperature) values(1,"v1")
-```
-
-Because `root.ln.wf02.wt02. temperature` does not exist, the system will return the following ERROR information:
-
-```
-Msg: The resultDataType or encoding or compression of the last node temperature is conflicting in the storage group root.ln
-```
-If the data type inserted by the user is inconsistent with the corresponding data type of the timeseries, for example, execute the following command:
-
-```
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1,100)
-```
-The system will return the following ERROR information:
-
-```
-error: The TEXT data type should be covered by " or '
++-----------------------------+--------------------------+------------------------+
+|                         Time|root.ln.wf02.wt02.hardware|root.ln.wf02.wt02.status|
++-----------------------------+--------------------------+------------------------+
+|1970-01-01T08:00:00.001+08:00|                        v1|                    true|
+|1970-01-01T08:00:00.002+08:00|                        v2|                   false|
++-----------------------------+--------------------------+------------------------+
+Total line number = 2
+It costs 0.091s
 ```
 
 ## SELECT
@@ -93,7 +79,7 @@ This chapter mainly introduces the relevant examples of time slice query using I
 The SQL statement is:
 
 ```
-select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
+select temperature from root.ln.wf02.wt02 where time < 2017-11-01T00:08:00.000
 ```
 which means:
 
@@ -101,32 +87,50 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The execution result of this SQL statement is as follows:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280074-da1c0a00-a7e9-11e9-8eb8-3809428043a8.png"></center>
+```
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf02.wt02.temperature|
++-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.001+08:00|                           v1|
++-----------------------------+-----------------------------+
+Total line number = 1
+It costs 0.003s
+```
 
 #### Select Multiple Columns of Data Based on a Time Interval
 
 The SQL statement is:
 
 ```
-select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
+select status, temperature from root.ln.wf02.wt02 where time > 1970-01-01T08:00:00.000 and time < 1970-01-01T08:00:00.004
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires that the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
+The selected device is ln group wf02 plant wt02 device; the selected timeseries is "status" and "temperature". The SQL statement requires that the status and temperature sensor values between the time point of "1970-01-01T08:00:00.000" and "1970-01-01T08:00:00.004" be selected.
 
 The execution result of this SQL statement is as follows:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280328-40a12800-a7ea-11e9-85b9-3b8db67673a3.png"></center>
+
+```
++-----------------------------+------------------------+-----------------------------+
+|                         Time|root.ln.wf02.wt02.status|root.ln.wf02.wt02.temperature|
++-----------------------------+------------------------+-----------------------------+
+|1970-01-01T08:00:00.001+08:00|                    true|                           v1|
+|1970-01-01T08:00:00.002+08:00|                   false|                         null|
++-----------------------------+------------------------+-----------------------------+
+Total line number = 2
+It costs 0.003s
+```
 
 #### Select Multiple Columns of Data for the Same Device According to Multiple Time Intervals
 
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 
 ```
-select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
+select status,temperature from root.ln.wf02.wt02 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature"; the statement specifies two different time intervals, namely "2017-11-01T00:05:00.000 to 2017-11-01T00:12:00.000" and "2017-11-01T16:35:00.000 to 2017-11-01T16:37:00.000". The SQL statement requires that the values of selected timeseries satisfying any time interval be selected.
+The selected device is ln group wf02 plant wt02 device; the selected timeseries is "status" and "temperature"; the statement specifies two different time intervals, namely "2017-11-01T00:05:00.000 to 2017-11-01T00:12:00.000" and "2017-11-01T16:35:00.000 to 2017-11-01T16:37:00.000". The SQL statement requires that the values of selected timeseries satisfying any time interval be selected.
 
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/23614968/61280449-780fd480-a7ea-11e9-8ed0-70fa9dfda80f.png"></center>
