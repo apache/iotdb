@@ -701,7 +701,7 @@ public class StorageGroupProcessor {
         StorageEngine.blockInsertionIfReject();
       } catch (WriteProcessException e) {
         TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
-        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR));
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         throw new BatchInsertionException(results);
       }
     }
