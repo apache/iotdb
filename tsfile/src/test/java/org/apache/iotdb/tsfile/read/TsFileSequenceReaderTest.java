@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
@@ -134,8 +133,6 @@ public class TsFileSequenceReaderTest {
   @Test
   public void testReadChunkMetadataInDevice() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    List<ChunkMetadata> d2s1Metadata = reader.getChunkMetadataList(new Path("d2", "s1"));
-    System.out.println("d2s1Metadata list size: " + d2s1Metadata.size());
 
     // test for exist device "d2"
     Map<String, List<ChunkMetadata>> chunkMetadataMap = reader

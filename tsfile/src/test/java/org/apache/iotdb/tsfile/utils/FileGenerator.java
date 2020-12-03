@@ -202,7 +202,6 @@ public class FileGenerator {
       e.printStackTrace();
     }
     LOG.info("write to file successfully!!");
-    System.out.println(outputDataFile + " file.length: " + file.length());
   }
 
   private static void generateTestSchema() {
