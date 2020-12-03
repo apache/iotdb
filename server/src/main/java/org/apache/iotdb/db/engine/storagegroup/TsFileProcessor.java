@@ -83,7 +83,7 @@ public class TsFileProcessor {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final boolean enableMemControl = config.isEnableMemControl();
-  private final int waitingTimeWhenInsertBlocked = config.getWaitingTimeWhenInsertBlocked();
+  private final int waitingTimeWhenInsertBlocked = config.getWaitingPeriodWhenInsertBlocked();
   private final int maxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
   private StorageGroupInfo storageGroupInfo;
   private TsFileProcessorInfo tsFileProcessorInfo;
