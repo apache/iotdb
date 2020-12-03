@@ -111,11 +111,11 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
     schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
-    Tablet tablet = new Tablet("root.sg.d", schemaList, 100);
+    Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
     long timestamp = System.currentTimeMillis();
 
-    for (long row = 0; row < 10; row++) {
+    for (long row = 0; row < 15; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s1", rowIndex, 1L);
@@ -136,9 +136,9 @@ public class IoTDBSessionSimpleIT {
     SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
     while (dataSet.hasNext()) {
       RowRecord rowRecord = dataSet.next();
-      Assert.assertEquals(10L, rowRecord.getFields().get(0).getLongV());
-      Assert.assertEquals(10L, rowRecord.getFields().get(1).getLongV());
-      Assert.assertEquals(10L, rowRecord.getFields().get(2).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(2).getLongV());
     }
     session.close();
   }
