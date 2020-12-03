@@ -73,6 +73,7 @@ var config = {
 					text: 'Document',
 					items: [
 						{ text: 'In progress', link: '/UserGuide/Master/Get Started/QuickStart' },
+						{ text: 'V0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
 						{ text: 'V0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
 						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 						{ text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
@@ -394,6 +395,105 @@ var config = {
 						]
 					},
 				],
+				'/UserGuide/V0.11.x/': [
+					{
+						title:'IoTDB User Guide (V0.11.x)',
+						collapsable: false,
+					},
+					{
+						title: 'Get Started',
+						children: [
+							['Get Started/QuickStart','QuickStart'],
+							['Get Started/Frequently asked questions','Frequently asked questions'],
+							['Get Started/Publication','Research Papers']
+						]
+					},
+					{
+						title: 'Overview',
+						children: [
+							['Overview/What is IoTDB','What is IoTDB'],
+							['Overview/Architecture','Architecture'],
+							['Overview/Scenario','Scenario'],
+							['Overview/Features','Features']
+						]
+					},
+					{
+						title: 'Concept',
+						children: [
+							['Concept/Data Model and Terminology','Data Model and Terminology'],
+							['Concept/Data Type','Data Type'],
+							['Concept/Encoding','Encoding'],
+							['Concept/Compression','Compression']
+						]
+					},
+					{
+						title: 'Server',
+						children: [
+							['Server/Download','Download'],
+							['Server/Single Node Setup','Single Node Setup'],
+							['Server/Cluster Setup','Cluster Setup'],
+							['Server/Config Manual','Config Manual'],
+							['Server/Docker Image','Docker Image']
+						]
+					},
+					{
+						title: 'Client',
+						children: [
+							['Client/Command Line Interface','Command Line Interface'],
+							['Client/Programming - Native API','Native API'],
+							['Client/Programming - JDBC','JDBC'],
+							['Client/Programming - Other Languages','Other Languages'],
+							['Client/Programming - TsFile API','TsFile API'],
+							['Client/Programming - MQTT','MQTT'],
+							['Client/Status Codes','Status Codes']
+						]
+					},
+					{
+						title: 'Operation Manual',
+						children: [
+							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
+							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
+							['Operation Manual/Administration','Administration'],
+							['Operation Manual/SQL Reference','SQL Reference']
+						]
+					},
+					{
+						title: 'System Tools',
+						children: [
+							['System Tools/Sync Tool','Sync Tool'],
+							['System Tools/JMX Tool','JMX Tool'],
+							['System Tools/Watermark Tool','Watermark Tool'],
+							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
+							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
+							['System Tools/Load External Tsfile','Load External Tsfile'],
+							['System Tools/Performance Tracing Tool','Performance Tracing Tool']
+						]
+					},
+					{
+						title: 'Ecosystem Integration',
+						children: [
+							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+						]
+					},
+					{
+						title: 'Architecture',
+						children: [
+							['Architecture/Files','Files'],
+							['Architecture/Writing Data on HDFS','Writing Data on HDFS'],
+							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
+						]
+					},
+					{
+						title: 'Comparison with TSDBs',
+						children: [
+							['Comparison/TSDB-Comparison','Comparison']
+						]
+					}
+				],
 				'/UserGuide/Master/': [
 					{
 						title:'IoTDB User Guide (In progress)',
@@ -423,6 +523,7 @@ var config = {
 							['Concept/Data Type','Data Type'],
 							['Concept/Encoding','Encoding'],
 							['Concept/Compression','Compression']
+							['Concept/SDT','SDT']
 						]
 					},
 					{
@@ -599,7 +700,8 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-					  { text: 'In progress', link: '/zh/UserGuide/Master/Get Started/QuickStart' },
+						{ text: 'In progress', link: '/zh/UserGuide/Master/Get Started/QuickStart' },
+						{ text: 'V0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
 						{ text: 'V0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
 					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
@@ -914,6 +1016,99 @@ var config = {
 						]
 					}
 				],
+				'/zh/UserGuide/V0.11.x/': [
+					{
+						title: 'IoTDB用户手册 (V0.11.x)',
+						collapsable: false,
+					},
+					{
+						title: '开始',
+						children: [
+							['Get Started/QuickStart','快速入门'],
+							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Publication','调查报告']
+						]
+					},
+					{
+						title: '概述',
+						children: [
+							['Overview/What is IoTDB','什么是IoTDB'],
+							['Overview/Architecture','架构'],
+							['Overview/Scenario','场景'],
+							['Overview/Features','特征']
+						]
+					},
+					{
+						title: '概念',
+						children: [
+							['Concept/Data Model and Terminology','数据模型与技术'],
+							['Concept/Data Type','数据类型'],
+							['Concept/Encoding','编码方式'],
+							['Concept/Compression','压缩方式']
+						]
+					},
+					{
+						title: '服务器端',
+						children: [
+							['Server/Download','下载'],
+							['Server/Single Node Setup','单节点安装'],
+							['Server/Cluster Setup','集群设置'],
+							['Server/Config Manual','配置手册'],
+							['Server/Docker Image','Docker镜像']
+						]
+					},
+					{
+						title: '客户端',
+						children: [
+							['Client/Command Line Interface','命令行接口(CLI)'],
+							['Client/Programming - Native API','原生接口'],
+							['Client/Programming - JDBC','JDBC'],
+							['Client/Programming - Other Languages','其他语言'],
+							['Client/Programming - TsFile API','TsFile API'],
+							['Client/Programming - MQTT','MQTT'],
+							['Client/Status Codes','状态码']
+						]
+					},
+					{
+						title: '操作指南',
+						children: [
+							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
+							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
+							['Operation Manual/Administration','权限管理语句'],
+							['Operation Manual/SQL Reference','SQL 参考文档']
+						]
+					},
+					{
+						title: '系统工具',
+						children: [
+							['System Tools/Sync Tool','同步工具'],
+							['System Tools/JMX Tool','JMX工具'],
+							['System Tools/Watermark Tool','水印工具'],
+							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
+							['System Tools/Monitor and Log Tools','监控与日志工具'],
+							['System Tools/Load External Tsfile','加载外部tsfile文件'],
+							['System Tools/Performance Tracing Tool','性能追踪工具']
+						]
+					},
+					{
+						title: '生态集成',
+						children: [
+							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
+							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
+							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
+							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+						]
+					},
+					{
+						title: '系统设计',
+						children: [
+							['Architecture/Files','文件'],
+							['Architecture/Writing Data on HDFS','使用HDFS存储数据'],
+							['Architecture/Shared Nothing Cluster','Shared-nothing 架构']
+						]
+					}
+				],
 				'/zh/UserGuide/Master/': [
 					{
 						title: 'IoTDB用户手册 (In progress)',
@@ -943,6 +1138,7 @@ var config = {
 							['Concept/Data Type','数据类型'],
 							['Concept/Encoding','编码方式'],
 							['Concept/Compression','压缩方式']
+							['Concept/SDT','旋转门压缩']
 						]
 					},
 					{

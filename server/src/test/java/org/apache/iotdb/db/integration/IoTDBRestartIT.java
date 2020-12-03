@@ -95,7 +95,6 @@ public class IoTDBRestartIT {
     EnvironmentUtils.cleanEnv();
   }
 
-
   @Test
   public void testRestartDelete()
       throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
@@ -346,6 +345,66 @@ public class IoTDBRestartIT {
         cnt++;
       }
       assertEquals(1, cnt);
+    }
+
+    EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void testRestartCompaction()
+      throws SQLException, ClassNotFoundException, IOException, StorageEngineException {
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(4,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(5,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(6,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1.0)");
+      statement.execute("flush");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(7,1.0)");
+      statement.execute("flush");
+    }
+
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
+      assertTrue(hasResultSet);
+      String[] exp = new String[]{
+          "1,1.0",
+          "2,1.0",
+          "3,1.0",
+          "4,1.0",
+          "5,1.0",
+          "6,1.0",
+          "7,1.0"
+      };
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+          assertEquals(exp[cnt], result);
+          cnt++;
+        }
+      }
     }
 
     EnvironmentUtils.cleanEnv();

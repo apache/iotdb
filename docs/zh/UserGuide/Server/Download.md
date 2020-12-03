@@ -39,27 +39,15 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 ## 从官网下载二进制可执行文件
 
-您可以从[http://iotdb.apache.org/Download/](http://iotdb.apache.org/Download/)上下载已经编译好的可执行程序iotdb-xxx.tar.gz或者iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
+您可以从[http://iotdb.apache.org/Download/](http://iotdb.apache.org/Download/)上下载已经编译好的可执行程序iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
 
-```
-NOTE:
-iotdb-<version>.tar.gz # For Linux or MacOS
-iotdb-<version>.zip # For Windows
-```
 
 下载后，您可使用以下操作对IoTDB的压缩包进行解压: 
-
-如果您使用的操作系统是Windows，则使用解压缩工具解压或使用如下解压命令：
 
 ```
 Shell > uzip iotdb-<version>.zip
 ```
 
-如果您使用的操作系统是Linux或MacOS，则使用如下解压命令：
-
-```
-Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
-```
 
 ## 使用源码编译
 
