@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   public void onComplete(Long response) {
     if (Timer.ENABLE_INSTRUMENTING) {
       Statistic.RAFT_SENDER_SEND_LOG_ASYNC.calOperationCostTimeFromStart(sendStart);
+    }
+    if (voteCounter.get() == Integer.MAX_VALUE) {
+      // the request already failed
+      return;
     }
     logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
@@ -129,6 +134,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       failedDecreasingCounter--;
       if (failedDecreasingCounter <= 0) {
         // quorum members have failed, there is no need to wait for others
+        voteCounter.set(Integer.MAX_VALUE);
         voteCounter.notifyAll();
       }
     }
@@ -144,7 +150,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   public void setVoteCounter(AtomicInteger voteCounter) {
     this.voteCounter = voteCounter;
-    this.failedDecreasingCounter = voteCounter.get();
+    this.failedDecreasingCounter =
+        ClusterDescriptor.getInstance().getConfig().getReplicationNum() - voteCounter.get();
   }
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {

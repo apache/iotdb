@@ -1326,7 +1326,8 @@ public abstract class RaftMember {
     synchronized (voteCounter) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (voteCounter.get() > 0 && alreadyWait < RaftServer.getWriteOperationTimeoutMS()) {
+      while (voteCounter.get() > 0 && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
+          && voteCounter.get() != Integer.MAX_VALUE) {
         try {
           voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
