@@ -744,7 +744,7 @@ public class StorageEngine implements IService {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(storageGroup);
+    StorageGroupProcessor storageGroupProcessor = getProcessorDirectly(storageGroup);
     storageGroupProcessor.setDataTTL(dataTTL);
   }
 
