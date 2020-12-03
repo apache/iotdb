@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -289,7 +290,7 @@ public class TsFileProcessor {
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
-        blockInsertionIfReject();
+        StorageEngine.blockInsertionIfReject();
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
@@ -353,7 +354,7 @@ public class TsFileProcessor {
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
-        blockInsertionIfReject();
+        StorageEngine.blockInsertionIfReject();
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
@@ -363,21 +364,6 @@ public class TsFileProcessor {
     }
     workMemTable.addTVListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
-  }
-
-  private void blockInsertionIfReject() throws WriteProcessException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
-        if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
-        }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
-      }
-    }
   }
 
   /**

@@ -40,7 +40,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -80,7 +79,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
@@ -126,9 +124,6 @@ public class StorageGroupProcessor {
   private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-
-  private final int waitingTimeWhenInsertBlocked = config.getWaitingPeriodWhenInsertBlocked();
-  private final int maxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
    * file version to 1 to take effect
@@ -682,7 +677,7 @@ public class StorageGroupProcessor {
       throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     if (enableMemControl) {
-      blockInsertionIfReject();
+      StorageEngine.blockInsertionIfReject();
     }
     writeLock();
     try {
@@ -720,7 +715,7 @@ public class StorageGroupProcessor {
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
     if (enableMemControl) {
       try {
-        blockInsertionIfReject();
+        StorageEngine.blockInsertionIfReject();
       } catch (WriteProcessException e) {
         TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
         Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR));
@@ -816,21 +811,6 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
-    }
-  }
-
-  private void blockInsertionIfReject() throws WriteProcessException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
-        if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
-        }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
-      }
     }
   }
 
