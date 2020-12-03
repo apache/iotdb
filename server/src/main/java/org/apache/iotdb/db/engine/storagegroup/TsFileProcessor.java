@@ -279,22 +279,8 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
-    memTableIncrement += textDataIncrement;
-    storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
-    tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-    if (storageGroupInfo.needToReportToSystem()) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      try {
-        StorageEngine.blockInsertionIfReject();
-      } catch (WriteProcessException e) {
-        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
-        tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
-        throw e;
-      }
-    }
-    workMemTable.addTVListRamCost(memTableIncrement);
-    workMemTable.addTextDataSize(textDataIncrement);
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+        chunkMetadataIncrement, textDataIncrement);
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -343,6 +329,12 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinaryColumnSize(column, start, end);
       }
     }
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+        chunkMetadataIncrement, textDataIncrement);
+  }
+
+  private void updateMemoryInfo(long memTableIncrement, long unsealedResourceIncrement,
+      long chunkMetadataIncrement, long textDataIncrement) throws WriteProcessException {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
