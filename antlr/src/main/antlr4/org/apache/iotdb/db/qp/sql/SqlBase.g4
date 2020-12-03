@@ -169,7 +169,6 @@ compressor
     | SNAPPY
     | GZIP
     | LZO
-    | SDT
     | PAA
     | PLA
     | LZ4
@@ -1142,10 +1141,6 @@ GZIP
 
 LZO
     : L Z O
-    ;
-
-SDT
-    : S D T
     ;
 
 PAA

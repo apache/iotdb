@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -30,11 +31,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ReadOnlyMemChunk {
+
+  // deletion list for this chunk
+  private final List<TimeRange> deletionList;
 
   private String measurementUid;
   private TSDataType dataType;
@@ -51,8 +56,11 @@ public class ReadOnlyMemChunk {
 
   private IPointReader chunkPointReader;
 
+  private int chunkDataSize;
+
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TSEncoding encoding,
-      TVList tvList, Map<String, String> props, long version)
+      TVList tvList, Map<String, String> props, long version, int size,
+      List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
@@ -72,9 +80,12 @@ public class ReadOnlyMemChunk {
         floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       }
     }
-    tvList.sort();
+
     this.chunkData = tvList;
-    this.chunkPointReader = tvList.getIterator(floatPrecision, encoding);
+    this.chunkDataSize = size;
+    this.deletionList = deletionList;
+
+    this.chunkPointReader = tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     initChunkMeta();
   }
 
@@ -82,7 +93,7 @@ public class ReadOnlyMemChunk {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator = chunkData.getIterator(floatPrecision, encoding);
+      IPointReader iterator = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
@@ -128,7 +139,7 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    chunkPointReader = chunkData.getIterator(floatPrecision, encoding);
+    chunkPointReader = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     return chunkPointReader;
   }
 
