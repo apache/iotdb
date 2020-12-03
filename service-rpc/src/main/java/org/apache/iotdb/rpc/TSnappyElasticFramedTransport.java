@@ -19,25 +19,12 @@
 package org.apache.iotdb.rpc;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicLong;
-import org.apache.thrift.transport.TByteBuffer;
-import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 import org.xerial.snappy.Snappy;
 
-public class TSnappyElasticFramedTransport extends TFastFramedTransport {
+public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
 
-  private static final AtomicLong writeBytes = new AtomicLong();
-  private static final AtomicLong writeCompressedBytes = new AtomicLong();
-  private static final AtomicLong readBytes = new AtomicLong();
-  private static final AtomicLong readCompressedBytes = new AtomicLong();
-
-  private TByteBuffer writeCompressBuffer;
-  private TByteBuffer readCompressBuffer;
 
   public static class Factory extends TTransportFactory {
 
@@ -69,114 +56,29 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
 
   public TSnappyElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
     super(underlying, initialBufferCapacity, maxLength);
-    this.underlying = underlying;
-    this.maxLength = maxLength;
-    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
-    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
-    writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
-    readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
 
-  private final int maxLength;
-  private final TTransport underlying;
-  private AutoScalingBufferReadTransport readBuffer;
-  private AutoScalingBufferWriteTransport writeBuffer;
-  private final byte[] i32buf = new byte[4];
 
   @Override
-  public int read(byte[] buf, int off, int len) throws TTransportException {
-    int got = readBuffer.read(buf, off, len);
-    if (got > 0) {
-      return got;
-    }
-
-    // Read another frame of data
-    readFrame();
-    return readBuffer.read(buf, off, len);
-  }
-
-  @SuppressWarnings("java:S2177") // no better name
-  private void readFrame() throws TTransportException {
-    underlying.readAll(i32buf, 0, 4);
-    int size = TFramedTransport.decodeFrameSize(i32buf);
-
-    if (size < 0) {
-      close();
-      throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Read a negative frame size (" + size + ")!");
-    }
-
-    readBuffer.fill(underlying, size);
-    readCompressedBytes.addAndGet(size);
-    try {
-      int uncompressedLength = Snappy.uncompressedLength(readBuffer.getBuffer(), 0, size);
-      readBytes.addAndGet(uncompressedLength);
-      readCompressBuffer = resizeCompressBuf(uncompressedLength, readCompressBuffer);
-      Snappy.uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getByteBuffer().array(), 0);
-      readCompressBuffer.getByteBuffer().limit(uncompressedLength);
-      readCompressBuffer.getByteBuffer().position(0);
-
-      readBuffer.fill(readCompressBuffer, uncompressedLength);
-    } catch (IOException e) {
-      throw new TTransportException(e);
-    }
-  }
-
-  private TByteBuffer resizeCompressBuf(int size, TByteBuffer byteBuffer) {
-    double expandFactor = 1.5;
-    double loadFactor = 0.6;
-    if (byteBuffer.getByteBuffer().capacity() < size) {
-      int newCap = (int) Math.min(size * expandFactor, maxLength);
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCap));
-    } else if (byteBuffer.getByteBuffer().capacity() * loadFactor > size) {
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(size));
-    }
-    return byteBuffer;
+  protected int uncompressedLength(byte[] buf, int off, int len) throws IOException {
+    return Snappy.uncompressedLength(buf, off, len);
   }
 
   @Override
-  public void flush() throws TTransportException {
-    int length = writeBuffer.getPos();
-    writeBytes.addAndGet(length);
-    try {
-      int maxCompressedLength = Snappy.maxCompressedLength(length);
-      writeCompressBuffer = resizeCompressBuf(maxCompressedLength, writeCompressBuffer);
-      int compressedLength = Snappy.compress(writeBuffer.getBuf().array(), 0, length,
-          writeCompressBuffer.getByteBuffer().array(), 0);
-      writeCompressedBytes.addAndGet(compressedLength);
-      TFramedTransport.encodeFrameSize(compressedLength, i32buf);
-      underlying.write(i32buf, 0, 4);
-
-      underlying.write(writeCompressBuffer.getByteBuffer().array(), 0, compressedLength);
-    } catch (IOException e) {
-      throw new TTransportException(e);
-    }
-
-    writeBuffer.reset();
-    if (maxLength < length) {
-      writeBuffer.resizeIfNecessary(maxLength);
-    }
-    underlying.flush();
+  protected int maxCompressedLength(int len) {
+    return Snappy.maxCompressedLength(len);
   }
 
   @Override
-  public void write(byte[] buf, int off, int len) {
-    writeBuffer.write(buf, off, len);
+  protected int compress(byte[] input, int inOff, int len, byte[] output, int outOff)
+      throws IOException {
+    return Snappy.compress(input, inOff, len, output, outOff);
   }
 
-  public static long getReadBytes() {
-    return readBytes.get();
+  @Override
+  protected void uncompress(byte[] input, int inOff, int size, byte[] output, int outOff)
+      throws IOException {
+    Snappy.uncompress(input, inOff, size, output, outOff);
   }
 
-  public static long getReadCompressedBytes() {
-    return readCompressedBytes.get();
-  }
-
-  public static long getWriteBytes() {
-    return writeBytes.get();
-  }
-
-  public static long getWriteCompressedBytes() {
-    return writeCompressedBytes.get();
-  }
 }

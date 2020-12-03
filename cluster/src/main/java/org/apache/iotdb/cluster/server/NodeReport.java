@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.rpc.RpcStat;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TSnappyElasticFramedTransport;
-import org.xerial.snappy.Snappy;
 
 /**
  * A node report collects the current runtime information of the local node, which contains:
@@ -112,10 +110,10 @@ public class NodeReport {
 
     @Override
     public String toString() {
-      long readBytes = TSnappyElasticFramedTransport.getReadBytes();
-      long readCompressedBytes = TSnappyElasticFramedTransport.getReadCompressedBytes();
-      long writeBytes = TSnappyElasticFramedTransport.getWriteBytes();
-      long writeCompressedBytes = TSnappyElasticFramedTransport.getWriteCompressedBytes();
+      long readBytes = RpcStat.getReadBytes();
+      long readCompressedBytes = RpcStat.getReadCompressedBytes();
+      long writeBytes = RpcStat.getWriteBytes();
+      long writeCompressedBytes = RpcStat.getWriteCompressedBytes();
       double readCompressionRatio
           = (double) readBytes / readCompressedBytes;
       double writeCompressionRatio = (double) writeBytes / writeCompressedBytes;
