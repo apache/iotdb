@@ -150,8 +150,8 @@ public class TsFileSequenceReaderTest {
   @Test
   public void testReadChunkMetadataInDevice() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    ChunkMetadata d2s1Metadata = reader.getChunkMetadataList(new Path("d2", "s1")).get(0);
-    System.out.println("d2s1 count: " + d2s1Metadata.getNumOfPoints());
+    List<ChunkMetadata> d2s1Metadata = reader.getChunkMetadataList(new Path("d2", "s1"));
+    System.out.println("d2s1Metadata list size: " + d2s1Metadata.size());
 
     // test for exist device "d2"
     Map<String, List<ChunkMetadata>> chunkMetadataMap = reader
