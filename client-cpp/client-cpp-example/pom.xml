@@ -24,12 +24,12 @@
     <parent>
         <artifactId>client-cpp</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp-example</artifactId>
-    <version>0.11.0-SNAPSHOT</version>
+    <version>0.12.0-SNAPSHOT</version>
     <profiles>
         <profile>
             <id>os-unix</id>

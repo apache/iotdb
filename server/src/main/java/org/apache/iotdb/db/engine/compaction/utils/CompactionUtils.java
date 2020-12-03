@@ -142,7 +142,7 @@ public class CompactionUtils {
       return maxVersion;
     }
     IChunkWriter chunkWriter = new ChunkWriterImpl(
-        new MeasurementSchema(entry.getKey(), chunkMetadataList.get(0).getDataType()));
+        new MeasurementSchema(entry.getKey(), chunkMetadataList.get(0).getDataType()), true);
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
       writeTVPair(timeValuePair, chunkWriter);
       targetResource.updateStartTime(device, timeValuePair.getTimestamp());
