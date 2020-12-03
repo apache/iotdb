@@ -146,7 +146,9 @@ public class TSnappyElasticFramedTransport extends TFastFramedTransport {
     }
 
     writeBuffer.reset();
-    writeBuffer.resizeIfNecessary(maxLength);
+    if (maxLength < length) {
+      writeBuffer.resizeIfNecessary(maxLength);
+    }
     underlying.flush();
   }
 

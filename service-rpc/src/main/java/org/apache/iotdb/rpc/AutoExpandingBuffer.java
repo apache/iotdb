@@ -28,7 +28,11 @@ import java.util.Arrays;
  * objective of avoiding expensive buffer allocations and copies.
  */
 class AutoExpandingBuffer {
+  // if resizeIfNecessary is called continuously with a small size for more than
+  // MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space
+  private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
   private byte[] array;
+  private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
 
   public AutoExpandingBuffer(int initialCapacity) {
     this.array = new byte[initialCapacity];
@@ -36,14 +40,16 @@ class AutoExpandingBuffer {
 
   public void resizeIfNecessary(int size) {
     final int currentCapacity = this.array.length;
-    final double loadFactor = 0.3;
+    final double loadFactor = 0.6;
     if (currentCapacity < size) {
       // Increase by a factor of 1.5x
       int growCapacity = currentCapacity + (currentCapacity >> 1);
       int newCapacity = Math.max(growCapacity, size);
       this.array = Arrays.copyOf(array, newCapacity);
-    } else if (array.length * loadFactor > size) {
+      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+    } else if (array.length * loadFactor > size && bufTooLargeCounter-- <= 0) {
       array = Arrays.copyOf(array, size);
+      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
     }
   }
 
