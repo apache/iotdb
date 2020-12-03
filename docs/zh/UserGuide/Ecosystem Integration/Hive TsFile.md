@@ -49,7 +49,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.11.0`|
 
 > 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/iotdb/tree/master/tsfile>。
 

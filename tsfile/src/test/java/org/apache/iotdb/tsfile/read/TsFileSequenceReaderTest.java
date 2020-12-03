@@ -96,22 +96,6 @@ public class TsFileSequenceReaderTest {
           MetaMarker.handleUnexpectedMarker(marker);
       }
     }
-    /*
-     *
-     * for (Entry<String, TsDeviceMetadataIndex> entry:
-     * metaData.getDeviceMap().entrySet()) { int chunkGroupIndex = 0;
-     * TsDeviceMetadata deviceMetadata =
-     * reader.readTsDeviceMetaData(entry.getValue()); List<ChunkGroupMetaData>
-     * chunkGroupMetaDataList = deviceMetadata.getChunkGroupMetaDataList();
-     * List<Pair<Long, Long>> offsets =
-     * deviceChunkGroupMetadataOffsets.get(entry.getKey()); for (ChunkGroupMetaData
-     * chunkGroupMetaData : chunkGroupMetaDataList) { Pair<Long, Long> pair =
-     * offsets.get(chunkGroupIndex++);
-     * Assert.assertEquals(chunkGroupMetaData.getStartOffsetOfChunkGroup(), (long)
-     * pair.left);
-     * Assert.assertEquals(chunkGroupMetaData.getEndOffsetOfChunkGroup(), (long)
-     * pair.right); } }
-     */
     reader.close();
   }
 

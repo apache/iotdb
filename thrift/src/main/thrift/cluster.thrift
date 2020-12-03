@@ -19,6 +19,7 @@
 
 include "rpc.thrift"
 namespace java org.apache.iotdb.cluster.rpc.thrift
+namespace py iotdb.thrift.cluster
 
 typedef i32 int 
 typedef i16 short

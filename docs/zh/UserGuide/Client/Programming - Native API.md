@@ -38,7 +38,7 @@
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>iotdb-session</artifactId>
-      <version>0.10.0</version>
+      <version>0.11.0</version>
     </dependency>
 </dependencies>
 ```
