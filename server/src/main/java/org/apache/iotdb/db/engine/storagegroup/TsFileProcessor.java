@@ -218,11 +218,11 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
     }
-    if (enableMemControl) {
-      checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
-    }
 
     try {
+      if (enableMemControl) {
+        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+      }
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
