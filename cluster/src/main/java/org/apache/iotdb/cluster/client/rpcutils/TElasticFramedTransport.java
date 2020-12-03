@@ -27,7 +27,7 @@ import org.apache.thrift.transport.TTransportFactory;
 public class TElasticFramedTransport extends TFastFramedTransport {
 
   /**
-   * It is used to prevent the size of the parsing package from being too large and allotting the
+   * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
    * reading. The default value is 512MB
    */
