@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
@@ -61,26 +62,33 @@ public class AppendNodeEntryHandlerTest {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
-    AtomicInteger quorum = new AtomicInteger(5);
-    Peer peer = new Peer(1);
-    synchronized (quorum) {
-      for (int i = 0; i < 10; i++) {
-        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-        handler.setLeaderShipStale(leadershipStale);
-        handler.setVoteCounter(quorum);
-        handler.setLog(log);
-        handler.setMember(member);
-        handler.setReceiverTerm(receiverTerm);
-        handler.setReceiver(TestUtils.getNode(i));
-        handler.setPeer(peer);
-        long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
-        new Thread(() -> handler.onComplete(resp)).start();
+
+    int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    try {
+      ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
+      AtomicInteger quorum = new AtomicInteger(5);
+      Peer peer = new Peer(1);
+      synchronized (quorum) {
+        for (int i = 0; i < 10; i++) {
+          AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+          handler.setLeaderShipStale(leadershipStale);
+          handler.setVoteCounter(quorum);
+          handler.setLog(log);
+          handler.setMember(member);
+          handler.setReceiverTerm(receiverTerm);
+          handler.setReceiver(TestUtils.getNode(i));
+          handler.setPeer(peer);
+          long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
+          new Thread(() -> handler.onComplete(resp)).start();
+        }
+        quorum.wait();
       }
-      quorum.wait();
+      assertEquals(-1, receiverTerm.get());
+      assertFalse(leadershipStale.get());
+      assertEquals(0, quorum.get());
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setReplicationNum(replicationNum);
     }
-    assertEquals(-1, receiverTerm.get());
-    assertFalse(leadershipStale.get());
-    assertEquals(0, quorum.get());
   }
 
   @Test
@@ -138,21 +146,27 @@ public class AppendNodeEntryHandlerTest {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
-    AtomicInteger quorum = new AtomicInteger(5);
-    Peer peer = new Peer(1);
+    int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
+    try {
+      AtomicInteger quorum = new AtomicInteger(5);
+      Peer peer = new Peer(1);
 
-    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-    handler.setLeaderShipStale(leadershipStale);
-    handler.setVoteCounter(quorum);
-    handler.setLog(log);
-    handler.setMember(member);
-    handler.setReceiverTerm(receiverTerm);
-    handler.setReceiver(TestUtils.getNode(0));
-    handler.setPeer(peer);
-    handler.onError(new TestException());
+      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+      handler.setLeaderShipStale(leadershipStale);
+      handler.setVoteCounter(quorum);
+      handler.setLog(log);
+      handler.setMember(member);
+      handler.setReceiverTerm(receiverTerm);
+      handler.setReceiver(TestUtils.getNode(0));
+      handler.setPeer(peer);
+      handler.onError(new TestException());
 
-    assertEquals(-1, receiverTerm.get());
-    assertFalse(leadershipStale.get());
-    assertEquals(5, quorum.get());
+      assertEquals(-1, receiverTerm.get());
+      assertFalse(leadershipStale.get());
+      assertEquals(5, quorum.get());
+    } finally {
+      ClusterDescriptor.getInstance().getConfig().setReplicationNum(replicationNum);
+    }
   }
 }
