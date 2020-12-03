@@ -93,9 +93,6 @@ public class StorageEngine implements IService {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
 
-  private final static int WAITING_PERIOD_WHEN_INSERTION_BLOCKED = config.getWaitingPeriodWhenInsertBlocked();
-  private final static int MAX_WAITING_TIME_WHEN_INSERTION_BLOCKED = config.getMaxWaitingTimeWhenInsertBlocked();
-
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
    * will have a subfolder under the systemDir.
@@ -850,9 +847,10 @@ public class StorageEngine implements IService {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
       try {
-        TimeUnit.MILLISECONDS.sleep(WAITING_PERIOD_WHEN_INSERTION_BLOCKED);
-        if (System.currentTimeMillis() - startTime > MAX_WAITING_TIME_WHEN_INSERTION_BLOCKED) {
-          throw new WriteProcessException("System rejected over " + MAX_WAITING_TIME_WHEN_INSERTION_BLOCKED + "ms");
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

@@ -164,7 +164,7 @@ public class IoTDBConfig {
   /**
    * When inserting rejected, waiting period to check system again
    */
-  private int waitingPeriodWhenInsertBlockedInMs = 50;
+  private int checkPeriodWhenInsertBlocked = 50;
 
   /**
    * When inserting rejected exceeds this, throw an exception
@@ -2014,12 +2014,12 @@ public class IoTDBConfig {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
-  public int getWaitingPeriodWhenInsertBlocked() {
-    return waitingPeriodWhenInsertBlockedInMs;
+  public int getCheckPeriodWhenInsertBlocked() {
+    return checkPeriodWhenInsertBlocked;
   }
 
-  public void setWaitingPeriodWhenInsertBlocked(int waitingPeriodWhenInsertBlocked) {
-    this.waitingPeriodWhenInsertBlockedInMs = waitingPeriodWhenInsertBlocked;
+  public void setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    this.checkPeriodWhenInsertBlocked = checkPeriodWhenInsertBlocked;
   }
 
   public int getMaxWaitingTimeWhenInsertBlocked() {
