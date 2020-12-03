@@ -18,21 +18,15 @@
  */
 package org.apache.iotdb.rpc;
 
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
+
 import java.io.IOException;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 import org.xerial.snappy.Snappy;
 
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
-
-  /**
-   * How big should the default read and write buffers be?
-   */
-  public static final int DEFAULT_BUF_CAPACITY = 4 * 1024 * 1024;
-  /**
-   * How big is the largest allowable frame? Defaults to 16MB.
-   */
-  public static final int DEFAULT_MAX_LENGTH = 16384000;
 
   public static class Factory extends TTransportFactory {
 
@@ -88,5 +82,4 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
       throws IOException {
     Snappy.uncompress(input, inOff, size, output, outOff);
   }
-
 }

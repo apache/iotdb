@@ -18,13 +18,16 @@
  */
 package org.apache.iotdb.rpc;
 
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
+
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
 
-public class TElasticFramedTransport extends TFastFramedTransport {
+public class TElasticFramedTransport extends TTransport {
 
   public static class Factory extends TTransportFactory {
 
@@ -55,7 +58,6 @@ public class TElasticFramedTransport extends TFastFramedTransport {
   }
 
   public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
     this.underlying = underlying;
     this.maxLength = maxLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
@@ -67,6 +69,21 @@ public class TElasticFramedTransport extends TFastFramedTransport {
   private AutoScalingBufferReadTransport readBuffer;
   private AutoScalingBufferWriteTransport writeBuffer;
   private final byte[] i32buf = new byte[4];
+
+  @Override
+  public boolean isOpen() {
+    return underlying.isOpen();
+  }
+
+  @Override
+  public void open() throws TTransportException {
+    underlying.open();
+  }
+
+  @Override
+  public void close() {
+    underlying.close();
+  }
 
   @Override
   public int read(byte[] buf, int off, int len) throws TTransportException {

@@ -18,18 +18,26 @@
  */
 package org.apache.iotdb.rpc;
 
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
+import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.thrift.transport.TByteBuffer;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-public abstract class TCompressedElasticFramedTransport extends TFastFramedTransport {
+public abstract class TCompressedElasticFramedTransport extends TTransport {
 
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
+
+  private final int maxLength;
+  final TTransport underlying;
+  private AutoScalingBufferReadTransport readBuffer;
+  private AutoScalingBufferWriteTransport writeBuffer;
+  private final byte[] i32buf = new byte[4];
 
   public TCompressedElasticFramedTransport(TTransport underlying) {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
@@ -37,7 +45,6 @@ public abstract class TCompressedElasticFramedTransport extends TFastFramedTrans
 
   public TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
       int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
     this.underlying = underlying;
     this.maxLength = maxLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
@@ -45,12 +52,6 @@ public abstract class TCompressedElasticFramedTransport extends TFastFramedTrans
     writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
-
-  private final int maxLength;
-  private final TTransport underlying;
-  private AutoScalingBufferReadTransport readBuffer;
-  private AutoScalingBufferWriteTransport writeBuffer;
-  private final byte[] i32buf = new byte[4];
 
   @Override
   public int read(byte[] buf, int off, int len) throws TTransportException {
@@ -142,4 +143,19 @@ public abstract class TCompressedElasticFramedTransport extends TFastFramedTrans
 
   protected abstract void uncompress(byte[] input, int inOff, int size, byte[] output,
       int outOff) throws IOException;
+
+  @Override
+  public boolean isOpen() {
+    return underlying.isOpen();
+  }
+
+  @Override
+  public void open() throws TTransportException {
+    underlying.open();
+  }
+
+  @Override
+  public void close() {
+    underlying.close();
+  }
 }
