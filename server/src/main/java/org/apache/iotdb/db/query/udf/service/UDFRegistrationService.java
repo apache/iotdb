@@ -232,7 +232,7 @@ public class UDFRegistrationService implements IService {
     FileUtils.forceMkdir(file);
   }
 
-  private void doRecovery() throws IOException, UDFRegistrationException {
+  private void doRecovery() throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
     File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
 
@@ -249,7 +249,7 @@ public class UDFRegistrationService implements IService {
     }
   }
 
-  private void recoveryFromLogFile(File logFile) throws IOException, UDFRegistrationException {
+  private void recoveryFromLogFile(File logFile) throws IOException {
     HashMap<String, String> recoveredUDFs = new HashMap<>();
 
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile))) {
@@ -266,7 +266,11 @@ public class UDFRegistrationService implements IService {
     }
 
     for (Entry<String, String> udf : recoveredUDFs.entrySet()) {
-      register(udf.getKey(), udf.getValue(), false, false);
+      try {
+        register(udf.getKey(), udf.getValue(), false, false);
+      } catch (UDFRegistrationException ignored) {
+        // ignored
+      }
     }
   }
 
