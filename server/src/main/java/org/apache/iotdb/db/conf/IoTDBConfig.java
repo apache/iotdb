@@ -790,7 +790,7 @@ public class IoTDBConfig {
   /**
    * the number of virtual partition
    */
-  private int virtualPartitionNum = 2;
+  private int virtualPartitionNum = 8;
 
   public IoTDBConfig() {
     // empty constructor
