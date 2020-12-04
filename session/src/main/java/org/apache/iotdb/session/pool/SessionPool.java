@@ -75,6 +75,7 @@ public class SessionPool {
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression = false;
+  private boolean enableCacheLeader = false;
   private ZoneId zoneId;
 
   private boolean closed;//whether the queue is closed.
@@ -134,7 +135,7 @@ public class SessionPool {
         if (logger.isDebugEnabled()) {
           logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
         }
-        session = new Session(ip, port, user, password, fetchSize, zoneId);
+        session = new Session(ip, port, user, password, fetchSize, zoneId, enableCacheLeader);
         try {
           session.open(enableCompression);
           //avoid someone has called close() the session pool
