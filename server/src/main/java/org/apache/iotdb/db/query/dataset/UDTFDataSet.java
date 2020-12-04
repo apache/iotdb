@@ -61,7 +61,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   /**
    * execute with value filters
    */
-  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
+  protected UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
       List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator, List<IReaderByTimestamp> readersOfSelectedSeries,
       List<Boolean> cached) throws QueryProcessException, IOException {
@@ -78,7 +78,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   /**
    * execute without value filters
    */
-  public UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
+  protected UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan,
       List<PartialPath> deduplicatedPaths, List<TSDataType> deduplicatedDataTypes,
       List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {

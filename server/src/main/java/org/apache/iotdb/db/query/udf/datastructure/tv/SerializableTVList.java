@@ -82,7 +82,7 @@ public abstract class SerializableTVList extends BatchData implements Serializab
 
   protected final SerializationRecorder serializationRecorder;
 
-  public SerializableTVList(TSDataType type, SerializationRecorder serializationRecorder) {
+  protected SerializableTVList(TSDataType type, SerializationRecorder serializationRecorder) {
     super(type);
     this.serializationRecorder = serializationRecorder;
   }

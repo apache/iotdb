@@ -21,13 +21,9 @@ package org.apache.iotdb.db.qp.logical.crud;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
-import org.apache.iotdb.tsfile.read.common.Path;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
 /**
  * this class maintains information from select clause.

@@ -241,11 +241,9 @@ public class UDFRegistrationService implements IService {
         FileUtils.deleteQuietly(logFile);
       }
       recoveryFromLogFile(temporaryLogFile);
-    } else {
-      if (logFile.exists()) {
-        recoveryFromLogFile(logFile);
-        FSFactoryProducer.getFSFactory().moveFile(logFile, temporaryLogFile);
-      }
+    } else if (logFile.exists()) {
+      recoveryFromLogFile(logFile);
+      FSFactoryProducer.getFSFactory().moveFile(logFile, temporaryLogFile);
     }
   }
 

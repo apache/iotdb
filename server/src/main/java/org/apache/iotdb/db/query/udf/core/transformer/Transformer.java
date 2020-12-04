@@ -37,7 +37,7 @@ public abstract class Transformer implements LayerPointReader {
   protected boolean cachedBoolean;
   protected Binary cachedBinary;
 
-  public Transformer() {
+  protected Transformer() {
     hasCachedValue = false;
   }
 

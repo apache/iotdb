@@ -183,7 +183,7 @@ public class SchemaUtils {
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
-  public static TSDataType getAggregationType(String aggregation) throws MetadataException {
+  public static TSDataType getAggregationType(String aggregation) {
     if (aggregation == null) {
       return null;
     }
