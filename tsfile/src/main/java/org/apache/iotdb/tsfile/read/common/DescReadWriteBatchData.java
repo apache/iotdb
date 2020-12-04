@@ -313,12 +313,66 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     super.readCurListIndex = writeCurListIndex;
   }
 
-  @Override
-  public long getMaxTimestamp() {
-    if (writeCurListIndex >= 1) {
-      return timeRet.get(writeCurListIndex)[capacity - 1];
+  public long getTimeByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.timeRet.get(0)[idx];
     } else {
-      return timeRet.get(0)[writeCurArrayIndex - 1];
+      return this.timeRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
+          % capacity];
+    }
+  }
+
+  public long getLongByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.longRet.get(0)[idx];
+    } else {
+      return this.longRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
+          % capacity];
+    }
+  }
+
+  public double getDoubleByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.doubleRet.get(0)[idx];
+    } else {
+      return this.doubleRet.get((idx - writeCurArrayIndex) / capacity + 1)[
+          (idx - writeCurArrayIndex) % capacity];
+    }
+  }
+
+  public int getIntByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.intRet.get(0)[idx];
+    } else {
+      return this.intRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
+          % capacity];
+    }
+  }
+
+  public float getFloatByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.floatRet.get(0)[idx];
+    } else {
+      return this.floatRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
+          % capacity];
+    }
+  }
+
+  public Binary getBinaryByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.binaryRet.get(0)[idx];
+    } else {
+      return this.binaryRet.get((idx - writeCurArrayIndex) / capacity + 1)[
+          (idx - writeCurArrayIndex) % capacity];
+    }
+  }
+
+  public boolean getBooleanByIndex(int idx) {
+    if (idx < writeCurArrayIndex) {
+      return this.booleanRet.get(0)[idx];
+    } else {
+      return this.booleanRet.get((idx - writeCurArrayIndex) / capacity + 1)[
+          (idx - writeCurArrayIndex) % capacity];
     }
   }
 
