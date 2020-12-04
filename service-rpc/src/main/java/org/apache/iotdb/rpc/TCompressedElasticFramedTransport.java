@@ -37,7 +37,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
 
-  @SuppressWarnings("java:S2177") // no better name
+  @Override
   protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);

@@ -2396,7 +2396,7 @@ public class StorageGroupProcessor {
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
     // examine working processor first as they have the largest plan index
     return isFileAlreadyExistInWorking(tsFileResource, partitionNum, getWorkSequenceTsFileProcessors()) ||
-        isFileAlreadyExistInWorking(tsFileResource, partitionNum, getWorkSequenceTsFileProcessors()) ||
+        isFileAlreadyExistInWorking(tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors()) ||
         isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet()) ||
         isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
