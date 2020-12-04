@@ -31,8 +31,7 @@ import org.apache.iotdb.db.service.IoTDB;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
- * value is a PartitionGroup with contains all nodes that manage the corresponding data.
- * currently, we do not support auto-create storage group in the cluster mode.
+ * value is a PartitionGroup witch contains all nodes that manage the corresponding data.
  */
 public interface PartitionTable {
 
