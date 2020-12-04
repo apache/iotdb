@@ -118,7 +118,7 @@ public class NodeReport {
           = (double) readBytes / readCompressedBytes;
       double writeCompressionRatio = (double) writeBytes / writeCompressedBytes;
       String transportCompressionReport = "";
-      if (RpcTransportFactory.USE_SNAPPY) {
+      if (RpcTransportFactory.isUseSnappy()) {
         transportCompressionReport =
             ", readBytes=" + readBytes + "/" + readCompressedBytes + "(" + readCompressionRatio +
                 ")" +
