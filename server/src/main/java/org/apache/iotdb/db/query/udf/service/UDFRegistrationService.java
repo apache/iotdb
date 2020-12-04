@@ -63,6 +63,8 @@ public class UDFRegistrationService implements IService {
 
   private final String libRoot;
 
+  private URLClassLoader udfClassLoader;
+
   private UDFRegistrationService() {
     registrationInformation = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
@@ -110,7 +112,8 @@ public class UDFRegistrationService implements IService {
     }
 
     Class<?> functionClass;
-    try (URLClassLoader udfClassLoader = getUDFClassLoader()) {
+    try {
+      udfClassLoader = getUDFClassLoader();
       functionClass = Class.forName(className, true, udfClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
     } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
@@ -195,6 +198,7 @@ public class UDFRegistrationService implements IService {
       throw new QueryProcessException(errorMessage);
     }
 
+    Thread.currentThread().setContextClassLoader(udfClassLoader);
     try {
       return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
