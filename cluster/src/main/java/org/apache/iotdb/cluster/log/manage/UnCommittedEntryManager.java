@@ -94,8 +94,8 @@ public class UnCommittedEntryManager {
       // rare, so we are confident that we will not be stuck here forever
       try {
         log = entries.get(entryPos);
-        if (log.getCurrLogIndex() != index) {
-          return maybeTerm(index);
+        if (log.getCurrLogIndex() == index) {
+          log.getCurrLogTerm();
         }
       } catch (IndexOutOfBoundsException e) {
         // continue
