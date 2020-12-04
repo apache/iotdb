@@ -80,6 +80,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v boolean data
    */
+  @Override
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -116,6 +117,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v int data
    */
+  @Override
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -152,6 +154,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v long data
    */
+  @Override
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -188,6 +191,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v float data
    */
+  @Override
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -224,6 +228,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v double data
    */
+  @Override
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -260,6 +265,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    * @param t timestamp
    * @param v binary data.
    */
+  @Override
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
@@ -305,30 +311,37 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     super.readCurListIndex = writeCurListIndex;
   }
 
+  @Override
   public long getTimeByIndex(int idx) {
     return timeRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public long getLongByIndex(int idx) {
     return longRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public double getDoubleByIndex(int idx) {
     return doubleRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public int getIntByIndex(int idx) {
     return intRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public float getFloatByIndex(int idx) {
     return floatRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public Binary getBinaryByIndex(int idx) {
     return binaryRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
+  @Override
   public boolean getBooleanByIndex(int idx) {
     return booleanRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
