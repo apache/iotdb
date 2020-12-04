@@ -74,6 +74,7 @@ public class Session {
   private ZoneId zoneId;
 
   // Cluster version cache
+  private boolean isEnableCacheLeader;
   private SessionConnection metaSessionConnection;
   private Map<String, EndPoint> deviceIdToEndpoint;
   private Map<EndPoint, SessionConnection> endPointToSessionConnection;
@@ -81,32 +82,42 @@ public class Session {
 
   public Session(String host, int rpcPort) {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE,
-        null);
+        null, Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
-    this(host, rpcPort, username, password, fetchSize, null);
+    this(host, rpcPort, username, password, fetchSize, null, Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
+        isEnableCacheLeader);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize,
-      ZoneId zoneId) {
+      ZoneId zoneId, boolean isEnableCacheLeader) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
+    this.isEnableCacheLeader = isEnableCacheLeader;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -128,7 +139,7 @@ public class Session {
     defaultSessionConnection = new SessionConnection(this, defaultEndPoint, zoneId);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       deviceIdToEndpoint = new HashMap<>();
       endPointToSessionConnection = new HashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -140,7 +151,7 @@ public class Session {
       return;
     }
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+      if (isEnableCacheLeader) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
         }
@@ -344,7 +355,7 @@ public class Session {
 
   private SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
-    if (Config.DEFAULT_CACHE_LEADER_MODE
+    if (isEnableCacheLeader
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
     } else {
@@ -354,7 +365,7 @@ public class Session {
 
   private void handleMetaRedirection(String storageGroup, RedirectException e)
       throws IoTDBConnectionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(e.getEndPoint(), k -> {
@@ -374,7 +385,7 @@ public class Session {
 
   private void handleRedirection(String deviceId, EndPoint endpoint)
       throws IoTDBConnectionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       deviceIdToEndpoint.put(deviceId, endpoint);
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(endpoint, k -> {
@@ -460,7 +471,7 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList);
     } else {
       TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
@@ -538,7 +549,7 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList);
     } else {
       TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
@@ -622,7 +633,7 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
+      if (isEnableCacheLeader
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -644,7 +655,7 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
+      if (isEnableCacheLeader
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -698,7 +709,7 @@ public class Session {
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (isEnableCacheLeader) {
       insertTabletsWithLeaderCache(tablets, sorted);
     } else {
       TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
