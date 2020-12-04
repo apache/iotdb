@@ -17,6 +17,7 @@
  * under the License.
  */
 namespace java org.apache.iotdb.service.rpc.thrift
+namespace py iotdb.thrift.rpc
 
 // The return status code and message in each response.
 struct TSStatus {
@@ -26,28 +27,28 @@ struct TSStatus {
 }
 
 struct TSQueryDataSet{
-    // ByteBuffer for time column
-    1: required binary time
-    // ByteBuffer for each column values
-    2: required list<binary> valueList
-    // Bitmap for each column to indicate whether it is a null value
-    3: required list<binary> bitmapList
+  // ByteBuffer for time column
+  1: required binary time
+  // ByteBuffer for each column values
+  2: required list<binary> valueList
+  // Bitmap for each column to indicate whether it is a null value
+  3: required list<binary> bitmapList
 }
 
 struct TSQueryNonAlignDataSet{
-    // ByteBuffer for each time column
-	  1: required list<binary> timeList
-	  // ByteBuffer for each column values
-    2: required list<binary> valueList
+  // ByteBuffer for each time column
+  1: required list<binary> timeList
+  // ByteBuffer for each column values
+  2: required list<binary> valueList
 }
 
 struct TSExecuteStatementResp {
-	1: required TSStatus status
-	2: optional i64 queryId
+  1: required TSStatus status
+  2: optional i64 queryId
   // Column names in select statement of SQL
-	3: optional list<string> columns
-	4: optional string operationType
-	5: optional bool ignoreTimeStamp
+  3: optional list<string> columns
+  4: optional string operationType
+  5: optional bool ignoreTimeStamp
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
   7: optional TSQueryDataSet queryDataSet
@@ -142,101 +143,101 @@ struct TSCloseOperationReq {
 
 struct TSFetchResultsReq{
   1: required i64 sessionId
-	2: required string statement
-	3: required i32 fetchSize
-	4: required i64 queryId
-	5: required bool isAlign
+  2: required string statement
+  3: required i32 fetchSize
+  4: required i64 queryId
+  5: required bool isAlign
 }
 
 struct TSFetchResultsResp{
-	1: required TSStatus status
-	2: required bool hasResultSet
+  1: required TSStatus status
+  2: required bool hasResultSet
   3: required bool isAlign
-	4: optional TSQueryDataSet queryDataSet
-	5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  4: optional TSQueryDataSet queryDataSet
+  5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 struct TSFetchMetadataResp{
-		1: required TSStatus status
-		2: optional string metadataInJson
-		3: optional list<string> columnsList
-		4: optional string dataType
+  1: required TSStatus status
+  2: optional string metadataInJson
+  3: optional list<string> columnsList
+  4: optional string dataType
 }
 
 struct TSFetchMetadataReq{
-    1: required i64 sessionId
-		2: required string type
-		3: optional string columnPath
+  1: required i64 sessionId
+  2: required string type
+  3: optional string columnPath
 }
 
 struct TSGetTimeZoneResp {
-    1: required TSStatus status
-    2: required string timeZone
+  1: required TSStatus status
+  2: required string timeZone
 }
 
 struct TSSetTimeZoneReq {
-    1: required i64 sessionId
-    2: required string timeZone
+  1: required i64 sessionId
+  2: required string timeZone
 }
 
 // for session
 struct TSInsertRecordReq {
-    1: required i64 sessionId
-    2: required string deviceId
-    3: required list<string> measurements
-    4: required binary values
-    5: required i64 timestamp
+  1: required i64 sessionId
+  2: required string deviceId
+  3: required list<string> measurements
+  4: required binary values
+  5: required i64 timestamp
 }
 
 struct TSInsertStringRecordReq {
-    1: required i64 sessionId
-    2: required string deviceId
-    3: required list<string> measurements
-    4: required list<string> values
-    5: required i64 timestamp
+  1: required i64 sessionId
+  2: required string deviceId
+  3: required list<string> measurements
+  4: required list<string> values
+  5: required i64 timestamp
 }
 
 struct TSInsertTabletReq {
-    1: required i64 sessionId
-    2: required string deviceId
-    3: required list<string> measurements
-    4: required binary values
-    5: required binary timestamps
-    6: required list<i32> types
-    7: required i32 size
+  1: required i64 sessionId
+  2: required string deviceId
+  3: required list<string> measurements
+  4: required binary values
+  5: required binary timestamps
+  6: required list<i32> types
+  7: required i32 size
 }
 
 struct TSInsertTabletsReq {
-    1: required i64 sessionId
-    2: required list<string> deviceIds
-    3: required list<list<string>> measurementsList
-    4: required list<binary> valuesList
-    5: required list<binary> timestampsList
-    6: required list<list<i32>> typesList
-    7: required list<i32> sizeList
+  1: required i64 sessionId
+  2: required list<string> deviceIds
+  3: required list<list<string>> measurementsList
+  4: required list<binary> valuesList
+  5: required list<binary> timestampsList
+  6: required list<list<i32>> typesList
+  7: required list<i32> sizeList
 }
 
 struct TSInsertRecordsReq {
-    1: required i64 sessionId
-    2: required list<string> deviceIds
-    3: required list<list<string>> measurementsList
-    4: required list<binary> valuesList
-    5: required list<i64> timestamps
+  1: required i64 sessionId
+  2: required list<string> deviceIds
+  3: required list<list<string>> measurementsList
+  4: required list<binary> valuesList
+  5: required list<i64> timestamps
 }
 
 struct TSInsertStringRecordsReq {
-    1: required i64 sessionId
-    2: required list<string> deviceIds
-    3: required list<list<string>> measurementsList
-    4: required list<list<string>> valuesList
-    5: required list<i64> timestamps
+  1: required i64 sessionId
+  2: required list<string> deviceIds
+  3: required list<list<string>> measurementsList
+  4: required list<list<string>> valuesList
+  5: required list<i64> timestamps
 }
 
 struct TSDeleteDataReq {
-    1: required i64 sessionId
-    2: required list<string> paths
-    3: required i64 startTime
-    4: required i64 endTime
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: required i64 startTime
+  4: required i64 endTime
 }
 
 struct TSCreateTimeseriesReq {
@@ -252,12 +253,12 @@ struct TSCreateTimeseriesReq {
 }
 
 struct TSRawDataQueryReq {
-    1: required i64 sessionId
-    2: required list<string> paths
-    3: optional i32 fetchSize
-    4: required i64 startTime
-    5: required i64 endTime
-    6: required i64 statementId
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: optional i32 fetchSize
+  4: required i64 startTime
+  5: required i64 endTime
+  6: required i64 statementId
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -273,43 +274,43 @@ struct TSCreateMultiTimeseriesReq {
 }
 
 struct ServerProperties {
-	1: required string version;
-	2: required list<string> supportedTimeAggregationOperations;
-	3: required string timestampPrecision;
+  1: required string version;
+  2: required list<string> supportedTimeAggregationOperations;
+  3: required string timestampPrecision;
 }
 
 service TSIService {
-	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
+  TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-	TSStatus closeSession(1:TSCloseSessionReq req);
+  TSStatus closeSession(1:TSCloseSessionReq req);
 
-	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
+  TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
-	TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
+  TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
-	TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
+  TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
 
-	TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
+  TSExecuteStatementResp executeUpdateStatement(1:TSExecuteStatementReq req);
 
-	TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
+  TSFetchResultsResp fetchResults(1:TSFetchResultsReq req)
 
-	TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
+  TSFetchMetadataResp fetchMetadata(1:TSFetchMetadataReq req)
 
-	TSStatus cancelOperation(1:TSCancelOperationReq req);
+  TSStatus cancelOperation(1:TSCancelOperationReq req);
 
-	TSStatus closeOperation(1:TSCloseOperationReq req);
+  TSStatus closeOperation(1:TSCloseOperationReq req);
 
-	TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
+  TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 
-	TSStatus setTimeZone(1:TSSetTimeZoneReq req);
+  TSStatus setTimeZone(1:TSSetTimeZoneReq req);
 
-	ServerProperties getProperties();
+  ServerProperties getProperties();
 
-	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
+  TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
-	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
+  TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-	TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
+  TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
   TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
@@ -323,11 +324,11 @@ service TSIService {
 
   TSStatus insertTablets(1:TSInsertTabletsReq req);
 
-	TSStatus insertRecords(1:TSInsertRecordsReq req);
+  TSStatus insertRecords(1:TSInsertRecordsReq req);
 
-	TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
+  TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
-	TSStatus testInsertTablet(1:TSInsertTabletReq req);
+  TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
   TSStatus testInsertTablets(1:TSInsertTabletsReq req);
 
@@ -339,9 +340,9 @@ service TSIService {
 
   TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
-	TSStatus deleteData(1:TSDeleteDataReq req);
+  TSStatus deleteData(1:TSDeleteDataReq req);
 
-	TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
+  TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
-	i64 requestStatementId(1:i64 sessionId);
+  i64 requestStatementId(1:i64 sessionId);
 }

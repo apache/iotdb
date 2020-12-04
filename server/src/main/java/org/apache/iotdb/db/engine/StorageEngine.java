@@ -21,12 +21,14 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.Callable;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -35,6 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -64,10 +67,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
@@ -181,9 +187,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+      futures.add(recoveryThreadPool.submit(() -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
@@ -200,7 +206,7 @@ public class StorageEngine implements IService {
         return null;
       }));
     }
-    for (Future future : futures) {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (ExecutionException e) {
@@ -288,7 +294,7 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) throws ShutdownException {
+  public void shutdown(long milliseconds) throws ShutdownException {
     try {
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -317,8 +323,7 @@ public class StorageEngine implements IService {
     try {
       StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      StorageGroupProcessor processor;
-      processor = processorMap.get(storageGroupPath);
+      StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
         // if finish recover
         if (isAllSgReady.get()) {
@@ -369,6 +374,9 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
+      if (config.isEnableStatMonitor()) {
+        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -376,8 +384,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -391,6 +397,19 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
+    if (config.isEnableStatMonitor()) {
+      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
+    }
+  }
+
+  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    int successPointsNum =
+        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    // update to storage group statistics
+    processor.updateMonitorSeriesValue(successPointsNum);
+    // update to global statistics
+    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /**
@@ -410,7 +429,8 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq, boolean isSync) {
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq,
+      boolean isSync) {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
       return;
@@ -457,7 +477,8 @@ public class StorageEngine implements IService {
    * @param isSync           close tsfile synchronously or asynchronously
    * @throws StorageGroupNotSetException
    */
-  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId, boolean isSeq,
+  public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId,
+      boolean isSeq,
       boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
@@ -497,7 +518,7 @@ public class StorageEngine implements IService {
   }
 
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
-          throws StorageEngineException {
+      throws StorageEngineException {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
@@ -741,8 +762,9 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * Get a map indicating which storage groups have working TsFileProcessors and its associated partitionId and whether
-   * it is sequence or not.
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated
+   * partitionId and whether it is sequence or not.
+   *
    * @return storage group -> a list of partitionId-isSequence pairs
    */
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
@@ -778,6 +800,7 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
+   *
    * @param listener
    */
   public void registerFlushListener(FlushListener listener) {
@@ -787,9 +810,51 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen file close events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
+   *
    * @param listener
    */
   public void registerCloseFileListener(CloseFileListener listener) {
     customCloseFileListeners.add(listener);
+  }
+
+  /**
+   * get all merge lock of the storage group processor related to the query
+   */
+  public List<StorageGroupProcessor> mergeLock(List<PartialPath> pathList)
+      throws StorageEngineException {
+    Set<StorageGroupProcessor> set = new HashSet<>();
+    for (PartialPath path : pathList) {
+      set.add(getProcessor(path));
+    }
+    List<StorageGroupProcessor> list = set.stream()
+        .sorted(Comparator.comparing(StorageGroupProcessor::getStorageGroupName))
+        .collect(Collectors.toList());
+    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readLock());
+    return list;
+  }
+
+  /**
+   * unlock all merge lock of the storage group processor related to the query
+   */
+  public void mergeUnLock(List<StorageGroupProcessor> list) {
+    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
+  }
+
+  /**
+   * block insertion if the insertion is rejected by memory control
+   */
+  public static void blockInsertionIfReject() throws WriteProcessException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 }

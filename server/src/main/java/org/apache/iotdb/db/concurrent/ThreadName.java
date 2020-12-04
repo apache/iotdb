@@ -42,7 +42,7 @@ public enum ThreadName {
   SYNC_SERVER("Sync-Server"),
   SYNC_MONITOR("Sync-Monitor"),
   LOAD_TSFILE("Load TsFile"),
-  TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
+  TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query-ServerServiceImpl");
 
   private String name;

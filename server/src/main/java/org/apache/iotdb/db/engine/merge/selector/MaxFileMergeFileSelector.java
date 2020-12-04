@@ -316,7 +316,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = calculateMetadataSize(seqFile);
-    return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
+    return Math.min(multiSeriesCost, maxCost);
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
@@ -325,7 +325,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
     long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
     long maxCost = unseqFile.getTsFileSize();
-    return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
+    return Math.min(multiSeriesCost, maxCost);
   }
 
   @Override

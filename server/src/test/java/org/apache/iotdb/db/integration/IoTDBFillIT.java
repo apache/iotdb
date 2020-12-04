@@ -159,9 +159,8 @@ public class IoTDBFillIT {
 
       Assert.assertTrue(hasResultSet);
 
-      int cnt;
       ResultSet resultSet = statement.getResultSet();
-      cnt = 0;
+      int cnt = 0;
       try {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)

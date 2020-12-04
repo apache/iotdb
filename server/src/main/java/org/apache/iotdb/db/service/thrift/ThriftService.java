@@ -90,7 +90,7 @@ public abstract class ThriftService implements IService {
 
 
   @SuppressWarnings("squid:S2276")
-  public synchronized void startService() throws StartupException {
+  public void startService() throws StartupException {
     if (STATUS_UP.equals(getRPCServiceStatus())) {
       logger.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
           this.getID().getName());
@@ -124,12 +124,12 @@ public abstract class ThriftService implements IService {
   }
 
 
-  public synchronized void restartService() throws StartupException {
+  public void restartService() throws StartupException {
     stopService();
     startService();
   }
 
-  public synchronized void stopService() {
+  public void stopService() {
     if (STATUS_DOWN.equals(getRPCServiceStatus())) {
       logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
       return;

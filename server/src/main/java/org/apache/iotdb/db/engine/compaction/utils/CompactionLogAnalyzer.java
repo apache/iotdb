@@ -43,8 +43,8 @@ public class CompactionLogAnalyzer {
   private boolean isMergeFinished = false;
   private Set<String> deviceSet = new HashSet<>();
   private long offset = 0;
-  private List<File> sourceFiles = new ArrayList<>();
-  private File targetFile = null;
+  private List<String> sourceFiles = new ArrayList<>();
+  private String targetFile = null;
   private boolean isSeq = false;
   private boolean fullMerge = false;
 
@@ -63,11 +63,11 @@ public class CompactionLogAnalyzer {
         switch (currLine) {
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
-            sourceFiles.add(new File(currLine));
+            sourceFiles.add(currLine);
             break;
           case TARGET_NAME:
             currLine = bufferedReader.readLine();
-            targetFile = new File(currLine);
+            targetFile = currLine;
             break;
           case MERGE_FINISHED:
             isMergeFinished = true;
@@ -105,11 +105,11 @@ public class CompactionLogAnalyzer {
     return offset;
   }
 
-  public List<File> getSourceFiles() {
+  public List<String> getSourceFiles() {
     return sourceFiles;
   }
 
-  public File getTargetFile() {
+  public String getTargetFile() {
     return targetFile;
   }
 
