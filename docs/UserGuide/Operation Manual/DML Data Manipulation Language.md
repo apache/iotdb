@@ -230,6 +230,7 @@ This section mainly introduces the related examples of aggregate query.
 ```
 select count(status) from root.ln.wf01.wt01;
 ```
+Result:
 
 ```
 +-------------------------------+
@@ -464,7 +465,7 @@ Get down-frequency aggregate query by level.
 ```
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d), level=1;
 ```
-result:
+Result:
 
 ```
 +-----------------------------+-------------------------+
@@ -488,7 +489,7 @@ Down-frequency aggregate query with sliding step and by level.
 select count(status) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d), level=1;
 ```
 
-result:
+Result:
 
 ```
 +-----------------------------+-------------------------+
@@ -542,7 +543,7 @@ Total line number = 10
 It costs 0.002s
 ```
 
-we will find the last time adn value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07. 
+we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07 respectively. 
 
 Then execute SQL statements:
 
@@ -592,7 +593,7 @@ It costs 0.006s
 
 which means:
 
-using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59 and only to fill the origin down-frequency aggregate query result.
+using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
 
 ### Last point Query
 
@@ -630,7 +631,7 @@ It costs 0.000s
 ```
 
 Example 2: get the last status and temperature points of root.ln.wf01.wt01,
-whose timestamp larger or equal to 5.
+whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
@@ -844,7 +845,19 @@ The selected device is ln group wf01 plant wt01 device; the selected timeseries 
 
 The result is shown below:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577773-08352700-1ef6-11e9-883f-8d353bef2bdc.jpg"></center>
+```
++-----------------------------+------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++-----------------------------+------------------------+-----------------------------+
+|2017-11-01T00:03:00.000+08:00|                   false|                        20.18|
+|2017-11-01T00:04:00.000+08:00|                   false|                        21.13|
+|2017-11-01T00:05:00.000+08:00|                   false|                        22.72|
+|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
+|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
++-----------------------------+------------------------+-----------------------------+
+Total line number = 5
+It costs 0.342s
+```
 
 * Example 3: LIMIT clause combined with WHERE clause
 
@@ -1019,15 +1032,6 @@ The result is shown below:
 Total line number = 1
 It costs 0.007s
 ```
-
-It is worth noting that SLIMIT clause is expected to be used in conjunction with star path or prefix path, and the system will prompt errors when SLIMIT clause is used in conjunction with complete path query. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
-```
-
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
 #### Row and Column Control over Query Results
 
