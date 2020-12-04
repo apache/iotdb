@@ -293,128 +293,53 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void next() {
     super.readCurArrayIndex--;
-    if (super.readCurArrayIndex == -1) {
+    if ((readCurListIndex == 0 && readCurArrayIndex <= writeCurArrayIndex) || readCurArrayIndex == -1) {
       super.readCurListIndex--;
-      if (readCurListIndex == 0) {
-        super.readCurArrayIndex = writeCurArrayIndex - 1;
-      } else {
-        super.readCurArrayIndex = capacity - 1;
-      }
+      super.readCurArrayIndex = capacity - 1;
     }
   }
 
   @Override
   public void resetBatchData() {
-    if (writeCurListIndex >= 1) {
-      super.readCurArrayIndex = capacity - 1;
-    } else {
-      super.readCurArrayIndex = writeCurArrayIndex - 1;
-    }
+    super.readCurArrayIndex = capacity - 1;
     super.readCurListIndex = writeCurListIndex;
   }
 
   public long getTimeByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.timeRet.get(0)[idx];
-    } else {
-      return this.timeRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
-          % capacity];
-    }
+    return timeRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public long getLongByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.longRet.get(0)[idx];
-    } else {
-      return this.longRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
-          % capacity];
-    }
+    return longRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public double getDoubleByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.doubleRet.get(0)[idx];
-    } else {
-      return this.doubleRet.get((idx - writeCurArrayIndex) / capacity + 1)[
-          (idx - writeCurArrayIndex) % capacity];
-    }
+    return doubleRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public int getIntByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.intRet.get(0)[idx];
-    } else {
-      return this.intRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
-          % capacity];
-    }
+    return intRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public float getFloatByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.floatRet.get(0)[idx];
-    } else {
-      return this.floatRet.get((idx - writeCurArrayIndex) / capacity + 1)[(idx - writeCurArrayIndex)
-          % capacity];
-    }
+    return floatRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public Binary getBinaryByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.binaryRet.get(0)[idx];
-    } else {
-      return this.binaryRet.get((idx - writeCurArrayIndex) / capacity + 1)[
-          (idx - writeCurArrayIndex) % capacity];
-    }
+    return binaryRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   public boolean getBooleanByIndex(int idx) {
-    if (idx < writeCurArrayIndex) {
-      return this.booleanRet.get(0)[idx];
-    } else {
-      return this.booleanRet.get((idx - writeCurArrayIndex) / capacity + 1)[
-          (idx - writeCurArrayIndex) % capacity];
-    }
+    return booleanRet.get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
   }
 
   /**
    * Read: When put data, the writeIndex increases while the readIndex remains 0.
-   * For descending read, we need to read from writeIndex to 0 (set the readIndex to writeIndex)
+   * For descending read, we need to read from writeIndex to writeCurArrayIndex
    */
   @Override
   public BatchData flip() {
-    // if the end Index written > 0, we copy the elements to the front
-    // e.g. when capacity = 32, writeCurArrayIndex = 14
-    // copy elements [15, 31] -> [0, 16]
-    int length = capacity - writeCurArrayIndex - 1;
-    if (writeCurArrayIndex > 0) {
-      System.arraycopy(timeRet.get(0), writeCurArrayIndex + 1, timeRet.get(0), 0, length);
-      switch (dataType) {
-        case BOOLEAN:
-          System
-              .arraycopy(booleanRet.get(0), writeCurArrayIndex + 1, booleanRet.get(0), 0, length);
-          break;
-        case INT32:
-          System.arraycopy(intRet.get(0), writeCurArrayIndex + 1, intRet.get(0), 0, length);
-          break;
-        case INT64:
-          System.arraycopy(longRet.get(0), writeCurArrayIndex + 1, longRet.get(0), 0, length);
-          break;
-        case FLOAT:
-          System.arraycopy(floatRet.get(0), writeCurArrayIndex + 1, floatRet.get(0), 0, length);
-          break;
-        case DOUBLE:
-          System.arraycopy(doubleRet.get(0), writeCurArrayIndex + 1, doubleRet.get(0), 0, length);
-          break;
-        case TEXT:
-          System.arraycopy(binaryRet.get(0), writeCurArrayIndex + 1, binaryRet.get(0), 0, length);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-      }
-    }
-    writeCurArrayIndex = length;
-
-    super.readCurArrayIndex = writeCurListIndex > 0 ? capacity - 1 : writeCurArrayIndex - 1;
+    super.readCurArrayIndex = capacity - 1;
     super.readCurListIndex = writeCurListIndex;
     return this;
   }
