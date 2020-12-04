@@ -17,22 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.rpc;
 
-import java.util.Arrays;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.transport.TTransport;
 
-public class BatchProcessException extends QueryProcessException {
+/**
+ * A TTransport that does not require open/close.
+ */
+public abstract class NonOpenTransport extends TTransport {
 
-  private final TSStatus[] failingStatus;
-
-  public BatchProcessException(TSStatus[] failingStatus) {
-    super("Batch process failed:" + Arrays.toString(failingStatus));
-    this.failingStatus = failingStatus;
+  @Override
+  public void close() {
+    // do nothing
   }
 
-  public TSStatus[] getFailingStatus() {
-    return failingStatus;
+  @Override
+  public boolean isOpen() { return true; }
+
+  @Override
+  public void open() {
+    // do nothing
   }
 }

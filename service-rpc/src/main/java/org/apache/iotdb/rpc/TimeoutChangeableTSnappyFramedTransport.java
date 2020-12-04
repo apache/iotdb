@@ -20,26 +20,25 @@
 package org.apache.iotdb.rpc;
 
 import java.net.SocketException;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
 public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFramedTransport implements TimeoutChangeableTransport {
 
-  private TSocket underlying;
+  private TSocket underlyingSocket;
 
   public TimeoutChangeableTSnappyFramedTransport(TSocket underlying) {
     super(underlying);
-    this.underlying = underlying;
+    this.underlyingSocket = underlying;
   }
 
   public void setTimeout(int timeout) {
-    underlying.setTimeout(timeout);
+    underlyingSocket.setTimeout(timeout);
   }
 
   public int getTimeOut() throws SocketException {
-    return underlying.getSocket().getSoTimeout();
+    return underlyingSocket.getSocket().getSoTimeout();
   }
 
   public static class Factory extends TTransportFactory {
@@ -48,7 +47,7 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
       } else {
-        return new TFastFramedTransport(trans);
+        return new TSnappyElasticFramedTransport(trans);
       }
     }
   }

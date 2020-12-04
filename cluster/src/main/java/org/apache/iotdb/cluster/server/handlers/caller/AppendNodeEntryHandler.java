@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.Timer.Statistic;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

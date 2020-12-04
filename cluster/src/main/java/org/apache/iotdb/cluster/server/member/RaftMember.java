@@ -115,6 +115,7 @@ public abstract class RaftMember {
   private static final String MSG_NO_LEADER_COMMIT_INDEX = "{}: Cannot request commit index from {}";
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
+  public static final String MSG_LOG_IS_ACCEPTED = "{}: log {} is accepted";
   /**
    * when there is no leader, wait for waitLeaderTimeMs before return a NoLeader response to the
    * client.
@@ -951,7 +952,7 @@ public abstract class RaftMember {
           .calOperationCostTimeFromStart(sendLogRequest.getLog().getCreateTime());
       switch (appendLogResult) {
         case OK:
-          logger.debug("{}: log {} is accepted", name, log);
+          logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           commitLog(log);
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
@@ -1508,7 +1509,7 @@ public abstract class RaftMember {
     if (allNodes.size() == 1) {
       // single node group, no followers
       long startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
-      logger.debug("{}: log {} is accepted", name, log);
+      logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
       commitLog(log);
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
       return true;
@@ -1527,7 +1528,7 @@ public abstract class RaftMember {
       switch (result) {
         case OK:
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
-          logger.debug("{}: log {} is accepted", name, log);
+          logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           commitLog(log);
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
           return true;

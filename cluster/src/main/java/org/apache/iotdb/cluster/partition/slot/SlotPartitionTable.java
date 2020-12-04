@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,8 +311,8 @@ public class SlotPartitionTable implements PartitionTable {
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
-        serialize(entry.getKey(), dataOutputStream);
-        serialize(entry.getValue(), dataOutputStream);
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        SerializeUtils.serialize(entry.getValue(), dataOutputStream);
       }
 
       dataOutputStream.writeInt(previousNodeMap.size());
@@ -343,8 +344,8 @@ public class SlotPartitionTable implements PartitionTable {
     for (int i = 0; i < size; i++) {
       Node node = new Node();
       List<Integer> slots = new ArrayList<>();
-      deserialize(node, buffer);
-      deserialize(slots, buffer);
+      SerializeUtils.deserialize(node, buffer);
+      SerializeUtils.deserialize(slots, buffer);
       nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer slot : slots) {
@@ -503,49 +504,5 @@ public class SlotPartitionTable implements PartitionTable {
 
   public synchronized void setLastLogIndex(long lastLogIndex) {
     this.lastLogIndex = Math.max(this.lastLogIndex, lastLogIndex);
-  }
-
-  @SuppressWarnings("DuplicatedCode") // Using SerializeUtils causes unknown thread crush
-  public static void serialize(Node node, DataOutputStream dataOutputStream) {
-    try {
-      byte[] ipBytes = node.ip.getBytes();
-      dataOutputStream.writeInt(ipBytes.length);
-      dataOutputStream.write(ipBytes);
-      dataOutputStream.writeInt(node.metaPort);
-      dataOutputStream.writeInt(node.nodeIdentifier);
-      dataOutputStream.writeInt(node.dataPort);
-      dataOutputStream.writeInt(node.clientPort);
-    } catch (IOException e) {
-      // unreachable
-    }
-  }
-
-  public static void deserialize(Node node, ByteBuffer buffer) {
-    int ipLength = buffer.getInt();
-    byte[] ipBytes = new byte[ipLength];
-    buffer.get(ipBytes);
-    node.setIp(new String(ipBytes));
-    node.setMetaPort(buffer.getInt());
-    node.setNodeIdentifier(buffer.getInt());
-    node.setDataPort(buffer.getInt());
-    node.setClientPort(buffer.getInt());
-  }
-
-  public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
-    try {
-      dataOutputStream.writeInt(ints.size());
-      for (Integer anInt : ints) {
-        dataOutputStream.writeInt(anInt);
-      }
-    } catch (IOException e) {
-      // unreachable
-    }
-  }
-
-  public static void deserialize(List<Integer> ints, ByteBuffer buffer) {
-    int length = buffer.getInt();
-    for (int i = 0; i < length; i++) {
-      ints.add(buffer.getInt());
-    }
   }
 }

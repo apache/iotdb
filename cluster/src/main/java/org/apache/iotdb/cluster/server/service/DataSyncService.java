@@ -155,7 +155,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       }
       PullSchemaResp pullSchemaResp;
       try {
-        pullSchemaResp = client.pullTimeSeriesSchema(request);
+        pullSchemaResp = client.pullMeasurementSchema(request);
       } catch (TException te) {
         client.getInputProtocol().getTransport().close();
         throw te;

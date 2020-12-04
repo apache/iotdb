@@ -27,17 +27,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -60,6 +56,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
@@ -71,7 +68,6 @@ public class TsFileResource {
 
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
-  private static final String CLOSING_SUFFIX = ".closing";
   protected static final int INIT_ARRAY_SIZE = 64;
 
   /**
@@ -237,7 +233,8 @@ public class TsFileResource {
       timeSeriesMetadata.setTSDataType(dataType);
     }
     if (timeSeriesMetadata.getTSDataType() != null) {
-      Statistics seriesStatistics = Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
+      Statistics<?> seriesStatistics =
+          Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
@@ -285,7 +282,7 @@ public class TsFileResource {
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
-    dest.delete();
+    Files.deleteIfExists(dest.toPath());
     fsFactory.moveFile(src, dest);
   }
 
@@ -323,8 +320,10 @@ public class TsFileResource {
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
-        File modF = new File(file.getParentFile(), modFileName);
-        modFile = new ModificationFile(modF.getPath());
+        if (modFileName != null) {
+          File modF = new File(file.getParentFile(), modFileName);
+          modFile = new ModificationFile(modF.getPath());
+        }
       }
     }
   }
@@ -419,6 +418,16 @@ public class TsFileResource {
   }
 
   public void putStartTime(String deviceId, long startTime) {
+    int index = getDeviceIndex(deviceId);
+    startTimes[index] = startTime;
+  }
+
+  public void putEndTime(String deviceId, long endTime) {
+    int index = getDeviceIndex(deviceId);
+    endTimes[index] = endTime;
+  }
+
+  private int getDeviceIndex(String deviceId) {
     int index;
     if (containsDevice(deviceId)) {
       index = deviceToIndex.get(deviceId);
@@ -430,22 +439,7 @@ public class TsFileResource {
         endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
       }
     }
-    startTimes[index] = startTime;
-  }
-
-  public void putEndTime(String deviceId, long endTime) {
-    int index;
-    if (containsDevice(deviceId)) {
-      index = deviceToIndex.get(deviceId);
-    } else {
-      index = deviceToIndex.size();
-      deviceToIndex.put(deviceId, index);
-      if (endTimes.length <= index) {
-        startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
-        endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
-      }
-    }
-    endTimes[index] = endTime;
+    return index;
   }
 
   private long[] enLargeArray(long[] array, long defaultValue) {
@@ -542,10 +536,6 @@ public class TsFileResource {
     }
   }
 
-  public boolean tryReadLock() {
-    return tsFileLock.tryReadLock();
-  }
-
   public boolean tryWriteLock() {
     return tsFileLock.tryWriteLock();
   }
@@ -565,20 +555,34 @@ public class TsFileResource {
    * Remove the data file, its resource file, and its modification file physically.
    */
   public void remove() {
-    file.delete();
-    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
-    fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    try {
+      Files.deleteIfExists(file.toPath());
+    } catch (IOException e) {
+      logger.warn("TsFile {} cannot be deleted: {}", file, e.getMessage());
+    }
+    removeResourceFile();
+    try {
+      Files.deleteIfExists(
+          fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).toPath());
+    } catch (IOException e) {
+      logger.warn("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+    }
   }
 
   public void removeResourceFile() {
-    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+    try {
+      Files.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).toPath());
+    } catch (IOException e) {
+      logger.warn("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+    }
   }
 
   void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+    fsFactory.moveFile(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX),
+        fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
   }
 
   @Override
@@ -775,13 +779,13 @@ public class TsFileResource {
    * @return initial resource map size
    */
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) + 
+    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) +
         RamUsageEstimator.sizeOf(endTimes);
   }
 
   /**
    * Calculate the resource ram increment when insert data in TsFileProcessor
-   * 
+   *
    * @return ramIncrement
    */
   public long estimateRamIncrement(String deviceToBeChecked) {
@@ -835,6 +839,7 @@ public class TsFileResource {
 
   /**
    * For merge, the index range of the new file should be the union of all files' in this merge.
+   *
    * @param another
    */
   public void updatePlanIndexes(TsFileResource another) {
@@ -844,7 +849,7 @@ public class TsFileResource {
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
     return another.maxPlanIndex >= this.minPlanIndex &&
-           another.minPlanIndex <= this.maxPlanIndex;
+        another.minPlanIndex <= this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {

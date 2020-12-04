@@ -41,22 +41,11 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   public ClusterGroupByNoVFilterDataSet(QueryContext context,
       GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
       throws StorageEngineException, QueryProcessException {
-    this.paths = new ArrayList<>(groupByPlan.getDeduplicatedPaths());
-    this.dataTypes = groupByPlan.getDeduplicatedDataTypes();
+    initQueryDataSetFields(new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
+        groupByPlan.getDeduplicatedDataTypes(), groupByPlan.isAscending());
+    initGroupByEngineDataSetFields(context, groupByPlan);
 
-    this.queryId = context.getQueryId();
-    this.interval = groupByPlan.getInterval();
-    this.slidingStep = groupByPlan.getSlidingStep();
-    this.startTime = groupByPlan.getStartTime();
-    this.endTime = groupByPlan.getEndTime();
-    this.leftCRightO = groupByPlan.isLeftCRightO();
-    // init group by time partition
-    this.hasCachedTimeInterval = false;
-    this.curStartTime = this.startTime - slidingStep;
-    this.curEndTime = -1;
     this.metaGroupMember = metaGroupMember;
-    this.ascending = groupByPlan.isAscending();
-
     initGroupBy(context, groupByPlan);
   }
 

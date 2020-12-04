@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -151,11 +152,23 @@ public abstract class PhysicalPlan {
     }
   }
 
+  protected void putStrings(ByteBuffer buffer, List<String> values) {
+    for (String value : values) {
+      putString(buffer, value);
+    }
+  }
+
   protected void putString(DataOutputStream stream, String value) throws IOException {
     if (value == null) {
       stream.writeInt(NULL_VALUE_LEN);
     } else {
       ReadWriteIOUtils.write(value, stream);
+    }
+  }
+
+  protected void putStrings(DataOutputStream stream, List<String> values) throws IOException {
+    for (String value : values) {
+      putString(stream, value);
     }
   }
 
@@ -165,6 +178,14 @@ public abstract class PhysicalPlan {
       return null;
     }
     return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+  }
+
+  protected List<String> readStrings(ByteBuffer buffer, int totalSize) {
+    List<String> result = new ArrayList<>(totalSize);
+    for (int i = 0; i < totalSize; i++) {
+      result.add(readString(buffer));
+    }
+    return result;
   }
 
   public String getLoginUserName() {

@@ -26,19 +26,19 @@ import org.apache.thrift.transport.TTransportFactory;
 
 public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTransport implements TimeoutChangeableTransport {
 
-  private TSocket underlying;
+  private TSocket underlyingSocket;
 
   public TimeoutChangeableTFastFramedTransport(TSocket underlying) {
     super(underlying);
-    this.underlying = underlying;
+    this.underlyingSocket = underlying;
   }
 
   public void setTimeout(int timeout) {
-    underlying.setTimeout(timeout);
+    underlyingSocket.setTimeout(timeout);
   }
 
   public int getTimeOut() throws SocketException {
-    return underlying.getSocket().getSoTimeout();
+    return underlyingSocket.getSocket().getSoTimeout();
   }
 
   public static class Factory extends TTransportFactory {
@@ -46,9 +46,9 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
-        return new TimeoutChangeableTSnappyFramedTransport((TSocket) trans);
+        return new TimeoutChangeableTFastFramedTransport((TSocket) trans);
       } else {
-        return new TSnappyElasticFramedTransport(trans);
+        return new TElasticFramedTransport(trans);
       }
     }
   }

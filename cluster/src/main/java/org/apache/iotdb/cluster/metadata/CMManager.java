@@ -312,7 +312,7 @@ public class CMManager extends MManager {
       MNode deviceNode = getDeviceNode(plan.getDeviceId());
 
       int nonExistSchemaIndex = getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(),
-        measurementMNodes);
+          measurementMNodes);
       if (nonExistSchemaIndex == -1) {
         plan.setMeasurementMNodes(measurementMNodes);
         return deviceNode;
@@ -427,7 +427,8 @@ public class CMManager extends MManager {
   }
 
   @SuppressWarnings("squid:S3776")
-  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan) throws MetadataException {
+  private void verifyCreatedSgSuccess(List<PartialPath> deviceIds, PhysicalPlan physicalPlan)
+      throws MetadataException {
     long startTime = System.currentTimeMillis();
     boolean[] ready = new boolean[deviceIds.size()];
     Arrays.fill(ready, false);
@@ -438,19 +439,17 @@ public class CMManager extends MManager {
           continue;
         }
         PartialPath storageGroupName = MetaUtils
-          .getStorageGroupPathByLevel(deviceIds.get(i), IoTDBDescriptor.getInstance()
-            .getConfig().getDefaultStorageGroupLevel());
+            .getStorageGroupPathByLevel(deviceIds.get(i), IoTDBDescriptor.getInstance()
+                .getConfig().getDefaultStorageGroupLevel());
         if (IoTDB.metaManager.isStorageGroup(storageGroupName)) {
           ready[i] = true;
         } else {
           allReady = false;
         }
       }
-      if (allReady) {
-        break;
-      }
 
-      if (System.currentTimeMillis() - startTime > ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS()) {
+      if (allReady || System.currentTimeMillis() - startTime > ClusterDescriptor.getInstance()
+          .getConfig().getConnectionTimeoutInMS()) {
         break;
       } else {
         try {

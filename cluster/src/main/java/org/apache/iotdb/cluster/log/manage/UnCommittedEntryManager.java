@@ -75,29 +75,32 @@ public class UnCommittedEntryManager {
    */
   @SuppressWarnings("java:S1135") // ignore todos
   long maybeTerm(long index) {
-    int entryPos = (int) (index - offset);
-    if (entryPos < 0) {
-      logger.debug(
-          "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
-          index, index - entryPos);
-      return -1;
-    }
-    long last = maybeLastIndex();
-    if (last == -1 || index > last) {
-      return -1;
-    }
+    while (true) {
+      int entryPos = (int) (index - offset);
+      if (entryPos < 0) {
+        logger.debug(
+            "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
+            index, index - entryPos);
+        return -1;
+      }
+      long last = maybeLastIndex();
+      if (last == -1 || index > last) {
+        return -1;
+      }
 
-    Log log;
-    // TODO-Cluster: improve concurrent safety
-    try {
-      log = entries.get(entryPos);
-    } catch (IndexOutOfBoundsException e) {
-      return maybeTerm(index);
+      Log log;
+      // TODO-Cluster: improve concurrent safety
+      // the following condition only holds when there are concurrent log deletions, which are
+      // rare, so we are confident that we will not be stuck here forever
+      try {
+        log = entries.get(entryPos);
+        if (log.getCurrLogIndex() != index) {
+          return maybeTerm(index);
+        }
+      } catch (IndexOutOfBoundsException e) {
+        // continue
+      }
     }
-    if (log.getCurrLogIndex() != index) {
-      return maybeTerm(index);
-    }
-    return log.getCurrLogTerm();
   }
 
   /**

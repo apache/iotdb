@@ -45,25 +45,13 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   public ClusterGroupByVFilterDataSet(QueryContext context,
       GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
       throws StorageEngineException, QueryProcessException {
-    this.paths = new ArrayList<>(groupByPlan.getDeduplicatedPaths());
-    this.dataTypes = groupByPlan.getDeduplicatedDataTypes();
-
-    this.queryId = context.getQueryId();
-    this.interval = groupByPlan.getInterval();
-    this.slidingStep = groupByPlan.getSlidingStep();
-    this.startTime = groupByPlan.getStartTime();
-    this.endTime = groupByPlan.getEndTime();
-    this.leftCRightO = groupByPlan.isLeftCRightO();
-    // init group by time partition
-    this.hasCachedTimeInterval = false;
-    this.curStartTime = this.startTime - slidingStep;
-    this.curEndTime = -1;
+    initQueryDataSetFields(new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
+        groupByPlan.getDeduplicatedDataTypes(), groupByPlan.isAscending());
+    initGroupByEngineDataSetFields(context, groupByPlan);
 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.metaGroupMember = metaGroupMember;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
-    this.ascending = groupByPlan.isAscending();
-
     initGroupBy(context, groupByPlan);
   }
 

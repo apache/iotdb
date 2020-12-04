@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.rpc;
 
-import org.apache.thrift.transport.TTransport;
-
 /**
  * Note that this class is mainly copied from class {@link org.apache.thrift.transport.AutoExpandingBufferWriteTransport}.
  * since that class does not support inheritance, so rewrite this class.
  */
-public class AutoScalingBufferWriteTransport extends TTransport {
+public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
   private int pos;
@@ -33,21 +31,6 @@ public class AutoScalingBufferWriteTransport extends TTransport {
   public AutoScalingBufferWriteTransport(int initialCapacity) {
     this.buf = new AutoResizingBuffer(initialCapacity);
     this.pos = 0;
-  }
-
-  @Override
-  public void close() {
-    // do nothing, just like the method in AutoExpandingBufferWriteTransport
-  }
-
-  @Override
-  public boolean isOpen() {
-    return true;
-  }
-
-  @Override
-  public void open() {
-    // do nothing, just like the method in AutoExpandingBufferWriteTransport
   }
 
   @Override

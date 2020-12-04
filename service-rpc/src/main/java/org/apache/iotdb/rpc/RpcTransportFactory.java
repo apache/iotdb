@@ -23,10 +23,11 @@ import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport.Factory;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class RpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
-  public static final boolean USE_SNAPPY = true;
+  public static final boolean USE_SNAPPY = false;
   public static final RpcTransportFactory INSTANCE;
   static {
     INSTANCE = USE_SNAPPY ?

@@ -22,7 +22,7 @@ package org.apache.iotdb.rpc;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-public class AutoScalingBufferReadTransport extends TTransport {
+public class AutoScalingBufferReadTransport extends NonOpenTransport {
 
   private final AutoResizingBuffer buf;
   private int pos = 0;
@@ -39,18 +39,6 @@ public class AutoScalingBufferReadTransport extends TTransport {
     limit = length;
   }
 
-  @Override
-  public void close() {
-    // do nothing
-  }
-
-  @Override
-  public boolean isOpen() { return true; }
-
-  @Override
-  public void open() {
-    // do nothing
-  }
 
   @Override
   public final int read(byte[] target, int off, int len) {

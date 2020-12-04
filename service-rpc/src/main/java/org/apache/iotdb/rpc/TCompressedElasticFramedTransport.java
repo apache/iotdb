@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.rpc;
 
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_BUF_CAPACITY;
-import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.thrift.transport.TByteBuffer;
@@ -28,45 +25,20 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-public abstract class TCompressedElasticFramedTransport extends TTransport {
+public abstract class TCompressedElasticFramedTransport extends TElasticFramedTransport {
 
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
 
-  private final int maxLength;
-  final TTransport underlying;
-  private AutoScalingBufferReadTransport readBuffer;
-  private AutoScalingBufferWriteTransport writeBuffer;
-  private final byte[] i32buf = new byte[4];
-
-  public TCompressedElasticFramedTransport(TTransport underlying) {
-    this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
-  }
-
-  public TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
+  protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
       int maxLength) {
-    this.underlying = underlying;
-    this.maxLength = maxLength;
-    readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
-    writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
+    super(underlying, initialBufferCapacity, maxLength);
     writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
 
-  @Override
-  public int read(byte[] buf, int off, int len) throws TTransportException {
-    int got = readBuffer.read(buf, off, len);
-    if (got > 0) {
-      return got;
-    }
-
-    // Read another frame of data
-    readFrame();
-    return readBuffer.read(buf, off, len);
-  }
-
   @SuppressWarnings("java:S2177") // no better name
-  private void readFrame() throws TTransportException {
+  protected void readFrame() throws TTransportException {
     underlying.readAll(i32buf, 0, 4);
     int size = TFramedTransport.decodeFrameSize(i32buf);
 
@@ -129,11 +101,6 @@ public abstract class TCompressedElasticFramedTransport extends TTransport {
     underlying.flush();
   }
 
-  @Override
-  public void write(byte[] buf, int off, int len) {
-    writeBuffer.write(buf, off, len);
-  }
-
   protected abstract int uncompressedLength(byte[] but, int off, int len) throws IOException;
 
   protected abstract int maxCompressedLength(int len);
@@ -143,19 +110,4 @@ public abstract class TCompressedElasticFramedTransport extends TTransport {
 
   protected abstract void uncompress(byte[] input, int inOff, int size, byte[] output,
       int outOff) throws IOException;
-
-  @Override
-  public boolean isOpen() {
-    return underlying.isOpen();
-  }
-
-  @Override
-  public void open() throws TTransportException {
-    underlying.open();
-  }
-
-  @Override
-  public void close() {
-    underlying.close();
-  }
 }

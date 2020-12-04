@@ -23,15 +23,11 @@ import static org.apache.iotdb.rpc.RpcUtils.DEFAULT_MAX_LENGTH;
 
 import java.io.IOException;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportFactory;
 import org.xerial.snappy.Snappy;
 
 public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTransport {
 
-  public static class Factory extends TTransportFactory {
-
-    private final int initialCapacity;
-    private final int maxLength;
+  public static class Factory extends TElasticFramedTransport.Factory {
 
     public Factory() {
       this(DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
@@ -42,8 +38,7 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
     }
 
     public Factory(int initialCapacity, int maxLength) {
-      this.initialCapacity = initialCapacity;
-      this.maxLength = maxLength;
+      super(initialCapacity, maxLength);
     }
 
     @Override
