@@ -27,12 +27,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
  * This class is for reading and writing batch data in reverse. The data source is from mergeReader.
  * For example,
  * the time sequence from mergeReader is 1000 -> 1,
- * It will be written in reverse, i.e. the timeRet will be [1, 1000],
+ * It will be written in reverse, i.e. the timeRet will be [1, 1000].
  * and the sequence of reading will be from back to front, 1000 -> 1.
  */
 public class DescReadWriteBatchData extends DescReadBatchData {
-
-  private int firstListSize;
 
   public DescReadWriteBatchData(TSDataType dataType) {
     super();
@@ -298,7 +296,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     if (super.readCurArrayIndex == -1) {
       super.readCurListIndex--;
       if (readCurListIndex == 0) {
-        super.readCurArrayIndex = firstListSize - 1;
+        super.readCurArrayIndex = writeCurArrayIndex - 1;
       } else {
         super.readCurArrayIndex = capacity - 1;
       }
@@ -310,11 +308,19 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     if (writeCurListIndex >= 1) {
       super.readCurArrayIndex = capacity - 1;
     } else {
-      super.readCurArrayIndex = firstListSize - 1;
+      super.readCurArrayIndex = writeCurArrayIndex - 1;
     }
     super.readCurListIndex = writeCurListIndex;
   }
 
+  @Override
+  public long getMaxTimestamp() {
+    if (writeCurListIndex >= 1) {
+      return timeRet.get(writeCurListIndex)[capacity - 1];
+    } else {
+      return timeRet.get(0)[writeCurArrayIndex - 1];
+    }
+  }
 
   /**
    * Read: When put data, the writeIndex increases while the readIndex remains 0.
@@ -352,9 +358,9 @@ public class DescReadWriteBatchData extends DescReadBatchData {
           throw new UnSupportedDataTypeException(String.valueOf(dataType));
       }
     }
-    firstListSize = length;
+    writeCurArrayIndex = length;
 
-    super.readCurArrayIndex = writeCurListIndex > 0 ? capacity - 1 : firstListSize - 1;
+    super.readCurArrayIndex = writeCurListIndex > 0 ? capacity - 1 : writeCurArrayIndex - 1;
     super.readCurListIndex = writeCurListIndex;
     return this;
   }
