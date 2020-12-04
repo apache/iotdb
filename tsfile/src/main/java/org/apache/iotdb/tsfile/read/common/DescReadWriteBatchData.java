@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -34,8 +36,45 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   private int firstListSize;
 
   public DescReadWriteBatchData(TSDataType dataType) {
-    super(dataType);
+    super();
+    this.dataType = dataType;
+    this.readCurListIndex = 0;
+    this.readCurArrayIndex = 0;
+    this.writeCurListIndex = 0;
     this.writeCurArrayIndex = capacity - 1;
+
+    timeRet = new LinkedList<>();
+    timeRet.add(new long[capacity]);
+    count = 0;
+
+    switch (dataType) {
+      case BOOLEAN:
+        booleanRet = new LinkedList<>();
+        booleanRet.add(new boolean[capacity]);
+        break;
+      case INT32:
+        intRet = new LinkedList<>();
+        intRet.add(new int[capacity]);
+        break;
+      case INT64:
+        longRet = new LinkedList<>();
+        longRet.add(new long[capacity]);
+        break;
+      case FLOAT:
+        floatRet = new LinkedList<>();
+        floatRet.add(new float[capacity]);
+        break;
+      case DOUBLE:
+        doubleRet = new LinkedList<>();
+        doubleRet.add(new double[capacity]);
+        break;
+      case TEXT:
+        binaryRet = new LinkedList<>();
+        binaryRet.add(new Binary[capacity]);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+    }
   }
 
   /**
@@ -47,8 +86,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        booleanRet.add(new boolean[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) booleanRet).addFirst(new boolean[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -67,8 +106,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    booleanRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    booleanRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -83,8 +122,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        intRet.add(new int[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) intRet).addFirst(new int[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -103,8 +142,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    intRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    intRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -119,8 +158,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        longRet.add(new long[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) longRet).addFirst(new long[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -139,8 +178,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    longRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    longRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -155,8 +194,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        floatRet.add(new float[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) floatRet).addFirst(new float[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -175,8 +214,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    floatRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    floatRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -191,8 +230,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        doubleRet.add(new double[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) doubleRet).addFirst(new double[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -211,8 +250,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    doubleRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    doubleRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -227,8 +266,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= capacityThreshold) {
-        timeRet.add(new long[capacity]);
-        binaryRet.add(new Binary[capacity]);
+        ((LinkedList) timeRet).addFirst(new long[capacity]);
+        ((LinkedList) binaryRet).addFirst(new Binary[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -247,8 +286,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         capacity = newCapacity;
       }
     }
-    timeRet.get(writeCurListIndex)[writeCurArrayIndex] = t;
-    binaryRet.get(writeCurListIndex)[writeCurArrayIndex] = v;
+    timeRet.get(0)[writeCurArrayIndex] = t;
+    binaryRet.get(0)[writeCurArrayIndex] = v;
 
     writeCurArrayIndex--;
     count++;
@@ -279,7 +318,6 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
 
   /**
-   * Write: put the
    * Read: When put data, the writeIndex increases while the readIndex remains 0.
    * For descending read, we need to read from writeIndex to 0 (set the readIndex to writeIndex)
    */
@@ -291,33 +329,10 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     // copy elements [15, 31] -> [0, 16]
     int length = capacity - writeCurArrayIndex - 1;
     if (writeCurArrayIndex > 0) {
-      System.arraycopy(timeRet.get(writeCurListIndex), writeCurArrayIndex + 1,
-          timeRet.get(writeCurListIndex), 0, length);
-      valueRetCopy(writeCurListIndex, writeCurArrayIndex + 1, writeCurListIndex, 0, length);
+      System.arraycopy(timeRet.get(0), writeCurArrayIndex + 1, timeRet.get(0), 0, length);
+      valueRetCopy(0, writeCurArrayIndex + 1, 0, 0, length);
     }
     firstListSize = length;
-
-    // if multi lists are written, exchange the order
-    // e.g. current lists are [3001, 4000], [2001, 3000], [1001, 2000], [1, 600]
-    // exchange the order to [1, 600], [1001, 2000], [2001, 3000], [3001, 4000]
-    if (writeCurListIndex >= 1) {
-      timeRet.add(new long[capacity]);
-      addValue(capacity);
-
-      for (int i = 0; i < (writeCurListIndex + 1) / 2; i++) {
-        // writeCurListIndex + 1 is temp variable
-        System.arraycopy(timeRet.get(i), 0, timeRet.get(writeCurListIndex + 1), 0 ,capacity);
-        valueRetCopy(i, 0, writeCurListIndex + 1, 0, capacity);
-
-        System.arraycopy(timeRet.get(writeCurListIndex - i), 0, timeRet.get(i), 0, capacity);
-        valueRetCopy(writeCurListIndex - i, 0, i, 0, capacity);
-        System.arraycopy(timeRet.get(writeCurListIndex + 1), 0, timeRet.get(writeCurListIndex - i), 0, capacity);
-        valueRetCopy(writeCurListIndex + 1, 0,writeCurListIndex - i, 0, capacity);
-      }
-
-      timeRet.remove(writeCurListIndex + 1);
-      removeValue(writeCurListIndex + 1);
-    }
 
     super.readCurArrayIndex = writeCurListIndex > 0 ? capacity - 1 : firstListSize - 1;
     super.readCurListIndex = writeCurListIndex;
@@ -344,56 +359,6 @@ public class DescReadWriteBatchData extends DescReadBatchData {
         break;
       case TEXT:
         System.arraycopy(binaryRet.get(srcIndex), srcPos, binaryRet.get(desIndex), descPos, length);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-  }
-
-  private void addValue(int length) {
-    switch (dataType) {
-      case BOOLEAN:
-        booleanRet.add(new boolean[length]);
-        break;
-      case INT32:
-        intRet.add(new int[length]);
-        break;
-      case INT64:
-        longRet.add(new long[length]);
-        break;
-      case FLOAT:
-        floatRet.add(new float[length]);
-        break;
-      case DOUBLE:
-        doubleRet.add(new double[length]);
-        break;
-      case TEXT:
-        binaryRet.add(new Binary[length]);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-  }
-
-  private void removeValue(int index) {
-    switch (dataType) {
-      case BOOLEAN:
-        booleanRet.remove(index);
-        break;
-      case INT32:
-        intRet.remove(index);
-        break;
-      case INT64:
-        longRet.remove(index);
-        break;
-      case FLOAT:
-        floatRet.remove(index);
-        break;
-      case DOUBLE:
-        doubleRet.remove(index);
-        break;
-      case TEXT:
-        binaryRet.remove(index);
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(dataType));

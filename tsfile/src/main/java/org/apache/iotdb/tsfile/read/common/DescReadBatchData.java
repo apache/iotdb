@@ -29,6 +29,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
  */
 public class DescReadBatchData extends BatchData {
 
+  public DescReadBatchData() {
+
+  }
+
   public DescReadBatchData(TSDataType dataType) {
     super(dataType);
   }
