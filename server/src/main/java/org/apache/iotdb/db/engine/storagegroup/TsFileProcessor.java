@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -35,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -83,8 +83,6 @@ public class TsFileProcessor {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final boolean enableMemControl = config.isEnableMemControl();
-  private final int waitingTimeWhenInsertBlocked = config.getWaitingTimeWhenInsertBlocked();
-  private final int maxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
   private StorageGroupInfo storageGroupInfo;
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -177,7 +175,6 @@ public class TsFileProcessor {
       workMemTable = new PrimitiveMemTable(enableMemControl);
     }
     if (enableMemControl) {
-      blockInsertionIfReject();
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
 
@@ -219,12 +216,11 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
     }
-    if (enableMemControl) {
-      blockInsertionIfReject();
-      checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
-    }
 
     try {
+      if (enableMemControl) {
+        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+      }
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
@@ -285,22 +281,8 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
-    memTableIncrement += textDataIncrement;
-    storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
-    tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-    if (storageGroupInfo.needToReportToSystem()) {
-      SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
-      try {
-        blockInsertionIfReject();
-      } catch (WriteProcessException e) {
-        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
-        tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
-        SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, false);
-        throw e;
-      }
-    }
-    workMemTable.addTVListRamCost(memTableIncrement);
-    workMemTable.addTextDataSize(textDataIncrement);
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+        chunkMetadataIncrement, textDataIncrement);
   }
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
@@ -349,13 +331,19 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinaryColumnSize(column, start, end);
       }
     }
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+        chunkMetadataIncrement, textDataIncrement);
+  }
+
+  private void updateMemoryInfo(long memTableIncrement, long unsealedResourceIncrement,
+      long chunkMetadataIncrement, long textDataIncrement) throws WriteProcessException {
     memTableIncrement += textDataIncrement;
     storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
     tsFileProcessorInfo.addTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       SystemInfo.getInstance().reportStorageGroupStatus(storageGroupInfo);
       try {
-        blockInsertionIfReject();
+        StorageEngine.blockInsertionIfReject();
       } catch (WriteProcessException e) {
         storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(unsealedResourceIncrement + chunkMetadataIncrement);
@@ -365,21 +353,6 @@ public class TsFileProcessor {
     }
     workMemTable.addTVListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
-  }
-
-  private void blockInsertionIfReject() throws WriteProcessException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
-        if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
-        }
-      } catch (InterruptedException e) {
-        logger.error("Failed when waiting for getting memory for insertion ", e);
-        Thread.currentThread().interrupt();
-      }
-    }
   }
 
   /**
