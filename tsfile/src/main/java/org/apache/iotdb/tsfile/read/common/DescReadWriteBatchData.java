@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
- * This class is for reading and writing batch data reversely. The data source is from mergeReader.
+ * This class is for reading and writing batch data in reverse. The data source is from mergeReader.
  * For example,
- * the time sequence from mergeReader is [1000, 1],
- * It will be written in descending sequence, i.e. [1, 1000],
- * and the sequence of reading will be 1000 -> 1.
+ * the time sequence from mergeReader is 1000 -> 1,
+ * It will be written in reverse, i.e. the timeRet will be [1, 1000],
+ * and the sequence of reading will be from back to front, 1000 -> 1.
  */
 public class DescReadWriteBatchData extends DescReadBatchData {
 
@@ -323,14 +322,35 @@ public class DescReadWriteBatchData extends DescReadBatchData {
    */
   @Override
   public BatchData flip() {
-
-    // if the end Index of written > 0, we copy the elements to the first
+    // if the end Index written > 0, we copy the elements to the front
     // e.g. when capacity = 32, writeCurArrayIndex = 14
     // copy elements [15, 31] -> [0, 16]
     int length = capacity - writeCurArrayIndex - 1;
     if (writeCurArrayIndex > 0) {
       System.arraycopy(timeRet.get(0), writeCurArrayIndex + 1, timeRet.get(0), 0, length);
-      valueRetCopy(0, writeCurArrayIndex + 1, 0, 0, length);
+      switch (dataType) {
+        case BOOLEAN:
+          System
+              .arraycopy(booleanRet.get(0), writeCurArrayIndex + 1, booleanRet.get(0), 0, length);
+          break;
+        case INT32:
+          System.arraycopy(intRet.get(0), writeCurArrayIndex + 1, intRet.get(0), 0, length);
+          break;
+        case INT64:
+          System.arraycopy(longRet.get(0), writeCurArrayIndex + 1, longRet.get(0), 0, length);
+          break;
+        case FLOAT:
+          System.arraycopy(floatRet.get(0), writeCurArrayIndex + 1, floatRet.get(0), 0, length);
+          break;
+        case DOUBLE:
+          System.arraycopy(doubleRet.get(0), writeCurArrayIndex + 1, doubleRet.get(0), 0, length);
+          break;
+        case TEXT:
+          System.arraycopy(binaryRet.get(0), writeCurArrayIndex + 1, binaryRet.get(0), 0, length);
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
     }
     firstListSize = length;
 
@@ -339,29 +359,4 @@ public class DescReadWriteBatchData extends DescReadBatchData {
     return this;
   }
 
-  private void valueRetCopy(int srcIndex, int srcPos, int desIndex, int descPos, int length) {
-    switch (dataType) {
-      case BOOLEAN:
-        System
-            .arraycopy(booleanRet.get(srcIndex), srcPos, booleanRet.get(desIndex), descPos, length);
-        break;
-      case INT32:
-        System.arraycopy(intRet.get(srcIndex), srcPos, intRet.get(desIndex), descPos, length);
-        break;
-      case INT64:
-        System.arraycopy(longRet.get(srcIndex), srcPos, longRet.get(desIndex), descPos, length);
-        break;
-      case FLOAT:
-        System.arraycopy(floatRet.get(srcIndex), srcPos, floatRet.get(desIndex), descPos, length);
-        break;
-      case DOUBLE:
-        System.arraycopy(doubleRet.get(srcIndex), srcPos, doubleRet.get(desIndex), descPos, length);
-        break;
-      case TEXT:
-        System.arraycopy(binaryRet.get(srcIndex), srcPos, binaryRet.get(desIndex), descPos, length);
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.valueOf(dataType));
-    }
-  }
 }
