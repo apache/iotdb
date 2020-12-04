@@ -578,7 +578,8 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory.createBatchData(dataType);
+        cachedBatchData = BatchDataFactory
+            .createBatchData(dataType, orderUtils.getAscending(), true);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
         if (firstPageReader != null) {
           currentPageEndPointTime = orderUtils
@@ -658,6 +659,7 @@ public class SeriesReader {
          * if current overlapped page has valid data, return, otherwise read next overlapped page
          */
         if (hasCachedNextOverlappedPage) {
+          cachedBatchData.flip();
           return true;
           // condition: seqPage.endTime < mergeReader.currentTime
         } else if (mergeReader.hasNextTimeValuePair()) {

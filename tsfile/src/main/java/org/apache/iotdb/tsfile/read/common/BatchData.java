@@ -53,7 +53,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 public class BatchData implements Serializable {
 
   private static final long serialVersionUID = -4620310601188394839L;
-  private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
+  public static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
   protected TSDataType dataType;
@@ -69,15 +69,15 @@ public class BatchData implements Serializable {
   protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  private int count;
+  protected int count;
 
-  private List<long[]> timeRet;
-  private List<boolean[]> booleanRet;
-  private List<int[]> intRet;
-  private List<long[]> longRet;
-  private List<float[]> floatRet;
-  private List<double[]> doubleRet;
-  private List<Binary[]> binaryRet;
+  protected List<long[]> timeRet;
+  protected List<boolean[]> booleanRet;
+  protected List<int[]> intRet;
+  protected List<long[]> longRet;
+  protected List<float[]> floatRet;
+  protected List<double[]> doubleRet;
+  protected List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;
