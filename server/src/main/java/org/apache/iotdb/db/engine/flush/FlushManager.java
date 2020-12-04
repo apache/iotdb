@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -92,6 +94,22 @@ public class FlushManager implements FlushManagerMBean, IService {
     @Override
     public void runMayThrow() {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
+      if (tsFileProcessor.isSequence() && config.isEnableSlidingMemTable() &&
+          !SystemInfo.getInstance().forceFlush()) {
+        long startTime = System.currentTimeMillis();
+        while (!tsFileProcessor.isShouldClose()
+            && System.currentTimeMillis() - startTime < config.getFlushWaitTime()) {
+          // wait
+          try {
+            TimeUnit.MILLISECONDS.sleep(config.getWaitingTimeWhenInsertBlocked());
+          } catch (InterruptedException e) {
+            logger.error("flush mem table wait error", e);
+          }
+        }
+      }
+      tsFileProcessor.setFlushingMemTable(null);
+      tsFileProcessor.setFlushMemTableAlive(false);
+      tsFileProcessor.getUpdateLatestFlushTimeCallback().call(tsFileProcessor);
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
       if (logger.isDebugEnabled()) {

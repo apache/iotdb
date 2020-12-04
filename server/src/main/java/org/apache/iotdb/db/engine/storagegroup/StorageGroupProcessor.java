@@ -150,6 +150,11 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
   /**
+   * a read write lock for guaranteeing concurrent safety when latestTimeForEachDevice is updated
+   * using flushingLatestTimeForEachDevice
+   */
+  private final ReadWriteLock flushTimeUpdateLock = new ReentrantReadWriteLock();
+  /**
    * closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done.
    */
   private final Object closeStorageGroupCondition = new Object();
@@ -179,10 +184,15 @@ public class StorageGroupProcessor {
 
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   /*
+   * time partition id -> map, when a memory table is marked as to be flush, use latestTimeForEachDevice
+   * to cache the flushing time bound, and is used to update partitionLatestFlushedTimeForEachDevice
+   * when a flush is actually issued.
+   */
+  private Map<Long, Map<String, Long>> flushingLatestTimeForEachDevice = new HashMap<>();
+  /*
    * time partition id -> map, which contains
    * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
-   * changes upon timestamps of each device, and is used to update partitionLatestFlushedTimeForEachDevice
-   * when a flush is issued.
+   * changes upon timestamps of each device
    */
   private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
   /**
@@ -651,6 +661,7 @@ public class StorageGroupProcessor {
       StorageEngine.blockInsertionIfReject();
     }
     writeLock();
+    flushUpdateLock();
     try {
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
@@ -674,6 +685,7 @@ public class StorageGroupProcessor {
 
     } finally {
       writeUnlock();
+      flushUpdateUnLock();
     }
   }
 
@@ -878,6 +890,11 @@ public class StorageGroupProcessor {
       return;
     }
 
+    if (sequence && config.isEnableSlidingMemTable()) {
+      insertRowPlan
+          .setToFlushingMemTable(isInsertToFlushingMemTable(timePartitionId, insertRowPlan));
+    }
+    // insert TsFileProcessor
     tsFileProcessor.insert(insertRowPlan);
 
     // try to update the latest time of the device of this tsRecord
@@ -897,6 +914,17 @@ public class StorageGroupProcessor {
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
+  }
+
+  /**
+   * judge whether a insert plan should be inserted into the flushingMemtable
+   */
+  private boolean isInsertToFlushingMemTable(long timePartitionId, InsertRowPlan insertRowPlan){
+    if (!flushingLatestTimeForEachDevice.containsKey(timePartitionId)){
+      return false;
+    }
+    return flushingLatestTimeForEachDevice.get(timePartitionId).
+        getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) > insertRowPlan.getTime();
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
@@ -924,7 +952,7 @@ public class StorageGroupProcessor {
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
     writeLock();
     try {
-      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) && 
+      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) &&
           !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
@@ -1099,7 +1127,7 @@ public class StorageGroupProcessor {
   public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) ||
         closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
       return;
     }
@@ -1375,6 +1403,17 @@ public class StorageGroupProcessor {
     insertLock.writeLock().unlock();
   }
 
+  public void flushUpdateLock(){
+    if (config.isEnableSlidingMemTable()) {
+      flushTimeUpdateLock.writeLock().lock();
+    }
+  }
+
+  public void flushUpdateUnLock(){
+    if (config.isEnableSlidingMemTable()) {
+      flushTimeUpdateLock.writeLock().unlock();
+    }
+  }
 
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
@@ -1641,27 +1680,44 @@ public class StorageGroupProcessor {
   }
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
-    // update the largest timestamp in the last flushing memtable
-    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
-        .get(processor.getTimeRangeId());
+    flushUpdateLock();
+    try {
+      // update the largest timestamp in the last flushing memtable
+      Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
+          .get(processor.getTimeRangeId());
 
-    if (curPartitionDeviceLatestTime == null) {
-      logger.warn("Partition: {} does't have latest time for each device. "
-              + "No valid record is written into memtable. Flushing tsfile is: {}",
-          processor.getTimeRangeId(), processor.getTsFileResource().getTsFile());
-      return false;
-    }
-
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(processor.getTimeRangeId(),
-          entry.getKey(), entry.getValue());
-      if (globalLatestFlushedTimeForEachDevice
-          .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
-        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      if (curPartitionDeviceLatestTime == null) {
+        logger.warn("Partition: {} does't have latest time for each device. "
+                + "No valid record is written into memtable. Flushing tsfile is: {}",
+            processor.getTimeRangeId(), processor.getTsFileResource().getTsFile());
+        return false;
       }
+
+      if (processor.isFlushMemTableAlive()) {
+        for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+          flushingLatestTimeForEachDevice
+              .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+        }
+      } else {
+        if (processor.isSequence()) {
+          curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
+              .get(processor.getTimeRangeId());
+        }
+        for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+          partitionLatestFlushedTimeForEachDevice
+              .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+          updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(processor.getTimeRangeId(),
+              entry.getKey(), entry.getValue());
+          if (globalLatestFlushedTimeForEachDevice
+              .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
+            globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+          }
+        }
+      }
+    } finally {
+      flushUpdateUnLock();
     }
     return true;
   }
