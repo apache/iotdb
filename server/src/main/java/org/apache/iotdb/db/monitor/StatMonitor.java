@@ -16,92 +16,64 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.monitor;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import java.util.List;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
-import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
-import org.apache.iotdb.db.monitor.collector.FileSize;
+import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class StatMonitor implements IService {
+public class StatMonitor implements StatMonitorMBean, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(StatMonitor.class);
-  private final int backLoopPeriod;
-  private final int statMonitorDetectFreqSec;
-  private final int statMonitorRetainIntervalSec;
-  private long runningTimeMillis = System.currentTimeMillis();
-  private static final ArrayList<String> temporaryStatList = new ArrayList<>();
-  /**
-   * key: is the statistics store seriesPath Value: is an interface that implements statistics
-   * function.
-   */
-  private final HashMap<String, IStatistic> statisticMap;
-  private ScheduledExecutorService service;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final MManager mManager = IoTDB.metaManager;
+  private static final StorageEngine storageEngine = StorageEngine.getInstance();
+  private final String mbeanName = String
+      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
+          getID().getJmxName());
 
-  /**
-   * stats params.
-   */
-  private AtomicLong numBackLoop = new AtomicLong(0);
-  private AtomicLong numInsert = new AtomicLong(0);
-  private AtomicLong numPointsInsert = new AtomicLong(0);
-  private AtomicLong numInsertError = new AtomicLong(0);
+  List<PartialPath> globalSeries = new ArrayList<>(3);
+  // monitor series value.   e.g. root.stats.global.TOTAL_POINTS -> value
+  private List<Long> globalSeriesValue = new ArrayList<>(3);
 
-  private StatMonitor() {
-    initTemporaryStatList();
-    MManager mmanager = IoTDB.metaManager;
-    statisticMap = new HashMap<>();
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    statMonitorDetectFreqSec = config.getStatMonitorDetectFreqSec();
-    statMonitorRetainIntervalSec = config.getStatMonitorRetainIntervalSec();
-    backLoopPeriod = config.getBackLoopPeriodSec();
+  public StatMonitor() {
     if (config.isEnableStatMonitor()) {
-      try {
-        PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
-        if (!mmanager.isPathExist(prefix)) {
-          mmanager.setStorageGroup(prefix);
-        }
-      } catch (MetadataException e) {
-        logger.error("MManager cannot set storage group to MTree.", e);
-      }
-    }
-  }
-
-  private void initTemporaryStatList() {
-    for (FileNodeManagerStatConstants constants : FileNodeManagerStatConstants.values()) {
-      temporaryStatList.add(constants.name());
-    }
-    for (FileNodeProcessorStatConstants constants : FileNodeProcessorStatConstants.values()) {
-      temporaryStatList.add(constants.name());
+      initMonitorSeriesInfo();
+      recovery();
     }
   }
 
@@ -109,208 +81,186 @@ public class StatMonitor implements IService {
     return StatMonitorHolder.INSTANCE;
   }
 
-  /**
-   * generate TSRecord.
-   *
-   * @param hashMap key is statParams name, values is AtomicLong type
-   * @param statGroupDeltaName is the deviceId seriesPath of this module
-   * @param curTime current time stamp
-   * @return TSRecord contains the DataPoints of a statGroupDeltaName
-   */
-  public static TSRecord convertToTSRecord(Map<String, AtomicLong> hashMap,
-      String statGroupDeltaName, long curTime) {
-    TSRecord tsRecord = new TSRecord(curTime, statGroupDeltaName);
-    tsRecord.dataPointList = new ArrayList<>();
-    for (Map.Entry<String, AtomicLong> entry : hashMap.entrySet()) {
-      AtomicLong value = entry.getValue();
-      tsRecord.dataPointList.add(new LongDataPoint(entry.getKey(), value.get()));
-    }
-    return tsRecord;
-  }
-
-  public long getNumPointsInsert() {
-    return numPointsInsert.get();
-  }
-
-  public long getNumInsert() {
-    return numInsert.get();
-  }
-
-  public long getNumInsertError() {
-    return numInsertError.get();
-  }
-
-  void registerStatStorageGroup() {
-    MManager mManager = IoTDB.metaManager;
-    PartialPath prefix = new PartialPath(MonitorConstants.getStatStorageGroupPrefixArray());
-    try {
-      if (!mManager.isPathExist(prefix)) {
-        mManager.setStorageGroup(prefix);
-      }
-    } catch (Exception e) {
-      logger.error("MManager cannot set storage group to MTree.", e);
+  private void initMonitorSeriesInfo() {
+    String[] globalMonitorSeries = MonitorConstants.STAT_GLOBAL_ARRAY;
+    for (int i = 0; i < StatMeasurementConstants.values().length; i++) {
+      PartialPath globalMonitorPath = new PartialPath(globalMonitorSeries)
+          .concatNode(StatMeasurementConstants.values()[i].getMeasurement());
+      globalSeries.add(globalMonitorPath);
+      globalSeriesValue.add(0L);
     }
   }
 
   /**
-   * register monitor statistics time series metadata into MManager.
-   *
-   * @param hashMap series path and data type pair, for example: [root.stat.file.size.DATA, INT64]
+   * Generate tsRecords for stat parameters and insert them into StorageEngine.
    */
-  public synchronized void registerStatStorageGroup(Map<String, String> hashMap) {
-    MManager mManager = IoTDB.metaManager;
-    try {
-      for (Map.Entry<String, String> entry : hashMap.entrySet()) {
-        if (entry.getValue() == null) {
-          logger.error("Registering metadata but data type of {} is null", entry.getKey());
-        }
+  public void saveStatValue(String storageGroupName)
+      throws MetadataException, StorageEngineException {
+    long insertTime = System.currentTimeMillis();
+    // update monitor series of storage group
+    PartialPath storageGroupSeries = getStorageGroupMonitorSeries(storageGroupName);
+    if (!mManager.isPathExist(storageGroupSeries)) {
+      registSeriesToMManager(storageGroupSeries);
+    }
+    TSRecord tsRecord = new TSRecord(insertTime, storageGroupSeries.getDevice());
+    tsRecord.addTuple(
+        new LongDataPoint(StatMeasurementConstants.TOTAL_POINTS.getMeasurement(),
+            storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
+    storageEngine.insert(new InsertRowPlan(tsRecord));
 
-        if (!mManager.isPathExist(new PartialPath(entry.getKey()))) {
-          mManager.createTimeseries(new PartialPath(entry.getKey()), TSDataType.valueOf(entry.getValue()),
-              TSEncoding.valueOf("RLE"),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
-        }
+    // update global monitor series
+    for (int i = 0; i < globalSeries.size(); i++) {
+      PartialPath seriesPath = globalSeries.get(i);
+      if (!mManager.isPathExist(seriesPath)) {
+        registSeriesToMManager(seriesPath);
       }
-    } catch (MetadataException e) {
-      logger.error("Initialize the metadata error.", e);
+      tsRecord = new TSRecord(insertTime, seriesPath.getDevice());
+      tsRecord.addTuple(
+          new LongDataPoint(seriesPath.getMeasurement(), globalSeriesValue.get(i)));
+      storageEngine.insert(new InsertRowPlan(tsRecord));
     }
   }
 
+
+  /**
+   * Recover the cache values of monitor series using last query if time series exist.
+   */
   public void recovery() {
-    // // restore the FildeNode Manager TOTAL_POINTS statistics info
-  }
-
-  void activate() {
-    service = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
-        ThreadName.STAT_MONITOR.getName());
-    service.scheduleAtFixedRate(
-        new StatBackLoop(), 1, backLoopPeriod, TimeUnit.SECONDS);
-  }
-
-  void clearIStatisticMap() {
-    statisticMap.clear();
-  }
-
-  public long getNumBackLoop() {
-    return numBackLoop.get();
-  }
-
-  /**
-   * register class which implemented IStatistic interface into statisticMap
-   *
-   * @param path the stat series prefix path, like root.stat.file.size
-   * @param iStatistic instance of class which implemented IStatistic interface
-   */
-  public void registerStatistics(String path, IStatistic iStatistic) {
-    synchronized (statisticMap) {
-      logger.debug("Register {} to StatMonitor for statistics service", path);
-      this.statisticMap.put(path, iStatistic);
-    }
-  }
-
-  /**
-   * deregister statistics.
-   */
-  public void deregisterStatistics(String path) {
-    logger.debug("Deregister {} in StatMonitor for stopping statistics service", path);
-    synchronized (statisticMap) {
-      if (statisticMap.containsKey(path)) {
-        statisticMap.put(path, null);
-      }
-    }
-  }
-
-  /**
-   * This function is not used and need to complete the query key concept.
-   *
-   * @return TSRecord, query statistics params
-   */
-  public Map<String, TSRecord> getOneStatisticsValue(String key) {
-    // queryPath like fileNode seriesPath: root.stats.car1,
-    // or StorageEngine seriesPath:StorageEngine
-    String queryPath;
-    if (key.contains("\\.")) {
-      queryPath =
-          MonitorConstants.STAT_STORAGE_GROUP_PREFIX + MonitorConstants.MONITOR_PATH_SEPARATOR
-              + key.replaceAll("\\.", "_");
-    } else {
-      queryPath = key;
-    }
-    if (statisticMap.containsKey(queryPath)) {
-      return statisticMap.get(queryPath).getAllStatisticsValue();
-    } else {
-      long currentTimeMillis = System.currentTimeMillis();
-      HashMap<String, TSRecord> hashMap = new HashMap<>();
-      TSRecord tsRecord = convertToTSRecord(
-          MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST), queryPath,
-          currentTimeMillis);
-      hashMap.put(queryPath, tsRecord);
-      return hashMap;
-    }
-  }
-
-  /**
-   * get all statistics.
-   */
-  public Map<String, TSRecord> gatherStatistics() {
-    synchronized (statisticMap) {
-      long currentTimeMillis = System.currentTimeMillis();
-      HashMap<String, TSRecord> tsRecordHashMap = new HashMap<>();
-      for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
-        if (entry.getValue() == null) {
-          switch (entry.getKey()) {
-            case MonitorConstants.STAT_STORAGE_DELTA_NAME:
-              tsRecordHashMap.put(entry.getKey(),
-                  convertToTSRecord(
-                      MonitorConstants.initValues(MonitorConstants.FILENODE_PROCESSOR_CONST),
-                      entry.getKey(), currentTimeMillis));
-              break;
-            case MonitorConstants.FILE_SIZE_STORAGE_GROUP_NAME:
-              tsRecordHashMap.put(entry.getKey(),
-                  convertToTSRecord(
-                      MonitorConstants.initValues(MonitorConstants.FILE_SIZE_CONST),
-                      entry.getKey(), currentTimeMillis));
-              break;
-            default:
-          }
-        } else {
-          tsRecordHashMap.putAll(entry.getValue().getAllStatisticsValue());
+    try {
+      for (int i = 0; i < globalSeries.size(); i++) {
+        PartialPath globalMonitorPath = globalSeries.get(i);
+        TimeValuePair timeValuePair = getLastValue(globalMonitorPath);
+        if (timeValuePair != null) {
+          globalSeriesValue.set(i, timeValuePair.getValue().getLong());
         }
       }
-      for (TSRecord value : tsRecordHashMap.values()) {
-        value.time = currentTimeMillis;
+
+      List<PartialPath> storageGroupPaths = mManager.getAllStorageGroupPaths();
+      for (PartialPath storageGroupPath : storageGroupPaths) {
+        if (!storageGroupPath.getFullPath().equals(MonitorConstants.STAT_STORAGE_GROUP_NAME)) {
+          // for storage group which is not global, only TOTAL_POINTS is registered now
+          PartialPath monitorSeriesPath = getStorageGroupMonitorSeries(
+              storageGroupPath.getFullPath());
+          TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
+          if (timeValuePair != null) {
+            storageEngine.getProcessor(storageGroupPath)
+                .setMonitorSeriesValue(timeValuePair.getValue().getLong());
+          }
+        }
       }
-      return tsRecordHashMap;
+    } catch (StorageEngineException | IOException | QueryProcessException e) {
+      logger.error("Load last value from disk error.", e);
     }
   }
 
+  private TimeValuePair getLastValue(PartialPath monitorSeries)
+      throws StorageEngineException, QueryProcessException, IOException {
+    if (mManager.isPathExist(monitorSeries)) {
+      TimeValuePair timeValuePair = LastQueryExecutor
+          .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
+              Collections.singletonList(TSDataType.INT64),
+              new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
+              null, new LastQueryPlan()).get(0).right;
+      if (timeValuePair.getValue() != null) {
+        return timeValuePair;
+      }
+    }
+    return null;
+  }
 
-  /**
-   * close statistic service.
-   */
+  private PartialPath getStorageGroupMonitorSeries(String storageGroupName) {
+    String[] monitorSeries = Arrays.copyOf(MonitorConstants.STAT_STORAGE_GROUP_ARRAY, 4);
+    monitorSeries[2] = "\"" + storageGroupName + "\"";
+    monitorSeries[3] = StatMeasurementConstants.TOTAL_POINTS.getMeasurement();
+    return new PartialPath(monitorSeries);
+  }
+
+  private void registSeriesToMManager(PartialPath fullPath) throws MetadataException {
+    mManager.createTimeseries(fullPath, TSDataType.valueOf(MonitorConstants.INT64),
+        TSEncoding.valueOf("TS_2DIFF"), TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        null);
+  }
+
+  public void updateStatGlobalValue(int successPointsNum) {
+    // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
+    globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
+    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+  }
+
+  public void updateFailedStatValue() {
+    // 2 -> REQ_FAIL
+    globalSeriesValue.set(2, globalSeriesValue.get(2) + 1);
+  }
+
   public void close() {
+    config.setEnableStatMonitor(false);
+  }
 
-    if (service == null || service.isShutdown()) {
-      return;
-    }
-    statisticMap.clear();
-    service.shutdown();
+  // implements methods of StatMonitorMean from here
+  @Override
+  public long getGlobalTotalPointsNum() {
+    return globalSeriesValue.get(0);
+  }
+
+  @Override
+  public long getGlobalReqSuccessNum() {
+    return globalSeriesValue.get(1);
+  }
+
+  @Override
+  public long getGlobalReqFailNum() {
+    return globalSeriesValue.get(2);
+  }
+
+  @Override
+  public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      service.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      logger.error("StatMonitor timing service could not be shutdown.", e);
-      // Restore interrupted state...
-      Thread.currentThread().interrupt();
+      return storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue();
+    } catch (StorageEngineException | IllegalPathException e) {
+      logger.error(e.getMessage());
+      return -1;
     }
+  }
+
+  @Override
+  public String getSystemDirectory() {
+    try {
+      File file = SystemFileFactory.INSTANCE.getFile(config.getSystemDir());
+      return file.getAbsolutePath();
+    } catch (Exception e) {
+      logger.error("meet error while trying to get base dir.", e);
+      return "Unavailable";
+    }
+  }
+
+  @Override
+  public long getDataSizeInByte() {
+    try {
+      long totalSize = 0;
+      for (String dataDir : config.getDataDirs()) {
+        totalSize += FileUtils.sizeOfDirectory(SystemFileFactory.INSTANCE.getFile(dataDir));
+      }
+      return totalSize;
+    } catch (Exception e) {
+      logger.error("meet error while trying to get data size.", e);
+      return -1;
+    }
+  }
+
+  @Override
+  public boolean getWriteAheadLogStatus() {
+    return config.isEnableWal();
+  }
+
+  @Override
+  public boolean getEnableStatMonitor() {
+    return config.isEnableStatMonitor();
   }
 
   @Override
   public void start() throws StartupException {
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-        activate();
-      }
+      JMXService.registerMBean(getInstance(), mbeanName);
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -318,14 +268,12 @@ public class StatMonitor implements IService {
 
   @Override
   public void stop() {
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
-      close();
-    }
+    JMXService.deregisterMBean(mbeanName);
   }
 
   @Override
   public ServiceType getID() {
-    return ServiceType.STAT_MONITOR_SERVICE;
+    return ServiceType.MONITOR_SERVICE;
   }
 
   private static class StatMonitorHolder {
@@ -335,63 +283,5 @@ public class StatMonitor implements IService {
     }
 
     private static final StatMonitor INSTANCE = new StatMonitor();
-  }
-
-  class StatBackLoop extends WrappedRunnable {
-
-    FileSize fileSize = FileSize.getInstance();
-
-    @Override
-    public void runMayThrow() {
-      try {
-        long currentTimeMillis = System.currentTimeMillis();
-        long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
-        if (seconds >= statMonitorDetectFreqSec) {
-          runningTimeMillis = currentTimeMillis;
-          // delete time-series data
-          cleanOutDated();
-        }
-        Map<String, TSRecord> tsRecordHashMap = gatherStatistics();
-        insert(tsRecordHashMap);
-        numBackLoop.incrementAndGet();
-      } catch (Exception e) {
-        logger.error("Error occurred in Stat Monitor thread", e);
-      }
-    }
-
-    public void cleanOutDated() {
-      long currentTimeMillis = System.currentTimeMillis();
-      try {
-        StorageEngine fManager = StorageEngine.getInstance();
-        for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
-          for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
-            if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(new PartialPath(entry.getKey(), statParamName), Long.MIN_VALUE,
-                  currentTimeMillis - statMonitorRetainIntervalSec * 1000, -1);
-            }
-          }
-        }
-      } catch (StorageEngineException | IllegalPathException e) {
-        logger
-            .error("Error occurred when deleting statistics information periodically, because",
-                e);
-      }
-    }
-
-    public void insert(Map<String, TSRecord> tsRecordHashMap) {
-      StorageEngine fManager = StorageEngine.getInstance();
-      int pointNum;
-      for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
-        try {
-          fManager.insert(new InsertRowPlan(entry.getValue()));
-          numInsert.incrementAndGet();
-          pointNum = entry.getValue().dataPointList.size();
-          numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException | IllegalPathException e) {
-          numInsertError.incrementAndGet();
-          logger.error("Inserting stat points error.", e);
-        }
-      }
-    }
   }
 }

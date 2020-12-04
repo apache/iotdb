@@ -160,9 +160,9 @@ public class ServerArgument {
   public int getCpuRatio() {
     String osName = System.getProperty("os.name").toLowerCase();
     cpuRatio = 0;
-    if (osName.indexOf("windows") >= 0) {
+    if (osName.contains("windows")) {
       cpuRatio = getCpuRatioForWindows();
-    } else if (osName.indexOf("linux") >= 0) {
+    } else if (osName.contains("linux")) {
       cpuRatio = getCpuRateForLinux();
     } else {
       cpuRatio = 500;
@@ -229,7 +229,7 @@ public class ServerArgument {
     long[] retn = new long[2];
     proc.getOutputStream().close();
     try (InputStreamReader ir = new InputStreamReader(proc.getInputStream());
-         LineNumberReader input = new LineNumberReader(ir);) {
+         LineNumberReader input = new LineNumberReader(ir)) {
       String line = input.readLine();
       if (line == null || line.length() < 10) {
         return null;
@@ -248,7 +248,7 @@ public class ServerArgument {
           continue;
         }
         String cmd = line.substring(cmdidx, kmtidx).trim();
-        if (cmd.indexOf("wmic.exe") >= 0) {
+        if (cmd.contains("wmic.exe")) {
           continue;
         }
         String caption = line.substring(capidx, cmdidx).trim();

@@ -29,11 +29,11 @@
 
 ## 如何建立
 
-跑`mvn package -DskipTests` 
+跑`mvn compile -DskipTests  -P compile-site -P download-website` 
 
 ## 如何调试
 
-当跑完 `mvn package -DskipTests`, 所有的源文档都会复制到target/vue-source目录下
+当跑完 `mvn generate-sources -DskipTests  -P compile-site`, 所有的源文档都会复制到target/vue-source目录下
 
 如果你想要调试：
 
@@ -50,11 +50,11 @@ npm run build
 
 ## 手动部署
 
-跑`mvn package scm-publish:publish-scm`.
+跑`mvn compile scm-publish:publish-scm  -P compile-site`.
 
 Apache ID和密码是必须的
 
-或直接运行`mvn package scm-publish:publish-scm -Dusername={你的Apache ID} -Dpassword={你的Apache账号密码}`
+或直接运行`mvn compile scm-publish:publish-scm -Dusername={你的Apache ID} -Dpassword={你的Apache账号密码}  -P compile-site`
 
 ## 常见问题
 

@@ -32,16 +32,21 @@ See https://iotdb.apache.org/
 ## Build Setup
 
 
-run `mvn package -DskipTests` for doing the following steps automatically:
+run `mvn compile -DskipTests  -P compile-site -P download-website` for doing the following steps automatically:
 
 - get docs from the master branch and all lagecy docs remotely.
 - download node.js and npm;
 - run `npm install` and `npm run build`
+- the final website will be generated in `target/vue-source/src/.vuepress/dist`
+
+Notice that we will only compile the docs from the master branch, and just copy static htmls from 
+iotdb-website. If you want to compile lagecy docs, using `-P compile-site-<version>`, 
+e.g., `mvn compile -P compile-site -P compile-site-0.11 -P compile-site-0.10`
 
 
 ## How to Debug
 
-after running `mvn package -DskipTests`, all source codes are copied into target/vue-source
+after running `mvn compile -DskipTests`, all source codes are copied into target/vue-source
 
 then if you want to debug, just run 
 
@@ -58,11 +63,11 @@ All changes in the target folder will be ignored by Git.
 
 ## Deploy Manually
 
-run `mvn package scm-publish:publish-scm`.
+run `mvn compile scm-publish:publish-scm -P compile-site`.
 
 Apache ID and passwored is needed.
 
-Or run `mvn package scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}`
+Or run `mvn compile scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}  -P compile-site`
 
 ## FAQ
 

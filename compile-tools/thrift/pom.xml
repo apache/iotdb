@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>client-cpp-tools</artifactId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-tools-thrift</artifactId>

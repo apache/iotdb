@@ -98,10 +98,6 @@ public class SyncFileManagerTest {
         }
       }
     }
-    Map<String, Map<Long, Set<File>>> lastFileMap;
-    Map<String, Map<Long, Set<File>>> curFileMap;
-    Map<String, Map<Long, Set<File>>> deletedFilesMap;
-    Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap;
 
     // lastFileList is empty
     manager.getValidFiles(dataDir);
@@ -110,7 +106,7 @@ public class SyncFileManagerTest {
     updateLastLocalFiles(allFileList);
 
     manager.getValidFiles(dataDir);
-    lastFileMap = manager.getLastLocalFilesMap();
+    Map<String, Map<Long, Set<File>>> lastFileMap = manager.getLastLocalFilesMap();
     assertFileMap(allFileList, lastFileMap);
 
     // add some files
@@ -142,8 +138,8 @@ public class SyncFileManagerTest {
       }
     }
     manager.getValidFiles(dataDir);
-    curFileMap = manager.getCurrentSealedLocalFilesMap();
-    toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
+    Map<String, Map<Long, Set<File>>> curFileMap = manager.getCurrentSealedLocalFilesMap();
+    Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     assertFileMap(allFileList, curFileMap);
     assertFileMap(correctToBeSyncedFiles, toBeSyncedFilesMap);
 
@@ -211,7 +207,7 @@ public class SyncFileManagerTest {
     }
     manager.getValidFiles(dataDir);
     curFileMap = manager.getCurrentSealedLocalFilesMap();
-    deletedFilesMap = manager.getDeletedFilesMap();
+    Map<String, Map<Long, Set<File>>> deletedFilesMap = manager.getDeletedFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     assertFileMap(allFileList, curFileMap);
     assertFileMap(correctDeleteFile, deletedFilesMap);

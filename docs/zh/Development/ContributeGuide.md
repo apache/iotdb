@@ -118,7 +118,7 @@ import -> Maven -> Existing Maven Projects
 ## 调试代码
 
 * 服务器主函数：```server/src/main/java/org/apache/iotdb/db/service/IoTDB```，可以debug模式启动
-* 客户端：```client/src/main/java/org/apache/iotdb/client/```，linux 用 Clinet，windows 用 WinClint，可以直接启动，需要参数"-h 127.0.0.1 -p 6667 -u root -pw root"
+* 命令行界面：```cli/src/main/java/org/apache/iotdb/cli/```，linux 用 Cli，windows 用 WinCli，可以直接启动。启动时需要参数"-h 127.0.0.1 -p 6667 -u root -pw root"
 * 服务器的 rpc 实现（主要用来客户端和服务器通信，一般在这里开始打断点）：```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
 	* jdbc所有语句：executeStatement(TSExecuteStatementReq req)
 	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	

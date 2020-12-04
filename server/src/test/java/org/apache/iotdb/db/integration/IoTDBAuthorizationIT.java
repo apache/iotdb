@@ -210,7 +210,7 @@ public class IoTDBAuthorizationIT {
 
       try (Connection userCon = DriverManager
               .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "tempuser", "temppw");
-           Statement userStmt = userCon.createStatement();) {
+           Statement userStmt = userCon.createStatement()) {
 
         // grant a non-existing user
         boolean caught = false;
@@ -596,9 +596,8 @@ public class IoTDBAuthorizationIT {
 
         int insertCnt = 20000;
         int batchSize = 500;
-        long time;
 
-        time = System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         for (int i = 0; i < insertCnt; ) {
           for (int j = 0; j < batchSize; j++) {
             userStmt.addBatch(
