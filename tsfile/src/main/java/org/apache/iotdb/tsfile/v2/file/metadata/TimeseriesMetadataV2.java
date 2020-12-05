@@ -27,6 +27,9 @@ import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
 public class TimeseriesMetadataV2 {
 
+  private TimeseriesMetadataV2() {
+  }
+
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));

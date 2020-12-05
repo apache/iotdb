@@ -28,6 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNodeV2 {
+
+  private MetadataIndexNodeV2() {
+  }
+
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteIOUtils.readInt(buffer);

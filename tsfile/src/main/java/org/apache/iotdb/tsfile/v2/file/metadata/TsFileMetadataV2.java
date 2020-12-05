@@ -29,6 +29,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileMetadataV2 {
 
+  private TsFileMetadataV2() {
+  }
+
   /**
    * deserialize data from the buffer.
    *

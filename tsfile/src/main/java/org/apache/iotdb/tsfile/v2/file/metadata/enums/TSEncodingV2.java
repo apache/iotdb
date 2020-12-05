@@ -22,6 +22,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class TSEncodingV2 {
 
+  private TSEncodingV2() {
+  }
+
   /**
    * judge the encoding deserialize type.
    *

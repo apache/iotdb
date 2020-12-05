@@ -22,6 +22,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
 public class CompressionTypeV2 {
 
+  private CompressionTypeV2() {
+  }
+
   /**
    * deserialize short number.
    *

@@ -36,6 +36,9 @@ import org.apache.iotdb.tsfile.v2.file.metadata.enums.TSEncodingV2;
 
 public class ChunkHeaderV2 {
 
+  private ChunkHeaderV2() {
+  }
+
   /**
    * deserialize from inputStream.
    *

@@ -22,6 +22,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class TSDataTypeV2 {
 
+  private TSDataTypeV2() {
+  }
+
   /**
    * give an integer to return a data type.
    *

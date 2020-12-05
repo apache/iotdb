@@ -28,6 +28,9 @@ import org.apache.iotdb.tsfile.v2.file.metadata.enums.TSDataTypeV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
 public class ChunkMetadataV2 {
+
+  private ChunkMetadataV2() {}
+
   /**
    * deserialize from ByteBuffer.
    *

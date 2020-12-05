@@ -76,10 +76,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   protected String file;
   protected TsFileInput tsFileInput;
-  private long fileMetadataPos;
-  private int fileMetadataSize;
+  protected long fileMetadataPos;
+  protected int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
-  private TsFileMetadata tsFileMetaData;
+  protected TsFileMetadata tsFileMetaData;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
@@ -432,7 +432,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
-  private int binarySearchInTimeseriesMetadataList(List<TimeseriesMetadata> timeseriesMetadataList,
+  protected int binarySearchInTimeseriesMetadataList(List<TimeseriesMetadata> timeseriesMetadataList,
       String key) {
     int low = 0;
     int high = timeseriesMetadataList.size() - 1;
@@ -840,7 +840,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param size     the size of data that want to read
    * @return data that been read.
    */
-  private ByteBuffer readData(long position, int size) throws IOException {
+  protected ByteBuffer readData(long position, int size) throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(size);
     if (position < 0) {
       if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != size) {
@@ -867,7 +867,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param end   the end position of data that want to read
    * @return data that been read.
    */
-  private ByteBuffer readData(long start, long end) throws IOException {
+  protected ByteBuffer readData(long start, long end) throws IOException {
     return readData(start, (int) (end - start));
   }
 

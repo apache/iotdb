@@ -25,6 +25,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexEntryV2 {
 
+  private MetadataIndexEntryV2() {
+  }
+
   public static MetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
     String name = ReadWriteIOUtils.readString(buffer);
     long offset = ReadWriteIOUtils.readLong(buffer);

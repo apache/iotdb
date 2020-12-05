@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class StatisticsV2 {
 
+  private StatisticsV2() {
+  }
 
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {

@@ -30,6 +30,9 @@ import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
 public class PageHeaderV2 {
 
+  private PageHeaderV2() {
+  }
+
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
       throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);

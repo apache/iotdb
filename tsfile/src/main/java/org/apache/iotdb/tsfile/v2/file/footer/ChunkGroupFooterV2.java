@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ChunkGroupFooterV2 {
 
+  private ChunkGroupFooterV2() {}
+
   /**
    * deserialize from inputStream.
    *
