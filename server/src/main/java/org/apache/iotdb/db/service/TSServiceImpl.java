@@ -52,6 +52,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -707,7 +708,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       // register startTime to query time manager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        QueryTimeManager.getInstance().registerQuery(queryId, startTime, statement, Thread.currentThread());
+        QueryTimeManager.getInstance()
+            .registerQuery(queryId, startTime, statement, Thread.currentThread());
       }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
@@ -1126,7 +1128,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, QueryIdNotExsitException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
@@ -1803,6 +1805,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (NullPointerException e) {
       logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    } catch (QueryIdNotExsitException e) {
+      logger.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
       logger.warn(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

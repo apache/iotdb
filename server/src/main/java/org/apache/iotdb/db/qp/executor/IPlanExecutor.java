@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.executor;
 import java.io.IOException;
 import java.sql.SQLException;
 import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -54,7 +55,7 @@ public interface IPlanExecutor {
    * @param plan Physical Non-Query Plan
    */
   boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, QueryIdNotExsitException;
 
   /**
    * execute update command and return whether the operator is successful.

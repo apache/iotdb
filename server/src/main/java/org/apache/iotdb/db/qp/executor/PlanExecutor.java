@@ -190,7 +190,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public boolean processNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException, QueryIdNotExsitException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -282,11 +282,7 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_INDEX:
         throw new QueryProcessException("Drop index hasn't been supported yet");
       case KILL:
-        try {
-          operateKillQuery((KillQueryPlan) plan);
-        } catch (QueryIdNotExsitException e) {
-          throw new QueryProcessException(e.getMessage());
-        }
+        operateKillQuery((KillQueryPlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
