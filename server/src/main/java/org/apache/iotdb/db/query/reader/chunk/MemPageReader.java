@@ -44,7 +44,7 @@ public class MemPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     BatchData batchData = BatchDataFactory
-        .createBatchData(chunkMetadata.getDataType(), ascending);
+        .createBatchData(chunkMetadata.getDataType(), ascending, false);
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
       if (valueFilter == null || valueFilter
