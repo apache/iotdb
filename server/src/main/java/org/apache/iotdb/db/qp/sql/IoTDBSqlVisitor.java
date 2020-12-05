@@ -22,6 +22,7 @@ import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_QUERY;
 
 import java.io.File;
@@ -724,8 +725,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitKillQuery(KillQueryContext ctx) {
-    KillQueryOperator killQueryOperator = new KillQueryOperator(TOK_QUERY);
-    if (ctx.INT().getText() != null) {
+    KillQueryOperator killQueryOperator = new KillQueryOperator(TOK_KILL_QUERY);
+    if (ctx.INT() != null) {
       killQueryOperator.setQueryId(Integer.parseInt(ctx.INT().getText()));
     }
     return killQueryOperator;

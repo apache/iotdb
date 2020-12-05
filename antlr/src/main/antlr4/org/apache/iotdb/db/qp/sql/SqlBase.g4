@@ -704,6 +704,10 @@ QUERY
     : Q U E R Y
     ;
 
+KILL
+    : K I L L
+    ;
+
 PROCESSLIST
     : P R O C E S S L I S T
     ;

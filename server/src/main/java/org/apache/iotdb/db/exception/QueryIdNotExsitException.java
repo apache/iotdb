@@ -16,19 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.exception;
 
-/**
- * This class is used to throw run time exception when query is time out.
- */
-public class QueryTimeoutRuntimeException extends RuntimeException {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public QueryTimeoutRuntimeException(String message, Throwable cause) {
-    super(message, cause);
-  }
+public class QueryIdNotExsitException extends IoTDBException {
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
+  public QueryIdNotExsitException(String message) {
+    super(message, TSStatusCode.QUERY_ID_NOT_EXIST.getStatusCode());
   }
 
 }

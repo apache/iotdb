@@ -83,6 +83,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -705,7 +706,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       // register startTime to query time manager
-      QueryTimeManager.getInstance().registerQuery(queryId, startTime, statement, Thread.currentThread());
+      if (!(plan instanceof ShowQueryProcesslistPlan)) {
+        QueryTimeManager.getInstance().registerQuery(queryId, startTime, statement, Thread.currentThread());
+      }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance()
@@ -740,7 +743,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
-      } // else default ignoreTimeStamp is false
+      } else if (plan instanceof ShowQueryProcesslistPlan) {
+        resp.setIgnoreTimeStamp(false);
+      }
 
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
           && newDataSet instanceof NonAlignEngineDataSet) {

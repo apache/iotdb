@@ -34,9 +34,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_FOLDER_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
-import static org.apache.iotdb.db.conf.IoTDBConstant.START_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -71,6 +69,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -78,6 +77,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -282,7 +282,11 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_INDEX:
         throw new QueryProcessException("Drop index hasn't been supported yet");
       case KILL:
-        operateKillQuery((KillQueryPlan) plan);
+        try {
+          operateKillQuery((KillQueryPlan) plan);
+        } catch (QueryIdNotExsitException e) {
+          throw new QueryProcessException(e.getMessage());
+        }
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -309,14 +313,21 @@ public class PlanExecutor implements IPlanExecutor {
     IoTDB.metaManager.createMTreeSnapshot();
   }
 
-  private void operateKillQuery(KillQueryPlan killQueryPlan) {
+  private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
     if (killQueryPlan.getQueryId() != -1) {
-      queryTimeManager.killQuery(killQueryPlan.getQueryId());
+      if (queryTimeManager.getQueryThreadMap().get(killQueryPlan.getQueryId()) != null) {
+        queryTimeManager.killQuery(killQueryPlan.getQueryId());
+      } else {
+        throw new QueryIdNotExsitException(String
+            .format("Query Id %d is not exist, please check it.", killQueryPlan.getQueryId()));
+      }
     } else {
       // if queryId is not specified, kill all running queries
-      for (Long queryId : queryTimeManager.getQueryThreadMap().keySet()) {
-        queryTimeManager.killQuery(queryId);
+      if (!queryTimeManager.getQueryThreadMap().isEmpty()) {
+        for (Long queryId : queryTimeManager.getQueryThreadMap().keySet()) {
+          queryTimeManager.killQuery(queryId);
+        }
       }
     }
   }
@@ -1417,11 +1428,12 @@ public class PlanExecutor implements IPlanExecutor {
         .asList(new PartialPath(QUERY_ID, false), new PartialPath(STATEMENT, false)),
         Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-    for (Entry<Long, Pair<Long, String>> queryInfo : queryTimeManager.getQueryInfoMap().entrySet()) {
+    for (Entry<Long, Pair<Long, String>> queryInfo : queryTimeManager.getQueryInfoMap()
+        .entrySet()) {
       // TODO: time format
       RowRecord record = new RowRecord(queryInfo.getValue().left);
       record.addField(queryInfo.getKey(), TSDataType.INT64);
-      record.addField(queryInfo.getValue().right, TSDataType.TEXT);
+      record.addField(new Binary(queryInfo.getValue().right), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
     return listDataSet;
