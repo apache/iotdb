@@ -32,7 +32,7 @@ IoTDB > set storage group to root.sgcc
 
 We can thus create two storage groups using the above two SQL statements.
 
-It is worth noting that when the path itself, or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
+It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> set storage group to root.ln.wf01
