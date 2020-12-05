@@ -125,9 +125,9 @@ public abstract class Statistics<T> {
   /**
    * read data from the inputStream.
    */
-  abstract void deserialize(InputStream inputStream) throws IOException;
+  public abstract void deserialize(InputStream inputStream) throws IOException;
 
-  abstract void deserialize(ByteBuffer byteBuffer);
+  public abstract void deserialize(ByteBuffer byteBuffer);
 
   public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 

@@ -222,6 +222,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public
   void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readFloat(inputStream);
     this.maxValue = ReadWriteIOUtils.readFloat(inputStream);
@@ -231,6 +232,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
+  public
   void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readFloat(byteBuffer);

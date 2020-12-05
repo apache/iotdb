@@ -335,11 +335,18 @@ public class TsFileResource {
         historicalVersions = Collections.singleton(version);
       }
 
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      if (inputStream.available() >= Long.BYTES * 2) {
+        maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+        minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      }
 
       if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
+        String modFileName = null;
+        try {
+          modFileName = ReadWriteIOUtils.readString(inputStream);
+        } catch (IOException e) {
+          // ignore if the tail is corrupted
+        }
         File modF = new File(file.getParentFile(), modFileName);
         modFile = new ModificationFile(modF.getPath());
       }

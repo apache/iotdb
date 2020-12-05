@@ -205,6 +205,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public
   void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBool(inputStream);
     this.lastValue = ReadWriteIOUtils.readBool(inputStream);
@@ -212,6 +213,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
+  public
   void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);

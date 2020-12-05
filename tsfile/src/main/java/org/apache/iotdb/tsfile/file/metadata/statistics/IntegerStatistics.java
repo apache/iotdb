@@ -223,6 +223,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public
   void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readInt(inputStream);
     this.maxValue = ReadWriteIOUtils.readInt(inputStream);
@@ -232,6 +233,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
+  public
   void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readInt(byteBuffer);

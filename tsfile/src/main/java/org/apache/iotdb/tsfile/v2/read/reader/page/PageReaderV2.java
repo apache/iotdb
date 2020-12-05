@@ -16,88 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.page;
-
-import java.util.List;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+package org.apache.iotdb.tsfile.v2.read.reader.page;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class PageReader implements IPageReader {
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-  private PageHeader pageHeader;
+public class PageReaderV2 extends PageReader {
 
-  protected TSDataType dataType;
-
-  /**
-   * decoder for value column
-   */
-  protected Decoder valueDecoder;
-
-  /**
-   * decoder for time column
-   */
-  protected Decoder timeDecoder;
-
-  /**
-   * time column in memory
-   */
-  protected ByteBuffer timeBuffer;
-
-  /**
-   * value column in memory
-   */
-  protected ByteBuffer valueBuffer;
-
-  protected Filter filter;
-
-  /**
-   * A list of deleted intervals.
-   */
-  private List<TimeRange> deleteIntervalList;
-
-  private int deleteCursor = 0;
-
-  public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
+  public PageReaderV2(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
-  public PageReader(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
+  public PageReaderV2(PageHeader pageHeader, ByteBuffer pageData, TSDataType dataType,
       Decoder valueDecoder, Decoder timeDecoder, Filter filter) {
-    this.dataType = dataType;
-    this.valueDecoder = valueDecoder;
-    this.timeDecoder = timeDecoder;
-    this.filter = filter;
-    this.pageHeader = pageHeader;
-    splitDataToTimeStampAndValue(pageData);
-  }
-
-  /**
-   * split pageContent into two stream: time and value
-   *
-   * @param pageData uncompressed bytes size of time column, time column, value column
-   */
-  private void splitDataToTimeStampAndValue(ByteBuffer pageData) {
-    int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(pageData);
-
-    timeBuffer = pageData.slice();
-    timeBuffer.limit(timeBufferLength);
-
-    valueBuffer = pageData.slice();
-    valueBuffer.position(timeBufferLength);
+    super(pageHeader, pageData, dataType, valueDecoder, timeDecoder, filter);
   }
 
   /**
@@ -119,7 +63,8 @@ public class PageReader implements IPageReader {
           }
           break;
         case INT32:
-          int anInt = valueDecoder.readInt(valueBuffer);
+          int anInt = (valueDecoder instanceof PlainDecoder) ?
+              valueBuffer.getInt() : valueDecoder.readInt(valueBuffer);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
             pageData.putInt(timestamp, anInt);
           }
@@ -143,7 +88,10 @@ public class PageReader implements IPageReader {
           }
           break;
         case TEXT:
-          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          int length = valueBuffer.getInt();
+          byte[] buf = new byte[length];
+          valueBuffer.get(buf, 0, buf.length);
+          Binary aBinary = new Binary(buf);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
             pageData.putBinary(timestamp, aBinary);
           }
@@ -153,41 +101,5 @@ public class PageReader implements IPageReader {
       }
     }
     return pageData.flip();
-  }
-
-  @Override
-  public Statistics getStatistics() {
-    return pageHeader.getStatistics();
-  }
-
-  @Override
-  public void setFilter(Filter filter) {
-    this.filter = filter;
-  }
-
-  public void setDeleteIntervalList(List<TimeRange> list) {
-    this.deleteIntervalList = list;
-  }
-
-  public List<TimeRange> getDeleteIntervalList() {
-    return deleteIntervalList;
-  }
-
-  @Override
-  public boolean isModified() {
-    return pageHeader.isModified();
-  }
-
-  protected boolean isDeleted(long timestamp) {
-    while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
-      if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
-        return true;
-      } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
-        deleteCursor++;
-      } else {
-        return false;
-      }
-    }
-    return false;
   }
 }

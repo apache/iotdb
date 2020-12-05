@@ -535,7 +535,7 @@ public class StorageGroupProcessor {
             // the process was interrupted before the merged files could be named
             continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
-            Collections.addAll(tsFiles,
+            Collections.addAll(upgradeFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
           }
         }
