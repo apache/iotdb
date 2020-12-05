@@ -173,6 +173,10 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
               Boolean.toString(conf.isRpcThriftCompressionEnable()))));
 
+      conf.setRpcAdvancedCompressionEnable(
+          Boolean.parseBoolean(properties.getProperty("rpc_advanced_compression_enable",
+              Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
+
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 

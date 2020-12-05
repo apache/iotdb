@@ -19,6 +19,9 @@
 
 -->
 
+__NOTICE: CURRENT IoTDB CLUSTER IS FOR TESTING NOW! 
+PLEASE BE DELIBERATE IF YOU RUN IT IN PRODUCT ENVIRONMENT.__
+
 # Cluster Setup
 For installation prerequisites, please refer to [Installation Prerequisites](../Get%20Started/QuickStart.md)
 ## Prerequisite
