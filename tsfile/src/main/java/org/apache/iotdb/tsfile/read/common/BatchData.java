@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
  */
 public class BatchData {
 
-  public static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
+  public static final int CAPACITY_THRESHOLD = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
   protected TSDataType dataType;
@@ -214,7 +214,7 @@ public class BatchData {
    */
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         booleanRet.add(new boolean[capacity]);
         writeCurListIndex++;
@@ -249,7 +249,7 @@ public class BatchData {
    */
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         intRet.add(new int[capacity]);
         writeCurListIndex++;
@@ -284,7 +284,7 @@ public class BatchData {
    */
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         longRet.add(new long[capacity]);
         writeCurListIndex++;
@@ -319,7 +319,7 @@ public class BatchData {
    */
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         floatRet.add(new float[capacity]);
         writeCurListIndex++;
@@ -354,7 +354,7 @@ public class BatchData {
    */
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         doubleRet.add(new double[capacity]);
         writeCurListIndex++;
@@ -388,7 +388,7 @@ public class BatchData {
    */
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         binaryRet.add(new Binary[capacity]);
         writeCurListIndex++;

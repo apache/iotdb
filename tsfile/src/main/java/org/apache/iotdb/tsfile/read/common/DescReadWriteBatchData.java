@@ -83,7 +83,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) booleanRet).addFirst(new boolean[capacity]);
         writeCurListIndex++;
@@ -120,7 +120,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) intRet).addFirst(new int[capacity]);
         writeCurListIndex++;
@@ -157,7 +157,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) longRet).addFirst(new long[capacity]);
         writeCurListIndex++;
@@ -194,7 +194,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) floatRet).addFirst(new float[capacity]);
         writeCurListIndex++;
@@ -231,7 +231,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) doubleRet).addFirst(new double[capacity]);
         writeCurListIndex++;
@@ -268,7 +268,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   @Override
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == -1) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         ((LinkedList) timeRet).addFirst(new long[capacity]);
         ((LinkedList) binaryRet).addFirst(new Binary[capacity]);
         writeCurListIndex++;
