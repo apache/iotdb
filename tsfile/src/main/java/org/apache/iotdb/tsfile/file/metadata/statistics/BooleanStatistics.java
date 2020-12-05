@@ -205,16 +205,14 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBool(inputStream);
     this.lastValue = ReadWriteIOUtils.readBool(inputStream);
     this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
   @Override
-  public
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);

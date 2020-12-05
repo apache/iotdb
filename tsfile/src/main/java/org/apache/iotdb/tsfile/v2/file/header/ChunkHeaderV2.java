@@ -87,11 +87,12 @@ public class ChunkHeaderV2 {
     String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     int dataSize = ReadWriteIOUtils.readInt(buffer);
     TSDataType dataType = TSDataTypeV2.deserialize(ReadWriteIOUtils.readShort(buffer));
-    int numOfPages = ReadWriteIOUtils.readInt(buffer);
+    // numOfPages 
+    ReadWriteIOUtils.readInt(buffer);
     CompressionType type = CompressionTypeV2.deserialize(ReadWriteIOUtils.readShort(buffer));
     TSEncoding encoding = TSEncodingV2.deserialize(ReadWriteIOUtils.readShort(buffer));
-    return new ChunkHeader(numOfPages <= 1 ? MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER : MetaMarker.CHUNK_HEADER,
-        measurementID, dataSize, chunkHeaderSize, dataType, type, encoding);
+    return new ChunkHeader(MetaMarker.CHUNK_HEADER, measurementID, dataSize, chunkHeaderSize, 
+        dataType, type, encoding);
   }
 
   public static int getSerializedSize(String measurementID) {

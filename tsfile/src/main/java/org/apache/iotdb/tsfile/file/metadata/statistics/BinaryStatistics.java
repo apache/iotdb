@@ -202,15 +202,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBinary(inputStream);
     this.lastValue = ReadWriteIOUtils.readBinary(inputStream);
   }
 
   @Override
-  public
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
   }
