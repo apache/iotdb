@@ -119,6 +119,8 @@ public class IoTDBAlignByDeviceIT {
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private static void insertData() throws ClassNotFoundException {
