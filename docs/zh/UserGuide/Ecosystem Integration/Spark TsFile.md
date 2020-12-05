@@ -35,7 +35,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
-| `2.4.3`       | `2.11.8`      | `1.8`        | `0.11.0` |
+| `2.4.3`       | `2.11.8`      | `1.8`        | `0.11.1` |
 
 > 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接：https://github.com/apache/iotdb/tree/master/tsfile
 
@@ -46,7 +46,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 在本地模式下使用TsFile-Spark-Connector启动Spark：
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.11.0-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.11.1-jar-with-dependencies.jar
 ```
 
 - \<spark-shell-path\>是您的spark-shell的真实路径。

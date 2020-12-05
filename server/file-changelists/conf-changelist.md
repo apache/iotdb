@@ -19,7 +19,7 @@
 
 -->
 
-# 0.10.0 -> 0.11.0
+# 0.10.x -> 0.11.x
 
 ## add：
 enable_mem_control=true

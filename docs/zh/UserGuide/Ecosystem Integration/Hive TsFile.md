@@ -49,7 +49,7 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.11.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.11.1`|
 
 > 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/iotdb/tree/master/tsfile>。
 
@@ -74,10 +74,10 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
 
 ```shell
-hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.11.0-SNAPSHOT-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.11.1-SNAPSHOT-jar-with-dependencies.jar;
 
-Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.11.0-SNAPSHOT-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.11.0-SNAPSHOT-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.11.1-SNAPSHOT-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.11.1-SNAPSHOT-jar-with-dependencies.jar]
 ```
 
 

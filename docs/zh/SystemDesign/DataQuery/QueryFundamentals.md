@@ -74,7 +74,7 @@ Modification文件: org.apache.iotdb.db.engine.modification.ModificationFile
 ### Modification 文件
 IoTDB 通过为包含数据的TsFile写入一个Modification文件来完成删除操作。
 
-在0.11.0版本的IoTDB中对Modification文件中的删除记录格式进行了修改，每一行的删除记录包含删除的开始时间和结束时间。
+在0.11.1版本的IoTDB中对Modification文件中的删除记录格式进行了修改，每一行的删除记录包含删除的开始时间和结束时间。
 对之前版本产生的Modification文件依旧可以照常处理，旧的Modification文件中只记录一个"deleteAt"时间戳，现在会被视为删除了一个时间戳从Long.MIN_VALUE开始到"deleteAt"结束的范围数据。
 
 ### TimeRange

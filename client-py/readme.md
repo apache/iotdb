@@ -27,7 +27,7 @@ are almost the same on Windows or Linux, but pay attention to the difference lik
 ## Prerequisites
 python3.7 or later is preferred.
 
-You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official
+You have to install Thrift (0.11.1 or later) to compile our thrift file into python code. Below is the official
 tutorial of installation, eventually, you should have a thrift executable.
 ```
 http://thrift.apache.org/docs/install/
