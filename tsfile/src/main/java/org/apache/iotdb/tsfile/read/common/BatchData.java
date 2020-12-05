@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiPredicate;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,9 +48,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
  * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
  * batchData.currentValue(); batchData.next(); }
  */
-public class BatchData implements Serializable {
+public class BatchData {
 
-  private static final long serialVersionUID = -4620310601188394839L;
   public static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
