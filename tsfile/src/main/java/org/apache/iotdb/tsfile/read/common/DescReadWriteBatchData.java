@@ -25,8 +25,9 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
  * This class is for reading and writing batch data in reverse. The data source is from mergeReader.
- * For example, the time sequence from mergeReader is 1000 -> 1, to keep the consistency that the
- * timestamp should be ascending. It will be written in reverse, i.e. the timeRet will be [1, 1000].
+ * For example,
+ * the time sequence from mergeReader is 1000 -> 1, to keep the consistency that the timestamp
+ * should be ascending. It will be written in reverse, i.e. the timeRet will be [1, 1000].
  * Then it can be handled the same as DescReadBatchData.
  */
 public class DescReadWriteBatchData extends DescReadBatchData {
@@ -360,8 +361,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   }
 
   /**
-   * Read: When put data, the writeIndex increases while the readIndex remains 0. For descending
-   * read, we need to read from writeIndex to writeCurArrayIndex
+   * Read: When put data, the writeIndex increases while the readIndex remains 0.
+   * For descending read, we need to read from writeIndex to writeCurArrayIndex
    */
   @Override
   public BatchData flip() {
