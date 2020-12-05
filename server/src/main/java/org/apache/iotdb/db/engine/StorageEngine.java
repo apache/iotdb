@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -61,6 +60,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -68,13 +68,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
@@ -188,9 +188,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+      futures.add(recoveryThreadPool.submit(() -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
@@ -207,7 +207,7 @@ public class StorageEngine implements IService {
         return null;
       }));
     }
-    for (Future future : futures) {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (ExecutionException e) {
@@ -839,5 +839,23 @@ public class StorageEngine implements IService {
    */
   public void mergeUnLock(List<StorageGroupProcessor> list) {
     list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
+  }
+
+  /**
+   * block insertion if the insertion is rejected by memory control
+   */
+  public static void blockInsertionIfReject() throws WriteProcessRejectException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 }

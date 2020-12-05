@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.11.0-SNAPSHOT|
+|0.12.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -79,11 +79,19 @@ tagClause
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 CompressorValue: UNCOMPRESSED | SNAPPY
+propertyValue: SDT | COMPDEV | COMPMIN | COMPMAX
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
 Eg: create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMIN=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMIN=2, COMPMAX=15
 Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
+Note: When propertyValue is SDT, it is required to set compression deviation COMPDEV, which is the maximum absolute difference between values.
+Note: For SDT, values withtin COMPDEV will be discarded.
+Note: For SDT, it is optional to set compression minimum COMPMIN, which is the minimum time difference between stored values for purpose of noise reduction.
+Note: For SDT, it is optional to set compression maximum COMPMAX, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
 * 删除时间序列语句

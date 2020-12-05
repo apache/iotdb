@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -676,6 +677,9 @@ public class StorageGroupProcessor {
     if (!isAlive(insertRowPlan.getTime())) {
       throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
+    if (enableMemControl) {
+      StorageEngine.blockInsertionIfReject();
+    }
     writeLock();
     try {
       // init map
@@ -696,7 +700,7 @@ public class StorageGroupProcessor {
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertRowPlan, isSequence);
+      insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
 
     } finally {
       writeUnlock();
@@ -710,6 +714,15 @@ public class StorageGroupProcessor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
+    if (enableMemControl) {
+      try {
+        StorageEngine.blockInsertionIfReject();
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchInsertionException(results);
+      }
+    }
     writeLock();
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
@@ -839,6 +852,9 @@ public class StorageGroupProcessor {
 
     try {
       tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
+    } catch (WriteProcessRejectException e) {
+      logger.warn("insert to TsFileProcessor rejected ", e);
+      return false;
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return false;
@@ -883,17 +899,14 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence)
+  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
       throws WriteProcessException {
-    long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
-
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
     if (tsFileProcessor == null) {
       return;
     }
 
-    // insert TsFileProcessor
     tsFileProcessor.insert(insertRowPlan);
 
     // try to update the latest time of the device of this tsRecord
@@ -2451,8 +2464,8 @@ public class StorageGroupProcessor {
       removePartitions(filter, tsFileManagement.getIterator(false));
 
     } finally {
-      insertLock.writeLock().unlock();
       tsFileManagement.writeUnlock();
+      insertLock.writeLock().unlock();
     }
   }
 

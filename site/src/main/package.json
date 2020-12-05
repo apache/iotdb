@@ -4,9 +4,9 @@
   "description": "Apache IoTDB Website",
   "main": "index.js",
   "scripts": {
-    "dev": "node --max_old_space_size=8000 ./node_modules/vuepress/cli.js dev src",
-    "build": "node --max_old_space_size=8000 ./node_modules/vuepress/cli.js build src",
-    "deploy": "node --max_old_space_size=8000 deploy.js"
+    "dev": "node --max_old_space_size=4000 ./node_modules/vuepress/cli.js dev src",
+    "build": "node --max_old_space_size=4000 ./node_modules/vuepress/cli.js build src",
+    "deploy": "node --max_old_space_size=4000 deploy.js"
   },
   "repository": {
     "type": "git",

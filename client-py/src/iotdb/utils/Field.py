@@ -16,8 +16,11 @@
 # under the License.
 #
 
-from IoTDBConstants import TSDataType
+# for package
+from .IoTDBConstants import TSDataType
 
+# for debug
+# from IoTDBConstants import TSDataType
 
 class Field(object):
 
