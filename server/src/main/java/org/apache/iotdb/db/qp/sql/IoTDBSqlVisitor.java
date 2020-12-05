@@ -922,7 +922,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   public Operator visitFillStatement(FillStatementContext ctx) {
     parseFillClause(ctx.fillClause(), queryOp);
     if(ctx.slimitClause() != null) {
-      queryOp = (QueryOperator) visit(ctx.slimitClause());
+      parseSlimitClause(ctx.slimitClause(), queryOp);
     }
     if(ctx.alignByDeviceClauseOrDisableAlign() != null) {
       if(ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
