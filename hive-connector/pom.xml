@@ -55,6 +55,10 @@
                     <artifactId>hive-storage-api</artifactId>
                 </exclusion>
                 <exclusion>
+                    <groupId>org.apache.zookeeper</groupId>
+                    <artifactId>zookeeper</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
                 </exclusion>
