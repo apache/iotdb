@@ -654,12 +654,12 @@ public class SeriesReader {
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
         }
+        cachedBatchData.flip();
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
         /*
          * if current overlapped page has valid data, return, otherwise read next overlapped page
          */
         if (hasCachedNextOverlappedPage) {
-          cachedBatchData.flip();
           return true;
           // condition: seqPage.endTime < mergeReader.currentTime
         } else if (mergeReader.hasNextTimeValuePair()) {
