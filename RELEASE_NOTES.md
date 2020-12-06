@@ -33,15 +33,15 @@
 * IOTDB-1035 Fix bug in getDeviceTimeseriesMetadata when querying non-exist device
 * IOTDB-1038 Fix flink set storage group bug
 * ISSUE-2179 fix insert partial tablet with binary NullPointer bug
-* Optimise mem control and add reject status code
+* add reject status code
 * Update compaction level list delete
-* Fix compaction add list bug when last level exceeds max file num
+* Fix query result is not correct
 * Fix import errors in Session.py and SessionExample.py
 * Fix modules can not be found when using pypi to pack client-py
 * Fix Count timeseries group by level bug
 * Fix desc batchdata count bug
 
-# Apache IoTDB 0.11.1
+# Apache IoTDB 0.11.0
 
 ## New Features
 
