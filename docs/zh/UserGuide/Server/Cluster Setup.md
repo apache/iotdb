@@ -68,8 +68,8 @@ or
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
 ```
 
-注：分布式版使用了707标识符来指示客户端做相应的元数据缓存以便之后能够直接将数据发送给对应数据组的 leader。因此建议在当前分支重新 `mvn install -pl jdbc -am -Dmaven.test.skip=true` 和
-`mvn install -pl session -am -Dmaven.test.skip=true`以更新最新的客户端。
+注：分布式版使用了707标识符来指示客户端做相应的元数据缓存以便之后能够直接将数据发送给对应数据组的 leader。因此建议在当前分支重新 `mvn package -pl jdbc -am -DskipTests` 和
+`mvn package -pl session -am -DskipTests`以更新最新的客户端。
 
 ## 被覆盖的单机版选项
 

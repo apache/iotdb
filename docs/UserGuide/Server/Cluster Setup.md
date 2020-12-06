@@ -74,7 +74,7 @@ When both exist, the specified configuration item will overwrite the configurati
 ```
 
 Note: The distributed version uses the 707 identifier to instruct the client to do the appropriate metadata cache so that the data can then be sent directly to the leader of the corresponding data group later.
-Therefore, it is recommended to re-install `mvn install -pl jdbc -am -Dmaven.test.skip=true` and `mvn install -pl jdbc -am -Dmaven.test.skip=true` on current branch to update the latest client.
+Therefore, it is recommended to re-install `mvn package -pl jdbc -am -DskipTests` and `mvn package -pl session -am -DskipTests` on current branch to update the latest client.
 
 ## OverWrite the configurations of Stand-alone node
 
