@@ -82,11 +82,9 @@ public abstract class TVList {
   public static long tvListArrayMemSize(TSDataType type) {
     long size = 0;
     // time size
-    size +=
-        PrimitiveArrayManager.ARRAY_SIZE * 8;
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // value size
-    size +=
-        PrimitiveArrayManager.ARRAY_SIZE * type.getDataTypeSize();
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     return size;
   }
 
