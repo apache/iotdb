@@ -93,8 +93,6 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private final VirtualPartitioner partitioner;
-
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -107,6 +105,7 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static boolean enablePartition =
       IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  private final VirtualPartitioner partitioner;
   private final Logger logger;
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -147,10 +146,9 @@ public class StorageEngine implements IService {
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
 
-    if(config.isEnableVirtualPartition()){
+    if (config.isEnableVirtualPartition()) {
       partitioner = HashVirtualPartitioner.getInstance();
-    }
-    else{
+    } else {
       partitioner = null;
     }
 
@@ -208,6 +206,25 @@ public class StorageEngine implements IService {
     StorageEngine.enablePartition = enablePartition;
   }
 
+  /**
+   * block insertion if the insertion is rejected by memory control
+   */
+  public static void blockInsertionIfReject() throws WriteProcessException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
   public boolean isAllSgReady() {
     return isAllSgReady.get();
   }
@@ -251,6 +268,7 @@ public class StorageEngine implements IService {
 
   /**
    * recover logic storage group processor
+   *
    * @param futures recover future task
    */
   private void recoverStorageGroupProcessor(List<Future<Void>> futures) {
@@ -278,6 +296,7 @@ public class StorageEngine implements IService {
 
   /**
    * recover virtual storage group processor
+   *
    * @param futures recover future task
    */
   private void recoverVirtualStorageGroupProcessor(List<Future<Void>> futures) {
@@ -745,6 +764,10 @@ public class StorageEngine implements IService {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws StorageEngineException {
+    if (config.isEnableVirtualPartition()) {
+      throw new UnsupportedOperationException(
+          "SET TTL is forbidden when enable virtual storage group partition");
+    }
     StorageGroupProcessor storageGroupProcessor = getProcessorDirectly(storageGroup);
     storageGroupProcessor.setDataTTL(dataTTL);
   }
@@ -932,24 +955,6 @@ public class StorageEngine implements IService {
 
     private InstanceHolder() {
       // forbidding instantiation
-    }
-  }
-
-  /**
-   * block insertion if the insertion is rejected by memory control
-   */
-  public static void blockInsertionIfReject() throws WriteProcessException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
     }
   }
 }
