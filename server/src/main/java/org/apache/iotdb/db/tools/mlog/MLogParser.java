@@ -47,7 +47,7 @@ import java.io.IOException;
  */
 public class MLogParser {
 
-  private static final Logger logger = LoggerFactory.getLogger(MLogReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(MLogParser.class);
   private static final String MLOG_CLI_PREFIX = "MlogParser";
 
   private static final String FILE_ARGS = "f";
@@ -119,7 +119,7 @@ public class MLogParser {
     }
   }
 
-  public static void parseBasicParams(CommandLine commandLine) throws Exception {
+  public static void parseBasicParams(CommandLine commandLine) throws ParseException {
     inputFile = checkRequiredArg(FILE_ARGS, FILE_NAME, commandLine);
     outputFile = commandLine.getOptionValue(OUT_ARGS);
 

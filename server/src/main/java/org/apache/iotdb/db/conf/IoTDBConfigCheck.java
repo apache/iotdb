@@ -299,6 +299,7 @@ public class IoTDBConfigCheck {
   /**
    * ensure all TsFiles are closed in 0.10 when starting 0.11
    */
+  @SuppressWarnings("unused")
   private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
       && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
