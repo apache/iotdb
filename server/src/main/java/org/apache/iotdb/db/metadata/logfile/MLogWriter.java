@@ -64,6 +64,7 @@ public class MLogWriter implements AutoCloseable {
   private File logFile;
   private LogWriter logWriter;
   private int logNum;
+  private static final String DELETE_FAILED_FORMAT = "Deleting %s failed with exception %s";
   private ByteBuffer mlogBuffer = ByteBuffer.allocate(
     IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
 
@@ -226,6 +227,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void upgradeTxtToBin(String schemaDir, String oldFileName,
                                      String newFileName, boolean isSnapshot) throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + newFileName);
@@ -263,7 +265,7 @@ public class MLogWriter implements AutoCloseable {
       try {
         Files.delete(Paths.get(tmpLogFile.toURI()));
       } catch (IOException e) {
-        throw new IOException("Deleting " + tmpLogFile + "failed with exception " + e.getMessage());
+        throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpLogFile, e.getMessage()));
       }
     }
 
@@ -273,7 +275,7 @@ public class MLogWriter implements AutoCloseable {
       try {
         Files.delete(Paths.get(oldLogFile.toURI()));
       } catch (IOException e) {
-        throw new IOException("Deleting " + oldLogFile + "failed with exception " + e.getMessage());
+        throw new IOException(String.format(DELETE_FAILED_FORMAT, oldLogFile, e.getMessage()));
       }
     }
 
@@ -281,7 +283,7 @@ public class MLogWriter implements AutoCloseable {
       try {
         Files.delete(Paths.get(tmpOldLogFile.toURI()));
       } catch (IOException e) {
-        throw new IOException("Deleting " + tmpOldLogFile + "failed with exception " + e.getMessage());
+        throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpOldLogFile, e.getMessage()));
       }
     }
 

@@ -37,6 +37,8 @@ import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -45,6 +47,7 @@ import java.io.IOException;
  */
 public class MLogParser {
 
+  private static final Logger logger = LoggerFactory.getLogger(MLogReader.class);
   private static final String MLOG_CLI_PREFIX = "MlogParser";
 
   private static final String FILE_ARGS = "f";
@@ -92,14 +95,14 @@ public class MLogParser {
     CommandLineParser parser = new DefaultParser();
 
     if (args == null || args.length == 0) {
-      System.out.println("Too few params input, please check the following hint.");
+      logger.warn("Too few params input, please check the following hint.");
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
     try {
       commandLine = parser.parse(options, args);
     } catch (ParseException e) {
-      System.out.println("Parse error: " + e.getMessage());
+      logger.error("Parse error: {}", e.getMessage());
       hf.printHelp(MLOG_CLI_PREFIX, options, true);
       return;
     }
@@ -112,7 +115,7 @@ public class MLogParser {
       parseBasicParams(commandLine);
       parseFromFile(inputFile, outputFile);
     } catch (Exception e) {
-      System.out.println("Encounter an error, because: " + e.getMessage());
+      logger.error("Encounter an error, because: {} ", e.getMessage());
     }
   }
 
@@ -130,8 +133,8 @@ public class MLogParser {
     String str = commandLine.getOptionValue(arg);
     if (str == null) {
       String msg = String.format("Required values for option '%s' not provided", name);
-      System.out.println(msg);
-      System.out.println("Use -help for more information");
+      logger.info(msg);
+      logger.info("Use -help for more information");
       throw new ParseException(msg);
     }
     return str;
@@ -183,7 +186,7 @@ public class MLogParser {
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
             break;
           default:
-            System.out.println("unknown plan " + plan.toString());
+            logger.warn("unknown plan {}", plan);
         }
       }
     }
