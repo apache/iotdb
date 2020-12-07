@@ -272,9 +272,6 @@ public class TsFileResource {
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
       ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
@@ -555,14 +552,14 @@ public class TsFileResource {
     try {
       Files.deleteIfExists(file.toPath());
     } catch (IOException e) {
-      logger.warn("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
     }
     removeResourceFile();
     try {
       Files.deleteIfExists(
           fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).toPath());
     } catch (IOException e) {
-      logger.warn("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
     }
   }
 
@@ -570,7 +567,7 @@ public class TsFileResource {
     try {
       Files.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).toPath());
     } catch (IOException e) {
-      logger.warn("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
     }
   }
 

@@ -216,7 +216,8 @@ public class IoTDBStatement implements Statement {
   /**
    * There are two kinds of sql here: (1) query sql (2) update sql.
    * <p>
-   * (1) return IoTDBJDBCResultSet or IoTDBNonAlignJDBCResultSet (2) simply get executed
+   * (1) return IoTDBJDBCResultSet or IoTDBNonAlignJDBCResultSet
+   * (2) simply get executed
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;

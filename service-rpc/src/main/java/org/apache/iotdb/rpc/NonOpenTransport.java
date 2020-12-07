@@ -26,16 +26,18 @@ import org.apache.thrift.transport.TTransport;
  */
 public abstract class NonOpenTransport extends TTransport {
 
+  protected boolean isOpen;
+
   @Override
   public void close() {
-    // do nothing
+    isOpen = false;
   }
 
   @Override
-  public boolean isOpen() { return true; }
+  public boolean isOpen() { return isOpen; }
 
   @Override
   public void open() {
-    // do nothing
+    isOpen = true;
   }
 }
