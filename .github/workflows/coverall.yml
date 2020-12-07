@@ -1,0 +1,27 @@
+name: Coverall
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+
+jobs:
+  coveralls:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
