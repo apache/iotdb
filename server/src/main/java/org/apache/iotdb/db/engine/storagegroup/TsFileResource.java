@@ -272,9 +272,6 @@ public class TsFileResource {
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
       ReadWriteIOUtils.write(minPlanIndex, outputStream);
 
-      ReadWriteIOUtils.write(maxPlanIndex, outputStream);
-      ReadWriteIOUtils.write(minPlanIndex, outputStream);
-
       if (modFile != null && modFile.exists()) {
         String modFileName = new File(modFile.getFilePath()).getName();
         ReadWriteIOUtils.write(modFileName, outputStream);
@@ -554,27 +551,15 @@ public class TsFileResource {
   /**
    * Remove the data file, its resource file, and its modification file physically.
    */
-  public void remove() {
-    try {
-      Files.deleteIfExists(file.toPath());
-    } catch (IOException e) {
-      logger.warn("TsFile {} cannot be deleted: {}", file, e.getMessage());
-    }
+  public void remove() throws IOException {
+    Files.deleteIfExists(file.toPath());
     removeResourceFile();
-    try {
-      Files.deleteIfExists(
-          fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).toPath());
-    } catch (IOException e) {
-      logger.warn("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
-    }
+    Files.deleteIfExists(
+        fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).toPath());
   }
 
-  public void removeResourceFile() {
-    try {
-      Files.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).toPath());
-    } catch (IOException e) {
-      logger.warn("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
-    }
+  public void removeResourceFile() throws IOException {
+    Files.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).toPath());
   }
 
   void moveTo(File targetDir) {

@@ -569,8 +569,6 @@ public class StorageGroupProcessor {
         continue;
       }
 
-
-
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
@@ -866,7 +864,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
+  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence,
+      long timePartitionId)
       throws WriteProcessException {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
@@ -921,7 +920,7 @@ public class StorageGroupProcessor {
   public void asyncFlushMemTableInTsFileProcessor(TsFileProcessor tsFileProcessor) {
     writeLock();
     try {
-      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) && 
+      if (!closingSequenceTsFileProcessor.contains(tsFileProcessor) &&
           !closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
@@ -1096,7 +1095,7 @@ public class StorageGroupProcessor {
   public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     //for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     //for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) || 
+    if (closingSequenceTsFileProcessor.contains(tsFileProcessor) ||
         closingUnSequenceTsFileProcessor.contains(tsFileProcessor)) {
       return;
     }
@@ -2053,11 +2052,11 @@ public class StorageGroupProcessor {
    * close it before remove the related resource files. maybe time-consuming for closing a tsfile.
    */
   private void removeFullyOverlapFile(TsFileResource tsFileResource,
-      Iterator<TsFileResource> iterator
-      , boolean isSeq) {
-    logger.info("Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
-    if (!tsFileResource.isClosed()) {
-      try {
+      Iterator<TsFileResource> iterator, boolean isSeq) {
+    logger
+        .info("Removing a covered file {}, closed: {}", tsFileResource, tsFileResource.isClosed());
+    try {
+      if (!tsFileResource.isClosed()) {
         // also remove the TsFileProcessor if the overlapped file is not closed
         long timePartition = tsFileResource.getTimePartition();
         Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
@@ -2068,13 +2067,14 @@ public class StorageGroupProcessor {
           tsFileProcessor.syncClose();
           fileProcessorMap.remove(timePartition);
         }
-      } catch (Exception e) {
-        logger.error("Cannot close {}", tsFileResource, e);
       }
+    } catch (Exception e) {
+      logger.error("Cannot close {}", tsFileResource, e);
+    } finally {
+      tsFileManagement.remove(tsFileResource, isSeq);
+      iterator.remove();
+      tsFileResource.remove();
     }
-    tsFileManagement.remove(tsFileResource, isSeq);
-    iterator.remove();
-    tsFileResource.remove();
   }
 
   /**
@@ -2395,10 +2395,11 @@ public class StorageGroupProcessor {
    */
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
     // examine working processor first as they have the largest plan index
-    return isFileAlreadyExistInWorking(tsFileResource, partitionNum, getWorkSequenceTsFileProcessors()) ||
-        isFileAlreadyExistInWorking(tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors()) ||
-        isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet()) ||
-        isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
+    return
+        isFileAlreadyExistInWorking(tsFileResource, partitionNum,getWorkSequenceTsFileProcessors()) ||
+            isFileAlreadyExistInWorking(tsFileResource, partitionNum,getWorkUnsequenceTsFileProcessors()) ||
+            isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet()) ||
+            isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
 
   private boolean isFileAlreadyExistInClosed(TsFileResource tsFileResource, long partitionNum,

@@ -96,7 +96,7 @@ public class WriteLogNodeTest {
     }
 
     InsertTabletPlan tabletPlan = new InsertTabletPlan(new PartialPath(identifier),
-      new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
+        new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
@@ -174,7 +174,8 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
+        new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
@@ -184,8 +185,14 @@ public class WriteLogNodeTest {
 
     logNode.write(deletePlan);
     System.out.println("Waiting for wal file to be created");
+    long startTime = System.currentTimeMillis();
+    long nextToCalculate = System.currentTimeMillis();
     while (!walFile.exists()) {
-
+      if (System.currentTimeMillis() - nextToCalculate > 1000) {
+        System.out.println("Waiting for wal to be created, cost time="
+            + (System.currentTimeMillis() - startTime) / 1000 + "s");
+        nextToCalculate = System.currentTimeMillis();
+      }
     }
     assertTrue(walFile.exists());
 
@@ -204,7 +211,8 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
+        new PartialPath("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -214,8 +222,14 @@ public class WriteLogNodeTest {
     File walFile = new File(
         config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     System.out.println("Waiting for wal to be created");
+    long startTime = System.currentTimeMillis();
+    long nextToCalculate = System.currentTimeMillis();
     while (!walFile.exists()) {
-
+      if (System.currentTimeMillis() - nextToCalculate > 1000) {
+        System.out.println("Waiting for wal to be created, cost time="
+            + (System.currentTimeMillis() - startTime) / 1000 + "s");
+        nextToCalculate = System.currentTimeMillis();
+      }
     }
 
     assertTrue(new File(logNode.getLogDirectory()).exists());
@@ -228,7 +242,8 @@ public class WriteLogNodeTest {
     // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice.oversize"), 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice.oversize"),
+        100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});

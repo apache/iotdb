@@ -704,7 +704,7 @@ public class TsFileProcessor {
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         if (writer == null) {
-          logger.info("{}: {} is closed during flush, abandon flush task",
+          logger.warn("{}: {} is closed during flush, abandon flush task",
               storageGroupName, tsFileResource.getTsFile().getName());
           synchronized (flushingMemTables) {
             flushingMemTables.notifyAll();
