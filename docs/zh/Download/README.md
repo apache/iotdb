@@ -28,37 +28,30 @@
 	    <th>release notes</th>  
 	</tr>
 		<tr>
+              <td>0.11.0</td>
+              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip">可执行程序</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip.sha512">SHA512</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip.asc">ASC</a></td>
+              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip">源代码</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip.sha512">SHA512</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip.asc">ASC</a></td>
+              <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.0/RELEASE_NOTES.md">release notes</a></td>
+        </tr>
+		<tr>
             <td>0.10.1</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip">Release</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip">可执行程序</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip.asc">ASC</a></td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip">Sources</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip">源代码</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-source-release.zip.asc">ASC</a></td>
             <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.10.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
-	<tr>
-        <td>0.9.3</td>
-        <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-bin.zip">Release</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-bin.zip.sha512">SHA512</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-bin.zip.asc">ASC</a></td>
-        <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-source-release.zip">Sources</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-source-release.zip.sha512">SHA512</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.9.3-incubating/apache-iotdb-0.9.3-incubating-source-release.zip.asc">ASC</a></td>
-        <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.9.3/RELEASE_NOTES.md">release notes</a></td>
-  </tr>
-	<tr>
-        <td>0.8.2</td>
-        <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-bin.zip">Release</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-bin.zip.sha512">SHA512</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-bin.zip.asc">ASC</a></td>
-	      <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-source-release.zip">Sources</a></td>
-        <td><a href="https://downloads.apache.org/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-source-release.zip.sha512">SHA512</a></td>
-	      <td><a href="https://downloads.apache.org/iotdb/0.8.2-incubating/apache-iotdb-0.8.2-incubating-source-release.zip.asc">ASC</a></td>
-	      <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.8.2/RELEASE_NOTES.md">release notes</a></td>
-	</tr>
 
 </table>
+
+历史版本下载: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
+
 
 **<font color=red>升级注意事项</font>**:
 
@@ -66,6 +59,16 @@
   * 同一个大版本下的多个小版本是互相兼容的。
   * 只需要下载新的小版本， 然后修改其配置文件，使其与原有版本的设置一致。
   * 停掉旧版本进程，启动新版本即可。
+
+- 如何从v0.10.x 升级到 v0.11.x?
+  * 0.10 与0.11的数据文件格式兼容，但写前日志等格式不兼容，因此需要进行升级（但速度很快）：
+  * 停掉0.10的新数据写入。
+  * 用CLI调用`flush`，确保关闭所有的TsFile文件.
+  * 我们推荐提前备份写前日志和mlog文件，以备回滚。
+  * 下载最新版，解压并修改配置文件。将各数据目录都指向备份的或者v0.10原来使用的数据目录。 
+  * 停止v0.10的实例，启动v0.11的实例。IoTDB将自动升级不兼容的文件格式。
+  * __注意：0.11的配置文件进行了较大改动，因此不要直接将0.10的配置文件用于0.11__
+
 
 - 如何从v0.9.x 升级到 v0.10.x? 
   * 停掉0.9的新数据写入。

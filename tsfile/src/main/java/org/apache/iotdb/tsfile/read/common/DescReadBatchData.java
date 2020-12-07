@@ -21,9 +21,19 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class DescBatchData extends BatchData {
+/**
+ * This class is just for reading batch data reversely. The data source is from page reader.
+ * For example,
+ * the timeRet from pageReader is [1, 1000],
+ * It will be written in ascending sequence, but the sequence of reading will be 1000 -> 1.
+ */
+public class DescReadBatchData extends BatchData {
 
-  public DescBatchData(TSDataType dataType) {
+  public DescReadBatchData() {
+
+  }
+
+  public DescReadBatchData(TSDataType dataType) {
     super(dataType);
   }
 

@@ -16,29 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception;
 
-package org.apache.iotdb.tsfile.read.common;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+public class WriteProcessRejectException extends WriteProcessException {
 
-public class BatchDataFactory {
+  private static final long serialVersionUID = -4217324287547595610L;
 
-  private BatchDataFactory() {
-    throw new IllegalStateException("Factory class");
+  public WriteProcessRejectException(String message) {
+    super(message, TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode());
   }
 
-  public static BatchData createBatchData(TSDataType dataType, boolean ascending, boolean isWriteDesc) {
-    if (ascending) {
-      return new BatchData(dataType);
-    } else if (isWriteDesc) {
-      return new DescReadWriteBatchData(dataType);
-    } else {
-      return new DescReadBatchData(dataType);
-    }
-  }
-
-  public static BatchData createBatchData(TSDataType dataType) {
-    return new BatchData(dataType);
+  public WriteProcessRejectException(String message, int errorCode) {
+    super(message, errorCode);
   }
 
 }
