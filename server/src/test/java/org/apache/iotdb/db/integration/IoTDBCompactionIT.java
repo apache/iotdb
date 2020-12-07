@@ -25,6 +25,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Random;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -95,5 +96,59 @@ public class IoTDBCompactionIT {
       assertEquals(32, cnt);
     }
   }
+
+  @Test
+  public void testAppendMergeAfterDeserializeMerge() throws SQLException {
+    boolean prevEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      try {
+        statement.execute("CREATE TIMESERIES root.compactionTest.s1 WITH DATATYPE=INT64");
+      } catch (SQLException e) {
+        // ignore
+      }
+
+      long pageSize=100;
+      long timestamp = 1;
+
+      for (long row = 0; row < 10000; row++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+        if (row % pageSize == 0) {
+          statement.execute("FLUSH");
+        }
+        timestamp++;
+      }
+
+      timestamp = 8322;
+
+      for (long row = 0; row < 2400; row++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1) VALUES (%d,%d)", timestamp, 1));
+        if (row % pageSize == 0) {
+          statement.execute("FLUSH");
+        }
+        timestamp++;
+      }
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SELECT COUNT(s1) FROM root.compactionTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          System.out.println(resultSet.getLong(1));
+          assertEquals(10721, resultSet.getLong(1));
+          cnt++;
+        }
+      }
+      assertEquals(1, cnt);
+    }
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
+  }
+
 
 }

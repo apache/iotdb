@@ -108,7 +108,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
-    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);

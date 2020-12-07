@@ -105,6 +105,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <maven.assembly.version>3.1.0</maven.assembly.version>
+        <scala.library.version>2.11</scala.library.version>
         <scala.version>2.11.12</scala.version>
         <hadoop2.version>2.7.3</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>

@@ -1250,10 +1250,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     List<TSStatus> statusList = new ArrayList<>();
-    InsertRowPlan plan = new InsertRowPlan();
+
     boolean isAllSuccessful = true;
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
+        InsertRowPlan plan = new InsertRowPlan();
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
