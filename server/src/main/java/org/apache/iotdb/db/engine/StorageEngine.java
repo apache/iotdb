@@ -62,6 +62,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -206,24 +207,6 @@ public class StorageEngine implements IService {
     StorageEngine.enablePartition = enablePartition;
   }
 
-  /**
-   * block insertion if the insertion is rejected by memory control
-   */
-  public static void blockInsertionIfReject() throws WriteProcessException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      try {
-        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessException(
-              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-                  "ms");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
 
   public boolean isAllSgReady() {
     return isAllSgReady.get();
@@ -955,6 +938,24 @@ public class StorageEngine implements IService {
 
     private InstanceHolder() {
       // forbidding instantiation
+    }
+  }
+
+  /**
+   * block insertion if the insertion is rejected by memory control
+   */
+  public static void blockInsertionIfReject() throws WriteProcessRejectException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 }
