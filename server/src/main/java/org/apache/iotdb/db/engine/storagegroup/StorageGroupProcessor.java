@@ -1699,27 +1699,32 @@ public class StorageGroupProcessor {
               .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
               .put(entry.getKey(), entry.getValue());
         }
+        if (processor.isUpdateLatestTime()) {
+          updateLatestTime(processor, curPartitionDeviceLatestTime);
+        }
       } else {
-        if (processor.isSequence()) {
-          curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
-              .get(processor.getTimeRangeId());
-        }
-        for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-          partitionLatestFlushedTimeForEachDevice
-              .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
-              .put(entry.getKey(), entry.getValue());
-          updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(processor.getTimeRangeId(),
-              entry.getKey(), entry.getValue());
-          if (globalLatestFlushedTimeForEachDevice
-              .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
-            globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-          }
-        }
+        curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
+            .get(processor.getTimeRangeId());
+        updateLatestTime(processor, curPartitionDeviceLatestTime);
       }
     } finally {
       flushUpdateUnLock();
     }
     return true;
+  }
+
+  private void updateLatestTime(TsFileProcessor processor, Map<String, Long> curPartitionDeviceLatestTime){
+    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+      partitionLatestFlushedTimeForEachDevice
+          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
+          .put(entry.getKey(), entry.getValue());
+      updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(processor.getTimeRangeId(),
+          entry.getKey(), entry.getValue());
+      if (globalLatestFlushedTimeForEachDevice
+          .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
+        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
 

@@ -216,9 +216,9 @@ public class IoTDBConfig {
   private int estimatedSeriesSize = 300;
 
   /**
-   * Whether to enable sliding memory table
+   * Whether to enable sliding memory table, to reduce the CI time, the default value is false
    */
-  private boolean enableSlidingMemTable = true;
+  private boolean enableSlidingMemTable = false;
 
   /**
    * Save the flushing memtable in the memory during the period, can help reduce the unseq ratio, Unit: millis.
