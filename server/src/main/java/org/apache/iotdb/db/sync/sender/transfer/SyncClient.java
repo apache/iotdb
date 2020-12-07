@@ -75,6 +75,7 @@ import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -275,7 +276,13 @@ public class SyncClient implements ISyncClient {
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     transport = RpcTransportFactory.INSTANCE
         .getTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
-    TProtocol protocol = new TBinaryProtocol(transport);
+    TProtocol protocol = null;
+    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      protocol = new TBinaryProtocol(transport);
+    } else {
+      protocol = new TCompactProtocol(transport);
+    }
+
     serviceClient = new SyncService.Client(protocol);
     try {
       if (!transport.isOpen()) {
