@@ -21,8 +21,8 @@ package org.apache.iotdb.tsfile.v2.file.metadata;
 import java.nio.ByteBuffer;
 
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v2.file.metadata.enums.TSDataTypeV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.statistics.StatisticsV2;
 
 public class TimeseriesMetadataV2 {
@@ -33,7 +33,7 @@ public class TimeseriesMetadataV2 {
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readString(buffer));
-    timeseriesMetaData.setTSDataType(TSDataTypeV2.deserialize(ReadWriteIOUtils.readShort(buffer)));
+    timeseriesMetaData.setTSDataType(TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(buffer)));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(ReadWriteIOUtils.readInt(buffer));
     timeseriesMetaData.setStatistics(StatisticsV2.deserialize(buffer, timeseriesMetaData.getTSDataType()));

@@ -30,9 +30,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v2.file.metadata.enums.CompressionTypeV2;
-import org.apache.iotdb.tsfile.v2.file.metadata.enums.TSDataTypeV2;
-import org.apache.iotdb.tsfile.v2.file.metadata.enums.TSEncodingV2;
 
 public class ChunkHeaderV2 {
 
@@ -55,10 +52,10 @@ public class ChunkHeaderV2 {
 
     String measurementID = ReadWriteIOUtils.readString(inputStream);
     int dataSize = ReadWriteIOUtils.readInt(inputStream);
-    TSDataType dataType = TSDataTypeV2.deserialize(ReadWriteIOUtils.readShort(inputStream));
+    TSDataType dataType = TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
-    CompressionType type = CompressionTypeV2.deserialize(ReadWriteIOUtils.readShort(inputStream));
-    TSEncoding encoding = TSEncodingV2.deserialize(ReadWriteIOUtils.readShort(inputStream));
+    CompressionType type = CompressionType.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
+    TSEncoding encoding = TSEncoding.deserialize((byte) ReadWriteIOUtils.readShort(inputStream));
     return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
 
@@ -89,11 +86,11 @@ public class ChunkHeaderV2 {
     int size = buffer.getInt();
     String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     int dataSize = ReadWriteIOUtils.readInt(buffer);
-    TSDataType dataType = TSDataTypeV2.deserialize(ReadWriteIOUtils.readShort(buffer));
+    TSDataType dataType = TSDataType.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
     // numOfPages 
     ReadWriteIOUtils.readInt(buffer);
-    CompressionType type = CompressionTypeV2.deserialize(ReadWriteIOUtils.readShort(buffer));
-    TSEncoding encoding = TSEncodingV2.deserialize(ReadWriteIOUtils.readShort(buffer));
+    CompressionType type = CompressionType.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
+    TSEncoding encoding = TSEncoding.deserialize((byte) ReadWriteIOUtils.readShort(buffer));
     return new ChunkHeader(MetaMarker.CHUNK_HEADER, measurementID, dataSize, chunkHeaderSize, 
         dataType, type, encoding);
   }
