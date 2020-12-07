@@ -301,8 +301,7 @@ public class RestorableTsFileIOWriterTest {
     writer = new TsFileWriter(rWriter);
     writer.close();
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_NAME);
-    List<ChunkMetadata> chunkMetadataList;
-    chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
+    List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s1"));
     assertNotNull(chunkMetadataList);
     chunkMetadataList = reader.getChunkMetadataList(new Path("d1", "s2"));
     assertNotNull(chunkMetadataList);

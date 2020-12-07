@@ -101,9 +101,9 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 
 Recommended Use Intellij idea. ```mvn clean package -DskipTests``` After putting ```antlr/target/generated-sources/antlr4``` and ```thrift/target/generated-sources/thrift``` marked as ```Source Root```。 
 
-* Server main function：```server/src/main/java/org/apache/iotdb/db/service/IoTDB```，Can be started in debug mode
-* Client：```client/src/main/java/org/apache/iotdb/client/```，Use Clinet for linux and WinClint for windows, you can start directly, need the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
-* Server rpc implementation (mainly used for client and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
+* Server main function：```server/src/main/java/org/apache/iotdb/db/service/IoTDB``, Can be started in debug mode
+* Cli：```cli/src/main/java/org/apache/iotdb/cli/```，Use Cli for linux and WinCli for windows, you can start directly with the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
+* Server rpc implementation (mainly used for cli and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
   * all jdbc statements：executeStatement(TSExecuteStatementReq req)
   * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	
   * native Write interface：insertRecord(TSInsertRecordReq req)

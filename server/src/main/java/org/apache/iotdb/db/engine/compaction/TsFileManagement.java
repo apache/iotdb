@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -380,4 +382,23 @@ public abstract class TsFileManagement {
     logger.info("{} a merge task ends", storageGroupName);
   }
 
+  // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
+  public static int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
+        .split(FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
+        .split(FILE_NAME_SEPARATOR);
+    long ver1 = Long.parseLong(items1[0]);
+    long ver2 = Long.parseLong(items2[0]);
+    int cmp = Long.compare(ver1, ver2);
+    if (cmp == 0) {
+      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      if (cmpVersion == 0) {
+        return Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
+      }
+      return cmpVersion;
+    } else {
+      return cmp;
+    }
+  }
 }

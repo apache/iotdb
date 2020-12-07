@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-python-api</artifactId>
@@ -57,7 +57,7 @@
                         </goals>
                         <configuration>
                             <encoding>utf-8</encoding>
-                            <outputDirectory>${project.build.directory}/pypi/iotdb_session</outputDirectory>
+                            <outputDirectory>${project.build.directory}/pypi/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/../thrift/target/generated-sources-python</directory>
@@ -94,7 +94,7 @@
                         </goals>
                         <configuration>
                             <encoding>utf-8</encoding>
-                            <outputDirectory>${project.build.directory}/pypi/iotdb_session</outputDirectory>
+                            <outputDirectory>${project.build.directory}/pypi/</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>${basedir}/src/</directory>

@@ -72,14 +72,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
     - [Stop IoTDB](#stop-iotdb)
   - [Only build server](#only-build-server)
   - [Only build cli](#only-build-cli)
-  - [Usage of import-csv.sh](#usage-of-import-csvsh)
-    - [Create metadata](#create-metadata)
-    - [An example of import csv file](#an-example-of-import-csv-file)
-    - [Run import shell](#run-import-shell)
-    - [Error data file](#error-data-file)
-  - [Usage of export-csv.sh](#usage-of-export-csvsh)
-    - [Run export shell](#run-export-shell)
-    - [Input query](#input-query)
+  - [Usage of CSV Import and Export Tool](#usage-of-csv-import-and-export-tool)
 
 <!-- /TOC -->
 
@@ -333,59 +326,9 @@ Under the root path of iotdb:
 
 After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
-## Usage of import-csv.sh
+# Usage of CSV Import and Export Tool
 
-### Create metadata
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
-### An example of import csv file
-
-```
-Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,'hello',200,300,400
-2,500,'world',600,700,800
-3,900,'IoTDB',1000,1100,1200
-```
-
-### Run import shell
-```
-# Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-
-# Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-```
-
-### Error data file
-
-`csvInsertError.error`
-
-## Usage of export-csv.sh
-
-### Run export shell
-```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-```
-
-### Input query
-
-```
-select * from root.fit.d1
-```
-
+see [Usage of CSV Import and Export Tool](https://iotdb.apache.org/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

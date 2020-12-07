@@ -162,14 +162,14 @@ public class IoTDBConfig {
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
   /**
-   * When inserting rejected, waiting this time to check system again
+   * When inserting rejected, waiting period to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 0;
+  private int checkPeriodWhenInsertBlocked = 50;
 
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
   /**
    * Is the write ahead log enable.
    */
@@ -398,23 +398,14 @@ public class IoTDBConfig {
   private boolean lastCacheEnable = true;
 
   /**
-   * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
-   * value is 5s.
-   */
-  private int backLoopPeriodSec = 5;
-  /**
    * Set true to enable statistics monitor service, false to disable statistics service.
    */
   private boolean enableStatMonitor = false;
+
   /**
-   * Set the time interval when StatMonitor performs delete detection. The default value is 600s.
+   * Set true to enable writing monitor time series.
    */
-  private int statMonitorDetectFreqSec = 60 * 10;
-  /**
-   * Set the maximum time to keep monitor statistics information in IoTDB. The default value is
-   * 600s.
-   */
-  private int statMonitorRetainIntervalSec = 60 * 10;
+  private boolean enableMonitorSeriesWrite = false;
 
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
@@ -1110,14 +1101,6 @@ public class IoTDBConfig {
     this.tsFileSizeThreshold = tsFileSizeThreshold;
   }
 
-  public int getBackLoopPeriodSec() {
-    return backLoopPeriodSec;
-  }
-
-  void setBackLoopPeriodSec(int backLoopPeriodSec) {
-    this.backLoopPeriodSec = backLoopPeriodSec;
-  }
-
   public boolean isEnableStatMonitor() {
     return enableStatMonitor;
   }
@@ -1126,28 +1109,20 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
+  public boolean isEnableMonitorSeriesWrite() {
+    return enableMonitorSeriesWrite;
+  }
+
+  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
+    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
+  }
+
   public int getRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
   void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public int getStatMonitorDetectFreqSec() {
-    return statMonitorDetectFreqSec;
-  }
-
-  void setStatMonitorDetectFreqSec(int statMonitorDetectFreqSec) {
-    this.statMonitorDetectFreqSec = statMonitorDetectFreqSec;
-  }
-
-  public int getStatMonitorRetainIntervalSec() {
-    return statMonitorRetainIntervalSec;
-  }
-
-  void setStatMonitorRetainIntervalSec(int statMonitorRetainIntervalSec) {
-    this.statMonitorRetainIntervalSec = statMonitorRetainIntervalSec;
   }
 
   public int getmManagerCacheSize() {
@@ -2039,12 +2014,12 @@ public class IoTDBConfig {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
-  public int getWaitingTimeWhenInsertBlocked() {
-    return waitingTimeWhenInsertBlockedInMs;
+  public int getCheckPeriodWhenInsertBlocked() {
+    return checkPeriodWhenInsertBlocked;
   }
 
-  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
-    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
+  public void setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    this.checkPeriodWhenInsertBlocked = checkPeriodWhenInsertBlocked;
   }
 
   public int getMaxWaitingTimeWhenInsertBlocked() {

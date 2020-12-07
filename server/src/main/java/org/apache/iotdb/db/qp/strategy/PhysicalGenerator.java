@@ -41,7 +41,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -215,9 +214,6 @@ public class PhysicalGenerator {
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
-      case QUERY_INDEX:
-        QueryIndexOperator queryIndexOp = (QueryIndexOperator) operator;
-        return transformQuery(queryIndexOp, fetchSize);
       case TTL:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
@@ -377,14 +373,14 @@ public class PhysicalGenerator {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
-      } else {
+      } else if (queryOperator.isGroupByLevel()) {
         ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-        if (queryOperator.getLevel() >= 0) {
-          for (String aggregation : queryPlan.getAggregations()) {
-            if (!SQLConstant.COUNT.equals(aggregation)) {
-              throw new QueryProcessException("group by level only support count now.");
-            }
+        try {
+          if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
+            throw new QueryProcessException("Aggregate among unmatched data types");
           }
+        } catch (MetadataException e) {
+          throw new QueryProcessException(e);
         }
       }
     } else if (queryOperator.isFill()) {
@@ -398,7 +394,7 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
-    } else if (queryOperator instanceof QueryIndexOperator) {
+    } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
     } else {
       queryPlan = new RawDataQueryPlan();
@@ -608,9 +604,11 @@ public class PhysicalGenerator {
         }
       }
     }
-    if(queryOperator instanceof QueryIndexOperator) {
-      ((QueryIndexPlan) queryPlan).setIndexType(((QueryIndexOperator) queryOperator).getIndexType());
-      ((QueryIndexPlan) queryPlan).setProps(((QueryIndexOperator) queryOperator).getProps());
+    if(queryOperator.getIndexType() != null) {
+      if(queryPlan instanceof QueryIndexPlan) {
+        ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
+        ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
+      }
       return queryPlan;
     }
     try {
@@ -710,8 +708,10 @@ public class PhysicalGenerator {
     if (queryPlan instanceof GroupByTimePlan) {
       GroupByTimePlan plan = (GroupByTimePlan) queryPlan;
       // the actual row number of group by query should be calculated from startTime, endTime and interval.
-      fetchSize = Math
-          .min((int) ((plan.getEndTime() - plan.getStartTime()) / plan.getInterval()), fetchSize);
+      long interval = (plan.getEndTime() - plan.getStartTime()) / plan.getInterval();
+      if (interval > 0) {
+        fetchSize = Math.min((int) (interval), fetchSize);
+      }
     } else if (queryPlan instanceof AggregationPlan) {
       // the actual row number of aggregation query is 1
       fetchSize = 1;
@@ -796,6 +796,27 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
+  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
+      throws MetadataException{
+    List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
+    if (aggregations.isEmpty()) {
+      return true;
+    }
+
+    List<PartialPath> paths = queryOperator.getSelectedPaths();
+    List<TSDataType> dataTypes = getSeriesTypes(paths);
+    String aggType = aggregations.get(0);
+    switch (aggType) {
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
+      default:
+        return true;
+    }
+  }
+  
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
