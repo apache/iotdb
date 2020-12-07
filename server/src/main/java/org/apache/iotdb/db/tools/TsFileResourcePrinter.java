@@ -37,7 +37,7 @@ public class TsFileResourcePrinter {
   @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
-    String folder = "E:\\codestore\\incubator-iotdb2\\cluster\\target\\cluster-0.11.0-SNAPSHOT3\\data\\data\\sequence\\root.group_1\\0";
+    String folder = "data/data/sequence/root.group_1/0";
     if (args.length >= 1) {
       folder = args[0];
     }
