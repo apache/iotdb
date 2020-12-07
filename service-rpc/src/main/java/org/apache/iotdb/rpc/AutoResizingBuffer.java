@@ -67,10 +67,12 @@ class AutoResizingBuffer {
         && bufTooLargeCounter-- <= 0
         && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
       // do not resize if it is reading the request size and do not shrink too often
-      array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
+      int newCapacity = size + (currentCapacity - size) / 2;
+      array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
-      logger.debug("{} shrink from {} to {}", this, currentCapacity, size);
+      logger
+          .debug("{} shrink from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
     }
   }
 

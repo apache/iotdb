@@ -19,10 +19,11 @@
 
 -->
 
-# 0.10.x (version-2) -> 0.12.x (version-3)
+# 0.11.x (version-2) -> 0.12.x (version-3)
 | PR#   | Name                                                        | Author          | Changes                                                      |
 | ----- | ----------------------------------------------------------- | --------------- | ------------------------------------------------------------ |
 | -     | -                                                           | jt2594838       | Add min/max plan index in ChunkGroupFooter|
+for more details, please see https://issues.apache.org/jira/browse/IOTDB-918
 
 
 # 0.9.x (version-1) -> 0.10.x (version-2)
