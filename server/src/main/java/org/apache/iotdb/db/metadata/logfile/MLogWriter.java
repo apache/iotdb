@@ -339,6 +339,7 @@ public class MLogWriter implements AutoCloseable {
    * @throws IOException
    * @throws MetadataException
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void operation(String cmd) throws IOException, MetadataException {
     // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);

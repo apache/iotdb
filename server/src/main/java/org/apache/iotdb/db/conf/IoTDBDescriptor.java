@@ -245,10 +245,6 @@ public class IoTDBDescriptor {
         conf.setMlogBufferSize(mlogBufferSize);
       }
 
-      conf.setForceMlogPeriodInMs(Long
-        .parseLong(properties.getProperty("force_mlog_period_in_ms",
-          Long.toString(conf.getForceMlogPeriodInMs()))));
-
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 

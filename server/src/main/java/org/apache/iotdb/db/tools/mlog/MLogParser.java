@@ -84,7 +84,7 @@ public class MLogParser {
     return options;
   }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     hf.setOptionComparator(null);

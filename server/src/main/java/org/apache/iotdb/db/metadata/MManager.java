@@ -270,19 +270,7 @@ public class MManager {
     if (logFile.exists()) {
       int idx = 0;
       try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);) {
-        while (mLogReader.hasNext()) {
-          PhysicalPlan plan = null;
-          try {
-            plan = mLogReader.next();
-            if (plan == null) {
-              continue;
-            }
-            operation(plan);
-            idx++;
-          } catch (Exception e) {
-            logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-          }
-        }
+        idx = applyMlog(mLogReader);
         logger.debug("spend {} ms to deserialize mtree from mlog.bin",
             System.currentTimeMillis() - time);
         return idx;
@@ -292,6 +280,24 @@ public class MManager {
     } else {
       return 0;
     }
+  }
+
+  private int applyMlog(MLogReader mLogReader) {
+    int idx = 0;
+    while (mLogReader.hasNext()) {
+      PhysicalPlan plan = null;
+      try {
+        plan = mLogReader.next();
+        if (plan == null) {
+          continue;
+        }
+        operation(plan);
+        idx++;
+      } catch (Exception e) {
+        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+      }
+    }
+    return idx;
   }
 
   /**

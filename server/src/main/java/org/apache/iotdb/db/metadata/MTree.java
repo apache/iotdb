@@ -48,7 +48,6 @@ import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -1223,53 +1222,9 @@ public class MTree implements Serializable {
     }
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static MTree deserializeFrom(File mtreeSnapshot) {
-
-    try (MLogReader mlogReader = new MLogReader(mtreeSnapshot)) {
-      Deque<MNode> nodeStack = new ArrayDeque<>();
-      MNode node = null;
-
-      while (mlogReader.hasNext()) {
-        PhysicalPlan plan = null;
-        try {
-          plan = mlogReader.next();
-          if (plan == null) {
-            continue;
-          }
-          int childrenSize = 0;
-          if (plan instanceof StorageGroupMNodePlan) {
-            node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
-            childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-          } else if (plan instanceof MeasurementMNodePlan) {
-            node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
-            childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
-          } else if (plan instanceof MNodePlan) {
-            node = new MNode(null, ((MNodePlan) plan).getName());
-            childrenSize = ((MNodePlan) plan).getChildSize();
-          }
-
-          if (childrenSize != 0) {
-            ConcurrentHashMap<String, MNode> childrenMap = new ConcurrentHashMap<>();
-            for (int i = 0; i < childrenSize; i++) {
-              MNode child = nodeStack.removeFirst();
-              child.setParent(node);
-              childrenMap.put(child.getName(), child);
-              if (child instanceof MeasurementMNode) {
-                String alias = ((MeasurementMNode) child).getAlias();
-                if (alias != null) {
-                  node.addAlias(alias, child);
-                }
-              }
-            }
-            node.setChildren(childrenMap);
-          }
-          nodeStack.push(node);
-        } catch (Exception e) {
-          logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-        }
-      }
-      return new MTree(node);
+    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
+      return deserializeFromReader(mLogReader);
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();
@@ -1279,6 +1234,53 @@ public class MTree implements Serializable {
       count = new ThreadLocal<>();
       curOffset = new ThreadLocal<>();
     }
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  private static MTree deserializeFromReader(MLogReader mLogReader) {
+    Deque<MNode> nodeStack = new ArrayDeque<>();
+    MNode node = null;
+    while (mLogReader.hasNext()) {
+      PhysicalPlan plan = null;
+      try {
+        plan = mLogReader.next();
+        if (plan == null) {
+          continue;
+        }
+        int childrenSize = 0;
+        if (plan instanceof StorageGroupMNodePlan) {
+          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
+          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
+        } else if (plan instanceof MeasurementMNodePlan) {
+          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
+          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
+        } else if (plan instanceof MNodePlan) {
+          node = new MNode(null, ((MNodePlan) plan).getName());
+          childrenSize = ((MNodePlan) plan).getChildSize();
+        }
+
+        if (childrenSize != 0) {
+          ConcurrentHashMap<String, MNode> childrenMap = new ConcurrentHashMap<>();
+          for (int i = 0; i < childrenSize; i++) {
+            MNode child = nodeStack.removeFirst();
+            child.setParent(node);
+            childrenMap.put(child.getName(), child);
+            if (child instanceof MeasurementMNode) {
+              String alias = ((MeasurementMNode) child).getAlias();
+              if (alias != null) {
+                node.addAlias(alias, child);
+              }
+            }
+          }
+          node.setChildren(childrenMap);
+        }
+        nodeStack.push(node);
+      } catch (Exception e) {
+        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+      }
+    }
+
+    return new MTree(node);
   }
 
   @Override
