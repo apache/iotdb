@@ -27,10 +27,11 @@ import org.apache.thrift.transport.TTransportFactory;
 public class RpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
-  public static boolean USE_SNAPPY = false;
+  private static boolean useSnappy = false;
   public static final RpcTransportFactory INSTANCE;
+
   static {
-    INSTANCE = USE_SNAPPY ?
+    INSTANCE = useSnappy ?
         new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory()) :
         new RpcTransportFactory(new Factory());
   }
@@ -47,10 +48,10 @@ public class RpcTransportFactory extends TTransportFactory {
   }
 
   public static boolean isUseSnappy() {
-    return USE_SNAPPY;
+    return useSnappy;
   }
 
   public static void setUseSnappy(boolean useSnappy) {
-    USE_SNAPPY = useSnappy;
+    RpcTransportFactory.useSnappy = useSnappy;
   }
 }

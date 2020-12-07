@@ -117,6 +117,7 @@ public class IoTDBRpcCompressionIT {
     }
   }
 
+  @SuppressWarnings("java:S2925")
   private void doSomething(Statement statement) throws SQLException, InterruptedException {
 
       statement.execute("set storage group to root.demo");
