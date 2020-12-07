@@ -51,40 +51,20 @@ public class PageReaderV2 extends PageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
+    if (dataType != TSDataType.INT32 && dataType != TSDataType.TEXT) {
+      return super.getAllSatisfiedPageData(ascending);
+    }
+
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
       switch (dataType) {
-        case BOOLEAN:
-          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
-            pageData.putBoolean(timestamp, aBoolean);
-          }
-          break;
         case INT32:
           int anInt = (valueDecoder instanceof PlainDecoder) ?
               valueBuffer.getInt() : valueDecoder.readInt(valueBuffer);
           if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
             pageData.putInt(timestamp, anInt);
-          }
-          break;
-        case INT64:
-          long aLong = valueDecoder.readLong(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
-            pageData.putLong(timestamp, aLong);
-          }
-          break;
-        case FLOAT:
-          float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
-            pageData.putFloat(timestamp, aFloat);
-          }
-          break;
-        case DOUBLE:
-          double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
-            pageData.putDouble(timestamp, aDouble);
           }
           break;
         case TEXT:

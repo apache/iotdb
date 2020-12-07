@@ -526,6 +526,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    * be truncated.
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @Override
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       List<Pair<Long, Long>> versionInfo,

@@ -34,7 +34,7 @@ public class StatisticsV2 {
   private StatisticsV2() {
   }
 
-  public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
+  public static Statistics<?> deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
     statistics.setCount((int) ReadWriteIOUtils.readLong(inputStream));
@@ -67,7 +67,7 @@ public class StatisticsV2 {
     return statistics;
   }
 
-  public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
+  public static Statistics<?> deserialize(ByteBuffer buffer, TSDataType dataType) {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
     statistics.setCount((int) ReadWriteIOUtils.readLong(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
