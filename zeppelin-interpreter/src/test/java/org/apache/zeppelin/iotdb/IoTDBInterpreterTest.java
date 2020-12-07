@@ -18,7 +18,6 @@
  */
 package org.apache.zeppelin.iotdb;
 
-import java.util.Arrays;
 import java.util.Properties;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.junit.After;
