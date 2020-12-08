@@ -367,10 +367,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
           int level = getMergeLevel(new File(sourceFileList.get(0)));
           if (!isMergeFinished) {
-            // if not merge
             if (deviceSet.isEmpty()) {
+              // if not in compaction, just delete the target file
               Files.delete(new File(targetFile).toPath());
             } else {
+              // if not complete compaction, resume merge
               if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
                 if (offset > 0) {
                   writer.getIOWriterOut().truncate(offset - 1);
@@ -387,6 +388,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                           false);
                 }
               }
+              // complete compaction and delete source file
               deleteLevelFilesInDisk(sourceTsFileResources);
               deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
             }
