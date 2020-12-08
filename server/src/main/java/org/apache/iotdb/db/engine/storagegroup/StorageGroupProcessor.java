@@ -890,7 +890,8 @@ public class StorageGroupProcessor {
       return;
     }
 
-    if (sequence && config.isEnableSlidingMemTable()) {
+    // judge whether to insert into flushing mem table or not when flushing mem table is alive
+    if (tsFileProcessor.isFlushMemTableAlive()) {
       insertRowPlan
           .setToFlushingMemTable(isInsertToFlushingMemTable(timePartitionId, insertRowPlan));
     }
@@ -1694,17 +1695,22 @@ public class StorageGroupProcessor {
       }
 
       if (processor.isFlushMemTableAlive()) {
+        // if flushing mem table is alive, use latestTimeForEachDevice to update flushingLatestTimeForEachDevice
         for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
           flushingLatestTimeForEachDevice
               .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
               .put(entry.getKey(), entry.getValue());
         }
+        // when the processor is closing, update partitionLatestFlushedTimeForEachDevice
         if (processor.isUpdateLatestTime()) {
           updateLatestTime(processor, curPartitionDeviceLatestTime);
         }
       } else {
-        curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
-            .get(processor.getTimeRangeId());
+        // is sliding window is enabled, use flushingLatestTimeForEachDevice to update
+        if (config.isEnableSlidingMemTable()) {
+          curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
+              .get(processor.getTimeRangeId());
+        }
         updateLatestTime(processor, curPartitionDeviceLatestTime);
       }
     } finally {

@@ -596,11 +596,11 @@ public class TsFileProcessor {
    */
   public void asyncFlush() {
     if (config.isEnableSlidingMemTable()){
-      while (isManagedByFlushManager() && flushingMemTable != null) {
+      while (flushingMemTable != null) {
         try {
           TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
         } catch (InterruptedException e) {
-          e.printStackTrace();
+          logger.error("async flush failed because the flushing mem table is still alive", e);
         }
       }
     }
