@@ -17,6 +17,7 @@
 package org.apache.zeppelin.iotdb;
 
 
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -36,11 +38,38 @@ import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.apache.zeppelin.interpreter.InterpreterResult.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBInterpreter extends Interpreter {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInterpreter.class);
+
+  static final String IOTDB_HOST = "iotdb.host";
+  static final String IOTDB_PORT = "iotdb.port";
+  static final String IOTDB_USERNAME = "iotdb.username";
+  static final String IOTDB_PASSWORD = "iotdb.password";
+  private static final String IOTDB_FETCH_SIZE = "iotdb.fetchSize";
+  private static final String IOTDB_ZONE_ID = "iotdb.zoneId";
+  private static final String IOTDB_ENABLE_RPC_COMPRESSION = "iotdb.enable.rpc.compression";
+  private static final String IOTDB_TIME_DISPLAY_TYPE = "iotdb.time.display.type";
+
+  private static final String NONE_VALUE = "none";
+  static final String DEFAULT_HOST = "127.0.0.1";
+  static final String DEFAULT_PORT = "6667";
+  private static final String DEFAULT_FETCH_SIZE = "10000";
+  private static final String DEFAULT_ENABLE_RPC_COMPRESSION = "false";
+
+
+  private static final char TAB = '\t';
+  private static final char NEWLINE = '\n';
+  private static final char WHITESPACE = ' ';
+  private static final String SEMICOLON = ";";
+
   private IoTDBConnectionException connectionException;
   private Session session;
+  // TODO it's not been used. Shall we copy the long time-format code from AbstractCli?
+  private String timeDisplayType;
 
   public IoTDBInterpreter(Properties property) {
     super(property);
@@ -48,9 +77,22 @@ public class IoTDBInterpreter extends Interpreter {
 
   @Override
   public void open() {
-    session = new Session(properties.getProperty("host"), properties.getProperty("port"), properties.getProperty("username"), properties.getProperty("password"));
     try {
-      session.open();
+      String host = getProperty(IOTDB_HOST, DEFAULT_HOST).trim();
+      int port = Integer.parseInt(getProperty(IOTDB_PORT, DEFAULT_PORT).trim());
+      String userName = properties.getProperty(IOTDB_USERNAME, NONE_VALUE).trim();
+      String passWord = properties.getProperty(IOTDB_PASSWORD, NONE_VALUE).trim();
+      int fetchSize = Integer
+          .parseInt(properties.getProperty(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE).trim());
+      String zoneIdConf = properties.getProperty(IOTDB_ZONE_ID);
+      ZoneId zoneId = StringUtils.isNotBlank(zoneIdConf) ? ZoneId.of(zoneIdConf) :
+          ZoneId.systemDefault();
+      this.timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE);
+      boolean enableRPCCompression = "true".equalsIgnoreCase(
+          properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
+              DEFAULT_ENABLE_RPC_COMPRESSION).trim());
+      session = new Session(host, port, userName, passWord, fetchSize, zoneId);
+      session.open(enableRPCCompression);
     } catch (IoTDBConnectionException e) {
       connectionException = e;
     }
@@ -59,7 +101,9 @@ public class IoTDBInterpreter extends Interpreter {
   @Override
   public void close() {
     try {
-      session.close();
+      if (session != null) {
+        session.close();
+      }
     } catch (IoTDBConnectionException e) {
       connectionException = e;
     }
@@ -82,7 +126,7 @@ public class IoTDBInterpreter extends Interpreter {
       for (String scriptLine : scriptLines) {
         if (scriptLine.toLowerCase().startsWith("select")) {
           //Execute query
-          String msg = null;
+          String msg;
           msg = getResultWithCols(session, scriptLine);
           interpreterResult = new InterpreterResult(Code.SUCCESS);
           interpreterResult.add(Type.TABLE, msg);
@@ -107,12 +151,12 @@ public class IoTDBInterpreter extends Interpreter {
     StringBuilder stringBuilder = new StringBuilder();
     for (String key : columnNames) {
       stringBuilder.append(key);
-      stringBuilder.append('\t');
+      stringBuilder.append(TAB);
     }
     stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-    stringBuilder.append('\n');
+    stringBuilder.append(NEWLINE);
     while (sessionDataSet.hasNext()) {
-      stringBuilder.append(sessionDataSet.next() + "\n");
+      stringBuilder.append(sessionDataSet.next()).append(NEWLINE);
     }
     stringBuilder.deleteCharAt(stringBuilder.length() - 1);
     return stringBuilder.toString();
@@ -128,7 +172,7 @@ public class IoTDBInterpreter extends Interpreter {
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
+      LOGGER.error("Exception close failed", e);
     }
   }
 
@@ -149,7 +193,8 @@ public class IoTDBInterpreter extends Interpreter {
   }
 
   static String[] parseMultiLinesSQL(String sql) {
-    String[] tmp = sql.replace('\t', ' ').replace('\n', ' ').trim().split(";");
+    String[] tmp = sql.replace(TAB, WHITESPACE).replace(NEWLINE, WHITESPACE).trim()
+        .split(SEMICOLON);
     return Arrays.stream(tmp).map(String::trim).toArray(String[]::new);
   }
 

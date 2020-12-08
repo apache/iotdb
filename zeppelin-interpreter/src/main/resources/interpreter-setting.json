@@ -4,35 +4,61 @@
     "name": "iotdb",
     "className": "org.apache.zeppelin.iotdb.IoTDBInterpreter",
     "properties": {
-      "host": {
+      "iotdb.host": {
         "envName": null,
-        "propertyName": "host",
+        "propertyName": "iotdb.host",
         "defaultValue": "127.0.0.1",
-        "description": "IoTDB server host to connect to"
+        "description": "IoTDB server host to connect to, Default = 127.0.0.1",
+        "type": "string"
       },
-      "port": {
+      "iotdb.port": {
         "envName": null,
-        "propertyName": "port",
+        "propertyName": "iotdb.port",
         "defaultValue": "6667",
-        "description": "IoTDB server port to connect to"
+        "description": "IoTDB server port to connect to, Default = 6667",
+        "type": "number"
       },
-      "database": {
+      "iotdb.username": {
         "envName": null,
-        "propertyName": "database",
-        "defaultValue": "test",
-        "description": "IoTDB database name"
-      },
-      "username": {
-        "envName": null,
-        "propertyName": "username",
+        "propertyName": "iotdb.username",
         "defaultValue": "root",
-        "description": "Username for authentication"
+        "description": "Username for authentication, Default = 'root'",
+        "type": "string"
       },
-      "password": {
+      "iotdb.password": {
         "envName": null,
-        "propertyName": "password",
+        "propertyName": "iotdb.password",
         "defaultValue": "root",
-        "description": "Password for authentication"
+        "description": "Password for authentication, Default = 'root'",
+        "type": "password"
+      },
+      "iotdb.fetchSize": {
+        "envName": null,
+        "propertyName": "iotdb.fetchSize",
+        "defaultValue": "10000",
+        "description": "query default fetch size. Default = 10000",
+        "type": "number"
+      },
+      "iotdb.zoneId": {
+        "envName": null,
+        "propertyName": "iotdb.zoneId",
+        "defaultValue": null,
+        "description": "time zone id of data point. Default = null",
+        "type": "string"
+      },
+      "iotdb.enable.rpc.compression": {
+        "envName": null,
+        "propertyName": "iotdb.enable.rpc.compression",
+        "defaultValue": false,
+        "description": "whether enable rpc compression. Default = null",
+        "type": "checkbox"
+      },
+      "iotdb.time.display.type": {
+        "envName": null,
+        "propertyName": "iotdb.time.display.type",
+        "defaultValue": null,
+        "description": "the time format to display. Default = null",
+        "type": "string"
       }
     },
     "editor": {
