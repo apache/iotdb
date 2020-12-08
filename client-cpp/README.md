@@ -24,3 +24,9 @@ To compile cpp client, add "-P client-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 For more information, please refer to "compile-tools/README.md".
+
+
+## Compile and Test:
+
+`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+
