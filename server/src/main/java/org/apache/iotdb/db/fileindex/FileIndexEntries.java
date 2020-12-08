@@ -16,12 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex;
-
-import java.util.Map;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+package org.apache.iotdb.db.fileindex;
 
 /**
  * Time Index, like deviceIndex: [(deviceId, startTime, endTime, TsFilePath)] to accelerate query

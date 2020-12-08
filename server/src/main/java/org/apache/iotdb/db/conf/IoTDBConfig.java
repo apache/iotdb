@@ -2103,7 +2103,7 @@ public class IoTDBConfig {
   }
 
   public void setEnableFileTimeIndexer(boolean enableFileTimeIndexer) {
-    this.enableFileTimeIndexer = true;
+    this.enableFileTimeIndexer = enableFileTimeIndexer;
   }
 
   public int getFileTimeIndexerType() {

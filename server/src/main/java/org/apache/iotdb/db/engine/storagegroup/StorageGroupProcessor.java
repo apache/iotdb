@@ -83,11 +83,10 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.FileIndexManager;
-import org.apache.iotdb.db.timeIndex.TimeIndexEntry;
-import org.apache.iotdb.db.timeIndex.impl.LoadAllDeviceTimeIndexer;
+import org.apache.iotdb.db.fileindex.FileIndexManager;
+import org.apache.iotdb.db.fileindex.FileTimeIndexer;
+import org.apache.iotdb.db.fileindex.TimeIndexEntry;
+import org.apache.iotdb.db.fileindex.impl.LoadAllDeviceTimeIndexer;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -931,7 +930,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence, long timePartitionId)
+  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence,
+      long timePartitionId)
       throws WriteProcessException {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
@@ -1425,8 +1425,10 @@ public class StorageGroupProcessor {
     List<TsFileResource> unseqResources;
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-        Map<String, TimeIndexEntry[]> seqFiles = seqFileTimeIndexer.filterByPath(deviceId, timeFilter);
-        Map<String, TimeIndexEntry[]> unseqFiles = unseqFileTimeIndexer.filterByPath(deviceId, timeFilter);
+        Map<String, TimeIndexEntry[]> seqFiles = seqFileTimeIndexer
+            .filterByPath(deviceId, timeFilter);
+        Map<String, TimeIndexEntry[]> unseqFiles = unseqFileTimeIndexer
+            .filterByPath(deviceId, timeFilter);
 
         // TODO load resource or just use resource according to the implements
         seqResources = new ArrayList<>(seqFiles.size());
@@ -1999,7 +2001,7 @@ public class StorageGroupProcessor {
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         try {
-          FileTimeIndexer fileTimeIndexer = null;
+          FileTimeIndexer fileTimeIndexer;
           if (newTsFileResource.isSeq()) {
             fileTimeIndexer = FileIndexManager.getInstance()
                 .getSeqIndexer(newTsFileResource.getStorageGroupName());

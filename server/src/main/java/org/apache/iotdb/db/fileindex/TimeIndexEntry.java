@@ -16,32 +16,46 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex;
+package org.apache.iotdb.db.fileindex;
 
-public class IndexConstants {
+import org.apache.iotdb.db.metadata.PartialPath;
 
-  /**
-   * Indexer type
-   */
-  public enum IndexType {
-    // DeviceIndexer, query by device
-    DEVICE
+/**
+ * time index entry, contains path, startTime, endTime
+ */
+public class TimeIndexEntry {
+
+  private PartialPath path;
+  private long startTime;
+  private long endTime;
+
+  public PartialPath getPath() {
+    return path;
   }
 
-  /**
-   * the sub type of Indexer, we may has different implement of Indexer
-   */
-  public enum IndexSubType {
-    /**
-     * sub type of device Indexer
-     */
-    // load all file into memory
-    IN_MEMORY,
-
-    // use rocksdb to store the index
-    ROCKSDB
+  public void setPath(PartialPath path) {
+    this.path = path;
   }
 
-  public static final String INDEXER_FILE = "indexer.snapshot";
+  public long getStartTime() {
+    return startTime;
+  }
 
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
+  }
+
+  public void setEndTime(long endTime) {
+    this.endTime = endTime;
+  }
+
+  public void setAllElem(PartialPath path, long startTime, long endTime) {
+    this.path = path;
+    this.startTime = startTime;
+    this.endTime = endTime;
+  }
 }

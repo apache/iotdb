@@ -95,7 +95,7 @@ public class RecoverMergeTask extends MergeTask {
     }
   }
 
-  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException, IllegalPathException {
+  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
       calculateConcurrentSeriesNum();
@@ -116,7 +116,7 @@ public class RecoverMergeTask extends MergeTask {
     cleanUp(continueMerge);
   }
 
-  private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException, IllegalPathException {
+  private void resumeAfterAllTsMerged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
       MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,

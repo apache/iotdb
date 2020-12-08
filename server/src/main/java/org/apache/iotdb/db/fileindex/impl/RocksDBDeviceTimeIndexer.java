@@ -16,21 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex.impl;
+package org.apache.iotdb.db.fileindex.impl;
 
 import java.util.Collections;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.timeIndex.FileIndexEntries;
-import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.TimeIndexEntry;
+import org.apache.iotdb.db.fileindex.FileIndexEntries;
+import org.apache.iotdb.db.fileindex.FileTimeIndexer;
+import org.apache.iotdb.db.fileindex.TimeIndexEntry;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class LoadAllDeviceTimeIndexer implements FileTimeIndexer {
-
-  public LoadAllDeviceTimeIndexer() {
-
-  }
+public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
 
   @Override
   public boolean init() {

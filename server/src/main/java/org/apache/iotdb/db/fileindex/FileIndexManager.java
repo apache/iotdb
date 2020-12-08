@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex;
+package org.apache.iotdb.db.fileindex;
 
 import java.io.File;
 import java.util.Map;
@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.timeIndex.impl.LoadAllDeviceTimeIndexer;
+import org.apache.iotdb.db.fileindex.impl.LoadAllDeviceTimeIndexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

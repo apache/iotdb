@@ -37,11 +37,10 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.timeIndex.FileIndexManager;
-import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
+import org.apache.iotdb.db.fileindex.FileIndexManager;
+import org.apache.iotdb.db.fileindex.FileTimeIndexer;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
@@ -80,7 +79,7 @@ class MergeFileTask {
     this.unmergedFiles = unmergedSeqFiles;
   }
 
-  void mergeFiles() throws IOException, IllegalPathException {
+  void mergeFiles() throws IOException {
     // decide whether to write the unmerged chunks to the merge files or to move the merged chunks
     // back to the origin seqFile's
     if (logger.isInfoEnabled()) {
@@ -201,7 +200,8 @@ class MergeFileTask {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         // add new device index
         // may Indexer need delete old index background, or just overwrite old index
-        FileTimeIndexer fileTimeIndexer = FileIndexManager.getInstance().getSeqIndexer(seqFile.getStorageGroupName());
+        FileTimeIndexer fileTimeIndexer = FileIndexManager.getInstance()
+            .getSeqIndexer(seqFile.getStorageGroupName());
         fileTimeIndexer.createIndexForPath(FileIndexManager.convertFromTsFileResource(seqFile));
       }
     } catch (Exception e) {

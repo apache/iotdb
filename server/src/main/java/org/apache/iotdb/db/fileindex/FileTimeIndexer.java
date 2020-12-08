@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex;
+package org.apache.iotdb.db.fileindex;
 
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
