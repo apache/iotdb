@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
-import java.util.Set;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 public interface VirtualPartitioner {
@@ -29,15 +28,7 @@ public interface VirtualPartitioner {
    * @param deviceId device id
    * @return virtual storage group id
    */
-  public PartialPath deviceToStorageGroup(PartialPath deviceId);
-
-  /**
-   * use storage group id to get all device ids within this storage group
-   *
-   * @param storageGroup storage group id
-   * @return all device ids within this storage group
-   */
-  public Set<PartialPath> storageGroupToDevice(PartialPath storageGroup);
+  public int deviceToStorageGroup(PartialPath deviceId);
 
   /**
    * release resource
@@ -51,8 +42,4 @@ public interface VirtualPartitioner {
    */
   public int getPartitionCount();
 
-  /**
-   * recover virtual storage group partitioner
-   */
-  public void recover();
 }

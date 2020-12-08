@@ -19,11 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -56,42 +52,8 @@ public class HashVirtualPartitionerTest {
     PartialPath d2 = new PartialPath("root.sg1.d2");
 
 
-    PartialPath sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
-    PartialPath sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
-
-    realMap.computeIfAbsent(sg1, id -> new HashSet<>()).add(d1);
-    realMap.computeIfAbsent(sg2, id -> new HashSet<>()).add(d2);
-
-    for(PartialPath sg : realMap.keySet()){
-      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
-    }
+    int sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
+    int sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
   }
 
-
-  @Test
-  public void basicRecoverTest() throws IllegalPathException {
-    HashVirtualPartitioner hashVirtualPartitioner = HashVirtualPartitioner.getInstance();
-
-    // sg -> deviceId
-    HashMap<PartialPath, Set<PartialPath>> realMap = new HashMap<>();
-    PartialPath d1 = new PartialPath("root.sg1.d1");
-    PartialPath d2 = new PartialPath("root.sg1.d2");
-
-
-    PartialPath sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
-    PartialPath sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
-
-    realMap.computeIfAbsent(sg1, id -> new HashSet<>()).add(d1);
-    realMap.computeIfAbsent(sg2, id -> new HashSet<>()).add(d2);
-
-    for(PartialPath sg : realMap.keySet()){
-      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
-    }
-
-    hashVirtualPartitioner.restart();
-
-    for(PartialPath sg : realMap.keySet()){
-      assertEquals(realMap.getOrDefault(sg, Collections.emptySet()), hashVirtualPartitioner.storageGroupToDevice(sg));
-    }
-  }
 }

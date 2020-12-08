@@ -29,12 +29,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -128,13 +127,7 @@ public class MergeTask implements Callable<Void> {
 
     Set<PartialPath> devices;
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition()) {
-      devices = partitioner.storageGroupToDevice(new PartialPath(storageGroupName));
-    } else {
-      devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
-    }
-    System.out.println(devices);
-
+    devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
     Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {
