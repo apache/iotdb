@@ -57,7 +57,7 @@ public class TracingManager {
     try {
       fileWriter = new FileWriter(logFile, true);
     } catch (IOException e) {
-      logger.error("Meeting error while creating TracingManager: {}", e);
+      logger.error("Meeting error while creating TracingManager:", e);
     }
     writer = new BufferedWriter(fileWriter);
   }
