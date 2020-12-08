@@ -58,15 +58,15 @@ set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
 
-IF EXIST "%IOTDB_CONF%\cluster-env.bat" (
+IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
     IF "%1" == "printgc" (
-      CALL "%IOTDB_CONF%\cluster-env.bat" printgc
+      CALL "%IOTDB_CONF%\iotdb-env.bat" printgc
       SHIFT
     ) ELSE (
-      CALL "%IOTDB_CONF%\cluster-env.bat"
+      CALL "%IOTDB_CONF%\iotdb-env.bat"
     )
 ) ELSE (
-    echo "can't find %IOTDB_CONF%\cluster-env.bat"
+    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
 )
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
