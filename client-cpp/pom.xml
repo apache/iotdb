@@ -317,7 +317,8 @@
                                     <url>${catch2.url}</url>
                                     <unpack>false</unpack>
                                     <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
-                                    <skipCache>true</skipCache>
+                                    <skipCache>false</skipCache>
+                                    <!-- must be true to avoid the local Catch2 has incorrect vesion.-->
                                     <overwrite>true</overwrite>
                                 </configuration>
                             </execution>
