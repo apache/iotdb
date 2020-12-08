@@ -28,5 +28,5 @@ For more information, please refer to "compile-tools/README.md".
 
 ## Compile and Test:
 
-`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+`mvn integration-test -P client-cpp -pl client-cpp,compile-tools,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
 
