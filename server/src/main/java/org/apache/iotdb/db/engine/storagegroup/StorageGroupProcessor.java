@@ -679,6 +679,9 @@ public class StorageGroupProcessor {
         return;
       }
 
+      if (config.isEnableSlidingMemTable()) {
+        flushingLatestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+      }
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       // insert to sequence or unSequence file
       insertToTsFileProcessor(insertRowPlan, isSequence, timePartitionId);
@@ -921,9 +924,6 @@ public class StorageGroupProcessor {
    * judge whether a insert plan should be inserted into the flushingMemtable
    */
   private boolean isInsertToFlushingMemTable(long timePartitionId, InsertRowPlan insertRowPlan){
-    if (!flushingLatestTimeForEachDevice.containsKey(timePartitionId)){
-      return false;
-    }
     return flushingLatestTimeForEachDevice.get(timePartitionId).
         getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) > insertRowPlan.getTime();
   }
