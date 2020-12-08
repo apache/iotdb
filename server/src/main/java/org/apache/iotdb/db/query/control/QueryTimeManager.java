@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.query.control;
 
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,11 +27,6 @@ public class QueryTimeManager implements IService {
   private int MAX_QUERY_TIME = IoTDBDescriptor.getInstance().getConfig().getQueryTimeThreshold();
 
   /**
-   * the examine period of query time manager, 30s
-   */
-  private int examinePeriod = 30000;
-
-  /**
    * the key of queryStartTimeMap is the query id and the value of queryStartTimeMap is the start
    * time and the sql of this query.
    */
@@ -53,30 +47,24 @@ public class QueryTimeManager implements IService {
     queryThreadMap = new ConcurrentHashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "query-time-manager");
-
-    closeOverTimeQueryInFixTime();
   }
 
-  private void closeOverTimeQueryInFixTime() {
-    executorService.scheduleAtFixedRate(() -> {
-      long currentTime = System.currentTimeMillis();
-      for (Entry<Long, Pair<Long, String>> entry : queryInfoMap.entrySet()) {
-        if (currentTime - entry.getValue().left >= MAX_QUERY_TIME) {
-          killQuery(entry.getKey());
-          logger.error("Query is time out with queryId " + entry.getKey());
-        }
+  public void registerQuery(long queryId, long startTime, String sql, long timeout,
+      Thread queryThread) {
+    queryInfoMap.put(queryId, new Pair<>(startTime, sql));
+    queryThreadMap.put(queryId, queryThread);
+    // submit a scheduled task to judge whether query is still running after timeout
+    executorService.schedule(() -> {
+      if (queryThreadMap.get(queryId) != null) {
+        killQuery(queryId);
+        logger.error("Query is time out with queryId " + queryId);
       }
-    }, 0, examinePeriod, TimeUnit.MILLISECONDS);
+    }, timeout, TimeUnit.MILLISECONDS);
   }
 
   public void killQuery(long queryId) {
     queryThreadMap.get(queryId).interrupt();
     unRegisterQuery(queryId);
-  }
-
-  public void registerQuery(long queryId, long startTime, String sql, Thread queryThread) {
-    queryInfoMap.put(queryId, new Pair<>(startTime, sql));
-    queryThreadMap.put(queryId, queryThread);
   }
 
   public void unRegisterQuery(long queryId) {

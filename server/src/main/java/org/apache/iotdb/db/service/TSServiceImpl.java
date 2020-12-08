@@ -709,7 +709,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // register startTime to query time manager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         QueryTimeManager.getInstance()
-            .registerQuery(queryId, startTime, statement, Thread.currentThread());
+            .registerQuery(queryId, startTime, statement, config.getQueryTimeThreshold(),
+                Thread.currentThread());
       }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
