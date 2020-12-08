@@ -60,11 +60,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private static final Logger logger = LoggerFactory
       .getLogger(LevelCompactionTsFileManagement.class);
 
-  private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
+  private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum() < 1 ? 1
+      : IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
   private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
       .getSeqFileNumInEachLevel();
-  private final int unseqLevelNum = IoTDBDescriptor.getInstance().getConfig()
-      .getUnseqLevelNum();
+  private final int unseqLevelNum =
+      IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum() < 1 ? 1
+          : IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
   private final int unseqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
       .getSeqFileNumInEachLevel();
 
@@ -330,32 +332,27 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           return;
         }
         if (fullMerge) {
+          TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
+          long timePartition = targetTsFileResource.getTimePartition();
           if (!isMergeFinished) {
-            RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(new File(targetFile));
-            writer.getIOWriterOut().truncate(offset - 1);
-            writer.close();
-            TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
-            long timePartition = targetTsFileResource.getTimePartition();
-            CompactionUtils
-                .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
-                    new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
-            if (isSeq) {
-              for (int level = 0; level < sequenceTsFileResources.get(timePartition).size();
-                  level++) {
-                TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
-                    .get(timePartition).get(level);
-                deleteLevelFilesInDisk(currLevelMergeFile);
-                deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
-              }
+            if (!deviceSet.isEmpty()) {
+              Files.delete(new File(targetFile).toPath());
             } else {
-              for (int level = 0; level < unSequenceTsFileResources.get(timePartition).size();
-                  level++) {
-                TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
-                    .get(timePartition).get(level);
-                deleteLevelFilesInDisk(currLevelMergeFile);
-                deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
+              if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+                if (offset > 0) {
+                  RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
+                      new File(targetFile));
+                  writer.getIOWriterOut().truncate(offset - 1);
+                  writer.close();
+                }
+                CompactionUtils
+                    .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
+                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
               }
+              deleteAllSubLevelFiles(isSeq, timePartition);
             }
+          } else {
+            deleteAllSubLevelFiles(isSeq, timePartition);
           }
         } else {
           TsFileResource targetResource = getTsFileResource(targetFile, isSeq);
@@ -370,27 +367,32 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
           int level = getMergeLevel(new File(sourceFileList.get(0)));
           if (!isMergeFinished) {
+            // if not merge
             if (deviceSet.isEmpty()) {
               Files.delete(new File(targetFile).toPath());
             } else {
-              writer.getIOWriterOut().truncate(offset - 1);
-              writer.close();
-              if (isSeq) {
-                CompactionUtils
-                    .merge(targetResource, sourceTsFileResources, storageGroupName,
-                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, true);
-                deleteLevelFilesInDisk(sourceTsFileResources);
-                deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
-                sequenceTsFileResources.get(timePartition).get(level + 1).add(targetResource);
-              } else {
-                CompactionUtils
-                    .merge(targetResource, sourceTsFileResources, storageGroupName,
-                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, false);
-                deleteLevelFilesInDisk(sourceTsFileResources);
-                deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
-                unSequenceTsFileResources.get(timePartition).get(level + 1).add(targetResource);
+              if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+                if (offset > 0) {
+                  writer.getIOWriterOut().truncate(offset - 1);
+                }
+                writer.close();
+                if (isSeq) {
+                  CompactionUtils
+                      .merge(targetResource, sourceTsFileResources, storageGroupName,
+                          new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, true);
+                } else {
+                  CompactionUtils
+                      .merge(targetResource, sourceTsFileResources, storageGroupName,
+                          new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
+                          false);
+                }
               }
+              deleteLevelFilesInDisk(sourceTsFileResources);
+              deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
             }
+          } else {
+            deleteLevelFilesInDisk(sourceTsFileResources);
+            deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
           }
         }
       }
@@ -403,6 +405,26 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         } catch (IOException e) {
           logger.error("delete level tsfile management log file error ", e);
         }
+      }
+    }
+  }
+
+  private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
+    if (isSeq) {
+      for (int level = 0; level < sequenceTsFileResources.get(timePartition).size();
+          level++) {
+        TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
+            .get(timePartition).get(level);
+        deleteLevelFilesInDisk(currLevelMergeFile);
+        deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
+      }
+    } else {
+      for (int level = 0; level < unSequenceTsFileResources.get(timePartition).size();
+          level++) {
+        TreeSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
+            .get(timePartition).get(level);
+        deleteLevelFilesInDisk(currLevelMergeFile);
+        deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
       }
     }
   }
@@ -550,11 +572,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     for (int i = 0; i < seqLevelNum; i++) {
       newSequenceTsFileResources.add(new TreeSet<>(
           (o1, o2) -> {
-            int rangeCompare = Long
-                .compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
-                    Long.parseLong(o2.getTsFile().getParentFile().getName()));
-            return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile())
-                : rangeCompare;
+            try {
+              int rangeCompare = Long
+                  .compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
+                      Long.parseLong(o2.getTsFile().getParentFile().getName()));
+              return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile())
+                  : rangeCompare;
+            } catch (NumberFormatException e) {
+              return compareFileName(o1.getTsFile(), o2.getTsFile());
+            }
           }));
     }
     return newSequenceTsFileResources;

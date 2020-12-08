@@ -743,7 +743,11 @@ public class TsFileResource {
       return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
     }
     String[] splits = FilePathUtils.splitTsFilePath(this);
-    return Long.parseLong(splits[splits.length - 2]);
+    try {
+      return Long.parseLong(splits[splits.length - 2]);
+    } catch (NumberFormatException e) {
+      return 0;
+    }
   }
 
   /**
@@ -838,13 +842,13 @@ public class TsFileResource {
    * @return initial resource map size
    */
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) + 
+    return RamUsageEstimator.sizeOf(deviceToIndex) + RamUsageEstimator.sizeOf(startTimes) +
         RamUsageEstimator.sizeOf(endTimes);
   }
 
   /**
    * Calculate the resource ram increment when insert data in TsFileProcessor
-   * 
+   *
    * @return ramIncrement
    */
   public long estimateRamIncrement(String deviceToBeChecked) {
@@ -867,8 +871,11 @@ public class TsFileResource {
   public void delete() throws IOException {
     if (file.exists()) {
       Files.delete(file.toPath());
-      Files.delete(FSFactoryProducer.getFSFactory()
-          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      File resourceFile = FSFactoryProducer.getFSFactory()
+          .getFile(file.toPath() + TsFileResource.RESOURCE_SUFFIX);
+      if (resourceFile.exists()) {
+        Files.delete(resourceFile.toPath());
+      }
     }
   }
 
@@ -895,6 +902,6 @@ public class TsFileResource {
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
     return another.maxPlanIndex >= this.minPlanIndex &&
-           another.minPlanIndex <= this.maxPlanIndex;
+        another.minPlanIndex <= this.maxPlanIndex;
   }
 }
