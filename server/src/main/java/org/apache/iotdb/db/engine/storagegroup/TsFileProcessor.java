@@ -59,9 +59,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
+import org.apache.iotdb.db.timeIndex.FileIndexManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -805,13 +804,13 @@ public class TsFileProcessor {
       try {
         FileTimeIndexer fileTimeIndexer;
         if (sequence) {
-          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexManager.getInstance().getSeqIndexer(storageGroupName);
         } else {
-          fileTimeIndexer = TsFileTimeIndexManager.getInstance().getUnseqIndexer(storageGroupName);
+          fileTimeIndexer = FileIndexManager.getInstance().getUnseqIndexer(storageGroupName);
         }
         if (fileTimeIndexer != null) {
           fileTimeIndexer
-              .addIndexForPaths(FileIndexEntries.convertFromTsFileResource(tsFileResource));
+              .createIndexForPath(FileIndexManager.convertFromTsFileResource(tsFileResource));
         }
       } catch (IllegalPathException e) {
         logger.error("Failed to endFile {} for storage group {}, err:{}", tsFileResource.getTsFile(),

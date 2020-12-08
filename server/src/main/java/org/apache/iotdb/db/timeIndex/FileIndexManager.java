@@ -23,22 +23,23 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.timeIndex.device.LoadAllDeviceTimeIndexer;
+import org.apache.iotdb.db.timeIndex.impl.LoadAllDeviceTimeIndexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Manage all indexers
  */
-public class TsFileTimeIndexManager {
+public class FileIndexManager {
 
   private String indexerFilePath;
   private Map<PartialPath, FileTimeIndexer> seqIndexers;
   private Map<PartialPath, FileTimeIndexer> unseqIndexers;
   private ReentrantReadWriteLock lock;
-  private static final Logger logger = LoggerFactory.getLogger(TsFileTimeIndexManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(FileIndexManager.class);
 
   private static class IndexerManagerHolder {
 
@@ -46,14 +47,14 @@ public class TsFileTimeIndexManager {
       // allowed to do nothing
     }
 
-    private static final TsFileTimeIndexManager INSTANCE = new TsFileTimeIndexManager();
+    private static final FileIndexManager INSTANCE = new FileIndexManager();
   }
 
-  public static TsFileTimeIndexManager getInstance() {
+  public static FileIndexManager getInstance() {
     return IndexerManagerHolder.INSTANCE;
   }
 
-  private TsFileTimeIndexManager() {
+  private FileIndexManager() {
     indexerFilePath = IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
         + File.pathSeparator + IndexConstants.INDEXER_FILE;
     seqIndexers = new ConcurrentHashMap<>();
@@ -167,5 +168,24 @@ public class TsFileTimeIndexManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public static FileIndexEntries convertFromTsFileResource(TsFileResource resource)
+      throws IllegalPathException {
+    FileIndexEntries fileIndexEntries = new FileIndexEntries();
+    TimeIndexEntry[] timeIndexEntries = new TimeIndexEntry[resource.getDeviceToIndexMap().size()];
+    int i = 0;
+    for (Map.Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
+      TimeIndexEntry timeIndexEntry = new TimeIndexEntry();
+      timeIndexEntry.setAllElem(
+          new PartialPath(entry.getKey()),
+          resource.getStartTime(entry.getValue()),
+          resource.getEndTime(entry.getValue()));
+      timeIndexEntries[i++] = timeIndexEntry;
+    }
+    fileIndexEntries.setIndexEntries(timeIndexEntries);
+    fileIndexEntries.setTsFilePath(resource.getTsFilePath());
+
+    return fileIndexEntries;
   }
 }

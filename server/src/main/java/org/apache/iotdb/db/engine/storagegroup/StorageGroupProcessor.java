@@ -85,8 +85,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
-import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
-import org.apache.iotdb.db.timeIndex.device.LoadAllDeviceTimeIndexer;
+import org.apache.iotdb.db.timeIndex.FileIndexManager;
+import org.apache.iotdb.db.timeIndex.TimeIndexEntry;
+import org.apache.iotdb.db.timeIndex.impl.LoadAllDeviceTimeIndexer;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -390,16 +391,16 @@ public class StorageGroupProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // init TimeIndexer
       try {
-        seqFileTimeIndexer = TsFileTimeIndexManager.getInstance().getSeqIndexer(storageGroupName);
-        unseqFileTimeIndexer = TsFileTimeIndexManager.getInstance()
+        seqFileTimeIndexer = FileIndexManager.getInstance().getSeqIndexer(storageGroupName);
+        unseqFileTimeIndexer = FileIndexManager.getInstance()
             .getUnseqIndexer(storageGroupName);
         if (seqFileTimeIndexer != null) {
           seqFileTimeIndexer.init();
           unseqFileTimeIndexer.init();
         } else {
-          TsFileTimeIndexManager.getInstance()
+          FileIndexManager.getInstance()
               .addSeqIndexer(new PartialPath(storageGroupName), new LoadAllDeviceTimeIndexer());
-          TsFileTimeIndexManager.getInstance()
+          FileIndexManager.getInstance()
               .addUnseqIndexer(new PartialPath(storageGroupName), new LoadAllDeviceTimeIndexer());
         }
       } catch (IllegalPathException e) {
@@ -1326,12 +1327,12 @@ public class StorageGroupProcessor {
           if (isSeq) {
             if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
               seqFileTimeIndexer
-                  .deleteIndexForPaths(FileIndexEntries.convertFromTsFileResource(resource));
+                  .deleteIndexOfPath(FileIndexManager.convertFromTsFileResource(resource));
             }
           } else {
             if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
               unseqFileTimeIndexer
-                  .deleteIndexForPaths(FileIndexEntries.convertFromTsFileResource(resource));
+                  .deleteIndexOfPath(FileIndexManager.convertFromTsFileResource(resource));
             }
           }
         } catch (IllegalPathException e) {
@@ -1424,8 +1425,8 @@ public class StorageGroupProcessor {
     List<TsFileResource> unseqResources;
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-        List<FileIndexEntries> seqFiles = seqFileTimeIndexer.filterByPath(deviceId, timeFilter);
-        List<FileIndexEntries> unseqFiles = unseqFileTimeIndexer.filterByPath(deviceId, timeFilter);
+        Map<String, TimeIndexEntry[]> seqFiles = seqFileTimeIndexer.filterByPath(deviceId, timeFilter);
+        Map<String, TimeIndexEntry[]> unseqFiles = unseqFileTimeIndexer.filterByPath(deviceId, timeFilter);
 
         // TODO load resource or just use resource according to the implements
         seqResources = new ArrayList<>(seqFiles.size());
@@ -1927,14 +1928,14 @@ public class StorageGroupProcessor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         FileTimeIndexer fileTimeIndexer = null;
         if (newTsFileResource.isSeq()) {
-          fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+          fileTimeIndexer = FileIndexManager.getInstance()
               .getSeqIndexer(newTsFileResource.getStorageGroupName());
         } else {
-          fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+          fileTimeIndexer = FileIndexManager.getInstance()
               .getUnseqIndexer(newTsFileResource.getStorageGroupName());
         }
         fileTimeIndexer
-            .addIndexForPaths(FileIndexEntries.convertFromTsFileResource(newTsFileResource));
+            .createIndexForPath(FileIndexManager.convertFromTsFileResource(newTsFileResource));
       }
     } catch (DiskSpaceInsufficientException | IllegalPathException e) {
       logger.error(
@@ -2000,14 +2001,14 @@ public class StorageGroupProcessor {
         try {
           FileTimeIndexer fileTimeIndexer = null;
           if (newTsFileResource.isSeq()) {
-            fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+            fileTimeIndexer = FileIndexManager.getInstance()
                 .getSeqIndexer(newTsFileResource.getStorageGroupName());
           } else {
-            fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+            fileTimeIndexer = FileIndexManager.getInstance()
                 .getUnseqIndexer(newTsFileResource.getStorageGroupName());
           }
           fileTimeIndexer
-              .addIndexForPaths(FileIndexEntries.convertFromTsFileResource(newTsFileResource));
+              .createIndexForPath(FileIndexManager.convertFromTsFileResource(newTsFileResource));
         } catch (IllegalPathException e) {
           logger.error("Fail to get DeviceTimeIndexer for storage group {}, err:{}",
               newTsFileResource.getStorageGroupName(), e.getMessage());
@@ -2420,15 +2421,15 @@ public class StorageGroupProcessor {
         try {
           FileTimeIndexer fileTimeIndexer = null;
           if (tsFileResourceToBeDeleted.isSeq()) {
-            fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+            fileTimeIndexer = FileIndexManager.getInstance()
                 .getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           } else {
-            fileTimeIndexer = TsFileTimeIndexManager.getInstance()
+            fileTimeIndexer = FileIndexManager.getInstance()
                 .getUnseqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());
           }
           if (fileTimeIndexer != null) {
-            fileTimeIndexer.deleteIndexForPaths(
-                FileIndexEntries.convertFromTsFileResource(tsFileResourceToBeDeleted));
+            fileTimeIndexer.deleteIndexOfPath(
+                FileIndexManager.convertFromTsFileResource(tsFileResourceToBeDeleted));
           }
         } catch (IllegalPathException e) {
           return false;

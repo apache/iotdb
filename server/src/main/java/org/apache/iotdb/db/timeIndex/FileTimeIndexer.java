@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.timeIndex;
 
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -51,7 +52,7 @@ public interface FileTimeIndexer {
    * @param fileIndexEntries
    * @return
    */
-  boolean addIndexForPaths(FileIndexEntries fileIndexEntries);
+  boolean createIndexForPath(FileIndexEntries fileIndexEntries);
 
   /**
    * delete one index for the path
@@ -59,7 +60,7 @@ public interface FileTimeIndexer {
    * @param fileIndexEntries
    * @return
    */
-  boolean deleteIndexForPaths(FileIndexEntries fileIndexEntries);
+  boolean deleteIndexOfPath(FileIndexEntries fileIndexEntries);
 
   /**
    * found the related tsFile(only cover sealed tsfile) for one deviceId
@@ -68,5 +69,5 @@ public interface FileTimeIndexer {
    * @param timeFilter
    * @return whether success
    */
-  List<FileIndexEntries> filterByPath(PartialPath path, Filter timeFilter);
+  Map<String, TimeIndexEntry[]> filterByPath(PartialPath path, Filter timeFilter);
 }

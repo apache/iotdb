@@ -46,23 +46,4 @@ public class FileIndexEntries {
   public void setTsFilePath(String tsFilePath) {
     this.tsFilePath = tsFilePath;
   }
-
-  public static FileIndexEntries convertFromTsFileResource(TsFileResource resource)
-      throws IllegalPathException {
-    FileIndexEntries fileIndexEntries = new FileIndexEntries();
-    TimeIndexEntry[] timeIndexEntries = new TimeIndexEntry[resource.getDeviceToIndexMap().size()];
-    int i = 0;
-    for (Map.Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
-      TimeIndexEntry timeIndexEntry = new TimeIndexEntry();
-      timeIndexEntry.setAllElem(
-          new PartialPath(entry.getKey()),
-          resource.getStartTime(entry.getValue()),
-          resource.getEndTime(entry.getValue()));
-      timeIndexEntries[i++] = timeIndexEntry;
-    }
-    fileIndexEntries.setIndexEntries(timeIndexEntries);
-    fileIndexEntries.setTsFilePath(resource.getTsFilePath());
-
-    return fileIndexEntries;
-  }
 }

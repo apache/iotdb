@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.timeIndex.device;
+package org.apache.iotdb.db.timeIndex.impl;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.timeIndex.FileIndexEntries;
 import org.apache.iotdb.db.timeIndex.FileTimeIndexer;
+import org.apache.iotdb.db.timeIndex.TimeIndexEntry;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
@@ -43,17 +44,17 @@ public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
   }
 
   @Override
-  public boolean addIndexForPaths(FileIndexEntries fileIndexEntries) {
+  public boolean createIndexForPath(FileIndexEntries fileIndexEntries) {
     return false;
   }
 
   @Override
-  public boolean deleteIndexForPaths(FileIndexEntries fileIndexEntries) {
+  public boolean deleteIndexOfPath(FileIndexEntries fileIndexEntries) {
     return false;
   }
 
   @Override
-  public List<FileIndexEntries> filterByPath(PartialPath path, Filter timeFilter) {
-    return Collections.emptyList();
+  public Map<String, TimeIndexEntry[]> filterByPath(PartialPath path, Filter timeFilter) {
+    return Collections.emptyMap();
   }
 }

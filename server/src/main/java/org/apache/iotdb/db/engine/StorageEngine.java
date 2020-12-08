@@ -78,7 +78,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.timeIndex.TsFileTimeIndexManager;
+import org.apache.iotdb.db.timeIndex.FileIndexManager;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -629,8 +629,8 @@ public class StorageEngine implements IService {
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-        TsFileTimeIndexManager.getInstance().deleteSeqIndexer(storageGroup);
-        TsFileTimeIndexManager.getInstance().deleteUnseqIndexer(storageGroup);
+        FileIndexManager.getInstance().deleteSeqIndexer(storageGroup);
+        FileIndexManager.getInstance().deleteUnseqIndexer(storageGroup);
       }
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
@@ -646,8 +646,8 @@ public class StorageEngine implements IService {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     StorageGroupProcessor processor = processorMap.remove(storageGroupPath);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-      TsFileTimeIndexManager.getInstance().deleteSeqIndexer(storageGroupPath);
-      TsFileTimeIndexManager.getInstance().deleteUnseqIndexer(storageGroupPath);
+      FileIndexManager.getInstance().deleteSeqIndexer(storageGroupPath);
+      FileIndexManager.getInstance().deleteUnseqIndexer(storageGroupPath);
     }
     if (processor != null) {
       processor.deleteFolder(systemDir);
