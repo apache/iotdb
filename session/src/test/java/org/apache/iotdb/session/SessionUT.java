@@ -65,7 +65,7 @@ public class SessionUT {
     Before testing, change the sortTablet from private method to public method
     !!!
      */
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     // insert three rows data
@@ -118,7 +118,7 @@ public class SessionUT {
   @Test
   public void testInsertByStrAndSelectFailedData()
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
     session.open();
 
     String deviceId = "root.sg1.d1";

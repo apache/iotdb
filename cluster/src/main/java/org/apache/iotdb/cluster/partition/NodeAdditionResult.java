@@ -17,25 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.cluster.partition;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+public class NodeAdditionResult {
 
-public class BatchInsertionException extends QueryProcessException {
+  /**
+   * A new data group headed by the new node.
+   */
+  private PartitionGroup newGroup;
 
-  private TSStatus[] failingStatus;
-
-  public BatchInsertionException(TSStatus[] failingStatus) {
-    super("Batch insertion failed");
-    this.failingStatus = failingStatus;
+  public PartitionGroup getNewGroup() {
+    return newGroup;
   }
 
-  public void setFailingStatus(TSStatus[] failingStatus) {
-    this.failingStatus = failingStatus;
-  }
-
-  public TSStatus[] getFailingStatus() {
-    return failingStatus;
+  public void setNewGroup(PartitionGroup newGroup) {
+    this.newGroup = newGroup;
   }
 }
