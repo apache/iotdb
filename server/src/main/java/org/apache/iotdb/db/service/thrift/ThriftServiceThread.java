@@ -51,10 +51,10 @@ public class ThriftServiceThread extends Thread {
   private TThreadPoolServer.Args poolArgs;
 
   @SuppressWarnings("squid:S107")
-  public ThriftServiceThread(TProcessor processor, String serviceName,
-      String threadsName,
+  public ThriftServiceThread(TProcessor processor, String serviceName, String threadsName,
       String bindAddress, int port, int maxWorkerThreads, int timeoutMs,
-      TServerEventHandler serverEventHandler, boolean compress) {
+      TServerEventHandler serverEventHandler, boolean compress, int initialCapacity,
+      int maxLength) {
     if (compress) {
       protocolFactory = new TCompactProtocol.Factory();
     } else {
@@ -72,7 +72,7 @@ public class ThriftServiceThread extends Thread {
           threadsName);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
-      poolArgs.transportFactory(new TFastFramedTransport.Factory());
+      poolArgs.transportFactory(new TFastFramedTransport.Factory(initialCapacity, maxLength));
       poolServer = new TThreadPoolServer(poolArgs);
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
