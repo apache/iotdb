@@ -48,7 +48,7 @@ public class IoTDBInterpreter extends Interpreter {
 
   @Override
   public void open() {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session(properties.getProperty("host"), properties.getProperty("port"), properties.getProperty("username"), properties.getProperty("password"));
     try {
       session.open();
     } catch (IoTDBConnectionException e) {

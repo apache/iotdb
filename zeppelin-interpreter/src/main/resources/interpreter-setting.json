@@ -22,13 +22,13 @@
         "defaultValue": "test",
         "description": "IoTDB database name"
       },
-      "mongo.server.username": {
+      "username": {
         "envName": null,
         "propertyName": "username",
         "defaultValue": "root",
         "description": "Username for authentication"
       },
-      "mongo.server.password": {
+      "password": {
         "envName": null,
         "propertyName": "password",
         "defaultValue": "root",
