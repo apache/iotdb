@@ -194,7 +194,7 @@ public class IoTDBConfigCheck {
     }
 
     // check whether upgrading from v0.11 to v0.12
-    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
+    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
       logger.info("Upgrading IoTDB from v0.11 to v0.12, checking files...");
       checkUnClosedTsFileV2();
       upgradePropertiesFile();
