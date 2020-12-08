@@ -396,7 +396,7 @@ public class CMManager extends MManager {
    * create storage groups for CreateTimeseriesPlan and InsertPlan, also create timeseries for
    * InsertPlan. Only the two kind of plans can use this method.
    */
-  public void createSchema(PhysicalPlan plan) throws MetadataException {
+  public void createSchema(PhysicalPlan plan) throws MetadataException, CheckConsistencyException {
     // try to set storage group
     List<PartialPath> deviceIds;
     // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
@@ -491,7 +491,8 @@ public class CMManager extends MManager {
    * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  public boolean createTimeseries(InsertPlan insertPlan) throws IllegalPathException {
+  public boolean createTimeseries(InsertPlan insertPlan)
+      throws IllegalPathException, CheckConsistencyException {
     List<String> seriesList = new ArrayList<>();
     PartialPath deviceId = insertPlan.getDeviceId();
     PartialPath storageGroupName;
@@ -566,6 +567,22 @@ public class CMManager extends MManager {
    * To check which timeseries in the input list is unregistered from one node in "partitionGroup".
    */
   private List<String> getUnregisteredSeriesList(List<String> seriesList,
+      PartitionGroup partitionGroup) throws CheckConsistencyException {
+    if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+      return getUnregisteredSeriesListLocally(seriesList, partitionGroup);
+    } else {
+      return getUnregisteredSeriesListRemotely(seriesList, partitionGroup);
+    }
+  }
+
+  private List<String> getUnregisteredSeriesListLocally(List<String> seriesList,
+      PartitionGroup partitionGroup) throws CheckConsistencyException {
+    DataGroupMember dataMember = metaGroupMember.getDataClusterServer()
+        .getDataMember(partitionGroup.getHeader(), null, null);
+    return dataMember.getLocalQueryExecutor().getUnregisteredTimeseries(seriesList);
+  }
+
+  private List<String> getUnregisteredSeriesListRemotely(List<String> seriesList,
       PartitionGroup partitionGroup) {
     for (Node node : partitionGroup) {
       try {

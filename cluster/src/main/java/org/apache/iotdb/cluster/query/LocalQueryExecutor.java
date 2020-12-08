@@ -447,7 +447,7 @@ public class LocalQueryExecutor {
    */
   public List<String> getUnregisteredTimeseries(List<String> timeseriesList)
       throws CheckConsistencyException {
-    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    dataGroupMember.syncLeaderWithConsistencyCheck(true);
 
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
