@@ -43,5 +43,5 @@ jobs:
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Test with Maven
-        run:  mvn integration-test -P client-cpp -pl client-cpp,compile-tools,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true
+        run:  mvn integration-test -P client-cpp -pl client-cpp,compile-tools,compile-tools/boost,compile-tools/thrift,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true
 
