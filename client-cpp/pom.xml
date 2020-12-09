@@ -41,7 +41,7 @@
         <!-- Default value of cmake root -->
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
-        <catch2.url>https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp</catch2.url>
+        <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
     </properties>
     <modules>
         <module>client-cpp-example</module>
@@ -139,12 +139,12 @@
                                             <destinationFile>${project.build.directory}/build/main/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.h</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.h</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/Session.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.h</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/main/IOTDBSession.cpp</sourceFile>
-                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/IOTDBSession.cpp</destinationFile>
+                                            <sourceFile>${project.basedir}/src/main/Session.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/build/main/generated-sources-cpp/Session.cpp</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
@@ -158,7 +158,8 @@
                         <executions>
                             <execution>
                                 <id>generate-thrift-sources-cpp</id>
-                                <phase>generate-sources</phase>
+                                <!-- Move from generate-sources to generate-resources to avoid executing twice -->
+                                <phase>generate-resources</phase>
                                 <goals>
                                     <goal>compile</goal>
                                 </goals>
@@ -308,7 +309,7 @@
                             <!-- Download the Catch2 header file. -->
                             <execution>
                                 <id>get-catch2</id>
-                                <phase>generate-sources</phase>
+                                <phase>generate-resources</phase>
                                 <goals>
                                     <goal>wget</goal>
                                 </goals>
@@ -316,6 +317,8 @@
                                     <url>${catch2.url}</url>
                                     <unpack>false</unpack>
                                     <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
+                                    <skipCache>false</skipCache>
+                                    <!-- must be true to avoid the local Catch2 has incorrect vesion.-->
                                     <overwrite>true</overwrite>
                                 </configuration>
                             </execution>

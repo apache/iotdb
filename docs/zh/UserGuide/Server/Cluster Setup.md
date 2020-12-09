@@ -19,8 +19,12 @@
 
 -->
 
+__集群模式目前是测试版！请谨慎在生产环境中使用。__
+
 # 集群设置
 安装环境请参考[安装环境](../Get%20Started/QuickStart.md)
+## 前提条件
+如果您在使用Windows系统，请安装MinGW，WSL或者git bash。
 ## 集群环境搭建
 您可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
@@ -32,14 +36,53 @@ or
 > nohup sbin/start-node.sh -c <conf_path> -internal_meta_port 9003 >/dev/null 2>&1 &
 
 # Windows
-> nohup sbin/start-node.bat
+> sbin\start-node.bat
 or
-> nohup sbin/start-node.bat -c <conf_path> -internal_meta_port 9003
+> sbin\start-node.bat -c <conf_path> -internal_meta_port 9003
 ```
 
 `-c <conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件; `-internal_meta_port 9003`覆盖特定配置项`internal_meta_port`的配置，
 目前支持的启动覆盖原有配置的配置项有：
 `internal_meta_port、internal_data_port、cluster_rpc_port、seed_nodes`。当配置文件和配置项都被指定的时候，指定配置项的配置会覆盖配置文件中的配置。
+
+## 3节点2副本伪分布式搭建示例
+```bash
+# 第一步 (注意以下路径在 Windows MinGW 中并不适用)
+> mvn clean package -pl cluster -am -Dmaven.test.skip=true
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT1
+> cp -rf ./cluster/target/cluster-0.11.0-SNAPSHOT ./cluster/target/cluster-0.11.0-SNAPSHOT2
+> sed -i -e 's/6667/6668/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-engine.properties
+> sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
+
+# 第二步: Unix/OS X/Windows (git bash or WSL)
+> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/cluster-env.sh
+> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
+> chmod -R 777 ./cluster/target/
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
+
+# 第二步: Windows (MinGW)
+> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
+```
+
+注：分布式版使用了707标识符来指示客户端做相应的元数据缓存以便之后能够直接将数据发送给对应数据组的 leader。因此建议在当前分支重新 `mvn install -pl jdbc -am -Dmaven.test.skip=true` 和
+`mvn install -pl session -am -Dmaven.test.skip=true`以更新最新的客户端。
+
+## 被覆盖的单机版选项
+
+iotdb-engines.properties配置文件中的部分内容会不再生效：
+
+* `enable_auto_create_schema` 不再生效，并被视为`false`. 应使用 iotdb-cluster.properties 中的  
+`enable_auto_create_schema` 来控制是否自动创建序列。
+
+
+* `is_sync_enable` 不再生效，并被视为 `false`.
+
 
 ## 配置项
 
@@ -90,9 +133,9 @@ or
 
 |名字|seed\_nodes|
 |:---:|:---|
-|描述|集群中节点的地址，`{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
+|描述|集群中节点的地址，`{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port:cluster\_rpc\_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
 |类型|String|
-|默认值|127.0.0.1:9003:40010,127.0.0.1:9005:40012,127.0.0.1:9007:40014|
+|默认值|127.0.0.1:9003:40010:55560,127.0.0.1:9005:40012:55561,127.0.0.1:9007:40014:55562|
 |改后生效方式|重启服务器生效|
 
 * rpc\_thrift\_compression\_enable

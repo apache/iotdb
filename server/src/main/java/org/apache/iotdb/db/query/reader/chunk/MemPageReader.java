@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
@@ -62,7 +63,11 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    this.valueFilter = filter;
+    if (valueFilter == null) {
+      this.valueFilter = filter;
+    } else {
+      valueFilter = new AndFilter(this.valueFilter, filter);
+    }
   }
 
   @Override
