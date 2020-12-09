@@ -30,12 +30,12 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
-if [ -f "$IOTDB_CONF/cluster-env.sh" ]; then
+if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
     if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-      . "$IOTDB_CONF/cluster-env.sh" "printgc"
+      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
       shift
     else
-        . "$IOTDB_CONF/cluster-env.sh"
+        . "$IOTDB_CONF/iotdb-env.sh"
     fi
 else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
