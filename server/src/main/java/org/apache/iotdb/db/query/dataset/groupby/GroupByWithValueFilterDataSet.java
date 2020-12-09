@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -63,6 +64,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private long lastTimestamp;
 
+  protected GroupByWithValueFilterDataSet() {
+  }
+
   /**
    * constructor.
    */
@@ -73,6 +77,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     initGroupBy(context, groupByTimePlan);
   }
 
+  @TestOnly
   public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) {
     super(new QueryContext(queryId), groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();

@@ -54,7 +54,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -402,6 +402,7 @@ public class StorageEngine implements IService {
     if (virtualStorageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
+        waitAllSgReady(storageGroupPath);
         synchronized (storageGroupMNode) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
@@ -422,16 +423,42 @@ public class StorageEngine implements IService {
   public StorageGroupProcessor buildNewStorageGroupProcessor(PartialPath storageGroupPath,
       StorageGroupMNode storageGroupMNode, String storageGroupName)
       throws StorageGroupProcessorException {
-    StorageGroupProcessor processor;
-    logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-        storageGroupPath, Thread.currentThread().getId());
-    processor = new StorageGroupProcessor(systemDir + File.separator + storageGroupPath,
-        storageGroupName,
-        fileFlushPolicy, storageGroupMNode.getFullPath());
-    processor.setDataTTL(storageGroupMNode.getDataTTL());
-    processor.setCustomFlushListeners(customFlushListeners);
-    processor.setCustomCloseFileListeners(customCloseFileListeners);
-    return processor;
+          StorageGroupProcessor processor;
+          logger.info("construct a processor instance, the storage group is {}, Thread is {}",
+              storageGroupPath, Thread.currentThread().getId());
+          processor = new StorageGroupProcessor(systemDir + File.separator + storageGroupPath,
+              storageGroupName,
+              fileFlushPolicy, storageGroupMNode.getFullPath());
+          processor.setDataTTL(storageGroupMNode.getDataTTL());
+          processor.setCustomFlushListeners(customFlushListeners);
+          processor.setCustomCloseFileListeners(customCloseFileListeners);
+          return processor;
+        }
+
+  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
+    if (isAllSgReady.get()) {
+      return;
+    }
+
+    long waitStart = System.currentTimeMillis();
+    long waited = 0L;
+    final long MAX_WAIT = 5000L;
+    while (!isAllSgReady.get() && waited < MAX_WAIT) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineException(e);
+      }
+      waited = System.currentTimeMillis() - waitStart;
+    }
+
+    if (!isAllSgReady.get()) {
+      // not finished recover, refuse the request
+      throw new StorageEngineException(
+          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+    }
   }
 
   /**
@@ -465,7 +492,7 @@ public class StorageEngine implements IService {
    * insert a InsertTabletPlan to a storage group
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchInsertionException {
+      throws StorageEngineException, BatchProcessException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());

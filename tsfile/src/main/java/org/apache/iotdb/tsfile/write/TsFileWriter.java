@@ -273,7 +273,7 @@ public class TsFileWriter implements AutoCloseable {
    * @return total memory size used
    */
   private long calculateMemSizeForAllGroup() {
-    int memTotalSize = 0;
+    long memTotalSize = 0;
     for (IChunkGroupWriter group : groupWriters.values()) {
       memTotalSize += group.updateMaxGroupMemSize();
     }

@@ -56,7 +56,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
     if (sequence) {
       return new ArrayList<>(sequenceFileTreeSet);
     } else {
-      return unSequenceFileList;
+      return new ArrayList<>(unSequenceFileList);
     }
   }
 
