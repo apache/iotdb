@@ -396,4 +396,12 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<
 ```
 boolean checkTimeseriesExists(String path)
 ```
+
 用于检测时间序列是否存在
+
+```
+public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader)
+```
+
+开启一个session，并指定是否启用leader缓存。注意此接口对于分布式写入能够提高性能，但对于单机版写入反而会给客户端增加较少的消耗。
