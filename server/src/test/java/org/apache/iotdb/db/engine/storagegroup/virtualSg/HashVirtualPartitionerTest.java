@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.HashMap;
 import java.util.Set;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -54,6 +56,9 @@ public class HashVirtualPartitionerTest {
 
     int sg1 = hashVirtualPartitioner.deviceToStorageGroup(d1);
     int sg2 = hashVirtualPartitioner.deviceToStorageGroup(d2);
+
+    assertEquals(sg1, Math.abs(d1.hashCode() % hashVirtualPartitioner.getPartitionCount()));
+    assertEquals(sg2, Math.abs(d2.hashCode() % hashVirtualPartitioner.getPartitionCount()));
   }
 
 }

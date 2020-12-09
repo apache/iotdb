@@ -38,6 +38,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -117,7 +118,7 @@ public class IoTDBLoadExternalTsfileIT {
   private static final String TEST_D0_S0_STR = "root.test.d0.s0";
   private static final String TEST_D0_S1_STR = "root.test.d0.s1";
   private static final String TEST_D1_STR = "root.test.d1.g0.s0";
-  private static boolean enableVirtualPartition = false;
+  private static int virtualPartitionNum = 0;
 
   private static String[] deleteSqls = new String[]{
       "DELETE STORAGE GROUP root.vehicle",
@@ -128,10 +129,11 @@ public class IoTDBLoadExternalTsfileIT {
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setVirtualPartitionNum(1);
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
+    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualPartitionNum();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
   }
@@ -141,7 +143,8 @@ public class IoTDBLoadExternalTsfileIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
+    IoTDBDescriptor.getInstance().getConfig().setVirtualPartitionNum(virtualPartitionNum);
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(virtualPartitionNum);
   }
 
   @Test
@@ -201,8 +204,8 @@ public class IoTDBLoadExternalTsfileIT {
           StorageEngine.getInstance().getProcessor(new PartialPath("root.vehicle"))
               .getSequenceFileTreeSet());
       File tmpDir = new File(
-          resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
-          "tmp" + File.separator + new PartialPath("root.vehicle") + File.separator + "0");
+          resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + new PartialPath("root.vehicle") + File.separator + "0" + File.separator + "0");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -214,8 +217,8 @@ public class IoTDBLoadExternalTsfileIT {
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
               .getSequenceFileTreeSet());
-      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
-          "tmp" + File.separator + new PartialPath("root.test") + File.separator + "0");
+      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + new PartialPath("root.test") + File.separator + "0" + File.separator + "0");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -224,7 +227,7 @@ public class IoTDBLoadExternalTsfileIT {
       }
 
       // load all tsfile in tmp dir
-      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
+      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile().getParentFile(),
           "tmp");
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
@@ -236,8 +239,8 @@ public class IoTDBLoadExternalTsfileIT {
               .getSequenceFileTreeSet());
       assertEquals(2, resources.size());
       assertNotNull(tmpDir.listFiles());
-      assertEquals(0, new File(tmpDir, new PartialPath("root.vehicle") + File.separator + "0").listFiles().length);
-      assertEquals(0, new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
+      assertEquals(0, new File(tmpDir, new PartialPath("root.vehicle") + File.separator + "0" + File.separator + "0").listFiles().length);
+      assertEquals(0, new File(tmpDir, new PartialPath("root.test") + File.separator + "0" + File.separator + "0").listFiles().length);
     } catch (StorageEngineException | IllegalPathException e) {
       Assert.fail();
     }
@@ -385,8 +388,8 @@ public class IoTDBLoadExternalTsfileIT {
               .getSequenceFileTreeSet());
 
       File tmpDir = new File(
-          resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
-          "tmp" + File.separator + "root.vehicle" + File.separator + "0");
+          resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.vehicle" + File.separator + "0" + File.separator + "0");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -398,8 +401,8 @@ public class IoTDBLoadExternalTsfileIT {
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
               .getSequenceFileTreeSet());
-      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
-          "tmp" + File.separator + "root.test" + File.separator + "0");
+      tmpDir = new File(resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile().getParentFile(),
+          "tmp" + File.separator + "root.test" + File.separator + "0" + File.separator + "0");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -440,7 +443,7 @@ public class IoTDBLoadExternalTsfileIT {
       Assert.assertTrue(hasError);
 
       // test load metadata automatically, it will succeed.
-      tmpDir = tmpDir.getParentFile().getParentFile();
+      tmpDir = tmpDir.getParentFile().getParentFile().getParentFile();
       statement.execute(String.format("load \"%s\" true 1", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor(new PartialPath("root.vehicle"))
@@ -452,7 +455,7 @@ public class IoTDBLoadExternalTsfileIT {
       assertEquals(2, resources.size());
       assertEquals(2, tmpDir.listFiles().length);
       for (File dir : tmpDir.listFiles()) {
-        assertEquals(0, dir.listFiles()[0].listFiles().length);
+        assertEquals(0, dir.listFiles()[0].listFiles()[0].listFiles().length);
       }
     } catch (StorageEngineException | IllegalPathException e) {
       e.printStackTrace();

@@ -184,8 +184,12 @@ public class DeletionFileNodeTest {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
-            modFiles.add(file);
+          if(file.isDirectory()){
+            for(File tsfile : file.listFiles()){
+              if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
+                modFiles.add(tsfile);
+              }
+            }
           }
         }
       }
@@ -311,8 +315,12 @@ public class DeletionFileNodeTest {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
-            modFiles.add(file);
+          if(file.isDirectory()) {
+            for (File tsfile : file.listFiles()) {
+              if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
+                modFiles.add(tsfile);
+              }
+            }
           }
         }
       }

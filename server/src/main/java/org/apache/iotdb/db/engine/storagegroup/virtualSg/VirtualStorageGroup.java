@@ -84,7 +84,11 @@ public class VirtualStorageGroup {
     return processor;
   }
 
-  public void recover(){
-
+  public void recover(StorageGroupMNode storageGroupMNode) throws StorageGroupProcessorException {
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      StorageGroupProcessor processor = StorageEngine.getInstance()
+          .buildNewStorageGroupProcessor(storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(i));
+      virtualPartition[i] = processor;
+    }
   }
 }

@@ -23,9 +23,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -85,6 +87,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -273,7 +276,7 @@ public class StorageEngine implements IService {
       futures.add(recoveryThreadPool.submit(() -> {
         try {
           VirtualStorageGroup virtualStorageGroup = new VirtualStorageGroup();
-          virtualStorageGroup.recover();
+          virtualStorageGroup.recover(storageGroup);
           processorMap.put(storageGroup.getPartialPath(), virtualStorageGroup);
 
           logger.info("Storage Group Processor {} is recovered successfully",
@@ -281,36 +284,6 @@ public class StorageEngine implements IService {
         } catch (Exception e) {
           logger
               .error("meet error when recovering storage group: {}", storageGroup.getFullPath(),
-                  e);
-        }
-        return null;
-      }));
-    }
-  }
-
-  /**
-   * recover virtual storage group processor
-   *
-   * @param futures recover future task
-   */
-  private void recoverVirtualStorageGroupProcessor(List<Future<Void>> futures) {
-    List<String> sgNames = new ArrayList<>();
-    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      sgNames.add(String.valueOf(i));
-    }
-
-    for (String sgName : sgNames) {
-      futures.add(recoveryThreadPool.submit(() -> {
-        try {
-          VirtualStorageGroup virtualStorageGroup = new VirtualStorageGroup();
-          virtualStorageGroup.recover();
-          processorMap.put(new PartialPath(sgName), virtualStorageGroup);
-
-          logger.info("Storage Group Processor {} is recovered successfully",
-              sgName);
-        } catch (Exception e) {
-          logger
-              .error("meet error when recovering storage group: {}", sgName,
                   e);
         }
         return null;
@@ -460,9 +433,9 @@ public class StorageEngine implements IService {
     StorageGroupProcessor processor;
     logger.info("construct a processor instance, the storage group is {}, Thread is {}",
         storageGroupPath, Thread.currentThread().getId());
-    processor = new StorageGroupProcessor(systemDir + File.pathSeparator + storageGroupPath,
+    processor = new StorageGroupProcessor(systemDir + File.separator + storageGroupPath,
         storageGroupName,
-        fileFlushPolicy);
+        fileFlushPolicy, storageGroupMNode.getFullPath());
     processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
     processor.setCustomCloseFileListeners(customCloseFileListeners);
@@ -545,6 +518,10 @@ public class StorageEngine implements IService {
 
   public void closeStorageGroupProcessor(PartialPath storageGroupPath, boolean isSeq,
       boolean isSync) {
+    if(!processorMap.containsKey(storageGroupPath)){
+      return;
+    }
+
     VirtualStorageGroup virtualStorageGroup = processorMap.get(storageGroupPath);
     for (StorageGroupProcessor processor : virtualStorageGroup.getAllPartition()) {
       if (processor == null) {
@@ -597,6 +574,10 @@ public class StorageEngine implements IService {
       boolean isSeq,
       boolean isSync)
       throws StorageGroupNotSetException {
+    if(!processorMap.containsKey(storageGroupPath)){
+      return;
+    }
+
     VirtualStorageGroup virtualStorageGroup = processorMap.get(storageGroupPath);
     for (StorageGroupProcessor processor : virtualStorageGroup.getAllPartition()) {
       if (processor != null) {
@@ -641,6 +622,11 @@ public class StorageEngine implements IService {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
+        // storage group has no data
+        if(!processorMap.containsKey(storageGroupPath)){
+          continue;
+        }
+
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         for (StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath)
             .getAllPartition()) {
@@ -662,6 +648,11 @@ public class StorageEngine implements IService {
     try {
       List<PartialPath> sgPaths = IoTDB.metaManager.searchAllRelatedStorageGroups(path);
       for (PartialPath storageGroupPath : sgPaths) {
+        // storage group has no data
+        if(!processorMap.containsKey(storageGroupPath)){
+          continue;
+        }
+
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         for (StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath)
             .getAllPartition()) {
@@ -778,6 +769,11 @@ public class StorageEngine implements IService {
   }
 
   public void setTTL(PartialPath storageGroup, long dataTTL) throws StorageEngineException {
+    // storage group has no data
+    if(!processorMap.containsKey(storageGroup)){
+      return;
+    }
+
     for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroup).getAllPartition()){
       if(storageGroupProcessor != null){
         storageGroupProcessor.setDataTTL(dataTTL);
@@ -786,6 +782,10 @@ public class StorageEngine implements IService {
   }
 
   public void deleteStorageGroup(PartialPath storageGroupPath) {
+    if(!processorMap.containsKey(storageGroupPath)){
+      return;
+    }
+
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     VirtualStorageGroup virtualStorageGroup = processorMap.remove(storageGroupPath);
     for (StorageGroupProcessor processor : virtualStorageGroup.getAllPartition()) {
@@ -797,7 +797,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(newTsFileResource.getTsFile().getParentFile().getName()))
+    getProcessorDirectly(new PartialPath(newTsFileResource.getTsFile().getParentFile().getParentFile().getParentFile().getName()))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -815,7 +815,7 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(deletedTsfile.getParentFile().getName()))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
         .deleteTsfile(deletedTsfile);
   }
 
@@ -839,39 +839,48 @@ public class StorageEngine implements IService {
    * @return sg name
    */
   private String getSgByEngineFile(File file) {
-    return file.getParentFile().getParentFile().getName();
+    return file.getParentFile().getParentFile().getParentFile().getName();
   }
 
-//  /**
-//   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
-//   */
-//  public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
-//    Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
-//    for (Entry<PartialPath, StorageGroupProcessor> entry : processorMap.entrySet()) {
-//      List<TsFileResource> allResources = entry.getValue().getSequenceFileTreeSet();
-//      allResources.addAll(entry.getValue().getUnSequenceFileList());
-//      for (TsFileResource sequenceFile : allResources) {
-//        if (!sequenceFile.isClosed()) {
-//          continue;
-//        }
-//        long partitionNum = sequenceFile.getTimePartition();
-//        Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
-//            , n -> new HashMap<>());
-//        storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
-//      }
-//    }
-//    return ret;
-//  }
-//
-//  public void setFileFlushPolicy(TsFileFlushPolicy fileFlushPolicy) {
-//    this.fileFlushPolicy = fileFlushPolicy;
-//  }
-//
-//  public boolean isFileAlreadyExist(TsFileResource tsFileResource, PartialPath storageGroup,
-//      long partitionNum) {
-//    StorageGroupProcessor processor = processorMap.get(storageGroup);
-//    return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
-//  }
+  /**
+   * @return TsFiles (seq or unseq) grouped by their storage group and partition number.
+   */
+  public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
+    Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
+    for (Entry<PartialPath, VirtualStorageGroup> entry : processorMap.entrySet()) {
+      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllPartition()){
+        if(storageGroupProcessor != null){
+          List<TsFileResource> allResources = storageGroupProcessor.getSequenceFileTreeSet();
+          allResources.addAll(storageGroupProcessor.getUnSequenceFileList());
+          for (TsFileResource sequenceFile : allResources) {
+            if (!sequenceFile.isClosed()) {
+              continue;
+            }
+            long partitionNum = sequenceFile.getTimePartition();
+            Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
+                , n -> new HashMap<>());
+            storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
+          }
+        }
+      }
+    }
+    return ret;
+  }
+
+  public void setFileFlushPolicy(TsFileFlushPolicy fileFlushPolicy) {
+    this.fileFlushPolicy = fileFlushPolicy;
+  }
+
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, PartialPath storageGroup,
+      long partitionNum) {
+    VirtualStorageGroup virtualStorageGroup = processorMap.get(storageGroup);
+    for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroup.getAllPartition()){
+      if(storageGroupProcessor != null && storageGroupProcessor.isFileAlreadyExist(tsFileResource, partitionNum)){
+        return true;
+      }
+    }
+    return false;
+  }
 
   /**
    * Set the version of given partition to newMaxVersion if it is larger than the current version.
@@ -903,31 +912,34 @@ public class StorageEngine implements IService {
     return processorMap;
   }
 
-//  /**
-//   * Get a map indicating which storage groups have working TsFileProcessors and its associated
-//   * partitionId and whether it is sequence or not.
-//   *
-//   * @return storage group -> a list of partitionId-isSequence pairs
-//   */
-//  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
-//    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
-//    for (Entry<PartialPath, StorageGroupProcessor> entry : processorMap.entrySet()) {
-//      List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
-//      StorageGroupProcessor processor = entry.getValue();
-//      for (TsFileProcessor tsFileProcessor : processor.getWorkSequenceTsFileProcessors()) {
-//        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
-//        partitionIdList.add(tmpPair);
-//      }
-//
-//      for (TsFileProcessor tsFileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
-//        Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
-//        partitionIdList.add(tmpPair);
-//      }
-//
-//      res.put(entry.getKey().getFullPath(), partitionIdList);
-//    }
-//    return res;
-//  }
+  /**
+   * Get a map indicating which storage groups have working TsFileProcessors and its associated
+   * partitionId and whether it is sequence or not.
+   *
+   * @return storage group -> a list of partitionId-isSequence pairs
+   */
+  public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
+    Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
+    for (Entry<PartialPath, VirtualStorageGroup> entry : processorMap.entrySet()) {
+      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllPartition()) {
+        if (storageGroupProcessor != null) {
+          List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
+          for (TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()) {
+            Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
+            partitionIdList.add(tmpPair);
+          }
+
+          for (TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
+            Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
+            partitionIdList.add(tmpPair);
+          }
+
+          res.put(entry.getKey().getFullPath(), partitionIdList);
+        }
+      }
+    }
+    return res;
+  }
 
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to

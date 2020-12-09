@@ -205,6 +205,8 @@ public class StorageGroupProcessor {
    */
   private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
+  private String logicalStorageGroupName;
+
   private File storageGroupSysDir;
 
   // manage seqFileList and unSeqFileList
@@ -263,8 +265,9 @@ public class StorageGroupProcessor {
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
-      TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
+      TsFileFlushPolicy fileFlushPolicy, String logicalStorageGroupName) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
+    this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
@@ -276,7 +279,7 @@ public class StorageGroupProcessor {
           storageGroupSysDir.getPath());
     }
     this.tsFileManagement = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-        .getTsFileManagement(storageGroupName, storageGroupSysDir.getAbsolutePath());
+        .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
 
     recover();
 
@@ -331,7 +334,7 @@ public class StorageGroupProcessor {
           tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(),
           tsFileManagement::mergeEndAction,
           taskName,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), storageGroupName);
+          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), logicalStorageGroupName);
       logger.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
       recoverMergeTask
           .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
@@ -464,7 +467,7 @@ public class StorageGroupProcessor {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
+      File fileFolder = fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -1042,10 +1045,10 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    fsFactory.getFile(baseDir, storageGroupName).mkdirs();
+    fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName).mkdirs();
 
     String filePath =
-        baseDir + File.separator + storageGroupName + File.separator + timePartitionId
+        baseDir + File.separator + logicalStorageGroupName + File.separator + storageGroupName + File.separator + timePartitionId
             + File.separator
             + getNewTsFileName(timePartitionId);
 
@@ -2207,7 +2210,7 @@ public class StorageGroupProcessor {
       case LOAD_UNSEQUENCE:
         targetFile = fsFactory
             .getFile(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                storageGroupName + File.separatorChar + filePartitionId + File.separator
+                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar + filePartitionId + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
         if (tsFileManagement.contains(tsFileResource, false)) {
@@ -2221,7 +2224,7 @@ public class StorageGroupProcessor {
       case LOAD_SEQUENCE:
         targetFile =
             fsFactory.getFile(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                storageGroupName + File.separatorChar + filePartitionId + File.separator
+                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar + filePartitionId + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
         if (tsFileManagement.contains(tsFileResource, true)) {
@@ -2482,7 +2485,7 @@ public class StorageGroupProcessor {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
       long partitionId = longTsFileProcessorEntry.getKey();
       TsFileProcessor processor = longTsFileProcessorEntry.getValue();
-      if (filter.satisfy(storageGroupName, partitionId)) {
+      if (filter.satisfy(logicalStorageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
         logger.debug("{} is removed during deleting partitions",
@@ -2495,7 +2498,7 @@ public class StorageGroupProcessor {
   private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
     while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
-      if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
+      if (filter.satisfy(logicalStorageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());

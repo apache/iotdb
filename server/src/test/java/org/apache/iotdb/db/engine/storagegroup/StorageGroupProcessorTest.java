@@ -601,7 +601,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
 
   }

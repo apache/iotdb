@@ -179,7 +179,7 @@ public class IoTDBRemovePartitionIT {
         sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
             i * partitionInterval, i * partitionInterval));
       }
-      sqls.add("MERGE");
+      // sqls.add("MERGE");
       // last file is unclosed
       if (i < 9) {
         sqls.add("FLUSH");
