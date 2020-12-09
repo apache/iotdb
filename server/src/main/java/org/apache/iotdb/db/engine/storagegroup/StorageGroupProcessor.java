@@ -925,7 +925,7 @@ public class StorageGroupProcessor {
    */
   private boolean isInsertToFlushingMemTable(long timePartitionId, InsertRowPlan insertRowPlan){
     return flushingLatestTimeForEachDevice.get(timePartitionId).
-        getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) > insertRowPlan.getTime();
+        getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE) >= insertRowPlan.getTime();
   }
 
   private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
