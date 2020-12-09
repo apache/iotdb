@@ -135,8 +135,8 @@ public class TsFileResource {
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.9.x/v1 ->
-   * 0.10/v2
+   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v1 ->
+   * 0.12/v2
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 

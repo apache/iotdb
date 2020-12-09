@@ -442,19 +442,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   }
 
   /**
-   * read data from current position of the input, and deserialize it to a CHUNK_GROUP_FOOTER.
-   *
-   * @param position   the offset of the chunk group footer in the file
-   * @param markerRead true if the offset does not contains the marker , otherwise false
-   * @return a CHUNK_GROUP_FOOTER
-   * @throws IOException io error
-   */
-  public ChunkGroupHeader readChunkGroupFooter(long position, boolean markerRead)
-      throws IOException {
-    return ChunkGroupFooterV2.deserializeFrom(tsFileInput, position, markerRead);
-  }
-
-  /**
    * read data from current position of the input, and deserialize it to a CHUNK_HEADER. <br> This
    * method is not threadsafe.
    *
@@ -512,6 +499,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
     return PageHeaderV2.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
+  }
+
+  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
+    return readData(-1, header.getCompressedSize());
   }
 
   /**

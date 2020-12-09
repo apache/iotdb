@@ -40,6 +40,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -176,6 +177,8 @@ public class StorageGroupProcessor {
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
+
+  private AtomicInteger upgradeFileCount;
   /*
    * time partition id -> map, which contains
    * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
@@ -304,6 +307,10 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
+
+      if (upgradeUnseqFileList.size() + upgradeUnseqFileList.size() != 0) {
+        upgradeFileCount = new AtomicInteger();
+      }
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
@@ -1745,7 +1752,7 @@ public class StorageGroupProcessor {
    * @return total num of the tsfiles which need to be upgraded in the storage group
    */
   public int countUpgradeFiles() {
-    return upgradeSeqFileList.size() + upgradeUnseqFileList.size();
+    return upgradeFileCount.get();
   }
 
   public void upgrade() {
@@ -1761,6 +1768,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  // TODO
   private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
@@ -1770,23 +1778,28 @@ public class StorageGroupProcessor {
               resource.getEndTime(index))
       );
     }
-    insertLock.writeLock().lock();
-    tsFileManagement.writeLock();
-    try {
-      if (tsFileResource.isSeq()) {
-        tsFileManagement.addAll(upgradedResources, true);
-        upgradeSeqFileList.remove(tsFileResource);
-      } else {
-        tsFileManagement.addAll(upgradedResources, false);
-        upgradeUnseqFileList.remove(tsFileResource);
-      }
-    } finally {
-      tsFileManagement.writeUnlock();
-      insertLock.writeLock().unlock();
-    }
 
+    upgradeFileCount.getAndAdd(-1);
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
-    if (countUpgradeFiles() == 0) {
+    if (upgradeFileCount.get() == 0) {
+      
+      insertLock.writeLock().lock();
+      tsFileManagement.writeLock();
+      try {
+        for (TsFileResource upgradeResource : upgradeSeqFileList) {
+          tsFileManagement.addAll(upgradeResource.getUpgradedResources(), true);
+        }
+        upgradeSeqFileList.clear();
+        for (TsFileResource upgradeResource : upgradeUnseqFileList) {
+          tsFileManagement.addAll(upgradeResource.getUpgradedResources(), false);
+        }
+        upgradeUnseqFileList.clear();
+      } finally {
+        tsFileManagement.writeUnlock();
+        insertLock.writeLock().unlock();
+      }
+      
+      
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
           .entrySet()) {
         long timePartitionId = entry.getKey();
