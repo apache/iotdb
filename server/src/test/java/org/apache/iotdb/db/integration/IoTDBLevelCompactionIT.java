@@ -698,6 +698,12 @@ public class IoTDBLevelCompactionIT {
         statement.execute("FLUSH");
       }
 
+      try{
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
@@ -855,7 +861,7 @@ public class IoTDBLevelCompactionIT {
    * test seq max level num = 0
    */
   @Test
-  public void testCompactionSSeqFileNumInEachLevelError0() throws SQLException {
+  public void testCompactionSeqFileNumInEachLevelError0() throws SQLException {
     int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
     int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(0);
@@ -897,6 +903,12 @@ public class IoTDBLevelCompactionIT {
         statement.execute("FLUSH");
       }
 
+      try{
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
@@ -921,7 +933,7 @@ public class IoTDBLevelCompactionIT {
    * test seq max level num = -1
    */
   @Test
-  public void testCompactionSSeqFileNumInEachLevelError1() throws SQLException {
+  public void testCompactionSeqFileNumInEachLevelError1() throws SQLException {
     int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
     int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(-1);
@@ -961,6 +973,12 @@ public class IoTDBLevelCompactionIT {
                 String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
                     + "%d,%d)", i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
+      }
+
+      try{
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
 
       int cnt;
