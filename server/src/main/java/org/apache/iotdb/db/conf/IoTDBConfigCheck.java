@@ -184,16 +184,11 @@ public class IoTDBConfigCheck {
             inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading from v0.9
-    if (!properties.containsKey(IOTDB_VERSION_STRING)) {
-      logger.error("DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.11!"
-          + " Please upgrade to v0.10 first");
-      System.exit(-1);
-    }
-    // check whether upgrading from v0.10 or v0.11
-    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")
+    // check whether upgrading
+    if (!properties.containsKey(IOTDB_VERSION_STRING)
+        || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")
         || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
-      logger.error("DO NOT Use 0.10 or 0.11 Data Now");
+      logger.error("DO NOT UPGRADE IoTDB from v0.11 or lower version NOW");
       System.exit(-1);
     }
     checkProperties();
