@@ -62,7 +62,6 @@ public class StorageGroupProcessorTest {
   private String measurementId = "s0";
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
-  private static boolean enableVirtualPartition = false;
 
 
   @Before
@@ -73,8 +72,6 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
-    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
-    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
   }
 
   @After
@@ -86,7 +83,6 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)

@@ -48,22 +48,19 @@ import org.junit.Test;
 public class MergeTaskTest extends MergeTest {
 
   private File tempSGDir;
-  private static boolean enableVirtualPartition = false;
 
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, MetadataException {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
-    tempSGDir.mkdirs();IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(false);
-    enableVirtualPartition = IoTDBDescriptor.getInstance().getConfig().isEnableVirtualPartition();
+    tempSGDir.mkdirs();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
-    IoTDBDescriptor.getInstance().getConfig().setEnableVirtualPartition(enableVirtualPartition);
   }
 
   @Test

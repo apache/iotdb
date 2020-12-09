@@ -33,8 +33,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -55,7 +53,6 @@ public class MergeTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
-  private static final VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
 
   MergeResource resource;
   String storageGroupSysDir;
@@ -125,9 +122,7 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<PartialPath> devices;
-
-    devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
+    Set<PartialPath> devices = IoTDB.metaManager.getDevices(new PartialPath(storageGroupName));
     Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {
