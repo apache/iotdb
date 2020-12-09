@@ -357,7 +357,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         } else {
           TsFileResource targetResource = getTsFileResource(targetFile, isSeq);
           long timePartition = targetResource.getTimePartition();
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(new File(targetFile));
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String file : sourceFileList) {
             sourceTsFileResources.add(getTsFileResource(file, isSeq));
@@ -374,19 +373,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               // if not complete compaction, resume merge
               if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
                 if (offset > 0) {
+                  RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
+                      new File(targetFile));
                   writer.getIOWriterOut().truncate(offset - 1);
+                  writer.close();
                 }
-                writer.close();
-                if (isSeq) {
-                  CompactionUtils
-                      .merge(targetResource, sourceTsFileResources, storageGroupName,
-                          new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, true);
-                } else {
-                  CompactionUtils
-                      .merge(targetResource, sourceTsFileResources, storageGroupName,
-                          new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
-                          false);
-                }
+                CompactionUtils
+                    .merge(targetResource, sourceTsFileResources, storageGroupName,
+                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
+                        isSeq);
               }
               // complete compaction and delete source file
               deleteLevelFilesInDisk(sourceTsFileResources);

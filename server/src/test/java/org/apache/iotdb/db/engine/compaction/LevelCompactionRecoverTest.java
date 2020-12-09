@@ -104,6 +104,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
     compactionLogger.logMergeFinish();
+    compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
     context = new QueryContext();
@@ -163,6 +164,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), false);
     compactionLogger.logMergeFinish();
+    compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
     context = new QueryContext();
@@ -197,6 +199,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    compactionLogger.close();
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();
     PartialPath path = new PartialPath(
@@ -231,6 +234,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.logSequence(true);
+    compactionLogger.close();
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();
     PartialPath path = new PartialPath(
@@ -269,6 +273,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
             0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 1
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();
@@ -312,6 +317,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
+    compactionLogger.close();
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();
     PartialPath path = new PartialPath(
