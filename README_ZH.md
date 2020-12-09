@@ -99,6 +99,13 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 ## 从源码构建
 
+如果您使用Windows，请跳过此段。我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
+（或更高）编译器生成对应的Java代码。Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。但我们预先编译了一个Thrift编译器，并将其上传到了GitHub
+，借助一个Maven插件，在编译时可以自动将其下载。该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
+版本以及其他操作系统上尚未确认。如果您在编译时发现了Thrift编译器相关的问题，请升级您的gcc版本或者依照Thrift
+官方的指示自行编译编译器，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+Thrift官方网址为：https://thrift.apache.org/
+
 从 git 克隆源代码:
 
 ```
