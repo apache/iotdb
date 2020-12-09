@@ -78,6 +78,7 @@ public class LastQueryExecutor {
    *
    * @param context query context
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
