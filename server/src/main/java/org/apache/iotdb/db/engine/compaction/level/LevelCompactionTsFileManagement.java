@@ -337,19 +337,22 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
           long timePartition = targetTsFileResource.getTimePartition();
           if (!isMergeFinished) {
-            if (!deviceSet.isEmpty()) {
-              Files.delete(new File(targetFile).toPath());
+            File target = new File(targetFile);
+            if (!deviceSet.isEmpty() && target.exists()) {
+              Files.delete(target.toPath());
             } else {
-              if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+              RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
+                  new File(targetFile));
+              if (writer.hasCrashed()) {
                 if (offset > 0) {
-                  RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-                      new File(targetFile));
                   writer.getIOWriterOut().truncate(offset - 1);
-                  writer.close();
                 }
+                writer.close();
                 CompactionUtils
                     .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
                         new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
+              } else {
+                writer.close();
               }
               deleteAllSubLevelFiles(isSeq, timePartition);
             }
@@ -368,22 +371,25 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
           int level = getMergeLevel(new File(sourceFileList.get(0)));
           if (!isMergeFinished) {
-            if (deviceSet.isEmpty()) {
+            File target = new File(targetFile);
+            if (deviceSet.isEmpty() && target.exists()) {
               // if not in compaction, just delete the target file
-              Files.delete(new File(targetFile).toPath());
+              Files.delete(target.toPath());
             } else {
+              RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
+                  new File(targetFile));
               // if not complete compaction, resume merge
-              if (!new File(targetFile + TsFileResource.RESOURCE_SUFFIX).exists()) {
+              if (writer.hasCrashed()) {
                 if (offset > 0) {
-                  RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-                      new File(targetFile));
                   writer.getIOWriterOut().truncate(offset - 1);
-                  writer.close();
                 }
+                writer.close();
                 CompactionUtils
                     .merge(targetResource, sourceTsFileResources, storageGroupName,
                         new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
                         isSeq);
+              } else {
+                writer.close();
               }
               // complete compaction and delete source file
               deleteLevelFilesInDisk(sourceTsFileResources);
