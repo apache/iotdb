@@ -105,8 +105,12 @@ public class LastQueryExecutor {
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
-        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
-        resultRecord.addField(valueField);
+        if (lastTimeValuePair.getValue() != null) {
+          valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+          resultRecord.addField(valueField);
+        } else {
+          resultRecord.addField(null);
+        }
 
         dataSet.putRecord(resultRecord);
       }
