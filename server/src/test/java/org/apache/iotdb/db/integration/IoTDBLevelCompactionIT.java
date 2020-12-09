@@ -77,7 +77,8 @@ public class IoTDBLevelCompactionIT {
         }
       }
 
-      for (int i = 0; i < 32; i++) {
+      int flushCount = 32;
+      for (int i = 0; i < flushCount; i++) {
         statement
             .execute(
                 String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
@@ -99,7 +100,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
-      assertEquals(32, cnt);
+      assertEquals(flushCount, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
