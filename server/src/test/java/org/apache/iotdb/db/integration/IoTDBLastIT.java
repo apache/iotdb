@@ -104,6 +104,7 @@ public class IoTDBLastIT {
   public void lastWithEmptySeriesTest() throws Exception {
     String[] retArray = new String[]{
             "root.ln.wf02.temperature,null",
+            "root.ln.wf02.status,true"
         };
 
     try (Connection connection =
@@ -112,7 +113,11 @@ public class IoTDBLastIT {
 
       statement.execute(
           "CREATE TIMESERIES root.ln.wf02.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
-      statement.execute("select last temperature from root.ln.wf02");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute(
+          "INSERT INTO root.ln.wf02(timestamp, status) values(200, true)");
+      statement.execute("select last temperature,status from root.ln.wf02");
 
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -120,6 +125,7 @@ public class IoTDBLastIT {
         String ans = resultSet.getString(TIMESEIRES_STR) + ","
             + resultSet.getString(VALUE_STR);
         Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
       }
     }
   }
