@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
+
 import java.io.Console;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -93,6 +95,10 @@ public class WinCli extends AbstractCli {
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");
+        Object[] objs = setTimeFormat("long");
+        timeFormat = (String) objs[0];
+        maxTimeLength = (int) objs[1];
+        formatTime = (String) objs[2];
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));

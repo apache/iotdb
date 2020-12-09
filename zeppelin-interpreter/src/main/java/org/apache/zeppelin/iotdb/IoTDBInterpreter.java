@@ -17,6 +17,9 @@
 package org.apache.zeppelin.iotdb;
 
 
+import static org.apache.iotdb.rpc.RpcUtils.formatDatetime;
+import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
+
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,6 +36,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.zeppelin.interpreter.Interpreter;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
@@ -68,8 +73,8 @@ public class IoTDBInterpreter extends Interpreter {
 
   private IoTDBConnectionException connectionException;
   private Session session;
-  // TODO it's not been used. Shall we copy the long time-format code from AbstractCli?
-  private String timeDisplayType;
+  private String timeFormat;
+  private ZoneId zoneId;
 
   public IoTDBInterpreter(Properties property) {
     super(property);
@@ -85,9 +90,10 @@ public class IoTDBInterpreter extends Interpreter {
       int fetchSize = Integer
           .parseInt(properties.getProperty(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE).trim());
       String zoneIdConf = properties.getProperty(IOTDB_ZONE_ID);
-      ZoneId zoneId = StringUtils.isNotBlank(zoneIdConf) ? ZoneId.of(zoneIdConf) :
+      this.zoneId = StringUtils.isNotBlank(zoneIdConf) ? ZoneId.of(zoneIdConf) :
           ZoneId.systemDefault();
-      this.timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE);
+      String timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE);
+      this.timeFormat = (String) setTimeFormat(timeDisplayType)[0];
       boolean enableRPCCompression = "true".equalsIgnoreCase(
           properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
               DEFAULT_ENABLE_RPC_COMPRESSION).trim());
@@ -156,7 +162,13 @@ public class IoTDBInterpreter extends Interpreter {
     stringBuilder.deleteCharAt(stringBuilder.length() - 1);
     stringBuilder.append(NEWLINE);
     while (sessionDataSet.hasNext()) {
-      stringBuilder.append(sessionDataSet.next()).append(NEWLINE);
+      RowRecord record = sessionDataSet.next();
+      stringBuilder.append(formatDatetime(timeFormat, record.getTimestamp(), zoneId));
+      for (Field f : record.getFields()) {
+        stringBuilder.append(TAB);
+        stringBuilder.append(f);
+      }
+      stringBuilder.append(NEWLINE);
     }
     stringBuilder.deleteCharAt(stringBuilder.length() - 1);
     return stringBuilder.toString();

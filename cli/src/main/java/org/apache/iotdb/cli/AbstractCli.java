@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.rpc.RpcUtils.formatDatetime;
+import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -91,7 +94,7 @@ public abstract class AbstractCli {
   static final int ISO_DATETIME_LEN = 35;
   private static final String IMPORT_CMD = "import";
   private static final String DEFAULT_TIME_FORMAT = "default";
-  private static String timeFormat = DEFAULT_TIME_FORMAT;
+  static String timeFormat = DEFAULT_TIME_FORMAT;
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
   static int maxTimeLength = ISO_DATETIME_LEN;
@@ -130,9 +133,6 @@ public abstract class AbstractCli {
   }
 
 
-  private static String getTimestampPrecision() {
-    return TIMESTAMP_PRECISION;
-  }
 
   private static void printCount(int cnt) {
     if (cnt == 0) {
@@ -188,67 +188,6 @@ public abstract class AbstractCli {
     return options;
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
-      long timestamp, ZoneId zoneid, String timestampPrecision) {
-    if (timestampPrecision.equals("ms")) {
-      long integerofDate = timestamp / 1000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 3) {
-        for (int i = 0; i < 3 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    } else if (timestampPrecision.equals("us")) {
-      long integerofDate = timestamp / 1000_000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 6) {
-        for (int i = 0; i < 6 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    } else {
-      long integerofDate = timestamp / 1000_000_000L;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 9) {
-        for (int i = 0; i < 9 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    }
-  }
-
-  private static String formatDatetime(long timestamp, ZoneId zoneId) {
-    ZonedDateTime dateTime;
-    switch (timeFormat) {
-      case "long":
-      case "number":
-        return Long.toString(timestamp);
-      case DEFAULT_TIME_FORMAT:
-      case "iso8601":
-        return parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, getTimestampPrecision());
-      default:
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
-        return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
-    }
-  }
-
   static String checkRequiredArg(String arg, String name, CommandLine commandLine,
       boolean isRequired,
       String defaultValue) throws ArgsErrorException {
@@ -269,29 +208,6 @@ public abstract class AbstractCli {
       }
     }
     return str;
-  }
-
-  static void setTimeFormat(String newTimeFormat) {
-    switch (newTimeFormat.trim().toLowerCase()) {
-      case "long":
-      case "number":
-        maxTimeLength = maxValueLength;
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
-      case DEFAULT_TIME_FORMAT:
-      case "iso8601":
-        maxTimeLength = ISO_DATETIME_LEN;
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
-      default:
-        // use java default SimpleDateFormat to check whether input time format is legal
-        // if illegal, it will throw an exception
-        new SimpleDateFormat(newTimeFormat.trim());
-        maxTimeLength = Math.max(TIMESTAMP_STR.length(), newTimeFormat.length());
-        timeFormat = newTimeFormat;
-        break;
-    }
-    formatTime = "%" + maxTimeLength + "s|";
   }
 
   private static void setFetchSize(String fetchSizeString) {
@@ -458,7 +374,10 @@ public abstract class AbstractCli {
       return;
     }
     try {
-      setTimeFormat(cmd.split("=")[1]);
+      Object[] objs = setTimeFormat(cmd.split("=")[1]);
+      timeFormat = (String) objs[0];
+      maxTimeLength = (int) objs[1];
+      formatTime = (String) objs[2];
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
       return;
@@ -632,7 +551,7 @@ public abstract class AbstractCli {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
           if (printTimestamp && i == 1) {
-            tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
+            tmp = formatDatetime(timeFormat, resultSet.getLong(TIMESTAMP_STR), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }
@@ -656,7 +575,7 @@ public abstract class AbstractCli {
             tmp = NULL;
           }
           if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = formatDatetime(Long.parseLong(tmp), zoneId);
+            tmp = formatDatetime(timeFormat, Long.parseLong(tmp), zoneId);
           }
           lists.get(i - 1).add(tmp);
           if (maxSizeList.get(i - 1) < tmp.length()) {
