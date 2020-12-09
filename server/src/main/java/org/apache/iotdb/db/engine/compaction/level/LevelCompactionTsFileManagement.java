@@ -62,13 +62,15 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private final int seqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum() < 1 ? 1
       : IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-  private final int seqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
-      .getSeqFileNumInEachLevel();
+  private final int seqFileNumInEachLevel =
+      IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel() < 1 ? 1
+          : IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
   private final int unseqLevelNum =
       IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum() < 1 ? 1
           : IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-  private final int unseqFileNumInEachLevel = IoTDBDescriptor.getInstance().getConfig()
-      .getSeqFileNumInEachLevel();
+  private final int unseqFileNumInEachLevel =
+      IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel() < 1 ? 1
+          : IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel();
 
   private final boolean enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
       .isEnableUnseqCompaction();

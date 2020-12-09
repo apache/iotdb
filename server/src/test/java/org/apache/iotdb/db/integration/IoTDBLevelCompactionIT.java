@@ -697,13 +697,7 @@ public class IoTDBLevelCompactionIT {
                     + "%d,%d)", i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-
-      try{
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
+      
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
@@ -903,12 +897,6 @@ public class IoTDBLevelCompactionIT {
         statement.execute("FLUSH");
       }
 
-      try{
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
@@ -973,12 +961,6 @@ public class IoTDBLevelCompactionIT {
                 String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
                     + "%d,%d)", i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
-      }
-
-      try{
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
       }
 
       int cnt;
