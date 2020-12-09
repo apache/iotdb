@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -108,6 +109,11 @@ public class IoTDBConfig {
    * whether to use thrift compression.
    */
   private boolean rpcThriftCompressionEnable = false;
+
+  /**
+   * whether to use Snappy compression before sending data through the network
+   */
+  private boolean rpcAdvancedCompressionEnable = false;
 
   /**
    * Port which the JDBC server listens to.
@@ -784,6 +790,7 @@ public class IoTDBConfig {
 
   // enable new indexer
   private boolean enableFileTimeIndexer = false;
+
   private int fileTimeIndexerType = 0;
 
   public IoTDBConfig() {
@@ -1520,7 +1527,7 @@ public class IoTDBConfig {
     return rpcThriftCompressionEnable;
   }
 
-  void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
@@ -2096,6 +2103,15 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public boolean isRpcAdvancedCompressionEnable() {
+    return rpcAdvancedCompressionEnable;
+  }
+
+  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
+    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 
   public boolean isEnableFileTimeIndexer() {

@@ -94,6 +94,7 @@ import org.slf4j.LoggerFactory;
  * into files. This class contains all the interfaces to modify the metadata for delta system. All
  * the operations will be insert into the logs temporary in case the downtime of the delta system.
  */
+@SuppressWarnings("java:S1135") // ignore todos
 public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
@@ -308,67 +309,76 @@ public class MManager {
     }
   }
 
+  private void operateCreateTimeseries(String[] args) throws IOException, MetadataException {
+    if (args.length > 8) {
+      String[] tmpArgs = new String[8];
+      tmpArgs[0] = args[0];
+      int i = 1;
+      tmpArgs[1] = "";
+      for (; i < args.length - 7; i++) {
+        tmpArgs[1] += args[i] + ",";
+      }
+      tmpArgs[1] += args[i++];
+      for (int j = 2; j < 8; j++) {
+        tmpArgs[j] = args[i++];
+      }
+      args = tmpArgs;
+    }
+    Map<String, String> props = null;
+    if (!args[5].isEmpty()) {
+      String[] keyValues = args[5].split("&");
+      String[] kv;
+      props = new HashMap<>();
+      for (String keyValue : keyValues) {
+        kv = keyValue.split("=");
+        props.put(kv[0], kv[1]);
+      }
+    }
+
+    String alias = null;
+    if (!args[6].isEmpty()) {
+      alias = args[6];
+    }
+    long offset = -1L;
+    Map<String, String> tagMap = null;
+    if (!args[7].isEmpty()) {
+      offset = Long.parseLong(args[7]);
+      tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+    }
+
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
+        TSDataType.deserialize(Short.parseShort(args[2])),
+        TSEncoding.deserialize(Short.parseShort(args[3])),
+        CompressionType.deserialize(Short.parseShort(args[4])), props, tagMap, null, alias);
+
+    createTimeseries(plan, offset);
+  }
+
+  private void operateDeleteTimeseries(String[] args)
+      throws MetadataException {
+    if (args.length > 2) {
+      StringBuilder tmp = new StringBuilder();
+      for (int i = 1; i < args.length - 1; i++) {
+        tmp.append(args[i]).append(",");
+      }
+      tmp.append(args[args.length - 1]);
+      args[1] = tmp.toString();
+    }
+    String failedTimeseries = deleteTimeseries(new PartialPath(args[1]));
+    if (!failedTimeseries.isEmpty()) {
+      throw new DeleteFailedException(failedTimeseries);
+    }
+  }
+
   public void operation(String cmd) throws IOException, MetadataException {
     // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
-        if (args.length > 8) {
-          String[] tmpArgs = new String[8];
-          tmpArgs[0] = args[0];
-          int i = 1;
-          tmpArgs[1] = "";
-          for (; i < args.length - 7; i++) {
-            tmpArgs[1] += args[i] + ",";
-          }
-          tmpArgs[1] += args[i++];
-          for (int j = 2; j < 8; j++) {
-            tmpArgs[j] = args[i++];
-          }
-          args = tmpArgs;
-        }
-        Map<String, String> props = null;
-        if (!args[5].isEmpty()) {
-          String[] keyValues = args[5].split("&");
-          String[] kv;
-          props = new HashMap<>();
-          for (String keyValue : keyValues) {
-            kv = keyValue.split("=");
-            props.put(kv[0], kv[1]);
-          }
-        }
-
-        String alias = null;
-        if (!args[6].isEmpty()) {
-          alias = args[6];
-        }
-        long offset = -1L;
-        Map<String, String> tagMap = null;
-        if (!args[7].isEmpty()) {
-          offset = Long.parseLong(args[7]);
-          tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
-        }
-
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-            TSDataType.deserialize(Short.parseShort(args[2])),
-            TSEncoding.deserialize(Short.parseShort(args[3])),
-            CompressionType.deserialize(Short.parseShort(args[4])), props, tagMap, null, alias);
-
-        createTimeseries(plan, offset);
+        operateCreateTimeseries(args);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        if (args.length > 2) {
-          StringBuilder tmp = new StringBuilder();
-          for (int i = 1; i < args.length - 1; i++) {
-            tmp.append(args[i]).append(",");
-          }
-          tmp.append(args[args.length - 1]);
-          args[1] = tmp.toString();
-        }
-        String failedTimeseries = deleteTimeseries(new PartialPath(args[1]));
-        if (!failedTimeseries.isEmpty()) {
-          throw new DeleteFailedException(failedTimeseries);
-        }
+        operateDeleteTimeseries(args);
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
         try {
@@ -401,6 +411,19 @@ public class MManager {
     createTimeseries(plan, -1);
   }
 
+  private void ensureStorageGroup(PartialPath path) throws MetadataException {
+    try {
+      mtree.getStorageGroupPath(path);
+    } catch (StorageGroupNotSetException e) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw e;
+      }
+      PartialPath storageGroupPath =
+          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+      setStorageGroup(storageGroupPath);
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     if (!allowToCreateNewSeries) {
@@ -411,16 +434,7 @@ public class MManager {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      try {
-        mtree.getStorageGroupPath(path);
-      } catch (StorageGroupNotSetException e) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw e;
-        }
-        PartialPath storageGroupPath =
-            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-        setStorageGroup(storageGroupPath);
-      }
+      ensureStorageGroup(path);
 
       TSDataType type = plan.getDataType();
       // create time series in MTree
@@ -460,7 +474,7 @@ public class MManager {
       leafMNode.setOffset(offset);
 
     } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
+      throw new MetadataException(e);
     }
   }
 
@@ -478,8 +492,7 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // just log it, created by multiple thread
-      logger.info("Concurrent create timeseries failed, use other thread's result");
+      // ignore
     }
   }
 
@@ -487,6 +500,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
+   * TODO: directly return the failed string set
    * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -495,26 +509,34 @@ public class MManager {
     }
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      if(allTimeseries.isEmpty()){
+        throw new PathNotExistException(prefixPath.getFullPath());
+      }
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        try {
-          PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
-          if (!isRecovering) {
-            if (emptyStorageGroup != null) {
-              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-            }
-            logWriter.deleteTimeseries(p.getFullPath());
-          }
-        } catch (DeleteFailedException e) {
-          failedNames.add(e.getName());
-        }
+        deleteSingleTimeseriesInternal(p, failedNames);
       }
-      return String.join(",", failedNames);
+      return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
+    }
+  }
+
+  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
+      throws MetadataException, IOException {
+    try {
+      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+      if (!isRecovering) {
+        if (emptyStorageGroup != null) {
+          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+        }
+        logWriter.deleteTimeseries(p.getFullPath());
+      }
+    } catch (DeleteFailedException e) {
+      failedNames.add(e.getName());
     }
   }
 
@@ -973,17 +995,12 @@ public class MManager {
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    try {
-      MNode node = mtree.getNodeByPath(device);
-      MNode leaf = node.getChild(measurement);
-      if (leaf != null) {
-        return ((MeasurementMNode) leaf).getSchema();
-      }
-      return null;
-    } catch (PathNotExistException | IllegalPathException e) {
-      //do nothing and throw it directly.
-      throw e;
+    MNode node = mtree.getNodeByPath(device);
+    MNode leaf = node.getChild(measurement);
+    if (leaf != null) {
+      return ((MeasurementMNode) leaf).getSchema();
     }
+    return null;
   }
 
   /**
@@ -1048,16 +1065,10 @@ public class MManager {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path.getFullPath());
       }
+      shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
     }
 
     try {
-      try {
-        node = mNodeCache.get(path);
-        return node;
-      } catch (CacheException e) {
-        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
-      }
-
       if (shouldSetStorageGroup) {
         PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
         setStorageGroup(storageGroupPath);
@@ -1645,16 +1656,18 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    */
   public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
-
-    return mtree.determineStorageGroup(path);
-
+    Map<String, String> sgPathMap = mtree.determineStorageGroup(path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    }
+    return sgPathMap;
   }
 
   /**
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(PartialPath path, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath path, MeasurementMNode measurementMNode) {
     // do nothing
   }
 
@@ -1787,8 +1800,8 @@ public class MManager {
         if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
-                  insertDataType, measurementMNode.getSchema().getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {

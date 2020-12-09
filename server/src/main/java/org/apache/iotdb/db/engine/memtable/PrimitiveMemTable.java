@@ -61,4 +61,8 @@ public class PrimitiveMemTable extends AbstractMemTable {
     return this == obj;
   }
 
+  @Override
+  public String toString() {
+    return "PrimitiveMemTable{planIndex=[" + getMinPlanIndex() +"," + getMaxPlanIndex() + "]}";
+  }
 }

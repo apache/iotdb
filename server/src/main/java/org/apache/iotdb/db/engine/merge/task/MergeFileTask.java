@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
@@ -127,18 +123,16 @@ class MergeFileTask {
         currentMergeIndex + 1, unmergedFiles.size());
   }
 
-  private void updateHistoricalVersions(TsFileResource seqFile) {
-    // as the new file contains data of other files, track their versions in the new file
-    // so that we will be able to compare data across different IoTDBs that share the same file
+  private void updatePlanIndexes(TsFileResource seqFile) {
+    // as the new file contains data of other files, track their plan indexes in the new file
+    // so that we will be able to compare data across different IoTDBs that share the same index
     // generation policy
     // however, since the data of unseq files are mixed together, we won't be able to know
     // which files are exactly contained in the new file, so we have to record all unseq files
     // in the new file
-    Set<Long> newHistoricalVersions = new HashSet<>(seqFile.getHistoricalVersions());
-    for (TsFileResource unseqFiles : resource.getUnseqFiles()) {
-      newHistoricalVersions.addAll(unseqFiles.getHistoricalVersions());
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      seqFile.updatePlanIndexes(unseqFile);
     }
-    seqFile.setHistoricalVersions(newHistoricalVersions);
   }
 
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
@@ -181,7 +175,7 @@ class MergeFileTask {
 
     fileWriter.endFile();
 
-    updateHistoricalVersions(seqFile);
+    updatePlanIndexes(seqFile);
     seqFile.serialize();
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
@@ -241,14 +235,5 @@ class MergeFileTask {
       }
     }
     return maxVersion;
-  }
-
-  private File getNextMergeVersionFile(File seqFile) {
-    String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
-    int mergeVersion = Integer.parseInt(splits[2]) + 1;
-    return fsFactory.getFile(seqFile.getParentFile(),
-        splits[0] + IoTDBConstant.FILE_NAME_SEPARATOR + splits[1]
-            + IoTDBConstant.FILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }
 }

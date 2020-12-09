@@ -184,18 +184,12 @@ public class IoTDBConfigCheck {
             inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading from v0.9 to v0.11
-    if (!properties.containsKey(IOTDB_VERSION_STRING)) {
-      logger.error("DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.11!"
-          + " Please upgrade to v0.10 first");
+    // check whether upgrading
+    if (!properties.containsKey(IOTDB_VERSION_STRING)
+        || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")
+        || properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
+      logger.error("DO NOT UPGRADE IoTDB from v0.11 or lower version NOW");
       System.exit(-1);
-    }
-    // check whether upgrading from v0.10 to v0.11
-    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
-      logger.info("Upgrading IoTDB from v0.10 to v0.11, checking files...");
-      checkUnClosedTsFileV2();
-      upgradePropertiesFile();
-      logger.info("Upgrade to IoTDB v0.11 successfully!");
     }
     checkProperties();
   }
@@ -203,6 +197,7 @@ public class IoTDBConfigCheck {
   /**
    * upgrade 0.10 properties to 0.11 properties
    */
+  @SuppressWarnings("unused")
   private void upgradePropertiesFile()
       throws IOException {
     // create an empty tmpPropertiesFile
@@ -301,6 +296,7 @@ public class IoTDBConfigCheck {
   /**
    * ensure all TsFiles are closed in 0.10 when starting 0.11
    */
+  @SuppressWarnings("unused")
   private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
