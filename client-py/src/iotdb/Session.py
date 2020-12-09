@@ -17,7 +17,6 @@
 #
 
 import struct
-import sys
 import time
 
 from .utils.SessionDataSet import SessionDataSet

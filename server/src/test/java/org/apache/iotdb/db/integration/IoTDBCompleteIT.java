@@ -38,7 +38,8 @@ public class IoTDBCompleteIT {
 
   @Before
   public void setUp() throws Exception {
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
+    // test different partition
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(16);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
