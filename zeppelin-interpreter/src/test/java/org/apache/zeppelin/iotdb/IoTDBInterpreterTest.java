@@ -26,7 +26,10 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PASSWORD;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PORT;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_USERNAME;
 
+import java.io.IOException;
 import java.util.Properties;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.junit.After;
@@ -40,6 +43,8 @@ public class IoTDBInterpreterTest {
 
   @Before
   public void open() {
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
     Properties properties = new Properties();
     properties.put(IOTDB_HOST, DEFAULT_HOST);
     properties.put(IOTDB_PORT, DEFAULT_PORT);
@@ -69,9 +74,9 @@ public class IoTDBInterpreterTest {
   }
 
   @After
-  public void close() {
-    interpreter.interpret("DELETE TIMESERIES root.test.*", null);
+  public void close() throws IOException, StorageEngineException {
     interpreter.close();
+    EnvironmentUtils.cleanEnv();
   }
 
 
