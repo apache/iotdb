@@ -108,10 +108,8 @@ public class FlushManager implements FlushManagerMBean, IService {
         }
       }
       if (tsFileProcessor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
-          .isEnableSlidingMemTable()) {
-        tsFileProcessor.getUpdateLatestFlushTimeCallback().call(tsFileProcessor);
-        tsFileProcessor.setFlushingMemTable(null);
-        tsFileProcessor.setFlushMemTableAlive(false);
+          .isEnableSlidingMemTable() && tsFileProcessor.isFlushMemTableAlive()) {
+        tsFileProcessor.getUpdateLatestFlushTimeCallback().call(tsFileProcessor, true);
       }
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);

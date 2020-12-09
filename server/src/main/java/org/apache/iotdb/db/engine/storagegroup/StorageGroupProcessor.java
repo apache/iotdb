@@ -1676,11 +1676,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean unsequenceFlushCallback(TsFileProcessor processor) {
+  private boolean unsequenceFlushCallback(TsFileProcessor processor, boolean updateLatest) {
     return true;
   }
 
-  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
+  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor, boolean updateLatest) {
     flushUpdateLock();
     try {
       // update the largest timestamp in the last flushing memtable
@@ -1694,14 +1694,14 @@ public class StorageGroupProcessor {
         return false;
       }
 
-      if (processor.isFlushMemTableAlive()) {
-        // if flushing mem table is alive, use latestTimeForEachDevice to update flushingLatestTimeForEachDevice
+      if (config.isEnableSlidingMemTable() && !updateLatest) {
+        // use latestTimeForEachDevice to update flushingLatestTimeForEachDevice
         for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
           flushingLatestTimeForEachDevice
               .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
               .put(entry.getKey(), entry.getValue());
         }
-        // when the processor is closing, update partitionLatestFlushedTimeForEachDevice
+        // when the processor is closing, update partitionLatestFlushedTimeForEachDevice immediately
         if (processor.isUpdateLatestTime()) {
           updateLatestTime(processor, curPartitionDeviceLatestTime);
         }
@@ -1710,6 +1710,8 @@ public class StorageGroupProcessor {
         if (config.isEnableSlidingMemTable()) {
           curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
               .get(processor.getTimeRangeId());
+          processor.setFlushingMemTable(null);
+          processor.setFlushMemTableAlive(false);
         }
         updateLatestTime(processor, curPartitionDeviceLatestTime);
       }
@@ -2574,7 +2576,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface UpdateEndTimeCallBack {
 
-    boolean call(TsFileProcessor caller);
+    boolean call(TsFileProcessor caller, boolean updateLatest);
   }
 
   @FunctionalInterface

@@ -139,9 +139,10 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testSlidingMemTable()
-      throws WriteProcessException, IOException, MetadataException {
-    TSRecord record;
+      throws WriteProcessException, QueryProcessException, MetadataException {
+    IoTDBDescriptor.getInstance().getConfig().setEnableSlidingMemTable(true);
 
+    TSRecord record;
     for (int j = 5; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -157,9 +158,12 @@ public class StorageGroupProcessorTest {
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertRowPlan(record));
     }
-//    System.exit(0);
     processor.syncCloseAllWorkingTsFileProcessors();
-
+    QueryDataSource queryDataSource = processor
+        .query(new PartialPath(deviceId), measurementId, context,
+            null, null);
+    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    IoTDBDescriptor.getInstance().getConfig().setEnableSlidingMemTable(false);
   }
 
   @Test

@@ -596,12 +596,9 @@ public class TsFileProcessor {
    */
   public void asyncFlush() {
     if (config.isEnableSlidingMemTable()){
-      while (flushingMemTable != null) {
-        try {
-          TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
-        } catch (InterruptedException e) {
-          logger.error("async flush failed because the flushing mem table is still alive", e);
-        }
+      if (flushingMemTable != null) {
+        // if previous flushing mem table is still alive, update partitionLatestFlushedTimeForEachDevice
+        updateLatestFlushTimeCallback.call(this, true);
       }
     }
     flushQueryLock.writeLock().lock();
@@ -665,7 +662,7 @@ public class TsFileProcessor {
     if(isClosing){
       updateLatestTime = true;
     }
-    updateLatestFlushTimeCallback.call(this);
+    updateLatestFlushTimeCallback.call(this, false);
     workMemTable = null;
     shouldFlush = false;
     FlushManager.getInstance().registerTsFileProcessor(this);
