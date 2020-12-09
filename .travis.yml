@@ -105,6 +105,17 @@ matrix:
         - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
         - export "HADOOP_HOME=/c/hadoop"
         - export "PATH=/c/hadoop/bin:$PATH"
+      script:
+        - rm -rf /Users/travis/.m2/repository/org/apache/maven/plugins
+        - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
+        - java -version
+        - mvn -version
+        - mvn -B apache-rat:check
+        # Output something every 10 minutes or Travis kills the job
+        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
+        - mvn -B clean test integration-test -Dtest.port.closed=true
+        # Killing background sleep loop
+        - kill %1
     - os: linux
       if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: sonar-analysis
@@ -174,7 +185,7 @@ script:
     - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test -Dtest.port.closed=true
+    - mvn -B clean test integration-test -Pclient-cpp -Dtest.port.closed=true
     # Killing background sleep loop
     - kill %1
 

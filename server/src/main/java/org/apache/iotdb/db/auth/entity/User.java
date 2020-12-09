@@ -209,4 +209,16 @@ public class User {
     useWaterMark = buffer.get() == 1;
     roleList = SerializeUtils.deserializeStringList(buffer);
   }
+
+  @Override
+  public String toString() {
+    return "User{" +
+        "name='" + name + '\'' +
+        ", password='" + password + '\'' +
+        ", privilegeList=" + privilegeList +
+        ", roleList=" + roleList +
+        ", useWaterMark=" + useWaterMark +
+        ", lastActiveTime=" + lastActiveTime +
+        '}';
+  }
 }

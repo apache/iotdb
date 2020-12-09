@@ -63,6 +63,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   private boolean crashed;
 
+  private long minPlanIndex = Long.MAX_VALUE;
+  private long maxPlanIndex = Long.MIN_VALUE;
+
   /**
    * all chunk group metadata which have been serialized on disk.
    */
@@ -91,6 +94,8 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
         truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, versionInfo, true);
+        minPlanIndex = reader.getMinPlanIndex();
+        maxPlanIndex = reader.getMaxPlanIndex();
         totalChunkNum = reader.getTotalChunkNum();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
@@ -231,5 +236,15 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   public void addSchema(Path path, MeasurementSchema schema) {
     knownSchemas.put(path, schema);
+  }
+
+  @Override
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  @Override
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
   }
 }

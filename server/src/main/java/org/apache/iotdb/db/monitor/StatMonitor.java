@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
@@ -160,7 +159,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
           .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
               Collections.singletonList(TSDataType.INT64),
               new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-              null, new LastQueryPlan()).get(0).right;
+              null, Collections.emptyMap()).get(0).right;
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }

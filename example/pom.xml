@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <packaging>pom</packaging>
@@ -42,6 +42,7 @@
         <module>hadoop</module>
         <module>flink</module>
         <module>mqtt</module>
+        <module>pulsar</module>
     </modules>
     <build>
         <pluginManagement>

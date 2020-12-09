@@ -819,7 +819,11 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getCount(root, nodes, 1);
+    try {
+      return getCount(root, nodes, 1);
+    } catch (PathNotExistException e) {
+      throw new PathNotExistException(prefixPath.getFullPath());
+    }
   }
 
   /**
@@ -874,7 +878,7 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx) {
+  private int getCount(MNode node, String[] nodes, int idx) throws PathNotExistException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
@@ -885,7 +889,7 @@ public class MTree implements Serializable {
           return getCount(next, nodes, idx + 1);
         }
       } else {
-        return 0;
+        throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
       }
     } else {
       int cnt = 0;
