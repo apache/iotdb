@@ -254,7 +254,7 @@ public class UDFRegistrationService implements IService {
       String line;
       while ((line = reader.readLine()) != null) {
         String[] data = line.split(",");
-        short type = Short.parseShort(data[0]);
+        byte type = Byte.parseByte(data[0]);
         if (type == UDFLogWriter.REGISTER_TYPE) {
           recoveredUDFs.put(data[1], data[2]);
         } else if (type == UDFLogWriter.DEREGISTER_TYPE) {

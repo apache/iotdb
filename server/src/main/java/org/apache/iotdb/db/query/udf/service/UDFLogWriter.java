@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 public class UDFLogWriter {
 
-  public static final Short REGISTER_TYPE = 0;
-  public static final Short DEREGISTER_TYPE = 1;
+  public static final Byte REGISTER_TYPE = 0;
+  public static final Byte DEREGISTER_TYPE = 1;
 
   private static final String REGISTER_TYPE_STRING = REGISTER_TYPE.toString();
   private static final String DEREGISTER_TYPE_STRING = DEREGISTER_TYPE.toString();
