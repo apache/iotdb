@@ -24,9 +24,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,24 +58,11 @@ public class UDFRegistrationService implements IService {
   private final ReentrantReadWriteLock lock;
   private UDFLogWriter temporaryLogWriter;
 
-  private final String libRoot;
-
-  private URLClassLoader udfClassLoader;
+  private UDFClassLoader udfClassLoader;
 
   private UDFRegistrationService() {
     registrationInformation = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
-    libRoot = parseLibRoot();
-  }
-
-  private String parseLibRoot() {
-    String jarPath = (new File(
-        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
-        .getAbsolutePath();
-    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
-    String libPath = jarPath.substring(0, lastIndex + 1);
-    logger.info("System lib root: {}", libPath);
-    return libPath;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -113,7 +97,7 @@ public class UDFRegistrationService implements IService {
 
     Class<?> functionClass;
     try {
-      udfClassLoader = getUDFClassLoader();
+      udfClassLoader.refresh();
       functionClass = Class.forName(className, true, udfClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
     } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
@@ -139,13 +123,6 @@ public class UDFRegistrationService implements IService {
         throw new UDFRegistrationException(errorMessage, e);
       }
     }
-  }
-
-  private URLClassLoader getUDFClassLoader() throws IOException {
-    Collection<File> files = FileUtils
-        .listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true);
-    URL[] urls = FileUtils.toURLs(files.toArray(new File[0]));
-    return new URLClassLoader(urls);
   }
 
   public void deregister(String functionName) throws UDFRegistrationException {
@@ -216,12 +193,23 @@ public class UDFRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
+      udfClassLoader = new UDFClassLoader(parseLibRoot());
       makeDirIfNecessary();
       doRecovery();
       temporaryLogWriter = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
     }
+  }
+
+  private String parseLibRoot() {
+    String jarPath = (new File(
+        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
+        .getAbsolutePath();
+    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
+    String libPath = jarPath.substring(0, lastIndex + 1);
+    logger.info("System lib root: {}", libPath);
+    return libPath;
   }
 
   private void makeDirIfNecessary() throws IOException {
