@@ -53,7 +53,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -326,6 +326,7 @@ public class StorageEngine implements IService {
       storageGroupPath = storageGroupMNode.getPartialPath();
       StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
+        waitAllSgReady(storageGroupPath);
         // if finish recover
         if (isAllSgReady.get()) {
           synchronized (storageGroupMNode) {
@@ -341,11 +342,6 @@ public class StorageEngine implements IService {
               processorMap.put(storageGroupPath, processor);
             }
           }
-        } else {
-          // not finished recover, refuse the request
-          throw new StorageEngineException(
-              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
-              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -354,6 +350,31 @@ public class StorageEngine implements IService {
     }
   }
 
+  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
+    if (isAllSgReady.get()) {
+      return;
+    }
+
+    long waitStart = System.currentTimeMillis();
+    long waited = 0L;
+    final long MAX_WAIT = 5000L;
+    while (!isAllSgReady.get() && waited < MAX_WAIT) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineException(e);
+      }
+      waited = System.currentTimeMillis() - waitStart;
+    }
+
+    if (!isAllSgReady.get()) {
+      // not finished recover, refuse the request
+      throw new StorageEngineException(
+          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+    }
+  }
 
   /**
    * This function is just for unit test.
@@ -387,7 +408,7 @@ public class StorageEngine implements IService {
    * insert a InsertTabletPlan to a storage group
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchInsertionException {
+      throws StorageEngineException, BatchProcessException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
@@ -483,30 +504,30 @@ public class StorageEngine implements IService {
       boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
-    if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-          storageGroupPath, isSeq, partitionId);
-      processor.writeLock();
-      // to avoid concurrent modification problem, we need a new array list
-      List<TsFileProcessor> processors = isSeq ?
-          new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
-      try {
-        for (TsFileProcessor tsfileProcessor : processors) {
-          if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            if (isSync) {
-              processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
-            } else {
-              processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
-            }
-            break;
-          }
-        }
-      } finally {
-        processor.writeUnlock();
-      }
-    } else {
+    if (processor == null) {
       throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+    }
+
+    logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+        storageGroupPath, isSeq, partitionId);
+    processor.writeLock();
+    // to avoid concurrent modification problem, we need a new array list
+    List<TsFileProcessor> processors = isSeq ?
+        new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
+        new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
+    try {
+      for (TsFileProcessor tsfileProcessor : processors) {
+        if (tsfileProcessor.getTimeRangeId() == partitionId) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+          } else {
+            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+          }
+          break;
+        }
+      }
+    } finally {
+      processor.writeUnlock();
     }
   }
 

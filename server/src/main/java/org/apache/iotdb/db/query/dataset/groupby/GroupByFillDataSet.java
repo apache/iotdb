@@ -111,7 +111,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
     List<Pair<Boolean, TimeValuePair>> lastValueContainer =
             LastQueryExecutor.calculateLastPairForSeriesLocally(
-                    seriesPaths, dataTypes, context, null, groupByFillPlan);
+                    seriesPaths, dataTypes, context, null, groupByFillPlan.getDeviceToMeasurements());
     for (int i = 0; i < lastValueContainer.size(); i++) {
       if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
         lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();

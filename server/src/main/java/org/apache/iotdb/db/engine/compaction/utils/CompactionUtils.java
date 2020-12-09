@@ -280,11 +280,10 @@ public class CompactionUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
-    Set<Long> historicalVersions = new HashSet<>();
+
     for (TsFileResource tsFileResource : tsFileResources) {
-      historicalVersions.addAll(tsFileResource.getHistoricalVersions());
+      targetResource.updatePlanIndexes(tsFileResource);
     }
-    targetResource.setHistoricalVersions(historicalVersions);
     targetResource.serialize();
     writer.endFile();
     targetResource.close();

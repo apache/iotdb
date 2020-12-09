@@ -46,12 +46,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ShowTimeseriesDataSet extends QueryDataSet {
-
-  private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesDataSet.class);
 
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
@@ -61,9 +57,12 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   public boolean hasLimit;
 
   private static Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
-      new PartialPath(COLUMN_TIMESERIES_ALIAS, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
-      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false), new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
-      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAGS, false),
+      new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
+      new PartialPath(COLUMN_STORAGE_GROUP, false),
+      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+      new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
+      new PartialPath(COLUMN_TAGS, false),
       new PartialPath(COLUMN_ATTRIBUTES, false)};
   private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
