@@ -53,8 +53,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualPartitioner;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
@@ -107,7 +105,7 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static boolean enablePartition =
       IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
-  private final VirtualPartitioner partitioner;
+
   private final Logger logger;
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -147,12 +145,6 @@ public class StorageEngine implements IService {
     }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
-
-    if (config.isEnableVirtualPartition()) {
-      partitioner = HashVirtualPartitioner.getInstance();
-    } else {
-      partitioner = null;
-    }
 
     recover();
   }
