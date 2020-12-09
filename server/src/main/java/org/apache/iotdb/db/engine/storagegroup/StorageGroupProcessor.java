@@ -84,9 +84,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.fileindex.FileIndexManager;
-import org.apache.iotdb.db.fileindex.FileTimeIndexer;
+import org.apache.iotdb.db.fileindex.FileIndex;
 import org.apache.iotdb.db.fileindex.TimeIndexEntry;
-import org.apache.iotdb.db.fileindex.impl.LoadAllDeviceTimeIndexer;
+import org.apache.iotdb.db.fileindex.impl.InMemoryFileIndex;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -272,8 +272,8 @@ public class StorageGroupProcessor {
    * unseqDeviceTimeIndexer manage the device Index of unseq tsfiles
    *
    */
-  private FileTimeIndexer seqFileTimeIndexer;
-  private FileTimeIndexer unseqFileTimeIndexer;
+  private FileIndex seqFileTimeIndexer;
+  private FileIndex unseqFileTimeIndexer;
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -398,9 +398,9 @@ public class StorageGroupProcessor {
           unseqFileTimeIndexer.init();
         } else {
           FileIndexManager.getInstance()
-              .addSeqIndexer(new PartialPath(storageGroupName), new LoadAllDeviceTimeIndexer());
+              .addSeqIndexer(new PartialPath(storageGroupName), new InMemoryFileIndex());
           FileIndexManager.getInstance()
-              .addUnseqIndexer(new PartialPath(storageGroupName), new LoadAllDeviceTimeIndexer());
+              .addUnseqIndexer(new PartialPath(storageGroupName), new InMemoryFileIndex());
         }
       } catch (IllegalPathException e) {
         throw new StorageGroupProcessorException(e);
@@ -1928,7 +1928,7 @@ public class StorageGroupProcessor {
         updateLatestTimeMap(newTsFileResource);
       }
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
-        FileTimeIndexer fileTimeIndexer = null;
+        FileIndex fileTimeIndexer = null;
         if (newTsFileResource.isSeq()) {
           fileTimeIndexer = FileIndexManager.getInstance()
               .getSeqIndexer(newTsFileResource.getStorageGroupName());
@@ -2001,7 +2001,7 @@ public class StorageGroupProcessor {
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         try {
-          FileTimeIndexer fileTimeIndexer;
+          FileIndex fileTimeIndexer;
           if (newTsFileResource.isSeq()) {
             fileTimeIndexer = FileIndexManager.getInstance()
                 .getSeqIndexer(newTsFileResource.getStorageGroupName());
@@ -2421,7 +2421,7 @@ public class StorageGroupProcessor {
       tsFileResourceToBeDeleted.remove();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
         try {
-          FileTimeIndexer fileTimeIndexer = null;
+          FileIndex fileTimeIndexer = null;
           if (tsFileResourceToBeDeleted.isSeq()) {
             fileTimeIndexer = FileIndexManager.getInstance()
                 .getSeqIndexer(tsFileResourceToBeDeleted.getStorageGroupName());

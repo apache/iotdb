@@ -22,51 +22,32 @@ import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public interface FileTimeIndexer {
+public interface FileIndex {
 
   /**
    * init the Indexer when IoTDB start
-   *
-   * @return whether success
    */
-  boolean init();
-
-  /**
-   * may do some prepared work before operation
-   *
-   * @return whether success
-   */
-  boolean begin();
-
-  /**
-   * may do some resource release after operation
-   *
-   * @return whether success
-   */
-  boolean end();
+  void init();
 
   /**
    * add all indexs for a flushed tsFile
    *
    * @param fileIndexEntries
-   * @return
    */
-  boolean createIndexForPath(FileIndexEntries fileIndexEntries);
+  void createIndexForPath(FileIndexEntries fileIndexEntries);
 
   /**
    * delete one index for the path
    *
    * @param fileIndexEntries
-   * @return
    */
-  boolean deleteIndexOfPath(FileIndexEntries fileIndexEntries);
+  void deleteIndexOfPath(FileIndexEntries fileIndexEntries);
 
   /**
    * found the related tsFile(only cover sealed tsfile) for one deviceId
    *
    * @param path       does not support regex match
    * @param timeFilter
-   * @return whether success
    */
   Map<String, TimeIndexEntry[]> filterByPath(PartialPath path, Filter timeFilter);
 }

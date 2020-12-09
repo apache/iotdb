@@ -20,37 +20,28 @@ package org.apache.iotdb.db.fileindex.impl;
 
 import java.util.Collections;
 import java.util.Map;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.fileindex.FileIndex;
 import org.apache.iotdb.db.fileindex.FileIndexEntries;
-import org.apache.iotdb.db.fileindex.FileTimeIndexer;
 import org.apache.iotdb.db.fileindex.TimeIndexEntry;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class RocksDBDeviceTimeIndexer implements FileTimeIndexer {
+public class InMemoryFileIndex implements FileIndex {
 
-  @Override
-  public boolean init() {
-    return false;
+  public InMemoryFileIndex() {
+
   }
 
   @Override
-  public boolean begin() {
-    return false;
+  public void init() {
   }
 
   @Override
-  public boolean end() {
-    return false;
+  public void createIndexForPath(FileIndexEntries fileIndexEntries) {
   }
 
   @Override
-  public boolean createIndexForPath(FileIndexEntries fileIndexEntries) {
-    return false;
-  }
-
-  @Override
-  public boolean deleteIndexOfPath(FileIndexEntries fileIndexEntries) {
-    return false;
+  public void deleteIndexOfPath(FileIndexEntries fileIndexEntries) {
   }
 
   @Override

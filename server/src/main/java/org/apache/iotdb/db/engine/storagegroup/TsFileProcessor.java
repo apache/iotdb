@@ -59,7 +59,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.fileindex.FileTimeIndexer;
+import org.apache.iotdb.db.fileindex.FileIndex;
 import org.apache.iotdb.db.fileindex.FileIndexManager;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -802,7 +802,7 @@ public class TsFileProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableFileTimeIndexer()) {
       // update device index
       try {
-        FileTimeIndexer fileTimeIndexer;
+        FileIndex fileTimeIndexer;
         if (sequence) {
           fileTimeIndexer = FileIndexManager.getInstance().getSeqIndexer(storageGroupName);
         } else {

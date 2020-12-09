@@ -18,32 +18,31 @@
  */
 package org.apache.iotdb.db.fileindex;
 
-import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.fileindex.impl.LoadAllDeviceTimeIndexer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Manage all indexers
+ * Manage the file indices in one partition of one storage group
  */
 public class FileIndexManager {
 
-  private String indexerFilePath;
-  private Map<PartialPath, FileTimeIndexer> seqIndexers;
-  private Map<PartialPath, FileTimeIndexer> unseqIndexers;
-  private ReentrantReadWriteLock lock;
+  private Map<PartialPath, FileIndex> seqIndices;
+
+  private Map<PartialPath, FileIndex> unseqIndices;
+
+  private final ReentrantReadWriteLock lock;
+
   private static final Logger logger = LoggerFactory.getLogger(FileIndexManager.class);
 
-  private static class IndexerManagerHolder {
+  private static class FileIndexManagerHolder {
 
-    private IndexerManagerHolder() {
+    private FileIndexManagerHolder() {
       // allowed to do nothing
     }
 
@@ -51,14 +50,12 @@ public class FileIndexManager {
   }
 
   public static FileIndexManager getInstance() {
-    return IndexerManagerHolder.INSTANCE;
+    return FileIndexManagerHolder.INSTANCE;
   }
 
   private FileIndexManager() {
-    indexerFilePath = IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-        + File.pathSeparator + IndexConstants.INDEXER_FILE;
-    seqIndexers = new ConcurrentHashMap<>();
-    unseqIndexers = new ConcurrentHashMap<>();
+    seqIndices = new ConcurrentHashMap<>();
+    unseqIndices = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
   }
 
@@ -74,19 +71,19 @@ public class FileIndexManager {
     return true;
   }
 
-  public void addSeqIndexer(PartialPath storageGroup, FileTimeIndexer fileTimeIndexer) {
+  public void addSeqIndexer(PartialPath storageGroup, FileIndex fileTimeIndexer) {
     lock.writeLock().lock();
     try {
-      seqIndexers.put(storageGroup, fileTimeIndexer);
+      seqIndices.put(storageGroup, fileTimeIndexer);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void addUnseqIndexer(PartialPath storageGroup, FileTimeIndexer fileTimeIndexer) {
+  public void addUnseqIndexer(PartialPath storageGroup, FileIndex fileTimeIndexer) {
     lock.writeLock().lock();
     try {
-      unseqIndexers.put(storageGroup, fileTimeIndexer);
+      unseqIndices.put(storageGroup, fileTimeIndexer);
     } finally {
       lock.writeLock().unlock();
     }
@@ -95,7 +92,7 @@ public class FileIndexManager {
   public void deleteSeqIndexer(PartialPath storageGroup) {
     lock.writeLock().lock();
     try {
-      seqIndexers.remove(storageGroup);
+      seqIndices.remove(storageGroup);
     } finally {
       lock.writeLock().unlock();
     }
@@ -104,70 +101,53 @@ public class FileIndexManager {
   public void deleteUnseqIndexer(PartialPath storageGroup) {
     lock.writeLock().lock();
     try {
-      unseqIndexers.remove(storageGroup);
+      unseqIndices.remove(storageGroup);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public FileTimeIndexer getSeqIndexer(PartialPath storageGroup) {
+  public FileIndex getSeqIndexer(PartialPath storageGroup) {
     lock.readLock().lock();
     try {
-      return seqIndexers.get(storageGroup);
+      return seqIndices.get(storageGroup);
     } finally {
       lock.readLock().unlock();
     }
   }
 
-  public FileTimeIndexer getSeqIndexer(String storageGroup) throws IllegalPathException {
-    PartialPath sgName;
+  public FileIndex getSeqIndexer(String storageGroupName) throws IllegalPathException {
+    PartialPath storageGroup;
     try {
-      sgName = new PartialPath(storageGroup);
+      storageGroup = new PartialPath(storageGroupName);
     } catch (IllegalPathException e) {
-      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup,
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroupName,
+          e.getMessage());
+      throw e;
+    }
+    return getSeqIndexer(storageGroup);
+  }
+
+  public FileIndex getUnseqIndexer(PartialPath storageGroup) {
+    lock.readLock().lock();
+    try {
+      return unseqIndices.get(storageGroup);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public FileIndex getUnseqIndexer(String storageGroupName) throws IllegalPathException {
+    PartialPath storageGroup;
+    try {
+      storageGroup = new PartialPath(storageGroupName);
+    } catch (IllegalPathException e) {
+      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroupName,
           e.getMessage());
       throw e;
     }
     lock.readLock().lock();
-    try {
-      FileTimeIndexer fileTimeIndexer = seqIndexers.get(sgName);
-      if(fileTimeIndexer == null) {
-        fileTimeIndexer = new LoadAllDeviceTimeIndexer();
-      }
-      return fileTimeIndexer;
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  public FileTimeIndexer getUnseqIndexer(PartialPath storageGroup) {
-    lock.readLock().lock();
-    try {
-      return unseqIndexers.get(storageGroup);
-    } finally {
-      lock.readLock().unlock();
-    }
-  }
-
-  public FileTimeIndexer getUnseqIndexer(String storageGroup) throws IllegalPathException {
-    PartialPath sgName;
-    try {
-      sgName = new PartialPath(storageGroup);
-    } catch (IllegalPathException e) {
-      logger.warn("Fail to get TimeIndexer for storage group {}, err:{}", storageGroup,
-          e.getMessage());
-      throw e;
-    }
-    lock.readLock().lock();
-    try {
-      FileTimeIndexer fileTimeIndexer = unseqIndexers.get(sgName);
-      if(fileTimeIndexer == null) {
-        fileTimeIndexer = new LoadAllDeviceTimeIndexer();
-      }
-      return fileTimeIndexer;
-    } finally {
-      lock.readLock().unlock();
-    }
+    return getUnseqIndexer(storageGroup);
   }
 
   public static FileIndexEntries convertFromTsFileResource(TsFileResource resource)
