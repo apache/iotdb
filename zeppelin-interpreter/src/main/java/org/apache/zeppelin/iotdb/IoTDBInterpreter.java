@@ -58,7 +58,6 @@ public class IoTDBInterpreter extends AbstractInterpreter {
   static final String DEFAULT_HOST = "127.0.0.1";
   static final String DEFAULT_PORT = "6667";
   static final String DEFAULT_FETCH_SIZE = "10000";
-  static final String DEFAULT_ZONE_ID = NONE_VALUE;
   static final String DEFAULT_ENABLE_RPC_COMPRESSION = "false";
   static final String DEFAULT_TIME_DISPLAY_TYPE = "long";
 
