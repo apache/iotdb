@@ -277,9 +277,9 @@ public class SyncClient implements ISyncClient {
     transport = new TFastFramedTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
     TProtocol protocol = null;
     if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-      protocol = new TBinaryProtocol(transport);
-    } else {
       protocol = new TCompactProtocol(transport);
+    } else {
+      protocol = new TBinaryProtocol(transport);
     }
     serviceClient = new SyncService.Client(protocol);
     try {
