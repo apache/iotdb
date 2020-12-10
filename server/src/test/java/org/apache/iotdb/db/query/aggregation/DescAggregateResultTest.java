@@ -43,8 +43,8 @@ public class DescAggregateResultTest {
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.FLOAT);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.FLOAT);
-    statistics1.update(10L, 10.0);
-    statistics2.update(1L, 1.0);
+    statistics1.update(10L, 10.0f);
+    statistics2.update(1L, 1.0f);
 
     maxTimeDescAggrResult.updateResultFromStatistics(statistics1);
     Assert.assertEquals(10L, (long) maxTimeDescAggrResult.getResult());
@@ -65,8 +65,8 @@ public class DescAggregateResultTest {
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.FLOAT);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.FLOAT);
-    statistics1.update(10L, 10.0);
-    statistics2.update(1L, 1.0);
+    statistics1.update(10L, 10.0f);
+    statistics2.update(1L, 1.0f);
 
     minTimeDescAggrResult.updateResultFromStatistics(statistics1);
     Assert.assertEquals(10L, (long) minTimeDescAggrResult.getResult());
@@ -99,7 +99,7 @@ public class DescAggregateResultTest {
     firstValueDescAggrResult.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(1, result.getResult());
+    Assert.assertEquals(false, result.getResult());
   }
 
   @Test

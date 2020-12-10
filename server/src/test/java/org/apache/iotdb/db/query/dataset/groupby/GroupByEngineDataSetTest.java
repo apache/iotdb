@@ -192,8 +192,8 @@ public class GroupByEngineDataSetTest {
     long startTime = 8;
     long endTime = 8 + 5 * 3 + 2;
 
-    long[] startTimeArray = {22, 19, 16, 13, 10, 8};
-    long[] endTimeArray = {25, 22, 19, 16, 13, 10};
+    long[] startTimeArray = {23, 20, 17, 14, 11, 8};
+    long[] endTimeArray = {25, 23, 20, 17, 14, 11};
 
     GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
     groupByTimePlan.setAscending(false);

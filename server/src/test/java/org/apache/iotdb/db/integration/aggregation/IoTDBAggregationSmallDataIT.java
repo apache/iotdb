@@ -592,7 +592,7 @@ public class IoTDBAggregationSmallDataIT {
   @Test
   public void maxValueWithMultiValueFiltersTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "0,99,50000,11.11,fffff,true"
+        "0,99,40000,11.11,fffff,true"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -613,7 +613,7 @@ public class IoTDBAggregationSmallDataIT {
                   .getString(max_value(d0s2))
                   + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet
                   .getString(max_value(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);

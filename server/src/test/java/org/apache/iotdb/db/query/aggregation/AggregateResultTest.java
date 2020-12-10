@@ -206,13 +206,13 @@ public class AggregateResultTest {
     sumAggrResult2.updateResultFromStatistics(statistics2);
     sumAggrResult1.merge(sumAggrResult2);
 
-    Assert.assertEquals(3, sumAggrResult1.getResult());
+    Assert.assertEquals(3.0, sumAggrResult1.getResult());
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     sumAggrResult1.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(3, result.getResult());
+    Assert.assertEquals(3.0, result.getResult());
   }
 
   @Test
