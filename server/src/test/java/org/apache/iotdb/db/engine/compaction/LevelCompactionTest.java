@@ -81,7 +81,6 @@ abstract class LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
-    MergeManager.getINSTANCE().start();
   }
 
   @After
@@ -96,10 +95,9 @@ abstract class LevelCompactionTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
-    MergeManager.getINSTANCE().stop();
   }
 
-  private void prepareSeries() throws MetadataException, MetadataException {
+  private void prepareSeries() throws MetadataException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
@@ -157,10 +155,14 @@ abstract class LevelCompactionTest {
 
   private void removeFiles() throws IOException {
     for (TsFileResource tsFileResource : seqResources) {
-      tsFileResource.remove();
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      tsFileResource.remove();
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
     }
     File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
     for (File file : files) {
