@@ -24,7 +24,6 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_HOST;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_PORT;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_TIME_DISPLAY_TYPE;
-import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ZONE_ID;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ENABLE_RPC_COMPRESSION;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_HOST;
@@ -60,7 +59,7 @@ public class IoTDBInterpreterTest {
     properties.put(IOTDB_USERNAME, "root");
     properties.put(IOTDB_PASSWORD, "root");
     properties.put(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE);
-    properties.put(IOTDB_ZONE_ID, DEFAULT_ZONE_ID);
+    properties.put(IOTDB_ZONE_ID, "UTC");
     properties.put(IOTDB_ENABLE_RPC_COMPRESSION, DEFAULT_ENABLE_RPC_COMPRESSION);
     properties.put(IOTDB_TIME_DISPLAY_TYPE, DEFAULT_TIME_DISPLAY_TYPE);
     interpreter = new IoTDBInterpreter(properties);
@@ -130,17 +129,17 @@ public class IoTDBInterpreterTest {
         + "4\tfalse\n"
         + "5\tfalse";
     String isoGT = "Time\troot.test.wf01.wt01.status\n"
-        + "1970-01-01T08:00:00.001+08:00\tfalse\n"
-        + "1970-01-01T08:00:00.002+08:00\ttrue\n"
-        + "1970-01-01T08:00:00.003+08:00\tfalse\n"
-        + "1970-01-01T08:00:00.004+08:00\tfalse\n"
-        + "1970-01-01T08:00:00.005+08:00\tfalse";
+        + "1970-01-01T00:00:00.001Z\tfalse\n"
+        + "1970-01-01T00:00:00.002Z\ttrue\n"
+        + "1970-01-01T00:00:00.003Z\tfalse\n"
+        + "1970-01-01T00:00:00.004Z\tfalse\n"
+        + "1970-01-01T00:00:00.005Z\tfalse";
     String specialGT = "Time\troot.test.wf01.wt01.status\n"
-        + "1970-01-01 08:00:00.001\tfalse\n"
-        + "1970-01-01 08:00:00.002\ttrue\n"
-        + "1970-01-01 08:00:00.003\tfalse\n"
-        + "1970-01-01 08:00:00.004\tfalse\n"
-        + "1970-01-01 08:00:00.005\tfalse";
+        + "1970-01-01 00:00:00.001\tfalse\n"
+        + "1970-01-01 00:00:00.002\ttrue\n"
+        + "1970-01-01 00:00:00.003\tfalse\n"
+        + "1970-01-01 00:00:00.004\tfalse\n"
+        + "1970-01-01 00:00:00.005\tfalse";
     String specialGT2 = "Time\troot.test.wf01.wt01.status\n"
         + "1970-01 00:00\tfalse\n"
         + "1970-01 00:00\ttrue\n"
