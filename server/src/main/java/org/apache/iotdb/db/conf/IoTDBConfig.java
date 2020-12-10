@@ -24,8 +24,8 @@ import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -175,7 +175,7 @@ public class IoTDBConfig {
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /**
    * Is the write ahead log enable.
    */
@@ -290,11 +290,10 @@ public class IoTDBConfig {
   /**
    * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
    * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
-   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
-   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
-   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
-   * will be flushed to the disk file. As a result, data in one series may be divided into more than
-   * one part and indexed separately.
+   * one IndexFileProcessor share a total common buffer size. With the memory-control mechanism,
+   * the occupied memory of all raw data and index structures will be counted. If the memory buffer
+   * size reaches this threshold, the indexes will be flushed to the disk file. As a result, data in
+   * one series may be divided into more than one part and indexed separately.
    */
   private long indexBufferSize = 128 * 1024 * 1024L;
 
@@ -326,16 +325,15 @@ public class IoTDBConfig {
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
-   * the files to the last level.
-   * During a merge, if a chunk with less number of chunks than this parameter, the chunk will be
-   * merged with its succeeding chunks even if it is not overflowed, until the merged chunks reach
-   * this threshold and the new chunk will be flushed.
+   * the files to the last level. During a merge, if a chunk with less number of chunks than this
+   * parameter, the chunk will be merged with its succeeding chunks even if it is not overflowed,
+   * until the merged chunks reach this threshold and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * When point number of a page reaches this, use "append merge" instead of "deserialize merge".
+   * Works when the compaction_strategy is LEVEL_COMPACTION. When point number of a page reaches
+   * this, use "append merge" instead of "deserialize merge".
    */
   private int mergePagePointNumberThreshold = 100;
 
@@ -345,36 +343,32 @@ public class IoTDBConfig {
   private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * Whether to merge unseq files into seq files or not.
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
+   * files or not.
    */
   private boolean enableUnseqCompaction = true;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * The max seq file num of each level.
-   * When the num of files in one level exceeds this,
-   * the files in this level will merge to one and put to upper level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
+   * When the num of files in one level exceeds this, the files in this level will merge to one and
+   * put to upper level.
    */
   private int seqFileNumInEachLevel = 6;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * The max num of seq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION. The max num of seq level.
    */
   private int seqLevelNum = 3;
 
   /**
-   * Works when compaction_strategy is LEVEL_COMPACTION.
-   * The max ujseq file num of each level.
-   * When the num of files in one level exceeds this,
-   * the files in this level will merge to one and put to upper level.
+   * Works when compaction_strategy is LEVEL_COMPACTION. The max ujseq file num of each level. When
+   * the num of files in one level exceeds this, the files in this level will merge to one and put
+   * to upper level.
    */
   private int unseqFileNumInEachLevel = 10;
 
   /**
-   * Works when the compaction_strategy is LEVEL_COMPACTION.
-   * The max num of unseq level.
+   * Works when the compaction_strategy is LEVEL_COMPACTION. The max num of unseq level.
    */
   private int unseqLevelNum = 1;
 
@@ -518,8 +512,8 @@ public class IoTDBConfig {
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**
-   * register time series as which type when receiving an integer string and using float may lose precision
-   * num > 2 ^ 24
+   * register time series as which type when receiving an integer string and using float may lose
+   * precision num > 2 ^ 24
    */
   private TSDataType longStringInferType = TSDataType.DOUBLE;
 
@@ -609,9 +603,9 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written despite how
-   * much they are overflowed). This may increase merge overhead depending on how much the SeqFiles
-   * are overflowed.
+   * When set to true, all unseq merges becomes full merge (the whole SeqFiles are re-written
+   * despite how much they are overflowed). This may increase merge overhead depending on how much
+   * the SeqFiles are overflowed.
    */
   private boolean forceFullMerge = false;
 
@@ -621,8 +615,8 @@ public class IoTDBConfig {
   private int mergeWriteThroughputMbPerSec = 8;
 
   /**
-   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less
-   * than or equal to 0.
+   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
+   * equal to 0.
    */
   private int compactionThreadNum = 10;
 
@@ -1223,7 +1217,7 @@ public class IoTDBConfig {
   public void setEstimatedSeriesSize(int estimatedSeriesSize) {
     this.estimatedSeriesSize = estimatedSeriesSize;
   }
-  
+
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }

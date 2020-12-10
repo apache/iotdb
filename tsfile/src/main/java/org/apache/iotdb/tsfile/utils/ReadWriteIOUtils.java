@@ -28,12 +28,6 @@ import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LO
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NULL;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,8 +41,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.*;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
