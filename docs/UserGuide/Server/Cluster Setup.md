@@ -65,15 +65,15 @@ When both exist, the specified configuration item will overwrite the configurati
 > sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
 > chmod -R 777 ./cluster/target/
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
-> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668 >/dev/null 2>&1 &
+> nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669 >/dev/null 2>&1 &
 
 # Second step: Windows (MinGW)
 > sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
 > sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
-> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 6668
+> nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669
 ```
 
 Note: The distributed version uses the 707 identifier to instruct the client to do the appropriate metadata cache so that the data can then be sent directly to the leader of the corresponding data group later.
@@ -133,7 +133,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |:---:|:---|
 |Description|The port used to communicate with the clients (JDBC, CLI, Session API...), please confirm that the port is not reserved by the system and is not occupied|
 |Type|Int32|
-|Default|55560|
+|Default|6667|
 |Effective| After restart system|
 
 * seed\_nodes
@@ -142,7 +142,7 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |:---:|:---|
 |Description|The address of the nodes in the cluster, `{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port:cluster\_rpc\_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the initial cluster is built, this should not be changed before the environment is cleaned. When used by `add-node.sh(.bat)`, this means the nodes to which that the application of joining the cluster will be sent, as all nodes can respond to a request, this configuration can be any nodes that already in the cluster, unnecessary to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries.|
 |Type|String|
-|Default|127.0.0.1:9003:40010:55560,127.0.0.1:9005:40012:55561,127.0.0.1:9007:40014:55562|
+|Default|127.0.0.1:9003:40010:6667,127.0.0.1:9005:40012:6668,127.0.0.1:9007:40014:6669|
 |Effective| After restart system|
 
 * rpc\_thrift\_compression\_enable

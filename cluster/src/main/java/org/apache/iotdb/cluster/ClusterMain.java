@@ -71,7 +71,11 @@ public class ClusterMain {
           +               "node2:meta_port:data_port:cluster_rpc_port,"
           +           "...,noden:meta_port:data_port:cluster_rpc_port,>] "
           + "[-sc] "
-          + "[-rpc_port <rpc port>]");
+          + "[-rpc_port <rpc port>]\n"
+          + "-s: start the node as a seed"
+          + "-a: start the node as a new node"
+          + "-r: remove the node out of the cluster"
+          + "");
       return;
     }
     String mode = args[0];

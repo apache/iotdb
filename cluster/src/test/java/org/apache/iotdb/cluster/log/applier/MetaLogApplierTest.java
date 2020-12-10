@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -79,7 +80,7 @@ public class MetaLogApplierTest extends IoTDBTest {
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     nodes.clear();
 
-    Node node = new Node("localhost", 1111, 0, 2222, 55560);
+    Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT);
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
     applier.apply(log);

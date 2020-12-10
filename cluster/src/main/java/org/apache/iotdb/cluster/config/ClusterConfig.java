@@ -29,14 +29,13 @@ public class ClusterConfig {
   private String clusterRpcIp = "127.0.0.1";
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
-  private int clusterRpcPort = 55560;
+  private int clusterRpcPort = 6667;
 
   /**
    * each one is a "<IP | domain name>:<meta port>:<data port>:<client port></>" string tuple
    */
   private List<String> seedNodeUrls = Arrays
-      .asList("127.0.0.1:9003:40010:55560", "127.0.0.1:9005:40012:55561",
-          "127.0.0.1:9007:40014:55562");
+      .asList(String.format("127.0.0.1:%d:%d:%d", internalMetaPort, internalDataPort, clusterRpcPort));
 
   @ClusterConsistent
   private boolean isRpcThriftCompressionEnabled = false;

@@ -81,6 +81,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
+import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -311,8 +312,8 @@ public class DataGroupMemberTest extends MemberTest {
     testMetaMember.getTerm().set(10);
     List<Log> metaLogs = TestUtils.prepareTestLogs(6);
     metaLogManager.append(metaLogs);
-    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, 55560);
-    Node elector = new Node("127.0.0.1", 30001, 1, 40001, 55561);
+    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT);
+    Node elector = new Node("127.0.0.1", 30001, 1, 40001, Constants.RPC_PORT + 1);
 
     // a request with smaller term
     ElectionRequest electionRequest = new ElectionRequest();

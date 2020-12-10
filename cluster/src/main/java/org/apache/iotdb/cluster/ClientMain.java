@@ -84,7 +84,7 @@ public class ClientMain {
   private static Options options = new Options();
 
   private static String ip = "127.0.0.1";
-  private static int port = 55560;
+  private static int port = 6667;
 
   static {
     options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
@@ -207,7 +207,7 @@ public class ClientMain {
         queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
       }
       if (queryPorts == null) {
-        queryPorts = new int[]{55560, 55561, 55562};
+        queryPorts = new int[]{port, port + 1, port + 2};
       }
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);
