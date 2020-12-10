@@ -273,8 +273,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
             0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 1
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
+    compactionLogger.close();
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();
     PartialPath path = new PartialPath(
