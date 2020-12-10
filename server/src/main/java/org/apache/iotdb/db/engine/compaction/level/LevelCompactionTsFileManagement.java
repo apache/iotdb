@@ -338,8 +338,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           long timePartition = targetTsFileResource.getTimePartition();
           if (!isMergeFinished) {
             File target = new File(targetFile);
-            if (!deviceSet.isEmpty() && target.exists()) {
-              Files.delete(target.toPath());
+            if (!deviceSet.isEmpty()) {
+              if (target.exists()) {
+                Files.delete(target.toPath());
+              }
             } else {
               RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
                   new File(targetFile));
@@ -372,9 +374,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           int level = getMergeLevel(new File(sourceFileList.get(0)));
           if (!isMergeFinished) {
             File target = new File(targetFile);
-            if (deviceSet.isEmpty() && target.exists()) {
+            if (deviceSet.isEmpty()) {
               // if not in compaction, just delete the target file
-              Files.delete(target.toPath());
+              if (target.exists()) {
+                Files.delete(target.toPath());
+              }
             } else {
               RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
                   new File(targetFile));
