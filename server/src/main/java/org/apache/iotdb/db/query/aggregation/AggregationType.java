@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 
 public enum AggregationType {
 
-  COUNT, AVG, SUM, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, MAX_VALUE, MIN_VALUE, UDF;
+  COUNT, AVG, SUM, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, MAX_VALUE, MIN_VALUE;
 
   /**
    * give an integer to return a data type.
@@ -54,8 +54,6 @@ public enum AggregationType {
         return MAX_VALUE;
       case 8:
         return MIN_VALUE;
-      case 9:
-        return UDF;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
@@ -91,9 +89,6 @@ public enum AggregationType {
       case MIN_VALUE:
         i = 8;
         break;
-      case UDF:
-        i = 9;
-        break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());
     }
@@ -101,5 +96,4 @@ public enum AggregationType {
     byte[] bytes = BytesUtils.shortToBytes(i);
     outputStream.write(bytes);
   }
-
 }
