@@ -1024,6 +1024,27 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
+   * get ChunkMetaDatas of given path sorting by offset
+   *
+   * @param path         timeseries path
+   * @param sortByOffset whether to use offset to sort the ChunkMetadatas
+   * @return List of ChunkMetaData
+   */
+  public List<ChunkMetadata> getChunkMetadataList(Path path, boolean sortByOffset)
+      throws IOException {
+    if (!sortByOffset) {
+      return getChunkMetadataList(path);
+    }
+    TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
+    if (timeseriesMetaData == null) {
+      return Collections.emptyList();
+    }
+    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
+    chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getOffsetOfChunkHeader));
+    return chunkMetadataList;
+  }
+
+  /**
    * get ChunkMetaDatas in given TimeseriesMetaData
    *
    * @return List of ChunkMetaData
