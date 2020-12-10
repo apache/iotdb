@@ -321,6 +321,8 @@ public class SerializeUtils {
   public static void serializeTVPairs(List<TimeValuePair> timeValuePairs,
       DataOutputStream dataOutputStream) {
     try {
+      TSDataType dataType = timeValuePairs.get(0).getValue().getDataType();
+      dataOutputStream.write(dataType.ordinal());
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
         case TEXT:
@@ -461,7 +463,7 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         pair = new TimeValuePair(time, primitiveType);
       } else {
         pair = new TimeValuePair(time, null);
