@@ -138,4 +138,12 @@ public class Role {
       privilegeList.add(pathPrivilege);
     }
   }
+
+  @Override
+  public String toString() {
+    return "Role{" +
+        "name='" + name + '\'' +
+        ", privilegeList=" + privilegeList +
+        '}';
+  }
 }

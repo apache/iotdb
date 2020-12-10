@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+**/raft/**
 
 # Python runtime file
 **/__pycache__/**
@@ -87,8 +88,13 @@ partitions.tmp
 partitions
 node_identifier
 
+### temporary file of the distributed version ###
+remote/
+
 # gitpod
 .theia/
+
+classes/
 
 ### Cmake files ###
 *.cmake

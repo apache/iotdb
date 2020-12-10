@@ -48,7 +48,7 @@ public class MetaUtils {
       if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
         String node = path.substring(startIndex, i);
         if(node.isEmpty()) {
-          throw new IllegalPathException("Node can't be empty");
+          throw new IllegalPathException(path);
         }
         nodes.add(node);
         startIndex = i + 1;
@@ -61,22 +61,22 @@ public class MetaUtils {
         if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
           String node = path.substring(startIndex, endIndex + 1);
           if(node.isEmpty()) {
-            throw new IllegalPathException("Node can't be empty");
+            throw new IllegalPathException(path);
           }
           nodes.add(node);
           i = endIndex + 1;
           startIndex = endIndex + 2;
         } else {
-          throw new IllegalPathException("Illegal path: " + path);
+          throw new IllegalPathException(path);
         }
       } else if (path.charAt(i) == '\'') {
-        throw new IllegalPathException("Illegal path with single quote: " + path);
+        throw new IllegalPathException(path);
       }
     }
     if (startIndex <= path.length() - 1) {
       String node = path.substring(startIndex);
       if(node.isEmpty()) {
-        throw new IllegalPathException("Node can't be empty");
+        throw new IllegalPathException(path);
       }
       nodes.add(node);
     }
