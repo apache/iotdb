@@ -92,6 +92,7 @@ public class TracingManagerTest {
     String str;
     int cnt = 0;
     while ((str = bufferedReader.readLine()) != null) {
+      System.out.println("Actual: " + str);
       Assert.assertTrue(str.contains(ans[cnt++]));
     }
   }
