@@ -74,30 +74,36 @@ public class SessionPool {
   private int fetchSize;
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
-  private boolean enableCompression = false;
-  private boolean enableCacheLeader = false;
+  private boolean enableCompression;
+  private boolean enableCacheLeader;
   private ZoneId zoneId;
 
   private boolean closed;//whether the queue is closed.
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null, false);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       boolean enableCompression) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
-        null);
+        null, false);
+  }
+
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      boolean enableCompression, boolean enableCacheLeader) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
+        null, enableCacheLeader);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       ZoneId zoneId) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId, false);
   }
 
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout, boolean enableCompression, ZoneId zoneId) {
+      long timeout, boolean enableCompression, ZoneId zoneId, boolean enableCacheLeader) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -107,6 +113,7 @@ public class SessionPool {
     this.timeout = timeout;
     this.enableCompression = enableCompression;
     this.zoneId = zoneId;
+    this.enableCacheLeader = enableCacheLeader;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
