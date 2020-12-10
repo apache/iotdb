@@ -134,9 +134,9 @@ public class RpcUtils {
   }
 
   private static final String DEFAULT_TIME_FORMAT = "default";
-  static String TIMESTAMP_PRECISION = "ms";
-  static final int ISO_DATETIME_LEN = 35;
-  static int maxValueLength = 15;
+  private static final String TIMESTAMP_PRECISION = "ms";
+  private static final int ISO_DATETIME_LEN = 35;
+  private static final int maxValueLength = 15;
 
   public static Object[] setTimeFormat(String newTimeFormat) {
     String timeFormat;
@@ -186,7 +186,7 @@ public class RpcUtils {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
       long timestamp, ZoneId zoneid, String timestampPrecision) {
     if (timestampPrecision.equals("ms")) {
       long integerofDate = timestamp / 1000;

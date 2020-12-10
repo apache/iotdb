@@ -33,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
 /**
@@ -94,8 +95,7 @@ public class WinCli extends AbstractCli {
         Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
-        setTimeFormat("long");
-        Object[] objs = setTimeFormat("long");
+        Object[] objs = RpcUtils.setTimeFormat("long");
         timeFormat = (String) objs[0];
         maxTimeLength = (int) objs[1];
         formatTime = (String) objs[2];

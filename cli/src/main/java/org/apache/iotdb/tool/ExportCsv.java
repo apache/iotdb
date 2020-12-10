@@ -40,6 +40,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cli.AbstractCli;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -283,7 +284,7 @@ public class ExportCsv extends AbstractCsvTool {
     String timestampPrecision = "ms";
     switch (timeFormat) {
       case "default":
-        String str = AbstractCli
+        String str = RpcUtils
             .parseLongToDateWithPrecision(DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId,
                 timestampPrecision);
         bw.write(str + ",");

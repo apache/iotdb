@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.cli;
 
-import static org.apache.iotdb.rpc.RpcUtils.formatDatetime;
-import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,11 +26,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -47,6 +40,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 
@@ -374,7 +368,7 @@ public abstract class AbstractCli {
       return;
     }
     try {
-      Object[] objs = setTimeFormat(cmd.split("=")[1]);
+      Object[] objs = RpcUtils.setTimeFormat(cmd.split("=")[1]);
       timeFormat = (String) objs[0];
       maxTimeLength = (int) objs[1];
       formatTime = (String) objs[2];
@@ -551,7 +545,7 @@ public abstract class AbstractCli {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
           if (printTimestamp && i == 1) {
-            tmp = formatDatetime(timeFormat, resultSet.getLong(TIMESTAMP_STR), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, resultSet.getLong(TIMESTAMP_STR), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }
@@ -575,7 +569,7 @@ public abstract class AbstractCli {
             tmp = NULL;
           }
           if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = formatDatetime(timeFormat, Long.parseLong(tmp), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, Long.parseLong(tmp), zoneId);
           }
           lists.get(i - 1).add(tmp);
           if (maxSizeList.get(i - 1) < tmp.length()) {

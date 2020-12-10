@@ -17,7 +17,6 @@
 package org.apache.zeppelin.iotdb;
 
 
-import static org.apache.iotdb.rpc.RpcUtils.formatDatetime;
 import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
 
 import java.time.ZoneId;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -48,22 +48,25 @@ public class IoTDBInterpreter extends AbstractInterpreter {
   static final String IOTDB_PORT = "iotdb.port";
   static final String IOTDB_USERNAME = "iotdb.username";
   static final String IOTDB_PASSWORD = "iotdb.password";
-  private static final String IOTDB_FETCH_SIZE = "iotdb.fetchSize";
-  private static final String IOTDB_ZONE_ID = "iotdb.zoneId";
-  private static final String IOTDB_ENABLE_RPC_COMPRESSION = "iotdb.enable.rpc.compression";
-  private static final String IOTDB_TIME_DISPLAY_TYPE = "iotdb.time.display.type";
+  static final String IOTDB_FETCH_SIZE = "iotdb.fetchSize";
+  static final String IOTDB_ZONE_ID = "iotdb.zoneId";
+  static final String IOTDB_ENABLE_RPC_COMPRESSION = "iotdb.enable.rpc.compression";
+  static final String IOTDB_TIME_DISPLAY_TYPE = "iotdb.time.display.type";
+  static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
 
   private static final String NONE_VALUE = "none";
   static final String DEFAULT_HOST = "127.0.0.1";
   static final String DEFAULT_PORT = "6667";
-  private static final String DEFAULT_FETCH_SIZE = "10000";
-  private static final String DEFAULT_ENABLE_RPC_COMPRESSION = "false";
-
+  static final String DEFAULT_FETCH_SIZE = "10000";
+  static final String DEFAULT_ZONE_ID = NONE_VALUE;
+  static final String DEFAULT_ENABLE_RPC_COMPRESSION = "false";
+  static final String DEFAULT_TIME_DISPLAY_TYPE = "long";
 
   private static final char TAB = '\t';
   private static final char NEWLINE = '\n';
   private static final char WHITESPACE = ' ';
   private static final String SEMICOLON = ";";
+  private static final String EQUAL_SIGN = "=";
 
   private IoTDBConnectionException connectionException;
   private Session session;
@@ -83,10 +86,11 @@ public class IoTDBInterpreter extends AbstractInterpreter {
       String passWord = properties.getProperty(IOTDB_PASSWORD, NONE_VALUE).trim();
       int fetchSize = Integer
           .parseInt(properties.getProperty(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE).trim());
-      String zoneIdConf = properties.getProperty(IOTDB_ZONE_ID);
-      this.zoneId = StringUtils.isNotBlank(zoneIdConf) ? ZoneId.of(zoneIdConf) :
-          ZoneId.systemDefault();
-      String timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE);
+      String zoneStr = properties.getProperty(IOTDB_ZONE_ID);
+      this.zoneId = !NONE_VALUE.equalsIgnoreCase(zoneStr) && StringUtils.isNotBlank(zoneStr)
+          ? ZoneId.of(zoneStr.trim()) : ZoneId.systemDefault();
+      String timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE,
+          DEFAULT_TIME_DISPLAY_TYPE).trim();
       this.timeFormat = (String) setTimeFormat(timeDisplayType)[0];
       boolean enableRPCCompression = "true".equalsIgnoreCase(
           properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
@@ -129,7 +133,19 @@ public class IoTDBInterpreter extends AbstractInterpreter {
       String[] scriptLines = parseMultiLinesSQL(st);
       InterpreterResult interpreterResult = null;
       for (String scriptLine : scriptLines) {
-        if (scriptLine.toLowerCase().startsWith("select")) {
+        String lowercaseSc = scriptLine.toLowerCase();
+        if (lowercaseSc.startsWith(SET_TIMESTAMP_DISPLAY)) {
+          String[] values = scriptLine.split(EQUAL_SIGN);
+          if (values.length != 2) {
+            throw new StatementExecutionException(
+                String.format("Time display format error, please input like %s=ISO8601",
+                    SET_TIMESTAMP_DISPLAY));
+          }
+          String timeDisplayType = values[1].trim();
+          this.timeFormat = (String) setTimeFormat(values[1])[0];
+          interpreterResult = new InterpreterResult(Code.SUCCESS, "Time display type has set to " +
+              timeDisplayType);
+        } else if (lowercaseSc.startsWith("select")) {
           //Execute query
           String msg;
           msg = getResultWithCols(session, scriptLine);
@@ -162,7 +178,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
     stringBuilder.append(NEWLINE);
     while (sessionDataSet.hasNext()) {
       RowRecord record = sessionDataSet.next();
-      stringBuilder.append(formatDatetime(timeFormat, record.getTimestamp(), zoneId));
+      stringBuilder.append(RpcUtils.formatDatetime(timeFormat, record.getTimestamp(), zoneId));
       for (Field f : record.getFields()) {
         stringBuilder.append(TAB);
         stringBuilder.append(f);

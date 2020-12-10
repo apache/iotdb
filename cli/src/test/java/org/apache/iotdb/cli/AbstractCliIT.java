@@ -31,6 +31,7 @@ import org.apache.iotdb.cli.AbstractCli.OperationResult;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -181,27 +182,27 @@ public class AbstractCliIT {
   }
 
   private void testSetTimeFormat() {
-    AbstractCli.setTimeFormat("long");
+    RpcUtils.setTimeFormat("long");
     assertEquals(AbstractCli.maxTimeLength, AbstractCli.maxValueLength);
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 
-    AbstractCli.setTimeFormat("number");
+    RpcUtils.setTimeFormat("number");
     assertEquals(AbstractCli.maxTimeLength, AbstractCli.maxValueLength);
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 
-    AbstractCli.setTimeFormat("default");
+    RpcUtils.setTimeFormat("default");
     assertEquals(AbstractCli.ISO_DATETIME_LEN, AbstractCli.maxTimeLength);
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 
-    AbstractCli.setTimeFormat("iso8601");
+    RpcUtils.setTimeFormat("iso8601");
     assertEquals(AbstractCli.ISO_DATETIME_LEN, AbstractCli.maxTimeLength);
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 
-    AbstractCli.setTimeFormat("yyyy-MM-dd HH:mm:ssZZ");
+    RpcUtils.setTimeFormat("yyyy-MM-dd HH:mm:ssZZ");
     assertEquals(AbstractCli.maxTimeLength, "yyyy-MM-dd HH:mm:ssZZ".length());
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 
-    AbstractCli.setTimeFormat("dd");
+    RpcUtils.setTimeFormat("dd");
     assertEquals(AbstractCli.maxTimeLength, AbstractCli.TIMESTAMP_STR.length());
     assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
 

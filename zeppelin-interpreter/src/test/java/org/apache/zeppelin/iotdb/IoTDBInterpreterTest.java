@@ -19,12 +19,21 @@
 package org.apache.zeppelin.iotdb;
 
 
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ENABLE_RPC_COMPRESSION;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_HOST;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_PORT;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_TIME_DISPLAY_TYPE;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ZONE_ID;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ENABLE_RPC_COMPRESSION;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_HOST;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PASSWORD;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_PORT;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_TIME_DISPLAY_TYPE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_USERNAME;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ZONE_ID;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.SET_TIMESTAMP_DISPLAY;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -50,6 +59,10 @@ public class IoTDBInterpreterTest {
     properties.put(IOTDB_PORT, DEFAULT_PORT);
     properties.put(IOTDB_USERNAME, "root");
     properties.put(IOTDB_PASSWORD, "root");
+    properties.put(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE);
+    properties.put(IOTDB_ZONE_ID, DEFAULT_ZONE_ID);
+    properties.put(IOTDB_ENABLE_RPC_COMPRESSION, DEFAULT_ENABLE_RPC_COMPRESSION);
+    properties.put(IOTDB_TIME_DISPLAY_TYPE, DEFAULT_TIME_DISPLAY_TYPE);
     interpreter = new IoTDBInterpreter(properties);
     interpreter.open();
     initInsert();
@@ -109,6 +122,55 @@ public class IoTDBInterpreterTest {
   }
 
   @Test
+  public void testSetTimeDisplay() {
+    String longGT = "Time\troot.test.wf01.wt01.status\n"
+        + "1\tfalse\n"
+        + "2\ttrue\n"
+        + "3\tfalse\n"
+        + "4\tfalse\n"
+        + "5\tfalse";
+    String isoGT = "Time\troot.test.wf01.wt01.status\n"
+        + "1970-01-01T08:00:00.001+08:00\tfalse\n"
+        + "1970-01-01T08:00:00.002+08:00\ttrue\n"
+        + "1970-01-01T08:00:00.003+08:00\tfalse\n"
+        + "1970-01-01T08:00:00.004+08:00\tfalse\n"
+        + "1970-01-01T08:00:00.005+08:00\tfalse";
+    String specialGT = "Time\troot.test.wf01.wt01.status\n"
+        + "1970-01-01 08:00:00.001\tfalse\n"
+        + "1970-01-01 08:00:00.002\ttrue\n"
+        + "1970-01-01 08:00:00.003\tfalse\n"
+        + "1970-01-01 08:00:00.004\tfalse\n"
+        + "1970-01-01 08:00:00.005\tfalse";
+    String specialGT2 = "Time\troot.test.wf01.wt01.status\n"
+        + "1970-01 00:00\tfalse\n"
+        + "1970-01 00:00\ttrue\n"
+        + "1970-01 00:00\tfalse\n"
+        + "1970-01 00:00\tfalse\n"
+        + "1970-01 00:00\tfalse";
+
+    testSetTimeDisplay("yyyy-MM-dd HH:mm:ss.SSS", specialGT);
+    testSetTimeDisplay("yyyy-dd mm:ss", specialGT2);
+    testSetTimeDisplay("iso8601", isoGT);
+    testSetTimeDisplay("default", isoGT);
+    testSetTimeDisplay("long", longGT);
+    testSetTimeDisplay("number", longGT);
+  }
+
+  private void testSetTimeDisplay(String timeDisplay, String gt) {
+    InterpreterResult actual = interpreter
+        .internalInterpret(SET_TIMESTAMP_DISPLAY + "=" + timeDisplay, null);
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals("Time display type has set to " + timeDisplay,
+        actual.message().get(0).getData());
+    actual = interpreter
+        .internalInterpret("select status from root.test.wf01.wt01", null);
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
   public void testSelectColumnStatementWithTimeFilter() {
     InterpreterResult actual = interpreter
         .internalInterpret("select * from root.test.wf01.wt01 where time > 2 and time < 6", null);
@@ -149,9 +211,7 @@ public class IoTDBInterpreterTest {
     Assert.assertEquals(
         "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
         actual.message().get(0).getData());
-
   }
-
 
   @Test
   public void TestMultiLines() {
