@@ -56,8 +56,8 @@
       "iotdb.time.display.type": {
         "envName": null,
         "propertyName": "iotdb.time.display.type",
-        "defaultValue": null,
-        "description": "the time format to display. Default = null",
+        "defaultValue": "default",
+        "description": "the time format to display. Default = default",
         "type": "string"
       }
     },

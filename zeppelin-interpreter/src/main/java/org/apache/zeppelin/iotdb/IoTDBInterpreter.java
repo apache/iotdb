@@ -22,15 +22,8 @@ import static org.apache.iotdb.rpc.RpcUtils.setTimeFormat;
 
 import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -38,15 +31,16 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.zeppelin.interpreter.Interpreter;
+import org.apache.zeppelin.interpreter.AbstractInterpreter;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
 import org.apache.zeppelin.interpreter.InterpreterResult.Type;
+import org.apache.zeppelin.interpreter.ZeppelinContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IoTDBInterpreter extends Interpreter {
+public class IoTDBInterpreter extends AbstractInterpreter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBInterpreter.class);
 
@@ -121,13 +115,18 @@ public class IoTDBInterpreter extends Interpreter {
   }
 
   @Override
-  public InterpreterResult interpret(String script, InterpreterContext context) {
+  public ZeppelinContext getZeppelinContext() {
+    return null;
+  }
+
+  @Override
+  protected InterpreterResult internalInterpret(String st, InterpreterContext context) {
     if (connectionException != null) {
       return new InterpreterResult(Code.ERROR,
           "IoTDBConnectionException: " + connectionException.getMessage());
     }
     try {
-      String[] scriptLines = parseMultiLinesSQL(script);
+      String[] scriptLines = parseMultiLinesSQL(st);
       InterpreterResult interpreterResult = null;
       for (String scriptLine : scriptLines) {
         if (scriptLine.toLowerCase().startsWith("select")) {
@@ -186,22 +185,6 @@ public class IoTDBInterpreter extends Interpreter {
     } catch (IoTDBConnectionException e) {
       LOGGER.error("Exception close failed", e);
     }
-  }
-
-  private static Map<String, Integer> sortMapByValues(Map<String, Integer> map) {
-    Set<Entry<String, Integer>> mapEntries = map.entrySet();
-    List<Entry<String, Integer>> list = new LinkedList<Entry<String, Integer>>(mapEntries);
-    Collections.sort(list, new Comparator<Entry<String, Integer>>() {
-      @Override
-      public int compare(Entry<String, Integer> e1, Entry<String, Integer> e2) {
-        return e1.getValue().compareTo(e2.getValue());
-      }
-    });
-    Map<String, Integer> sortedMap = new LinkedHashMap<String, Integer>();
-    for (Entry<String, Integer> entry : list) {
-      sortedMap.put(entry.getKey(), entry.getValue());
-    }
-    return sortedMap;
   }
 
   static String[] parseMultiLinesSQL(String sql) {

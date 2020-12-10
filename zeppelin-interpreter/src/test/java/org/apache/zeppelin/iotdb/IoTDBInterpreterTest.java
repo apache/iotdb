@@ -56,19 +56,19 @@ public class IoTDBInterpreterTest {
   }
 
   private void initInsert() {
-    interpreter.interpret(
+    interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
         null);
-    interpreter.interpret(
+    interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (2, 2.2, true, 22)",
         null);
-    interpreter.interpret(
+    interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (3, 3.3, false, 33)",
         null);
-    interpreter.interpret(
+    interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (4, 4.4, false, 44)",
         null);
-    interpreter.interpret(
+    interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
         null);
   }
@@ -86,7 +86,7 @@ public class IoTDBInterpreterTest {
       String script = String
           .format("INSERT INTO root.test.wf02(timestamp,temperature) VALUES(%d,%f)", i,
               Math.random() * 10);
-      InterpreterResult actual = interpreter.interpret(script, null);
+      InterpreterResult actual = interpreter.internalInterpret(script, null);
       Assert.assertNotNull(actual);
       Assert.assertEquals(Code.SUCCESS, actual.code());
       Assert.assertEquals("Sql executed.", actual.message().get(0).getData());
@@ -96,7 +96,7 @@ public class IoTDBInterpreterTest {
   @Test
   public void testSelectColumnStatement() {
     InterpreterResult actual = interpreter
-        .interpret("select status from root.test.wf01.wt01", null);
+        .internalInterpret("select status from root.test.wf01.wt01", null);
     String gt = "Time\troot.test.wf01.wt01.status\n"
         + "1\tfalse\n"
         + "2\ttrue\n"
@@ -111,7 +111,7 @@ public class IoTDBInterpreterTest {
   @Test
   public void testSelectColumnStatementWithTimeFilter() {
     InterpreterResult actual = interpreter
-        .interpret("select * from root.test.wf01.wt01 where time > 2 and time < 6", null);
+        .internalInterpret("select * from root.test.wf01.wt01 where time > 2 and time < 6", null);
     String gt =
         "Time\troot.test.wf01.wt01.temperature\troot.test.wf01.wt01.status\troot.test.wf01.wt01.hardware\n"
             + "3\t3.3\tfalse\t33.0\n"
@@ -128,7 +128,7 @@ public class IoTDBInterpreterTest {
     String wrongSql;
 
     wrongSql = "select * from";
-    actual = interpreter.interpret(wrongSql, null);
+    actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
@@ -136,7 +136,7 @@ public class IoTDBInterpreterTest {
         actual.message().get(0).getData());
 
     wrongSql = "select * from a";
-    actual = interpreter.interpret(wrongSql, null);
+    actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
