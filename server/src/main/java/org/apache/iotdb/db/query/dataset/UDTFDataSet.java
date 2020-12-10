@@ -32,8 +32,6 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.input.InputLayer;
-import org.apache.iotdb.db.query.udf.core.input.InputLayerWithValueFilter;
-import org.apache.iotdb.db.query.udf.core.input.InputLayerWithoutValueFilter;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.RawQueryPointTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
@@ -68,9 +66,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer = new InputLayerWithValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
-        deduplicatedPaths, deduplicatedDataTypes, timestampGenerator, readersOfSelectedSeries,
-        cached);
+    inputLayer = new InputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, deduplicatedPaths,
+        deduplicatedDataTypes, timestampGenerator, readersOfSelectedSeries, cached);
     udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
@@ -85,8 +82,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer = new InputLayerWithoutValueFilter(queryId, UDF_READER_MEMORY_BUDGET_IN_MB,
-        deduplicatedPaths, deduplicatedDataTypes, readersOfSelectedSeries);
+    inputLayer = new InputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, deduplicatedPaths,
+        deduplicatedDataTypes, readersOfSelectedSeries);
     udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }

@@ -22,6 +22,11 @@ package org.apache.iotdb.db.query.udf.core.input;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
+import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
@@ -42,19 +47,40 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class InputLayer {
 
-  private final long queryId;
+  private long queryId;
 
-  private final QueryDataSet queryDataSet;
-  private final TSDataType[] dataTypes;
+  private QueryDataSet queryDataSet;
+  private TSDataType[] dataTypes;
 
-  private final ElasticSerializableRowRecordList rowRecordList;
-  private final SafetyLine safetyLine;
+  private ElasticSerializableRowRecordList rowRecordList;
+  private SafetyLine safetyLine;
 
-  public InputLayer(long queryId, float memoryBudgetInMB, QueryDataSet queryDataSet)
+  /**
+   * InputLayerWithoutValueFilter
+   */
+  public InputLayer(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
+      List<TSDataType> dataTypes, List<ManagedSeriesReader> readers)
+      throws QueryProcessException, IOException, InterruptedException {
+    constructInputLayer(queryId, memoryBudgetInMB,
+        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers, true));
+  }
+
+  /**
+   * InputLayerWithValueFilter
+   */
+  public InputLayer(long queryId, float memoryBudgetInMB, List<PartialPath> paths,
+      List<TSDataType> dataTypes, TimeGenerator timeGenerator, List<IReaderByTimestamp> readers,
+      List<Boolean> cached) throws QueryProcessException {
+    constructInputLayer(queryId, memoryBudgetInMB,
+        new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
+  }
+
+  private void constructInputLayer(long queryId, float memoryBudgetInMB, QueryDataSet queryDataSet)
       throws QueryProcessException {
     this.queryId = queryId;
     this.queryDataSet = queryDataSet;
