@@ -52,19 +52,19 @@ public class MetaUtilsTest {
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.\"d.1\"\"s.1\"");
     } catch (IllegalPathException e) {
-      Assert.assertTrue(e.getMessage().contains("Illegal path: "));
+      Assert.assertEquals("root.sg.\"d.1\"\"s.1\" is not a legal path", e.getMessage());
     }
 
     try {
       MetaUtils.splitPathToDetachedPath("root..a");
     } catch (IllegalPathException e) {
-      Assert.assertTrue(e.getMessage().contains("Node can't be empty"));
+      Assert.assertEquals("root..a is not a legal path", e.getMessage());
     }
 
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.d1.'s1'");
     } catch (IllegalPathException e) {
-      Assert.assertTrue(e.getMessage().contains("Illegal path with single quote: "));
+      Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
     }
   }
 

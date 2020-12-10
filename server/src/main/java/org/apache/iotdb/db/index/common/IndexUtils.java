@@ -22,10 +22,10 @@ public class IndexUtils {
   public static String removeQuotation(String v) {
     int start = 0;
     int end = v.length();
-    if (v.startsWith("\'") || v.startsWith("\"")) {
+    if (v.startsWith("'") || v.startsWith("\"")) {
       start = 1;
     }
-    if (v.endsWith("\'") || v.endsWith("\"")) {
+    if (v.endsWith("'") || v.endsWith("\"")) {
       end = v.length() - 1;
     }
     return v.substring(start, end);

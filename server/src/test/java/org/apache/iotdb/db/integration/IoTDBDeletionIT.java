@@ -243,7 +243,7 @@ public class IoTDBDeletionIT {
 
       for (int i = 1; i <= 10000; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
 
@@ -283,27 +283,27 @@ public class IoTDBDeletionIT {
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
 
@@ -327,12 +327,12 @@ public class IoTDBDeletionIT {
 
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
             i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
             i % 2 == 0));
       }
 
