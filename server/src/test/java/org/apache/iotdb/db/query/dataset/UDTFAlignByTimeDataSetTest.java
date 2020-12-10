@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -151,19 +152,19 @@ public class UDTFAlignByTimeDataSetTest {
             if (count % 3 != 0) {
               assertEquals(count * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           } else if (s1.contains(i)) {
             if (count % 3 != 0 || count % 2 == 0) {
               assertEquals(count, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           } else if (s2.contains(i)) {
             if (count % 3 != 0 || count % 2 != 0) {
               assertEquals(count, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           }
         }
@@ -202,7 +203,7 @@ public class UDTFAlignByTimeDataSetTest {
         List<Field> fields = rowRecord.getFields();
         for (int i = 0; i < 4; ++i) {
           Field field = fields.get(originalIndex2FieldIndex.get(i));
-          if (!field.isNull()) {
+          if (field != null) {
             assertEquals(count * 2, field.getLongV());
           }
         }
@@ -245,13 +246,13 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 14; ++i) {
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
-            if (!field.isNull()) {
+            if (field != null) {
               assertEquals(count * 2, field.getLongV());
             }
           }
           if (s1OrS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
-            if (!field.isNull()) {
+            if (field != null) {
               assertEquals(count, field.getFloatV(), 0);
             }
           }
@@ -297,19 +298,19 @@ public class UDTFAlignByTimeDataSetTest {
         for (int i = 0; i < 10; ++i) {
           if (s1AndS2WithAddend.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
-            if (!field.isNull()) {
+            if (field != null) {
               assertEquals(count * 2 + ADDEND, field.getLongV());
             }
           }
           if (s1AndS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
-            if (!field.isNull()) {
+            if (field != null) {
               assertEquals(count * 2, field.getLongV());
             }
           }
           if (s1OrS2.contains(i)) {
             Field field = fields.get(originalIndex2FieldIndex.get(i));
-            if (!field.isNull()) {
+            if (field != null) {
               assertEquals(count, field.getFloatV(), 0);
             }
           }
@@ -460,19 +461,19 @@ public class UDTFAlignByTimeDataSetTest {
             if (index % 3 != 0) {
               assertEquals(index * 2, fields.get(originalIndex2FieldIndex.get(i)).getLongV());
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           } else if (s1.contains(i)) {
             if (index % 3 != 0 || index % 2 == 0) {
               assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           } else if (s2.contains(i)) {
             if (index % 3 != 0 || index % 2 != 0) {
               assertEquals(index, fields.get(originalIndex2FieldIndex.get(i)).getFloatV(), 0);
             } else {
-              assertTrue(fields.get(originalIndex2FieldIndex.get(i)).isNull());
+              assertNull(fields.get(originalIndex2FieldIndex.get(i)));
             }
           }
         }

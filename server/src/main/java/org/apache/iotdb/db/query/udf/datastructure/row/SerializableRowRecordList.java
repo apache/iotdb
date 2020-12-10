@@ -162,24 +162,31 @@ public class SerializableRowRecordList implements SerializableList {
     int serializedByteLength = 0;
     List<Field> fields = rowRecord.getFields();
     for (int i = 0; i < dataTypes.length; ++i) {
+      Field field = fields.get(i);
+      boolean isNull = field == null;
+      serializedByteLength += ReadWriteIOUtils.write(isNull, outputStream);
+      if (isNull) {
+        continue;
+      }
+
       switch (dataTypes[i]) {
         case INT32:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getIntV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getIntV(), outputStream);
           break;
         case INT64:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getLongV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getLongV(), outputStream);
           break;
         case FLOAT:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getFloatV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getFloatV(), outputStream);
           break;
         case DOUBLE:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getDoubleV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getDoubleV(), outputStream);
           break;
         case BOOLEAN:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getBoolV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getBoolV(), outputStream);
           break;
         case TEXT:
-          serializedByteLength += ReadWriteIOUtils.write(fields.get(i).getBinaryV(), outputStream);
+          serializedByteLength += ReadWriteIOUtils.write(field.getBinaryV(), outputStream);
           break;
         default:
           throw new UnSupportedDataTypeException(dataTypes[i].toString());
@@ -191,6 +198,12 @@ public class SerializableRowRecordList implements SerializableList {
   private List<Field> readFields(ByteBuffer byteBuffer) {
     List<Field> fields = new ArrayList<>();
     for (TSDataType dataType : dataTypes) {
+      boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+      if (isNull) {
+        fields.add(null);
+        continue;
+      }
+
       Field field;
       switch (dataType) {
         case INT32:
