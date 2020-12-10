@@ -16,24 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.executor;
-
+package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
-import java.util.ArrayList;
-
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class GroupByEngineDataSetTest {
 
+  /**
+   * Sliding step > unit && last time interval = unit
+   */
   @Test
-  public void test1() throws IOException {
+  public void calNextTimePartitionTest1() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 5;
@@ -53,7 +50,6 @@ public class GroupByEngineDataSetTest {
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
@@ -61,36 +57,11 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
+  /**
+   * Sliding step = unit && last time interval = unit
+   */
   @Test
-  public void test2() throws IOException {
-    long queryId = 1000L;
-    long unit = 3;
-    long slidingStep = 5;
-    long startTime = 8;
-    long endTime = 8 + 4 * 5 + 3;
-
-    long[] startTimeArray = {8, 13, 18, 23, 28};
-    long[] endTimeArray = {11, 16, 21, 26, 31};
-
-    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
-    groupByTimePlan.setInterval(unit);
-    groupByTimePlan.setSlidingStep(slidingStep);
-    groupByTimePlan.setStartTime(startTime);
-    groupByTimePlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
-    int cnt = 0;
-    while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
-      cnt++;
-    }
-    Assert.assertEquals(startTimeArray.length, cnt);
-  }
-
-  @Test
-  public void test3() throws IOException {
+  public void calNextTimePartitionTest2() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -109,7 +80,6 @@ public class GroupByEngineDataSetTest {
     int cnt = 0;
     while (groupByEngine.hasNext()) {
       Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertTrue(cnt < startTimeArray.length);
       Assert.assertEquals(startTimeArray[cnt], pair.left);
       Assert.assertEquals(endTimeArray[cnt], pair.right);
       cnt++;
@@ -117,36 +87,11 @@ public class GroupByEngineDataSetTest {
     Assert.assertEquals(startTimeArray.length, cnt);
   }
 
+  /**
+   * Sliding step = unit && last time interval < unit
+   */
   @Test
-  public void test4() throws IOException {
-    long queryId = 1000L;
-    long unit = 3;
-    long slidingStep = 3;
-    long startTime = 8;
-    long endTime = 8 + 5 * 3;
-
-    long[] startTimeArray = {8, 11, 14, 17, 20};
-    long[] endTimeArray = {11, 14, 17, 20, 23};
-
-    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
-    groupByTimePlan.setInterval(unit);
-    groupByTimePlan.setSlidingStep(slidingStep);
-    groupByTimePlan.setStartTime(startTime);
-    groupByTimePlan.setEndTime(endTime);
-    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
-    int cnt = 0;
-    while (groupByEngine.hasNext()) {
-      Pair pair = groupByEngine.nextTimePartition();
-      Assert.assertTrue(cnt < startTimeArray.length);
-      Assert.assertEquals(startTimeArray[cnt], pair.left);
-      Assert.assertEquals(endTimeArray[cnt], pair.right);
-      cnt++;
-    }
-    Assert.assertEquals(startTimeArray.length, cnt);
-  }
-
-  @Test
-  public void test5() throws IOException {
+  public void calNextTimePartitionTest3() throws IOException {
     long queryId = 1000L;
     long unit = 3;
     long slidingStep = 3;
@@ -161,8 +106,102 @@ public class GroupByEngineDataSetTest {
     groupByTimePlan.setSlidingStep(slidingStep);
     groupByTimePlan.setStartTime(startTime);
     groupByTimePlan.setEndTime(endTime);
-    ArrayList<Object> aggrList = new ArrayList<>();
-    aggrList.add(new CountAggrResult());
+
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /**
+   * Desc query && sliding step > unit && last time interval = unit
+   */
+  @Test
+  public void calNextTimePartitionDescTest1() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 5;
+    long startTime = 8;
+    long endTime = 8 + 4 * 5 + 3;
+
+    long[] startTimeArray = {28, 23, 18, 13, 8};
+    long[] endTimeArray = {31, 26, 21, 16, 11};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /**
+   * Desc query && Sliding step = unit && last time interval = unit
+   */
+  @Test
+  public void calNextTimePartitionDescTest2() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3;
+
+    long[] startTimeArray = {20, 17, 14, 11, 8};
+    long[] endTimeArray = {23, 20, 17, 14, 11};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+    GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
+    int cnt = 0;
+    while (groupByEngine.hasNext()) {
+      Pair pair = groupByEngine.nextTimePartition();
+      Assert.assertEquals(startTimeArray[cnt], pair.left);
+      Assert.assertEquals(endTimeArray[cnt], pair.right);
+      cnt++;
+    }
+    Assert.assertEquals(startTimeArray.length, cnt);
+  }
+
+  /**
+   * Desc query && Sliding step = unit && last time interval < unit
+   */
+  @Test
+  public void calNextTimePartitionDescTest3() throws IOException {
+    long queryId = 1000L;
+    long unit = 3;
+    long slidingStep = 3;
+    long startTime = 8;
+    long endTime = 8 + 5 * 3 + 2;
+
+    long[] startTimeArray = {22, 19, 16, 13, 10, 8};
+    long[] endTimeArray = {25, 22, 19, 16, 13, 10};
+
+    GroupByTimePlan groupByTimePlan = new GroupByTimePlan();
+    groupByTimePlan.setAscending(false);
+    groupByTimePlan.setInterval(unit);
+    groupByTimePlan.setSlidingStep(slidingStep);
+    groupByTimePlan.setStartTime(startTime);
+    groupByTimePlan.setEndTime(endTime);
+
     GroupByEngineDataSet groupByEngine = new GroupByWithValueFilterDataSet(queryId, groupByTimePlan);
     int cnt = 0;
     while (groupByEngine.hasNext()) {
