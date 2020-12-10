@@ -207,6 +207,6 @@ public abstract class HeartbeatServer {
         .newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
     heartbeatClientService.submit(() -> heartbeatPoolServer.serve());
 
-    logger.info("Cluster node's heartbeat {} is up", thisNode);
+    logger.info("[{}] Cluster node's heartbeat {} is up", getServerClientName(), thisNode);
   }
 }

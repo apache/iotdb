@@ -46,7 +46,6 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private IoTDBConfig conf = new IoTDBConfig();
-  private static CommandLine commandLine;
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -58,36 +57,6 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
-  }
-
-  public void replaceProps(String[] params) {
-    Options options = new Options();
-    final String RPC_PORT = "rpc_port";
-    Option rpcPort = new Option(RPC_PORT, RPC_PORT, true,
-        "The jdbc service listens on the port");
-    rpcPort.setRequired(false);
-    options.addOption(rpcPort);
-
-    boolean ok = parseCommandLine(options, params);
-    if (!ok) {
-      logger.error("replaces properties failed, use default conf params");
-    } else {
-      if (commandLine.hasOption(RPC_PORT)) {
-        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
-        logger.debug("replace rpc port with={}", conf.getRpcPort());
-      }
-    }
-  }
-
-  private boolean parseCommandLine(Options options, String[] params) {
-    try {
-      CommandLineParser parser = new DefaultParser();
-      commandLine = parser.parse(options, params);
-    } catch (ParseException e) {
-      logger.error("parse conf params failed, {}", e.toString());
-      return false;
-    }
-    return true;
   }
 
   public URL getPropsUrl() {

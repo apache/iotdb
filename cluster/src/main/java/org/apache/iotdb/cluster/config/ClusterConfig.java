@@ -27,6 +27,7 @@ public class ClusterConfig {
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
   private String clusterRpcIp = "127.0.0.1";
+  private String internalIp = "127.0.0.1";
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
   private int clusterRpcPort = 6667;
@@ -197,7 +198,7 @@ public class ClusterConfig {
     return internalMetaPort;
   }
 
-  void setInternalMetaPort(int internalMetaPort) {
+  public void setInternalMetaPort(int internalMetaPort) {
     this.internalMetaPort = internalMetaPort;
   }
 
@@ -245,7 +246,7 @@ public class ClusterConfig {
     return internalDataPort;
   }
 
-  void setInternalDataPort(int internalDataPort) {
+  public void setInternalDataPort(int internalDataPort) {
     this.internalDataPort = internalDataPort;
   }
 
@@ -253,7 +254,7 @@ public class ClusterConfig {
     return clusterRpcPort;
   }
 
-  void setClusterRpcPort(int clusterRpcPort) {
+  public void setClusterRpcPort(int clusterRpcPort) {
     this.clusterRpcPort = clusterRpcPort;
   }
 
@@ -439,5 +440,13 @@ public class ClusterConfig {
 
   public void setWaitForSlowNode(boolean waitForSlowNode) {
     this.waitForSlowNode = waitForSlowNode;
+  }
+
+  public String getInternalIp() {
+    return internalIp;
+  }
+
+  public void setInternalIp(String internalIp) {
+    this.internalIp = internalIp;
   }
 }

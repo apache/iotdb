@@ -969,7 +969,7 @@ public class IoTDBConfig {
     return rpcPort;
   }
 
-  void setRpcPort(int rpcPort) {
+  public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
   }
 

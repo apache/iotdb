@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RPCService;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -57,6 +58,8 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and the
@@ -65,6 +68,7 @@ import org.apache.thrift.transport.TTransportException;
  */
 public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface,
     TSMetaService.Iface {
+  private static Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
@@ -144,11 +148,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
    */
   @Override
   TServerTransport getServerSocket() throws TTransportException {
+    logger.info("[{}] Cluster node will listen {}:{}", getServerClientName(), config.getInternalIp(),
+        config.getInternalMetaPort());
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getInternalIp(),
           config.getInternalMetaPort()), getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+      return new TServerSocket(new InetSocketAddress(config.getInternalIp(),
           config.getInternalMetaPort()));
     }
   }
