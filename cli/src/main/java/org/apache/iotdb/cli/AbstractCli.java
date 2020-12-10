@@ -85,21 +85,17 @@ public abstract class AbstractCli {
   private static final String SHOW_METADATA_COMMAND = "show timeseries";
   static final int MAX_HELP_CONSOLE_WIDTH = 88;
   static final String TIMESTAMP_STR = "Time";
-  static final int ISO_DATETIME_LEN = 35;
   private static final String IMPORT_CMD = "import";
-  private static final String DEFAULT_TIME_FORMAT = "default";
-  static String timeFormat = DEFAULT_TIME_FORMAT;
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
-  static int maxTimeLength = ISO_DATETIME_LEN;
-  static int maxValueLength = 15;
-  static String TIMESTAMP_PRECISION = "ms";
+  static String timestampPrecision = "ms";
+  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+
   private static int lineCount = 0;
   private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
   private static boolean isReachEnd = false;
 
-  static String formatTime = "%" + maxTimeLength + "s|";
   static String host = "127.0.0.1";
   static String port = "6667";
   static String username;
@@ -368,10 +364,7 @@ public abstract class AbstractCli {
       return;
     }
     try {
-      Object[] objs = RpcUtils.setTimeFormat(cmd.split("=")[1]);
-      timeFormat = (String) objs[0];
-      maxTimeLength = (int) objs[1];
-      formatTime = (String) objs[2];
+      timeFormat = RpcUtils.setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
       return;
@@ -545,7 +538,8 @@ public abstract class AbstractCli {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
           if (printTimestamp && i == 1) {
-            tmp = RpcUtils.formatDatetime(timeFormat, resultSet.getLong(TIMESTAMP_STR), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+                resultSet.getLong(TIMESTAMP_STR), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }
@@ -569,7 +563,8 @@ public abstract class AbstractCli {
             tmp = NULL;
           }
           if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = RpcUtils.formatDatetime(timeFormat, Long.parseLong(tmp), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+                Long.parseLong(tmp), zoneId);
           }
           lists.get(i - 1).add(tmp);
           if (maxSizeList.get(i - 1) < tmp.length()) {

@@ -91,7 +91,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
           ? ZoneId.of(zoneStr.trim()) : ZoneId.systemDefault();
       String timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE,
           DEFAULT_TIME_DISPLAY_TYPE).trim();
-      this.timeFormat = (String) setTimeFormat(timeDisplayType)[0];
+      this.timeFormat = setTimeFormat(timeDisplayType);
       boolean enableRPCCompression = "true".equalsIgnoreCase(
           properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
               DEFAULT_ENABLE_RPC_COMPRESSION).trim());
@@ -142,7 +142,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
                     SET_TIMESTAMP_DISPLAY));
           }
           String timeDisplayType = values[1].trim();
-          this.timeFormat = (String) setTimeFormat(values[1])[0];
+          this.timeFormat = setTimeFormat(values[1]);
           interpreterResult = new InterpreterResult(Code.SUCCESS, "Time display type has set to " +
               timeDisplayType);
         } else if (lowercaseSc.startsWith("select")) {
@@ -178,7 +178,8 @@ public class IoTDBInterpreter extends AbstractInterpreter {
     stringBuilder.append(NEWLINE);
     while (sessionDataSet.hasNext()) {
       RowRecord record = sessionDataSet.next();
-      stringBuilder.append(RpcUtils.formatDatetime(timeFormat, record.getTimestamp(), zoneId));
+      stringBuilder.append(RpcUtils.formatDatetime(timeFormat, RpcUtils.DEFAULT_TIMESTAMP_PRECISION,
+          record.getTimestamp(), zoneId));
       for (Field f : record.getFields()) {
         stringBuilder.append(TAB);
         stringBuilder.append(f);

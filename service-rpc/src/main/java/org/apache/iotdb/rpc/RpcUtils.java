@@ -183,43 +183,32 @@ public class RpcUtils {
     return resp;
   }
 
-  private static final String DEFAULT_TIME_FORMAT = "default";
-  private static final String TIMESTAMP_PRECISION = "ms";
-  private static final int ISO_DATETIME_LEN = 35;
-  private static final int maxValueLength = 15;
+  public static final String DEFAULT_TIME_FORMAT = "default";
+  public static final String DEFAULT_TIMESTAMP_PRECISION = "ms";
 
-  public static Object[] setTimeFormat(String newTimeFormat) {
+  public static String setTimeFormat(String newTimeFormat) {
     String timeFormat;
-    int maxTimeLength;
-    String formatTime;
     switch (newTimeFormat.trim().toLowerCase()) {
       case "long":
       case "number":
-        maxTimeLength = maxValueLength;
         timeFormat = newTimeFormat.trim().toLowerCase();
         break;
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
-        maxTimeLength = ISO_DATETIME_LEN;
         timeFormat = newTimeFormat.trim().toLowerCase();
         break;
       default:
         // use java default SimpleDateFormat to check whether input time format is legal
         // if illegal, it will throw an exception
         new SimpleDateFormat(newTimeFormat.trim());
-        maxTimeLength = Math.max(TIMESTAMP_STR.length(), newTimeFormat.length());
         timeFormat = newTimeFormat;
         break;
     }
-    formatTime = "%" + maxTimeLength + "s|";
-    return new Object[]{timeFormat, maxTimeLength, formatTime};
+    return timeFormat;
   }
 
-  private static String getTimestampPrecision() {
-    return TIMESTAMP_PRECISION;
-  }
-
-  public static String formatDatetime(String timeFormat, long timestamp, ZoneId zoneId) {
+  public static String formatDatetime(String timeFormat, String timePrecision, long timestamp,
+      ZoneId zoneId) {
     ZonedDateTime dateTime;
     switch (timeFormat) {
       case "long":
@@ -228,7 +217,7 @@ public class RpcUtils {
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         return parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, getTimestampPrecision());
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, timePrecision);
       default:
         dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
         return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
