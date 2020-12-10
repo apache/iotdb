@@ -70,10 +70,10 @@ public class TracingManagerTest {
   public void tracingQueryTest() throws IOException {
     String[] ans = {
         "Query Id: 10 - Query Statement: " + sql,
-        "Query Id: 10 - Start time: 2020-12-10 00:00:00.000",
+        "Query Id: 10 - Start time: 2020-12-",
         "Query Id: 10 - Number of series paths: 3",
         "Query Id: 10 - Query Statement: " + sql,
-        "Query Id: 10 - Start time: 2020-12-10 00:00:00.000",
+        "Query Id: 10 - Start time: 2020-12-",
         "Query Id: 10 - Number of series paths: 3",
         "Query Id: 10 - Number of sequence files: 1",
         "Query Id: 10 - SeqFile_1-1-0.tsfile root.sg.d1[1, 999], root.sg.d2[2, 998]",
@@ -92,7 +92,6 @@ public class TracingManagerTest {
     String str;
     int cnt = 0;
     while ((str = bufferedReader.readLine()) != null) {
-      System.out.println("Actual: " + str);
       Assert.assertTrue(str.contains(ans[cnt++]));
     }
   }
