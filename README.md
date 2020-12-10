@@ -110,6 +110,10 @@ downloaded automatically during compilation. This compiler works fine with gcc8 
 MacOS, and CentOS, but previous versions and other OSs are not guaranteed. Should you find your gcc
 version or OS does not support the precompiled compiler, please upgrade your gcc version or follow the
 Thrift official instructions to compile the compiler yourself and rename it into `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`.
+If you have already installed a compatible Thrift compiler, you may add the following parameter
+when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+If you want to download the Thrift compiler from another position, you may add the following
+parameter: `-Dthrift.download-url=<THE REMOTE URL FOR DOWNLOADING> -Dthrift.exec.absolute.path=<THE DOWNLOADED BINARY FILE NAME>`. Or you may directly modify our root pom if you are skilled enough.
 Here is the Thrift official site: https://thrift.apache.org/
 
 You can download the source code from:
