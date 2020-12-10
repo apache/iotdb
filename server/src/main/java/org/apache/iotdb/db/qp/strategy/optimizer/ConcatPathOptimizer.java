@@ -413,7 +413,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     selectOperator.setUdfList(newUdfList);
   }
 
-  private Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
+  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
       throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
