@@ -38,12 +38,14 @@ public abstract class QueryDataSet {
   }
 
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
-    this.paths = paths;
-    this.dataTypes = dataTypes;
-    this.ascending = true;
+    initQueryDataSetFields(paths, dataTypes, true);
   }
 
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
+    initQueryDataSetFields(paths, dataTypes, ascending);
+  }
+
+  protected void initQueryDataSetFields(List<Path> paths, List<TSDataType> dataTypes, boolean ascending) {
     this.paths = paths;
     this.dataTypes = dataTypes;
     this.ascending = ascending;
@@ -61,10 +63,8 @@ public abstract class QueryDataSet {
     }
 
     // make sure within the LIMIT constraint if exists
-    if (rowLimit > 0) {
-      if (alreadyReturnedRowNum >= rowLimit) {
-        return false;
-      }
+    if (rowLimit > 0 && alreadyReturnedRowNum >= rowLimit) {
+      return false;
     }
 
     return hasNextWithoutConstraint();

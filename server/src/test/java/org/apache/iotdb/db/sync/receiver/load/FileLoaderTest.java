@@ -129,7 +129,9 @@ public class FileLoaderTest {
         TsFileResource tsFileResource = new TsFileResource(syncFile);
         tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
         tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
-        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
+        tsFileResource.setMaxPlanIndex(j);
+        tsFileResource.setMinPlanIndex(j);
+
         tsFileResource.serialize();
       }
     }
@@ -227,7 +229,8 @@ public class FileLoaderTest {
         TsFileResource tsFileResource = new TsFileResource(syncFile);
         tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
         tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
-        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
+        tsFileResource.setMinPlanIndex(j);
+        tsFileResource.setMaxPlanIndex(j);
         tsFileResource.serialize();
       }
     }

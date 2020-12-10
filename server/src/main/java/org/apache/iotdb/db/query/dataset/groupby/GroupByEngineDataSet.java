@@ -53,6 +53,12 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
     super(new ArrayList<>(groupByTimePlan.getDeduplicatedPaths()),
         groupByTimePlan.getDeduplicatedDataTypes(), groupByTimePlan.isAscending());
+
+    // find the startTime of the first aggregation interval
+    initGroupByEngineDataSetFields(context, groupByTimePlan);
+  }
+
+  protected void initGroupByEngineDataSetFields(QueryContext context, GroupByTimePlan groupByTimePlan) {
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
@@ -61,7 +67,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.leftCRightO = groupByTimePlan.isLeftCRightO();
     this.ascending = groupByTimePlan.isAscending();
 
-    // find the startTime of the first aggregation interval
     if (ascending) {
       curStartTime = startTime;
     } else {

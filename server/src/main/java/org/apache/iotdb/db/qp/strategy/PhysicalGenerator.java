@@ -479,7 +479,7 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-            if (suffixPath.getTsAlias() != null) {
+            if (suffixPath.isTsAliasExists()) {
               if (actualPaths.size() == 1) {
                 String columnName = actualPaths.get(0).getMeasurement();
                 if (originAggregations != null && !originAggregations.isEmpty()) {
@@ -751,10 +751,11 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = paths.get(i);
-        String column = path.getTsAlias();
-        if (column == null) {
-          column =
-              path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
+        String column;
+        if (path.isTsAliasExists()) {
+          column = path.getTsAlias();
+        } else {
+          column = path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
         }
         if (!columnForReaderSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
@@ -791,9 +792,9 @@ public class PhysicalGenerator {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      String columnForReader = originalPath.getTsAlias();
+      String columnForReader = originalPath.isTsAliasExists() ? originalPath.getTsAlias() : null;
       if (columnForReader == null) {
-        columnForReader = originalPath.getMeasurementAlias() != null ?
+        columnForReader = originalPath.isMeasurementAliasExists() ?
             originalPath.getFullPathWithAlias() : originalPath.toString();
         if (queryPlan instanceof AggregationPlan) {
           columnForReader =

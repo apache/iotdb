@@ -157,7 +157,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
-  private void checkAggrOfGroupByLevel(SelectOperator selectOperator) throws LogicalOptimizeException {
+  private void checkAggrOfGroupByLevel(SelectOperator selectOperator)
+      throws LogicalOptimizeException {
     if (selectOperator.getAggregations().size() != 1) {
       throw new LogicalOptimizeException(
           "Aggregation function is restricted to one if group by level clause exists");
@@ -217,7 +218,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       } else { // non-udf
         for (PartialPath fromPath : fromPaths) {
           PartialPath fullPath = fromPath.concatPath(selectPath);
-          if (selectPath.getTsAlias() != null) {
+          if (selectPath.isTsAliasExists()) {
             fullPath.setTsAlias(selectPath.getTsAlias());
           }
           afterConcatPaths.add(fullPath);
@@ -419,7 +420,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private void checkAndSetTsAlias(List<PartialPath> actualPaths, PartialPath originPath)
       throws LogicalOptimizeException {
-    if (originPath.getTsAlias() != null) {
+    if (originPath.isTsAliasExists()) {
       if (actualPaths.size() == 1) {
         actualPaths.get(0).setTsAlias(originPath.getTsAlias());
       } else if (actualPaths.size() >= 2) {
