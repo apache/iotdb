@@ -19,11 +19,17 @@
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
 
+struct EndPoint {
+  1: required string ip
+  2: required i32 port
+}
+
 // The return status code and message in each response.
 struct TSStatus {
   1: required i32 code
   2: optional string message
   3: optional list<TSStatus> subStatus
+  4: optional EndPoint redirectNode
 }
 
 struct TSQueryDataSet{
