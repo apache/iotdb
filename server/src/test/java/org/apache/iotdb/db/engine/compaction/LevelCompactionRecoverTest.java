@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,8 +49,10 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -263,10 +264,14 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     BufferedWriter logStream = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(tempSGDir.getPath(),
             COMPACTION_TEST_SG + COMPACTION_LOG_NAME), false));
-    for (int i = 0; i < logs.size() - 1; i++) {
+    for (int i = 0; i < logs.size() - 2; i++) {
       logStream.write(logs.get(i));
       logStream.newLine();
     }
+    TsFileOutput out = FSFactoryProducer.getFileOutputFactory()
+        .getTsFileOutput(targetTsFileResource.getTsFile().getPath(), true);
+    out.truncate(Long.parseLong(logs.get(logs.size() - 3)) - 1);
+    out.close();
     logStream.close();
 
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
