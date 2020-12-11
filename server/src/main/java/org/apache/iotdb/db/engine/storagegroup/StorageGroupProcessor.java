@@ -710,6 +710,7 @@ public class StorageGroupProcessor {
     }
 
     writeLock();
+    flushUpdateLock();
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
@@ -798,6 +799,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       writeUnlock();
+      flushUpdateUnLock();
     }
   }
 
@@ -836,8 +838,20 @@ public class StorageGroupProcessor {
       return false;
     }
 
+    int toFlushPoint = start;
+    if (tsFileProcessor.isFlushMemTableAlive()) {
+      long flushMemTime = flushingLatestTimeForEachDevice.
+          computeIfAbsent(timePartitionId, id -> new HashMap<>()).
+          computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+      for(int i = start; i < end; i++){
+        if (insertTabletPlan.getTimes()[i] > flushMemTime) {
+          break;
+        }
+        toFlushPoint++;
+      }
+    }
     try {
-      tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
+      tsFileProcessor.insertTablet(insertTabletPlan, start, toFlushPoint, end, results);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected ", e);
       return false;

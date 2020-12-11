@@ -215,7 +215,7 @@ public class TsFileProcessor {
    * @param end end index of rows to be inserted in insertTabletPlan
    * @param results result array
    */
-  public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
+  public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int toFlushPoint, int end,
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
@@ -233,7 +233,10 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
+      if (toFlushPoint != start) {
+        flushingMemTable.insertTablet(insertTabletPlan, start, toFlushPoint);
+      }
+      workMemTable.insertTablet(insertTabletPlan, toFlushPoint, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
         insertTabletPlan.setEnd(end);
