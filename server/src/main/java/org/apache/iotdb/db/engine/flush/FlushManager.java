@@ -101,14 +101,14 @@ public class FlushManager implements FlushManagerMBean, IService {
             && System.currentTimeMillis() - startTime < config.getFlushWaitTime()) {
           // wait
           try {
-            TimeUnit.MILLISECONDS.sleep(config.getWaitingTimeWhenInsertBlocked());
+            TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
           } catch (InterruptedException e) {
             logger.error("flush mem table wait error", e);
           }
         }
       }
-      if (tsFileProcessor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
-          .isEnableSlidingMemTable() && tsFileProcessor.isFlushMemTableAlive()) {
+      if (tsFileProcessor.isSequence() && config.isEnableSlidingMemTable() &&
+          tsFileProcessor.isFlushMemTableAlive()) {
         tsFileProcessor.getUpdateLatestFlushTimeCallback().call(tsFileProcessor, true);
       }
       tsFileProcessor.flushOneMemTable();

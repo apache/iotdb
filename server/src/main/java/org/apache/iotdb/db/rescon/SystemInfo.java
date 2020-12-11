@@ -43,8 +43,8 @@ public class SystemInfo {
 
   private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
 
-  private static final double QUICK_FLUSH_PROPORTION =
-      config.getAllocateMemoryForWrite() * config.getFlushProportion();
+  private static final double FORCE_FLUSH_THERSHOLD =
+      config.getAllocateMemoryForWrite() * config.getForceFlushProportion();
   private static final double FLUSH_THERSHOLD =
       config.getAllocateMemoryForWrite() * config.getFlushProportion();
   private static final double REJECT_THERSHOLD =
@@ -205,6 +205,6 @@ public class SystemInfo {
   }
 
   public boolean forceFlush(){
-    return totalSgMemCost >= QUICK_FLUSH_PROPORTION;
+    return totalSgMemCost >= FORCE_FLUSH_THERSHOLD;
   }
 }

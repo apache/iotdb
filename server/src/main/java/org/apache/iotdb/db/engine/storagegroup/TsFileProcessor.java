@@ -522,15 +522,15 @@ public class TsFileProcessor {
 
       // we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      IMemTable tmpWorkMemTable = workMemTable == null || workMemTable.memSize() == 0
+      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
           ? new NotifyFlushMemTable()
           : workMemTable;
 
       try {
         // When invoke closing TsFile after insert data to memTable, we shouldn't flush until invoke
         // flushing memTable in System module.
-        addAMemtableIntoFlushingList(tmpWorkMemTable, true);
-        logger.info("Memtable {} has been added to flushing list", tmpWorkMemTable);
+        addAMemtableIntoFlushingList(tmpMemTable, true);
+        logger.info("Memtable {} has been added to flushing list", tmpMemTable);
         shouldClose = true;
       } catch (Exception e) {
         logger.error("{}: {} async close failed, because", storageGroupName,
