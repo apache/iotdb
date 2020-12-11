@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -63,7 +63,7 @@ public class AsyncDataLogApplier implements LogApplier {
 
   public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
     this.embeddedApplier = embeddedApplier;
-    consumerMap = new ConcurrentHashMap<>();
+    consumerMap = new HashMap<>();
     consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
         Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>());
     this.name = name;
