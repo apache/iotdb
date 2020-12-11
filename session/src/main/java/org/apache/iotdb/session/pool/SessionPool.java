@@ -81,13 +81,13 @@ public class SessionPool {
   private boolean closed;//whether the queue is closed.
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null, false);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null, Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       boolean enableCompression) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
-        null, false);
+        null, Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
@@ -98,7 +98,7 @@ public class SessionPool {
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       ZoneId zoneId) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId, false);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId, Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   @SuppressWarnings("squid:S107")
