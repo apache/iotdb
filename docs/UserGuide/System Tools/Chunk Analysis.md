@@ -18,68 +18,39 @@
     under the License.
 
 -->
-# Csv tool
+# Chunk Analysis tool
 
-Csv tool is that you can import csv file into IoTDB or export csv file from IoTDB.
+You can use this tool when you want to analyze the chunk data of a specific time series in a tsfile file.
 
-## Usage of import-csv.sh
+## Usage 
 
-### Create metadata (optional)
-
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
-IoTDB has the ability of type inference, so it is not necessary to create metadata before data import. However, we still recommend creating metadata before importing data using the CSV import tool, as this can avoid unnecessary type conversion errors.
-
-### An example of import csv file
-
-```
-Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,hello,200,300,400
-2,500,world,600,700,800
-3,900,"hello, \"world\"",1000,1100,1200
-```
-> Note that the following special characters in fields need to be checked before importing:
-> 1. `,` : fields containing `,` should be quoted by a pair of `"` or a pair of `'`.
-> 2. `"` : `"` in fields should be replaced by `\"` or fields should be enclosed by `'`.
-> 3. `'` : `'` in fields should be replaced by `\'` or fields should be enclosed by `"`.
-
-### Run import shell
 ```
 # Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> tools/print-tsfile-specific-measurement.sh file_path measurement_name
 
 # Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
+> tools\print-tsfile-specific-measurement.bat file_path measurement_name
 ```
 
-## Usage of export-csv.sh
+file_path：The absolute path of the tsfile file
 
-### Run export shell
+measurement_name：time series name
+
+## Example
+
+
+Suppose that in a Linux environment, there is a tsfile file (`/Users/Desktop/test.tsfile`) containing two time series, namely `root.sg.d0.s0, root.sg.d0.s1`, we want to analyze chunk data distribution of the specific time series (such as `root.sg.d0.s0`, the time series has two `Chunk`, each `Chunk` has three data points)  in the file, then you can use the following instruction.
 ```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -s <sqlfile>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -s <sqlfile>]
+> tools/print-tsfile-specific-measurement.sh /Users/Desktop/test.tsfile root.sg.d0.s0
 ```
 
-After running export shell, you need to input a data query, like `select * from root`. or specify a sql file. If you have multi sql in a sql file, sql should be split by new line character.
-
-an example sql file:
-
+>Output Example
 ```
-select * from root.fit.d1
-select * from root.sg1.d1
-```
-> Note that if fields exported by the export tool have the following special characters:
-> 1. `,`: the field will be enclosed by `"`.
-> 2. `"`: the field will be enclosed by `"` and the original characters `"` in the field will be replaced by `\"`.
+|--[Chunk]
+			time, value: 1, 1
+			time, value: 2, 2
+			time, value: 3, 3
+|--[Chunk]
+			time, value: 4, 4
+			time, value: 5, 5
+			time, value: 6, 6
