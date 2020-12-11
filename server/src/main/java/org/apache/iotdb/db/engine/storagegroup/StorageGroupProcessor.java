@@ -185,7 +185,7 @@ public class StorageGroupProcessor {
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   /*
    * time partition id -> map, when a memory table is marked as to be flush, use latestTimeForEachDevice
-   * to cache the flushing time bound, and is used to update partitionLatestFlushedTimeForEachDevice
+   * to update the flushingLatestTimeForEachDevice, and is used to update partitionLatestFlushedTimeForEachDevice
    * when a flush is actually issued.
    */
   private Map<Long, Map<String, Long>> flushingLatestTimeForEachDevice = new HashMap<>();

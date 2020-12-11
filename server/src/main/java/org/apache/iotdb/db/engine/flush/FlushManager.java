@@ -94,10 +94,9 @@ public class FlushManager implements FlushManagerMBean, IService {
     @Override
     public void runMayThrow() {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
-      if (tsFileProcessor.isSequence() && config.isEnableSlidingMemTable() &&
-          !SystemInfo.getInstance().forceFlush()) {
+      if (tsFileProcessor.isSequence() && config.isEnableSlidingMemTable()) {
         long startTime = System.currentTimeMillis();
-        while (!tsFileProcessor.isShouldClose()
+        while (!tsFileProcessor.isShouldClose() && !SystemInfo.getInstance().forceFlush()
             && System.currentTimeMillis() - startTime < config.getFlushWaitTime()) {
           // wait
           try {
