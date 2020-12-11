@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -416,11 +416,7 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
-        try {
-          return new String(values[index], "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          return new String(values[index]);
-        }
+        return new String(values[index], StandardCharsets.UTF_8);
       default:
         return null;
     }
@@ -453,11 +449,7 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return BytesUtils.bytesToDouble(values[index]);
       case TEXT:
-        try {
-          return new String(values[index], "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          return new String(values[index]);
-        }
+        return new String(values[index], StandardCharsets.UTF_8);
       default:
         return null;
     }
