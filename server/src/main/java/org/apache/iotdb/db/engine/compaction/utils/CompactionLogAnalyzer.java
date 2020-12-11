@@ -82,10 +82,10 @@ public class CompactionLogAnalyzer {
             isSeq = false;
             break;
           default:
-            if (currLine.contains(STR_DEVICE_OFFSET_SEPERATOR)) {
-              String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
-              deviceSet.add(resultList[0]);
-              offset = Long.parseLong(resultList[1]);
+            deviceSet.add(currLine);
+            currLine = bufferedReader.readLine();
+            if (currLine != null) {
+              offset = Long.parseLong(currLine);
             }
             break;
         }
