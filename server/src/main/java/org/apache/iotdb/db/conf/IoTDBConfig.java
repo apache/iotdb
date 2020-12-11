@@ -735,7 +735,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /**
-   * thrift max frame size, the default is 15MB, we change it to 64MB
+   * thrift max frame size, the default is 16384000 bytes, we change it to 64MB
    */
   private int thriftMaxFrameSize = 67108864;
 
