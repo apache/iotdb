@@ -63,6 +63,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -146,7 +147,7 @@ public abstract class RaftMember {
   /**
    * the nodes that belong to the same raft group as thisNode.
    */
-  protected List<Node> allNodes;
+  protected PartitionGroup allNodes;
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   /**
    * the name of the member, to distinguish several members in the logs.
@@ -657,7 +658,7 @@ public abstract class RaftMember {
     return allNodes;
   }
 
-  public void setAllNodes(List<Node> allNodes) {
+  public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
   }
 
@@ -1006,7 +1007,7 @@ public abstract class RaftMember {
       return commitIdResult.get();
     }
     synchronized (commitIdResult) {
-      client.requestCommitIndex(getHeader(), new GenericHandler<>(leader.get(), commitIdResult));
+      client.requestCommitIndex(getHeader(), get,new GenericHandler<>(leader.get(), commitIdResult));
       commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
     }
     return commitIdResult.get();

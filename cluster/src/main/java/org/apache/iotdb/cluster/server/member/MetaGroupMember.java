@@ -147,6 +147,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -273,7 +274,7 @@ public class MetaGroupMember extends RaftMember {
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
-    allNodes = new ArrayList<>();
+    allNodes = new PartitionGroup();
     initPeerMap();
 
     dataClientProvider = new DataClientProvider(factory);
@@ -307,9 +308,9 @@ public class MetaGroupMember extends RaftMember {
    * @return true if the member is a leader and the partition is closed, false otherwise
    */
   public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    Node header = partitionTable.routeToHeaderByTime(storageGroupName,
+    Pair<Node, Integer> pair = partitionTable.routeToHeaderByTime(storageGroupName,
         partitionId * StorageEngine.getTimePartitionInterval());
-    DataGroupMember localDataMember = getLocalDataMember(header);
+    DataGroupMember localDataMember = getLocalDataMember(pair);
     if (localDataMember == null || localDataMember.getCharacter() != NodeCharacter.LEADER) {
       return;
     }
@@ -678,7 +679,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void updateNodeList(Collection<Node> nodes) {
-    allNodes = new ArrayList<>(nodes);
+    allNodes = new PartitionGroup(nodes);
     initPeerMap();
     logger.info("All nodes in the partition table: {}", allNodes);
     initIdNodeMap();
@@ -1730,7 +1731,7 @@ public class MetaGroupMember extends RaftMember {
       if (partitionGroup.contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
         logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
-        status = getLocalDataMember(partitionGroup.getHeader())
+        status = getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
             .executeNonQueryPlan(plan);
       } else {
         // forward the query to the group that should handle it
@@ -2113,8 +2114,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   @Override
-  public void setAllNodes(List<Node> allNodes) {
-    super.setAllNodes(allNodes);
+  public void setAllNodes(PartitionGroup allNodes) {
+    super.setAllNodes(new PartitionGroup(allNodes));
     initPeerMap();
     idNodeMap = new HashMap<>();
     for (Node node : allNodes) {
@@ -2136,10 +2137,10 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a local DataGroupMember that is in the group of "header" for an internal request.
    *
-   * @param header the header of the group which the local node is in
+   * @param pair the header of the group which the local node is in
    */
-  public DataGroupMember getLocalDataMember(Node header) {
-    return dataClusterServer.getDataMember(header, null, "Internal call");
+  public DataGroupMember getLocalDataMember(Pair<Node, Integer> pair) {
+    return dataClusterServer.getDataMember(pair, null, "Internal call");
   }
 
   public DataClientProvider getClientProvider() {

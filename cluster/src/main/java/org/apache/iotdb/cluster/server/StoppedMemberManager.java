@@ -33,16 +33,17 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * When a node is added or removed, several partition groups are affected and nodes may exit some
- * groups. For example, the local node is #5 and it is in a data group of [1, 3, 5], then node #3
- * is added, so the group becomes [1, 3, 4] and the local node must leave the group. However, #5
- * may have data that #4 needs to pull, so the Member of #5 in this group is stopped but not
- * removed yet and when system recovers, we need to resume the groups so that they can keep
- * providing snapshots for data transfers.
+ * groups. For example, the local node is #5 and it is in a data group of [1, 3, 5], then node #3 is
+ * added, so the group becomes [1, 3, 4] and the local node must leave the group. However, #5 may
+ * have data that #4 needs to pull, so the Member of #5 in this group is stopped but not removed yet
+ * and when system recovers, we need to resume the groups so that they can keep providing snapshots
+ * for data transfers.
  */
 public class StoppedMemberManager {
 
@@ -53,7 +54,7 @@ public class StoppedMemberManager {
   private static final String REMOVED = "0";
   private static final String RESUMED = "1";
 
-  private Map<Node, DataGroupMember> removedMemberMap = new HashMap<>();
+  private Map<Pair<Node, Integer>, DataGroupMember> removedMemberMap = new HashMap<>();
   private DataGroupMember.Factory memberFactory;
   private Node thisNode;
 
@@ -65,13 +66,14 @@ public class StoppedMemberManager {
   }
 
   /**
-   * When a DataGroupMember is removed, add it here and record this removal, so in next start-up
-   * we can recover it as a data source for data transfers.
-   * @param header
+   * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
+   * can recover it as a data source for data transfers.
+   *
+   * @param pair
    * @param dataGroupMember
    */
-  public synchronized void put(Node header, DataGroupMember dataGroupMember) {
-    removedMemberMap.put(header, dataGroupMember);
+  public synchronized void put(Pair<Node, Integer> pair, DataGroupMember dataGroupMember) {
+    removedMemberMap.put(pair, dataGroupMember);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
       StringBuilder builder = new StringBuilder(REMOVED);
       for (Node node : dataGroupMember.getAllNodes()) {
@@ -80,27 +82,28 @@ public class StoppedMemberManager {
       writer.write(builder.toString());
       writer.newLine();
     } catch (IOException e) {
-      logger.error("Cannot record removed member of header {}", header, e);
+      logger.error("Cannot record removed member of header {}", pair, e);
     }
   }
 
   /**
-   * When a DataGroupMember is resumed, add it here and record this removal, so in next start-up
-   * we will not recover it here.
-   * @param header
+   * When a DataGroupMember is resumed, add it here and record this removal, so in next start-up we
+   * will not recover it here.
+   *
+   * @param pair
    */
-  public synchronized void remove(Node header) {
-    removedMemberMap.remove(header);
+  public synchronized void remove(Pair<Node, Integer> pair) {
+    removedMemberMap.remove(pair);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
-      writer.write(RESUMED + ";" + header.toString());
+      writer.write(RESUMED + ";" + pair.toString());
       writer.newLine();
     } catch (IOException e) {
-      logger.error("Cannot record resumed member of header {}", header, e);
+      logger.error("Cannot record resumed member of header {}", pair, e);
     }
   }
 
-  public synchronized DataGroupMember get(Node header) {
-    return removedMemberMap.get(header);
+  public synchronized DataGroupMember get(Pair<Node, Integer> pair) {
+    return removedMemberMap.get(pair);
   }
 
   private void recover() {
@@ -143,7 +146,8 @@ public class StoppedMemberManager {
     }
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
     member.setReadOnly();
-    removedMemberMap.put(partitionGroup.getHeader(), member);
+    //TODO CORRECT
+    removedMemberMap.put(new Pair(partitionGroup.getHeader(), 0), member);
   }
 
   private void parseResumed(String[] split) {

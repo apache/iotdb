@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -54,7 +55,7 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  Node routeToHeaderByTime(String storageGroupName, long timestamp);
+  Pair<Node, Integer> routeToHeaderByTime(String storageGroupName, long timestamp);
 
   /**
    * Add a new node to update the partition table.
@@ -78,10 +79,10 @@ public interface PartitionTable {
   List<PartitionGroup> getLocalGroups();
 
   /**
-   * @param header
+   * @param pair
    * @return the partition group starting from the header.
    */
-  PartitionGroup getHeaderGroup(Node header);
+  PartitionGroup getHeaderGroup(Pair<Node, Integer> pair);
 
   ByteBuffer serialize();
 

@@ -90,7 +90,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public long requestCommitIndex(Node header)
+  public long requestCommitIndex(Node header, int raftId)
       throws TException {
     long commitIndex = member.getCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
@@ -104,7 +104,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     }
     long commitIndex1 = 0;
     try {
-      commitIndex1 = client.requestCommitIndex(header);
+      commitIndex1 = client.requestCommitIndex(header, raftId);
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
@@ -141,7 +141,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header) {
+  public boolean matchTerm(long index, long term, Node header, int raftId) {
     return member.matchLog(index, term);
   }
 

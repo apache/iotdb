@@ -83,7 +83,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+  public void requestCommitIndex(Node header, int raftId, AsyncMethodCallback<Long> resultHandler) {
     long commitIndex = member.getCommitIndex();
     if (commitIndex != Long.MIN_VALUE) {
       resultHandler.onComplete(commitIndex);
@@ -97,7 +97,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       return;
     }
     try {
-      client.requestCommitIndex(header, resultHandler);
+      client.requestCommitIndex(header, raftId, resultHandler);
     } catch (TException e) {
       resultHandler.onError(e);
     }
@@ -125,7 +125,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void matchTerm(long index, long term, Node header,
+  public void matchTerm(long index, long term, Node header, int raftId,
       AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(member.matchLog(index, term));
   }

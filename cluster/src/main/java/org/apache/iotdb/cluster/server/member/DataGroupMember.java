@@ -143,8 +143,8 @@ public class DataGroupMember extends RaftMember {
   private LocalQueryExecutor localQueryExecutor;
 
   /**
-   * When a new partition table is installed, all data members will be checked if unchanged. If
-   * not, such members will be removed.
+   * When a new partition table is installed, all data members will be checked if unchanged. If not,
+   * such members will be removed.
    */
   private boolean unchanged;
 
@@ -235,6 +235,10 @@ public class DataGroupMember extends RaftMember {
   @Override
   public Node getHeader() {
     return allNodes.get(0);
+  }
+
+  public Integer getRaftGroupId() {
+    return allNodes.getId();
   }
 
   public ClusterQueryManager getQueryManager() {
@@ -385,7 +389,8 @@ public class DataGroupMember extends RaftMember {
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     logger.info("{}: received a snapshot from {} with size {}", name, request.getHeader(),
         request.getSnapshotBytes().length);
-    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
+    PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(
+        FileSnapshot.Factory.INSTANCE);
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
@@ -485,7 +490,8 @@ public class DataGroupMember extends RaftMember {
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
         PullSnapshotTaskDescriptor taskDescriptor =
-            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable().getHeaderGroup(node),
+            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable()
+                .getHeaderGroup(new Pair<>(node, getRaftGroupId())),
                 nodeSlots, false);
         pullFileSnapshot(taskDescriptor, null);
       }
@@ -522,8 +528,9 @@ public class DataGroupMember extends RaftMember {
           descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
-        snapshotSave));
+    pullSnapshotService
+        .submit(new PullSnapshotTask<>(descriptor, this, FileSnapshot.Factory.INSTANCE,
+            snapshotSave));
   }
 
   /**
@@ -619,9 +626,9 @@ public class DataGroupMember extends RaftMember {
       List<Pair<Long, Boolean>> tmpPairList = entry.getValue();
       for (Pair<Long, Boolean> pair : tmpPairList) {
         long partitionId = pair.left;
-        Node header = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
+        Pair<Node, Integer> pair = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
             partitionId * StorageEngine.getTimePartitionInterval());
-        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(pair);
         if (localDataMember.getHeader().equals(this.getHeader())) {
           localListPair.add(new Pair<>(partitionId, pair.right));
         }

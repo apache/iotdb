@@ -21,45 +21,61 @@ package org.apache.iotdb.cluster.partition;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
  * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
- * the REPLICATION_NUM - 1 different physical nodes after this node.
- * The first element of the list is called header, which is also the identifier of the data group.
+ * the REPLICATION_NUM - 1 different physical nodes after this node. The first element of the list
+ * is called header, which is also the identifier of the data group.
  */
 public class PartitionGroup extends ArrayList<Node> {
 
-  private Node thisNode;
+  private int id;
 
   public PartitionGroup() {
   }
 
-  public PartitionGroup(Node... nodes) {
+  public PartitionGroup(Collection<Node> nodes) {
+    this.addAll(nodes);
+  }
+
+  public PartitionGroup(int id, Node... nodes) {
     this.addAll(Arrays.asList(nodes));
+    this.id = id;
   }
 
   public PartitionGroup(PartitionGroup other) {
     super(other);
-    this.thisNode = other.thisNode;
+    this.id = other.getId();
   }
 
   @Override
   public boolean equals(Object o) {
-    return super.equals(o);
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PartitionGroup group = (PartitionGroup) o;
+    return Objects.equals(id, group.getId()) &&
+        super.equals(group);
   }
 
   @Override
   public int hashCode() {
-    return super.hashCode();
+    return Objects.hash(id, getHeader());
   }
+
 
   public Node getHeader() {
     return get(0);
   }
 
-  public void setThisNode(Node thisNode) {
-    this.thisNode = thisNode;
+  public int getId() {
+    return id;
   }
 
 }
