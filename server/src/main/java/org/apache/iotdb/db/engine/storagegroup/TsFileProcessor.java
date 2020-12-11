@@ -498,10 +498,11 @@ public class TsFileProcessor {
         if (flushingMemTable != null || workMemTable != null) {
           logger.info(
               "{}: flush a memtable in async close tsfile {}, flushing memtable size: {}, "
-                  + "working memtable size: {}, tsfile size: {}",
+                  + "working memtable size: {}, tsfile size: {}, plan index: [{}, {}]",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
               flushingMemTable == null ? 0 : flushingMemTable.memSize(), workMemTable.memSize(),
-              tsFileResource.getTsFileSize());
+              tsFileResource.getTsFileSize(), workMemTable.getMinPlanIndex(),
+              workMemTable.getMaxPlanIndex());
         } else {
           logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
