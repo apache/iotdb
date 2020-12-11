@@ -523,7 +523,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
     int num = getPathsNum(countPlan.getPath());
-    return createSingleDataSet(COLUMN_CHILD_PATHS, TSDataType.INT32, num);
+    return createSingleDataSet(COLUMN_COUNT, TSDataType.INT32, num);
   }
 
   private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan)
