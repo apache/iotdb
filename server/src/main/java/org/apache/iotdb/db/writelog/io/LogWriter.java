@@ -20,28 +20,32 @@ package org.apache.iotdb.db.writelog.io;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
 
 /**
- * LogWriter writes the binarized logs into a file using FileChannel together with check sums of
+ * LogWriter writes the binary logs into a file using FileChannel together with check sums of
  * each log calculated using CRC32.
  */
 public class LogWriter implements ILogWriter {
+  private final static Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   private File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
-  private CRC32 checkSummer = new CRC32();
-  private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
-  private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
-  private long forcePeriodInMs = 0;
+  private final CRC32 checkSummer = new CRC32();
+  private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+  private final ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
+  private final long forcePeriodInMs;
 
   /**
    * @param logFilePath
@@ -92,12 +96,16 @@ public class LogWriter implements ILogWriter {
     lengthBuffer.flip();
     checkSumBuffer.flip();
 
-    channel.write(lengthBuffer);
-    channel.write(logBuffer);
-    channel.write(checkSumBuffer);
+    try {
+      channel.write(lengthBuffer);
+      channel.write(logBuffer);
+      channel.write(checkSumBuffer);
 
-    if (this.forcePeriodInMs == 0) {
-      channel.force(true);
+      if (this.forcePeriodInMs == 0) {
+        channel.force(true);
+      }
+    } catch (ClosedChannelException ignored) {
+      logger.warn("someone interrupt current thread, so no need to do write for io safety");
     }
   }
 
@@ -111,7 +119,9 @@ public class LogWriter implements ILogWriter {
   @Override
   public void close() throws IOException {
     if (channel != null) {
-      channel.force(true);
+      if (channel.isOpen()) {
+        channel.force(true);
+      }
       fileOutputStream.close();
       fileOutputStream = null;
       channel.close();
