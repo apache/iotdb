@@ -171,7 +171,84 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
-    compactionLogger.logMergeFinish();
+    compactionLogger.close();
+
+    BufferedReader logReader = new BufferedReader(
+        new FileReader(SystemFileFactory.INSTANCE.getFile(tempSGDir.getPath(),
+            COMPACTION_TEST_SG + COMPACTION_LOG_NAME)));
+    List<String> logs = new ArrayList<>();
+    String line;
+    while ((line = logReader.readLine()) != null) {
+      logs.add(line);
+    }
+    logReader.close();
+    BufferedWriter logStream = new BufferedWriter(
+        new FileWriter(SystemFileFactory.INSTANCE.getFile(tempSGDir.getPath(),
+            COMPACTION_TEST_SG + COMPACTION_LOG_NAME), false));
+    for (int i = 0; i < logs.size() - 1; i++) {
+      logStream.write(logs.get(i));
+      logStream.newLine();
+    }
+    logStream.close();
+
+    levelCompactionTsFileManagement.add(targetTsFileResource, true);
+    levelCompactionTsFileManagement.recover();
+    context = new QueryContext();
+    path = new PartialPath(
+        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
+    tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
+        context,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null, true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    assertEquals(500, count);
+  }
+
+  /**
+   * compaction recover merge finished, delete one device - offset
+   */
+  @Test
+  public void testCompactionMergeRecoverMergeFinishedAndDeleteOneDeviceWithOffset()
+      throws IOException, IllegalPathException {
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement = new LevelCompactionTsFileManagement(
+        COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionTsFileManagement.addAll(seqResources, true);
+    levelCompactionTsFileManagement.addAll(unseqResources, false);
+    QueryContext context = new QueryContext();
+    PartialPath path = new PartialPath(
+        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
+    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
+        context,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null, true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    assertEquals(500, count);
+
+    CompactionLogger compactionLogger = new CompactionLogger(tempSGDir.getPath(),
+        COMPACTION_TEST_SG);
+    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    compactionLogger.logSequence(true);
+    TsFileResource targetTsFileResource = new TsFileResource(new File(
+        TestConstant.BASE_OUTPUT_PATH.concat(
+            0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 1
+                + ".tsfile")));
+    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
     compactionLogger.close();
 
     BufferedReader logReader = new BufferedReader(
