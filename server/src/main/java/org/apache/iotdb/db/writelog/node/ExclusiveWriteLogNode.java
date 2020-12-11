@@ -260,6 +260,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for available buffer interrupted");
+    } catch (FileNotFoundException e) {
+      logger.warn("can not found file {}", identifier, e);
     } finally {
       lock.unlock();
     }
