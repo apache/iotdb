@@ -122,7 +122,7 @@
                         <version>1.0</version>
                         <executions>
                             <execution>
-                                <id>copy-thrift-config</id>
+                                <id>copy-thrift-config-windows</id>
                                 <goals>
                                     <goal>copy</goal>
                                 </goals>
