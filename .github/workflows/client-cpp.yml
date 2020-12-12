@@ -74,7 +74,7 @@ jobs:
       java: 11.0.x
     defaults:
       run:
-        shell: bash
+        shell: cmd
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK ${{ env.java }}
