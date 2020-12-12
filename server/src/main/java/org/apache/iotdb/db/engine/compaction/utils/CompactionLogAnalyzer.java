@@ -82,9 +82,10 @@ public class CompactionLogAnalyzer {
             isSeq = false;
             break;
           default:
-            deviceSet.add(currLine);
+            String device = currLine;
             currLine = bufferedReader.readLine();
             if (currLine != null) {
+              deviceSet.add(device);
               offset = Long.parseLong(currLine);
             }
             break;
