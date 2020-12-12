@@ -180,14 +180,16 @@ public class TsFileProcessor {
     if (enableMemControl) {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
+    boolean toFlushing = false;
     if (isFlushMemTableAlive && insertRowPlan.isToFlushingMemTable()){
       flushingMemTable.insert(insertRowPlan);
+      toFlushing = true;
     } else {
       workMemTable.insert(insertRowPlan);
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        getLogNode().write(insertRowPlan);
+        getLogNode().write(insertRowPlan, toFlushing);
       } catch (Exception e) {
         throw new WriteProcessException(String.format("%s: %s write WAL failed",
             storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
@@ -238,9 +240,16 @@ public class TsFileProcessor {
       }
       workMemTable.insertTablet(insertTabletPlan, toFlushPoint, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        insertTabletPlan.setStart(start);
+        if (toFlushPoint != start) {
+          // write to flushing memtable wal
+          insertTabletPlan.setStart(start);
+          insertTabletPlan.setEnd(toFlushPoint);
+          getLogNode().write(insertTabletPlan, true);
+        }
+        // write to working memtable wal
+        insertTabletPlan.setStart(toFlushPoint);
         insertTabletPlan.setEnd(end);
-        getLogNode().write(insertTabletPlan);
+        getLogNode().write(insertTabletPlan, false);
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {

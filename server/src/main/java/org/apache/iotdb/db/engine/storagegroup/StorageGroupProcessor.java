@@ -1598,13 +1598,13 @@ public class StorageGroupProcessor {
       DeletePlan deletionPlan = new DeletePlan(startTime, endTime, path);
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
-          entry.getValue().getLogNode().write(deletionPlan);
+          entry.getValue().getLogNode().write(deletionPlan, false);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
         if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
-          entry.getValue().getLogNode().write(deletionPlan);
+          entry.getValue().getLogNode().write(deletionPlan, false);
         }
       }
     }

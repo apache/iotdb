@@ -34,7 +34,6 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -98,9 +97,9 @@ public class PerformanceTest {
           DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
               new PartialPath("root.logTestDevice.s1"));
 
-          logNode.write(bwInsertPlan);
-          logNode.write(updatePlan);
-          logNode.write(deletePlan);
+          logNode.write(bwInsertPlan, false);
+          logNode.write(updatePlan, false);
+          logNode.write(deletePlan, false);
         }
         logNode.forceSync();
 
@@ -158,9 +157,9 @@ public class PerformanceTest {
           new PartialPath("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
-      logNode.write(bwInsertPlan);
-      logNode.write(updatePlan);
-      logNode.write(deletePlan);
+      logNode.write(bwInsertPlan, false);
+      logNode.write(updatePlan, false);
+      logNode.write(deletePlan, false);
     }
     try {
       logNode.forceSync();
