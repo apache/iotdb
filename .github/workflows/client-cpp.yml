@@ -47,7 +47,7 @@ jobs:
         run: mvn -B apache-rat:check
       - name: Install Bison
         if: matrix.os == 'macos-latest'
-        run: export PATH="/usr/local/opt/bison/bin:$PATH && 
+        run: export PATH="/usr/local/opt/bison/bin:$PATH" && 
              | export LDFLAGS="-L/usr/local/opt/bison/lib" && 
              | brew install bison
       - name: Chocolatey Action
