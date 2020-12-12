@@ -131,7 +131,7 @@
                                     <fileSets>
                                         <fileSet>
                                             <sourceFile>${project.build.directory}/build/thrift/config.h</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src/thrift/windows/config.h</destinationFile>
+                                            <destinationFile>${project.build.directory}/thrift-${thrift.version}/compiler/cpp/src/thrift/windows/config.h</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>
