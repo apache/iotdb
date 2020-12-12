@@ -105,6 +105,42 @@
                 </plugins>
             </build>
         </profile>
+        <!-- Profile for Windows -->
+        <profile>
+            <id>os-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <!-- Make the cmake executable executable (Seems not to be per default) -->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.coderplus.maven.plugins</groupId>
+                        <artifactId>copy-rename-maven-plugin</artifactId>
+                        <version>1.0</version>
+                        <executions>
+                            <execution>
+                                <id>copy-thrift-config</id>
+                                <goals>
+                                    <goal>copy</goal>
+                                </goals>
+                                <phase>generate-resources</phase>
+                                <configuration>
+                                    <fileSets>
+                                        <fileSet>
+                                            <sourceFile>${project.build.directory}/build/thrift/config.h</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift-${thrift.version}/lib/cpp/src/thrift/windows/config.h</destinationFile>
+                                        </fileSet>
+                                    </fileSets>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- If C++ is enabled, we need to add another assembly to the build to package the libraries -->
         <profile>
             <id>with-cpp</id>
