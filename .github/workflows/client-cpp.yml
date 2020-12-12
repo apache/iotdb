@@ -49,7 +49,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: brew install bison
       - name: Chocolatey Action
-        if: matrix.os == 'windows-latest
+        if: matrix.os == 'windows-latest'
         uses: crazy-max/ghaction-chocolatey@v1.4.0
       - name: Install Bison and Flex
         if: matrix.os == 'windows-latest'
