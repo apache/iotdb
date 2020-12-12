@@ -48,8 +48,8 @@ jobs:
       - name: Install Bison
         if: matrix.os == 'macos-latest'
         run: export PATH="/usr/local/opt/bison/bin:$PATH" && 
-             | export LDFLAGS="-L/usr/local/opt/bison/lib" && 
-             | brew install bison
+             export LDFLAGS="-L/usr/local/opt/bison/lib" && 
+             brew install bison
       - name: Chocolatey Action
         if: matrix.os == 'windows-latest'
         uses: crazy-max/ghaction-chocolatey@v1.4.0
