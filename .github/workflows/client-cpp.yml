@@ -51,6 +51,8 @@ jobs:
       - name: Chocolatey Action
         if: matrix.os == 'windows-latest'
         uses: crazy-max/ghaction-chocolatey@v1.4.0
+        with:
+          java-version: ${{ matrix.java }}
       - name: Install Bison and Flex
         if: matrix.os == 'windows-latest'
         run: choco install winflexbison3
