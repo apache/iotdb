@@ -45,6 +45,15 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
+      - name: Install Bison
+        if: matrix.os == 'macos-latest'
+        run: brew install bison
+      - name: Chocolatey Action
+        if: matrix.os == 'windows-latest
+        uses: crazy-max/ghaction-chocolatey@v1.4.0
+      - name: Install Bison and Flex
+        if: matrix.os == 'windows-latest'
+        run: choco install winflexbison3
       - name: Test with Maven
         run:  mvn integration-test -P client-cpp -pl client-cpp,compile-tools,compile-tools/boost,compile-tools/thrift,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true
 
