@@ -55,7 +55,7 @@ mvn clean package -pl zeppelin-interpreter -am -DskipTests
 The interpreter will be in the folder:
 
 ```shell
-$IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-dependencies.jar
+$IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT.jar
 ```
 
 
@@ -65,26 +65,27 @@ $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-dep
 Once you have built your interpreter, create a new folder under the Zeppelin interpreter directory and put the built interpreter into it. 
 
 ```shell
-mkdir $Zeppelin_HOME/interpreter/iotdb
-cp $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-dependencies.jar $Zeppelin_HOME/interpreter/iotdb
+cd $IoTDB_HOME
+mkdir -p $Zeppelin_HOME/interpreter/iotdb
+cp $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT.jar $Zeppelin_HOME/interpreter/iotdb
 ```
 
 
 
-##Configure your interpreter
+## Configure your interpreter
 
 To configure your interpreter you need to follow these steps:
 
 1. If it's the first start, create `conf/zeppelin-site.xml` by copying `conf/zeppelin-site.xml.template` to `conf/zeppelin-site.xml`.
 
-2. Append your interpreter class name to  `zeppelin.interpreters` property in `conf/zeppelin-site.xml`, for example:
+2. Append your interpreter class name to  `zeppelin.interpreters` property in `conf/zeppelin-site.xml`. If the property `zeppelin.interpreters` doesn't exist yet, add it directly.
 
     ```xml
     <configuration>
       ...
       <property>
         <name>zeppelin.interpreters</name>
-        <value>org.apache.zeppelin.spark.SparkInterpreter,org.apache.zeppelin.spark.PySparkInterpreter,org.apache.zeppelin.spark.SparkSqlInterpreter,org.apache.zeppelin.spark.DepInterpreter,org.apache.zeppelin.markdown.Markdown,org.apache.zeppelin.shell.ShellInterpreter,org.apache.zeppelin.hive.HiveInterpreter,org.apache.iotdb.zeppelin.IoTDBInterpreter</value>
+        <value>org.apache.iotdb.zeppelin.IoTDBInterpreter</value>
       </property>
       ...
     </configuration>
@@ -119,9 +120,17 @@ or
 
 Wait for Zeppelin server to start, then visit http://localhost:8080/
 
-1. In the interpreter page: 1.click the `Create new node` button, 2. set the note name and 3. configure your interpreter. Now you are ready to use your interpreter.
+In the interpreter page: 
+
+1. Click the `Create new node` button
+2. Set the note name
+3. Configure your interpreter
+
+Now you are ready to use your interpreter.
 
 ![image-20201123112330976](https://tva1.sinaimg.cn/large/0081Kckwly1gl09n7cpibj30sz0opagn.jpg)
+
+
 
 # Use IoTDB-Zeppelin
 
@@ -162,6 +171,14 @@ The screenshot is as follows:
 You can also design more fantasy documents referring to [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) and others.
 
 The above demo notebook can be found at `./IoTDB-Zeppelin-Demo.zpln`.
+
+
+
+# IoTDB-Zeppelin Configuration
+
+You can configure the connection parameters in [http://localhost:8080/#/interpreter](http://localhost:8080/#/interpreter) :
+
+![image-20201212141528183](https://tva1.sinaimg.cn/large/0081Kckwly1gll1pgn3k9j31kx0u045o.jpg)
 
 
 
