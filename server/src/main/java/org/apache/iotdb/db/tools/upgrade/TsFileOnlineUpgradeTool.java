@@ -176,6 +176,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writeVersion(version);
             }
+            break;
           default:
             // the disk file is corrupted, using this file may be dangerous
             logger.error("Unrecognized marker detected, this file may be corrupted");
