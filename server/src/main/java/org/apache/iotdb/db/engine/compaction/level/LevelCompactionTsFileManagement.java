@@ -353,9 +353,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   writer.getIOWriterOut().truncate(offset - 1);
                 }
                 writer.close();
+                CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
+                    storageGroupName);
                 CompactionUtils
                     .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
-                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet, isSeq);
+                        compactionLogger, deviceSet, isSeq);
+                compactionLogger.logMergeFinish();
+                compactionLogger.close();
               } else {
                 writer.close();
               }
@@ -394,10 +398,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   writer.getIOWriterOut().truncate(offset - 1);
                 }
                 writer.close();
+                CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
+                    storageGroupName);
                 CompactionUtils
                     .merge(targetResource, sourceTsFileResources, storageGroupName,
                         new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
                         isSeq);
+                compactionLogger.logMergeFinish();
+                compactionLogger.close();
               } else {
                 writer.close();
               }

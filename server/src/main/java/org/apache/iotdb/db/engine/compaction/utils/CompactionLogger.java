@@ -40,7 +40,7 @@ public class CompactionLogger {
   public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
     logStream = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
-            storageGroupName + COMPACTION_LOG_NAME), true));
+            storageGroupName + COMPACTION_LOG_NAME), false));
   }
 
   public void close() throws IOException {
