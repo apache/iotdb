@@ -402,7 +402,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     storageGroupName);
                 CompactionUtils
                     .merge(targetResource, sourceTsFileResources, storageGroupName,
-                        new CompactionLogger(storageGroupDir, storageGroupName), deviceSet,
+                        compactionLogger, deviceSet,
                         isSeq);
                 compactionLogger.logMergeFinish();
                 compactionLogger.close();

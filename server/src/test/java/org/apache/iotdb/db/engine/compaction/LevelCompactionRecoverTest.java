@@ -269,6 +269,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
       logStream.newLine();
     }
     logStream.close();
+
     TsFileOutput out = FSFactoryProducer.getFileOutputFactory()
         .getTsFileOutput(targetTsFileResource.getTsFile().getPath(), true);
     out.truncate(Long.parseLong(logs.get(logs.size() - 3)) - 1);
