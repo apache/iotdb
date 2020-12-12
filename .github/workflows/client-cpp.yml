@@ -52,6 +52,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: crazy-max/ghaction-chocolatey@v1.4.0
         with:
+          args: -h
           java-version: ${{ matrix.java }}
       - name: Install Bison and Flex
         if: matrix.os == 'windows-latest'
