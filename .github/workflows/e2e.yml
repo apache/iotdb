@@ -45,8 +45,8 @@ jobs:
           docker images
 
       - name: Run Test Case ${{ matrix.case }}
-        run: test/e2e/cases/${{ matrix.case }}/run.sh
+        run: bash test/e2e/cases/${{ matrix.case }}/run.sh
 
       - name: Clean Up
         if: ${{ always() }}
-        run: test/e2e/cases/${{ matrix.case }}/cleanup.sh
+        run: bash test/e2e/cases/${{ matrix.case }}/cleanup.sh
