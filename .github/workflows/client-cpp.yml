@@ -93,7 +93,7 @@ jobs:
           args: -h
           java-version: ${{ env.java }}
       - name: Install Bison and Flex
-        run: choco install winflexbison3
+        run: choco install winflexbison
       - name: Test with Maven
         run: mvn -B integration-test -P client-cpp -pl client-cpp,compile-tools,compile-tools/boost,compile-tools/thrift,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true
 
