@@ -33,8 +33,8 @@ pipeline {
     }
 
     tools {
-        maven 'Maven 3 (latest)'
-        jdk 'JDK 1.8 (latest)'
+        maven 'maven_3_latest'
+        jdk 'jdk_11_latest'
     }
 
     options {
