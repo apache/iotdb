@@ -55,16 +55,16 @@ or
 > sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
 
 # 第二步: Unix/OS X/Windows (git bash or WSL)
-> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/cluster-env.sh
-> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
+> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-env.sh
+> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-env.sh
 > chmod -R 777 ./cluster/target/
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
 
 # 第二步: Windows (MinGW)
-> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
-> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
+> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
@@ -88,11 +88,11 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 为方便IoTDB Server的配置与管理，IoTDB Server为用户提供三种配置项，使得您可以在启动服务器或服务器运行时对其进行配置。
 
-三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `cluster-env.sh`(Unix系统)/`cluster-env.bat`(Windows系统), 您可以通过更改其中的配置项对系统运行的相关配置项进行配置。
+三种配置项的配置文件均位于IoTDB安装目录：`$IOTDB_HOME/conf`文件夹下,其中涉及server配置的共有4个文件，分别为：`iotdb-cluster.properties`、`iotdb-engine.properties`、`logback.xml` 和 `iotdb-env.sh`(Unix系统)/`iotdb-env.bat`(Windows系统), 您可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
-* `cluster-env.sh`/`cluster-env.bat`：环境配置项的默认配置文件。您可以在文件中配置JAVA-JVM的相关系统配置项。
+* `iotdb-env.sh`/`iotdb-env.bat`：环境配置项的默认配置文件。您可以在文件中配置JAVA-JVM的相关系统配置项。
 
 * `iotdb-engine.properties`：IoTDB引擎层系统配置项的默认配置文件。您可以在文件中配置IoTDB引擎运行时的相关参数。此外，用户可以在文件中配置IoTDB存储时TsFile文件的相关信息，如每次将内存中的数据写入到磁盘前的缓存大小(`group_size_in_byte`)，内存中每个列打一次包的大小(`page_size_in_byte`)等。
 
@@ -100,7 +100,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 * `iotdb-cluster.properties`: IoTDB集群所需要的一些配置。
 
-`iotdb-engine.properties`、`cluster-env.sh`/`cluster-env.bat` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
+`iotdb-engine.properties`、`iotdb-env.sh`/`iotdb-env.bat` 两个配置文件详细说明请参考[配置手册](Config%20Manual.md)，下面描述的配置项是在`iotdb-cluster.properties`文件中的。
 
 * internal\_meta\_port
 
