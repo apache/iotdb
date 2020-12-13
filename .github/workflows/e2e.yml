@@ -48,5 +48,5 @@ jobs:
         run: test/e2e/cases/${{ matrix.case }}/run.sh
 
       - name: Clean Up
-        if: always
+        if: ${{ always() }}
         run: test/e2e/cases/${{ matrix.case }}/cleanup.sh
