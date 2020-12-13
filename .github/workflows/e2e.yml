@@ -22,7 +22,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: true
+      matrix:
+        case:
+          - cli
     steps:
       - uses: actions/checkout@v2
 
@@ -40,5 +44,9 @@ jobs:
           docker build . -f docker/src/main/Dockerfile -t "iotdb:$GITHUB_SHA"
           docker images
 
-      - name: Run E2E Tests
-        run: echo "TODO"
+      - name: Run Test Case ${{ matrix.case }}
+        run: test/e2e/cases/${{ matrix.case }}/run.sh
+
+      - name: Clean Up
+        if: always
+        run: test/e2e/cases/${{ matrix.case }}/cleanup.sh
