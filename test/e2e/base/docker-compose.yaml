@@ -44,7 +44,7 @@ services:
       - bash
       - -c
       - |
-        cat /res/init.sql | xargs -I {} /iotdb/sbin/start-cli.sh -h server -e {}
+        cat /res/init.sql | grep -v '^--' | xargs -I {} /iotdb/sbin/start-cli.sh -h server -e {}
         echo "Ready to Run IoTDB E2E Tests"
 
 networks:
