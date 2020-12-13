@@ -32,7 +32,7 @@ See https://iotdb.apache.org/
 ## Build Setup
 
 
-run `mvn compile -DskipTests  -P compile-site -P download-website` for doing the following steps automatically:
+run `mvn compile -DskipTests  -P compile-site -P download-site` for doing the following steps automatically:
 
 - get docs from the master branch and all lagecy docs remotely.
 - download node.js and npm;
