@@ -20,7 +20,7 @@ on:
       - 'docs/**'
         
 jobs:
-  E2E Test:
+  E2E:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
