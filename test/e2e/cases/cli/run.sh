@@ -37,7 +37,7 @@ while ! docker-compose logs | grep -c 'Ready to Run IoTDB E2E Tests' > /dev/null
   attempts=$((attempts+1))
 done
 
-results=$(docker-compose exec server /iotdb/sbin/start-cli.sh -e 'SELECT temperature FROM root.ln.wf01.wt01')
+results=$(docker-compose exec -T server /iotdb/sbin/start-cli.sh -e 'SELECT temperature FROM root.ln.wf01.wt01')
 
 if [[ $results != *"Total line number = 2"* ]]; then
   echo "Total line number should be 2"
