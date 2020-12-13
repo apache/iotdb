@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.rpc;
 
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
-
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
