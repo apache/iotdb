@@ -599,7 +599,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return resp;
     } catch (NullPointerException e) {
-      e.printStackTrace();
+      logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } catch (Exception e) {
       logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
