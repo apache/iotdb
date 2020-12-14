@@ -361,11 +361,12 @@ public class TsFileSequenceReaderForV1 extends TsFileSequenceReader {
   /**
    * get ChunkMetaDatas of given path
    *
-   * @param path timeseries path
+   * @param path            timeseries path
+   * @param sortByStartTime whether the chunkMetadata list is sorted by startTime
    * @return List of ChunkMetaData
    */
   @Override
-  public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
+  public List<ChunkMetadata> getChunkMetadataList(Path path, boolean sortByStartTime) throws IOException {
     return getChunkMetadataListFromOldFile(path);
   }
 

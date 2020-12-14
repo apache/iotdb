@@ -1010,37 +1010,20 @@ public class TsFileSequenceReader implements AutoCloseable {
   /**
    * get ChunkMetaDatas of given path
    *
-   * @param path timeseries path
+   * @param path            timeseries path
+   * @param sortByStartTime whether the chunkMetadata list is sorted by startTime
    * @return List of ChunkMetaData
    */
-  public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
-    TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
-    if (timeseriesMetaData == null) {
-      return Collections.emptyList();
-    }
-    List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
-    chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
-    return chunkMetadataList;
-  }
-
-  /**
-   * get ChunkMetaDatas of given path sorting by offset
-   *
-   * @param path         timeseries path
-   * @param sortByOffset whether to use offset to sort the ChunkMetadatas
-   * @return List of ChunkMetaData
-   */
-  public List<ChunkMetadata> getChunkMetadataList(Path path, boolean sortByOffset)
+  public List<ChunkMetadata> getChunkMetadataList(Path path, boolean sortByStartTime)
       throws IOException {
-    if (!sortByOffset) {
-      return getChunkMetadataList(path);
-    }
     TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
-    chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getOffsetOfChunkHeader));
+    if (sortByStartTime) {
+      chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
+    }
     return chunkMetadataList;
   }
 

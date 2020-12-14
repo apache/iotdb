@@ -26,17 +26,13 @@ import static org.junit.Assert.fail;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.List;
-import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -106,20 +102,6 @@ public class TsFileSinglePathReadTest {
 
   @Test
   public void SinglePathReadTest() throws IOException {
-    int numCnt = 0;
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(fileName)) {
-      // get the chunkMetaList of the specific path
-      List<ChunkMetadata> chunkMetadataList = reader
-          .getChunkMetadataList(new Path(path, true), true);
-      for (ChunkMetadata metadata : chunkMetadataList) {
-        ChunkReader chunkReader = new ChunkReader(reader.readMemChunk(metadata), null);
-        ChunkDataIterator chunkDataIterator = new ChunkDataIterator(chunkReader);
-        while (chunkDataIterator.hasNextTimeValuePair()) {
-          chunkDataIterator.nextTimeValuePair();
-          numCnt ++;
-        }
-      }
-    }
-    assertEquals(numCnt, 2);
+    assertEquals(TsFileSinglePathRead.printTsFileSinglePath(new Pair<>(fileName, path)), 2);
   }
 }
