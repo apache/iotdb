@@ -102,6 +102,6 @@ public class TsFileSinglePathReadTest {
 
   @Test
   public void SinglePathReadTest() throws IOException {
-    assertEquals(TsFileSinglePathRead.printTsFileSinglePath(new Pair<>(fileName, path)), 2);
+    assertEquals(2, TsFileSinglePathRead.printTsFileSinglePath(new Pair<>(fileName, path)));
   }
 }
