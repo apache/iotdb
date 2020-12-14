@@ -594,7 +594,7 @@ public class StorageEngine implements IService {
       boolean isSync)
       throws StorageGroupNotSetException {
     if(!processorMap.containsKey(storageGroupPath)){
-      return;
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
 
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
@@ -622,8 +622,6 @@ public class StorageEngine implements IService {
         } finally {
           processor.writeUnlock();
         }
-      } else {
-        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
       }
     }
   }
@@ -893,6 +891,10 @@ public class StorageEngine implements IService {
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, PartialPath storageGroup,
       long partitionNum) {
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroup);
+    if(virtualStorageGroupManager == null){
+      return false;
+    }
+
     for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllPartition()){
       if(storageGroupProcessor != null && storageGroupProcessor.isFileAlreadyExist(tsFileResource, partitionNum)){
         return true;
