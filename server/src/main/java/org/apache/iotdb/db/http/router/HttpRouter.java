@@ -122,9 +122,25 @@ public class HttpRouter {
         }
         return getChildPathsHandler.handle(decoder.parameters().get(HttpConstant.PATH).get(0));
       case HttpConstant.ROUTING_SQL:
-        Map<String, List<String>> paras = decoder.parameters();
+        if(!method.equals(HttpMethod.POST)) {
+          throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support GET");
+        }
+        JsonObject sqlJson = json.getAsJsonObject();
+        String sql = sqlJson.getAsJsonPrimitive("sql").getAsString();
         SqlHandler sqlHandler = new SqlHandler();
-        return sqlHandler.executeStatement(paras.get("sql").get(0), 100000, ZoneId.systemDefault());
+        int fetchSize;
+        if(sqlJson.get(HttpConstant.FETCH_SIZE) != null) {
+          fetchSize = sqlJson.getAsJsonPrimitive(HttpConstant.FETCH_SIZE).getAsInt();
+        } else {
+          fetchSize = 100000;
+        }
+        ZoneId zoneId;
+        if(sqlJson.get(HttpConstant.ZONE_ID) != null) {
+          zoneId = ZoneId.of(sqlJson.getAsJsonPrimitive(HttpConstant.ZONE_ID).getAsString());
+        } else {
+          zoneId = ZoneId.systemDefault();
+        }
+        return sqlHandler.executeStatement(sql, fetchSize, zoneId);
       case "":
         JsonObject result = new JsonObject();
         result.addProperty(HttpConstant.RESULT, "Hello, IoTDB");

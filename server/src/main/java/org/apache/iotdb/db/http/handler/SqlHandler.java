@@ -28,6 +28,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -175,6 +176,18 @@ public class SqlHandler extends Handler {
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         ignoreTimeStamp = true;
       } // else default ignoreTimeStamp is false
+
+      if(!ignoreTimeStamp) {
+        if (jsonArray != null) {
+          JsonArray header = jsonArray.get(0).getAsJsonArray();
+          JsonArray newHeader = new JsonArray();
+          newHeader.add(HttpConstant.TIME);
+          for(JsonElement element : header) {
+            newHeader.add(element.getAsString());
+          }
+          jsonArray.set(0, newHeader);
+        }
+      }
 
       while(newDataSet.hasNext()) {
         RowRecord record = newDataSet.next();

@@ -24,6 +24,7 @@ import io.netty.handler.codec.http.HttpMethod;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.http.router.HttpRouter;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -146,5 +147,15 @@ public class HttpRouterTest extends HttpPrepData {
     prepareData();
     Assert.assertEquals("[\"m0\",\"m1\",\"m2\",\"m3\",\"m4\",\"m5\",\"m6\",\"m7\",\"m8\",\"m9\"]",
         router.route(HttpMethod.GET, GET_CHILD_PATH_URL, null).toString());
+  }
+
+  @Test
+  public void sqlTest() throws Exception{
+    prepareData();
+    JsonObject sql = new JsonObject();
+    sql.addProperty("sql", "select m6 from root.test where time >0 and time <4");
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, LOGIN_URI, null).toString());
+    Assert.assertEquals("[[\"Time\",\"root.test.m6\"],[1,1.0],[2,2.0],[3,3.0]]", router.route(HttpMethod.POST, HttpConstant.ROUTING_SQL, sql).toString());
   }
 }
