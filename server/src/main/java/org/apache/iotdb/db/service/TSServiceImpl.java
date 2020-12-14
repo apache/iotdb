@@ -561,7 +561,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
           ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
+      logger.debug(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     } catch (QueryProcessException e) {
       logger.info(ERROR_EXECUTING_SQL, e.getMessage());
