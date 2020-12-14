@@ -31,6 +31,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.http.constant.HttpConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -70,6 +71,9 @@ public class HttpServerTest extends HttpPrepData {
 
   private static final String GET_CHILD_PATH_URL
       = "http://localhost:8282/getChildPaths?path=root.test";
+
+  private static final String SQL_URL
+      = "http://localhost:8282/sql";
 
 
   @Before
@@ -218,6 +222,18 @@ public class HttpServerTest extends HttpPrepData {
         .request(MediaType.APPLICATION_JSON)
         .get();
     Assert.assertEquals("[\"m0\",\"m1\",\"m2\",\"m3\",\"m4\",\"m5\",\"m6\",\"m7\",\"m8\",\"m9\"]", response.readEntity(String.class));
+  }
+
+  @Test
+  public void sql() throws MetadataException, StorageEngineException {
+    login();
+    prepareData();
+    JsonObject sql = new JsonObject();
+    sql.addProperty("sql", "select m6 from root.test where time >0 and time <4");
+    Response response = client.target(SQL_URL)
+        .request(MediaType.APPLICATION_JSON)
+        .post(Entity.entity(sql.toString(), MediaType.APPLICATION_JSON));
+    Assert.assertEquals("[[\"Time\",\"root.test.m6\"],[1,1.0],[2,2.0],[3,3.0]]", response.readEntity(String.class));
   }
 
 }
