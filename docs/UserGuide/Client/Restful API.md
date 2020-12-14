@@ -21,4 +21,20 @@
 
 # Restful API
 
+### Basic usage of restful api
+
+Before you use restful api, you have to login. 
+
+```
+curl http://localhost:8282/user/login?username=root&password=root
+```
+
+Then insert some values.
+
+```
+curl -H "Content-Type: application/json" -X POST  --data '[{"deviceId": "root.ln.wf01.wt01","measurements": ["temperature","status"],"timestamps": 1,"values": [1.1,false]}]' http://localhost:8282/insert
+```
+
+
+
 check details in [Restful doc](https://documenter.getpostman.com/view/12320024/T1LLDnuj).
