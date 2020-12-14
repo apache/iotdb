@@ -167,10 +167,6 @@ attributeClauses
 compressor
     : UNCOMPRESSED
     | SNAPPY
-    | GZIP
-    | LZO
-    | PAA
-    | PLA
     | LZ4
     ;
 
