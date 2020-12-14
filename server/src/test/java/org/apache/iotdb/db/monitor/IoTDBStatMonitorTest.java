@@ -59,6 +59,7 @@ public class IoTDBStatMonitorTest {
     config.setEnableMonitorSeriesWrite(true);
     EnvironmentUtils.envSetUp();
     statMonitor = StatMonitor.getInstance();
+    statMonitor.initMonitorSeriesInfo();
     insertSomeData();
   }
 
