@@ -84,8 +84,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) booleanRet).addFirst(new boolean[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<boolean[]>) booleanRet).addFirst(new boolean[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -121,8 +121,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) intRet).addFirst(new int[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<int[]>) intRet).addFirst(new int[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -158,8 +158,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) longRet).addFirst(new long[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<long[]>) longRet).addFirst(new long[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -195,8 +195,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) floatRet).addFirst(new float[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<float[]>) floatRet).addFirst(new float[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -232,8 +232,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) doubleRet).addFirst(new double[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<double[]>) doubleRet).addFirst(new double[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {
@@ -269,8 +269,8 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == -1) {
       if (capacity >= CAPACITY_THRESHOLD) {
-        ((LinkedList) timeRet).addFirst(new long[capacity]);
-        ((LinkedList) binaryRet).addFirst(new Binary[capacity]);
+        ((LinkedList<long[]>) timeRet).addFirst(new long[capacity]);
+        ((LinkedList<Binary[]>) binaryRet).addFirst(new Binary[capacity]);
         writeCurListIndex++;
         writeCurArrayIndex = capacity - 1;
       } else {

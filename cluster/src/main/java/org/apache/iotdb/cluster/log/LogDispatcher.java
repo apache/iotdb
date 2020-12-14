@@ -91,7 +91,9 @@ public class LogDispatcher {
 
   public void offer(SendLogRequest log) {
     // do serialization here to avoid taking LogManager for too long
-    log.serializedLogFuture = serializationService.submit(() -> log.getLog().serialize());
+    if (!nodeLogQueues.isEmpty()) {
+      log.serializedLogFuture = serializationService.submit(() -> log.getLog().serialize());
+    }
     for (int i = 0; i < nodeLogQueues.size(); i++) {
       BlockingQueue<SendLogRequest> nodeLogQueue = nodeLogQueues.get(i);
       try {
