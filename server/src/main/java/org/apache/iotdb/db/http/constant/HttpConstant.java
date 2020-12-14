@@ -35,6 +35,7 @@ public class HttpConstant {
   public static final String ROUTING_TIME_SERIES_DELETE = "/timeSeries/delete";
   public static final String ROUTING_GET_TIME_SERIES = "/getTimeSeries";
   public static final String ROUTING_GET_CHILD_PATHS = "/getChildPaths";
+  public static final String ROUTING_SQL = "/sql";
   public static final String ONLY_SUPPORT_POST = " only support POST";
 
   public static final String AGGREGATION = "aggregation";
