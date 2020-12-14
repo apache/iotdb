@@ -38,6 +38,7 @@ public class WALFlushListener implements FlushListener {
     if (processor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
         .isEnableSlidingMemTable()) {
       processor.getLogNode().flushWindowChange();
+      return;
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       processor.getLogNode().notifyStartFlush();
@@ -49,6 +50,7 @@ public class WALFlushListener implements FlushListener {
     if (processor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
         .isEnableSlidingMemTable()) {
       processor.getLogNode().flushWindowEnd();
+      return;
     }
     if (!memTable.isSignalMemTable() && IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       processor.getLogNode().notifyEndFlush();

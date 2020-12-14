@@ -161,6 +161,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void flushWindowChange() throws IOException {
+    getFileWriter(false);
     flushingWalWriteProcessor = workingWalWriteProcessor;
     flushingWalWriteProcessor.setPrevious(true);
     workingWalWriteProcessor = new WalWriteProcessor(false);
@@ -178,7 +179,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.lock();
     try {
       close();
-      nextFileWriter();
+      nextFileWriter(false);
     } finally {
       lock.unlock();
     }
@@ -332,20 +333,20 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private ILogWriter getFileWriter(boolean toPrevious) {
-    if (!toPrevious && getWalWriteProcessor(false).getFileWriter() == null) {
-      nextFileWriter();
+    if (getWalWriteProcessor(toPrevious).getFileWriter() == null) {
+      nextFileWriter(toPrevious);
     }
     return getWalWriteProcessor(toPrevious).getFileWriter();
   }
 
-  private void nextFileWriter() {
+  private void nextFileWriter(boolean toPrevious) {
     fileId++;
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
     logger.debug("WAL file {} is opened", newFile);
-    getWalWriteProcessor(false).setFileWriter(new LogWriter(newFile));
+    getWalWriteProcessor(toPrevious).setFileWriter(new LogWriter(newFile));
   }
 
   @Override
