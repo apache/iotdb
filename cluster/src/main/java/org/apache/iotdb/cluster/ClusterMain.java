@@ -171,7 +171,7 @@ public class ClusterMain {
     }
     // assert this node is in NodeList
     Node localNode = new Node();
-    localNode.setIp(config.getClusterRpcIp()).setMetaPort(config.getInternalMetaPort())
+    localNode.setIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress()).setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
     if (!seedNodes.contains(localNode)) {
       String message = String.format(
@@ -194,18 +194,18 @@ public class ClusterMain {
     }
 
     // 1. check the cluster_rpc_ip and seed_nodes consistent or not
-    // when clusterRpcIp is 127.0.0.1, the entire cluster must be start locally
+    // when rpc_address is 127.0.0.1, the entire cluster must be start locally
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     String localhostIp = "127.0.0.1";
-    String configClusterRpcIp = config.getClusterRpcIp();
+    String rpcIp = IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
     List<String> seedNodes = config.getSeedNodeUrls();
-    boolean isLocalCluster = localhostIp.equals(configClusterRpcIp);
+    boolean isLocalCluster = localhostIp.equals(rpcIp);
     for (String seedNodeIP : seedNodes) {
       if ((isLocalCluster && !seedNodeIP.contains(localhostIp)) ||
           (!isLocalCluster && seedNodeIP.contains(localhostIp))) {
         logger.error(
-            "cluster_rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
-            configClusterRpcIp, seedNodes);
+            "rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
+            rpcIp, seedNodes);
         return false;
       }
     }

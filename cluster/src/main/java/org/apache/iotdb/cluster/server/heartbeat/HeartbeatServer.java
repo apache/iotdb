@@ -78,7 +78,7 @@ public abstract class HeartbeatServer {
 
   HeartbeatServer() {
     thisNode = new Node();
-    thisNode.setIp(config.getClusterRpcIp());
+    thisNode.setIp(config.getInternalIp());
     thisNode.setMetaPort(config.getInternalMetaPort());
     thisNode.setDataPort(config.getInternalDataPort());
   }

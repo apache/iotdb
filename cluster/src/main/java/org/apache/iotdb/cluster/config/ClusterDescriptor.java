@@ -30,12 +30,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,16 +77,11 @@ public class ClusterDescriptor {
   }
 
   public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
-    boolean isInvalidClusterRpcIp = InetAddresses.isInetAddress(config.getClusterRpcIp());
-    if (!isInvalidClusterRpcIp) {
-      String clusterRpcIp = hostnameToIP(config.getClusterRpcIp());
-      config.setClusterRpcIp(clusterRpcIp);
-    }
+
     boolean isInvalidClusterInternalIp = InetAddresses.isInetAddress(config.getInternalIp());
     if (!isInvalidClusterInternalIp) {
-      config.setClusterRpcIp(hostnameToIP(config.getInternalIp()));
+      config.setInternalIp(hostnameToIP(config.getInternalIp()));
     }
-
     List<String> newSeedUrls = new ArrayList<>();
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
@@ -106,8 +98,8 @@ public class ClusterDescriptor {
       }
     }
     config.setSeedNodeUrls(newSeedUrls);
-    logger.debug("after replace, the clusterRpcIP={}, internalIP={} seedUrls={}",
-        config.getClusterRpcIp(),
+    logger.debug("after replace, the rpcIP={}, internalIP={} seedUrls={}",
+        IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
         config.getInternalIp(),
         config.getSeedNodeUrls());
   }
@@ -127,7 +119,6 @@ public class ClusterDescriptor {
         logger.warn("Fail to find config file {}", url, e);
       }
     }
-    config.setClusterRpcIp(properties.getProperty("cluster_rpc_ip", config.getClusterRpcIp()));
     config.setInternalIp(properties.getProperty("internal_ip", config.getInternalIp()));
 
     config.setInternalMetaPort(Integer.parseInt(properties.getProperty("internal_meta_port",

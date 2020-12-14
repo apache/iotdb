@@ -67,11 +67,11 @@ public class MetaHeartbeatServer extends HeartbeatServer {
     logger.info("[{}] Cluster node will listen {}:{}", getServerClientName(), config.getInternalIp(),
         config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getInternalIp(),
           config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
-      return new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+      return new TServerSocket(new InetSocketAddress(config.getInternalIp(),
           config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
     }
   }

@@ -141,7 +141,7 @@ public class ClientServer extends TSServiceImpl {
     } else {
       protocolFactory = new TBinaryProtocol.Factory();
     }
-    serverTransport = new TServerSocket(new InetSocketAddress(config.getClusterRpcIp(),
+    serverTransport = new TServerSocket(new InetSocketAddress(IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
         config.getClusterRpcPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server

@@ -26,7 +26,6 @@ public class ClusterConfig {
 
   static final String CONFIG_NAME = "iotdb-cluster.properties";
 
-  private String clusterRpcIp = "127.0.0.1";
   private String internalIp = "127.0.0.1";
   private int internalMetaPort = 9003;
   private int internalDataPort = 40010;
@@ -185,15 +184,7 @@ public class ClusterConfig {
   public void setUseBatchInLogCatchUp(boolean useBatchInLogCatchUp) {
     this.useBatchInLogCatchUp = useBatchInLogCatchUp;
   }
-
-  public String getClusterRpcIp() {
-    return clusterRpcIp;
-  }
-
-  void setClusterRpcIp(String clusterRpcIp) {
-    this.clusterRpcIp = clusterRpcIp;
-  }
-
+  
   public int getInternalMetaPort() {
     return internalMetaPort;
   }
