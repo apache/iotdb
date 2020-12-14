@@ -105,7 +105,7 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
 
-  private IMemTable flushingMemTable;
+  private IMemTable flushMemTable;
   private IMemTable workMemTable;
 
   private boolean isFlushMemTableAlive = false;
@@ -181,8 +181,8 @@ public class TsFileProcessor {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
     boolean toFlushing = false;
-    if (isFlushMemTableAlive && insertRowPlan.isToFlushingMemTable()){
-      flushingMemTable.insert(insertRowPlan);
+    if (isFlushMemTableAlive && insertRowPlan.isToFlushMemTable()){
+      flushMemTable.insert(insertRowPlan);
       toFlushing = true;
     } else {
       workMemTable.insert(insertRowPlan);
@@ -236,7 +236,7 @@ public class TsFileProcessor {
     }
     try {
       if (toFlushPoint != start) {
-        flushingMemTable.insertTablet(insertTabletPlan, start, toFlushPoint);
+        flushMemTable.insertTablet(insertTabletPlan, start, toFlushPoint);
       }
       workMemTable.insertTablet(insertTabletPlan, toFlushPoint, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -507,12 +507,12 @@ public class TsFileProcessor {
     try {
 
       if (logger.isInfoEnabled()) {
-        if (flushingMemTable != null || workMemTable != null) {
+        if (flushMemTable != null || workMemTable != null) {
           logger.info(
               "{}: flush a memtable in async close tsfile {}, flushing memtable size: {}, "
                   + "working memtable size: {}, tsfile size: {}, plan index: [{}, {}]",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
-              flushingMemTable == null ? 0 : flushingMemTable.memSize(), workMemTable.memSize(),
+              flushMemTable == null ? 0 : flushMemTable.memSize(), workMemTable.memSize(),
               tsFileResource.getTsFileSize(), workMemTable.getMinPlanIndex(),
               workMemTable.getMaxPlanIndex());
         } else {
@@ -609,8 +609,8 @@ public class TsFileProcessor {
    */
   public void asyncFlush() {
     if (config.isEnableSlidingMemTable()){
-      if (flushingMemTable != null) {
-        // if previous flushing mem table is still alive, update partitionLatestFlushedTimeForEachDevice
+      if (flushMemTable != null) {
+        // if previous flush memtable is still alive, update partitionLatestFlushedTimeForEachDevice
         updateLatestFlushTimeCallback.call(this, true);
       }
     }
@@ -625,7 +625,6 @@ public class TsFileProcessor {
       }
       logger.info("Async flush a memtable to tsfile: {}",
           tsFileResource.getTsFile().getAbsolutePath());
-
       addAMemtableIntoFlushingList(workMemTable, false);
     } catch (Exception e) {
       logger.error("{}: {} add a memtable into flushing list failed", storageGroupName,
@@ -669,7 +668,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     if (sequence && config.isEnableSlidingMemTable()) {
-      flushingMemTable = workMemTable;
+      flushMemTable = workMemTable;
       isFlushMemTableAlive = true;
     }
     if(isClosing){
@@ -1042,8 +1041,8 @@ public class TsFileProcessor {
     closeFileListeners.addAll(listeners);
   }
 
-  public void setFlushingMemTable(IMemTable flushingMemTable) {
-    this.flushingMemTable = flushingMemTable;
+  public void setFlushMemTable(IMemTable flushMemTable) {
+    this.flushMemTable = flushMemTable;
   }
 
   public UpdateEndTimeCallBack getUpdateLatestFlushTimeCallback() {

@@ -33,7 +33,7 @@ public interface WriteLogNode {
    * synced to disk.
    *
    * @param plan        - a PhysicalPlan
-   * @param toPrevious  - whether the insert plan is to flushing memtable
+   * @param toPrevious  - whether the insert plan is to flush memtable
    */
   void write(PhysicalPlan plan, boolean toPrevious) throws IOException;
 
@@ -48,14 +48,14 @@ public interface WriteLogNode {
   void forceSync() throws IOException;
 
   /**
-   * work when change working Wal to flushing Wal
+   * work when change working wal to flush window wal
    */
-  void changeWorkingToFlushing() throws IOException;
+  void flushWindowChange() throws IOException;
 
   /**
-   * work when flushing Wal ends
+   * work when flush window wal ends
    */
-  void flushingWindowEnd();
+  void flushWindowEnd();
 
   /**
    * When data that have WALs in this node start to be flushed, this method must be called to

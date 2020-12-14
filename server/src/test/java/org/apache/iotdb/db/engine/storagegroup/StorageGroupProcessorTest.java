@@ -162,7 +162,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource = processor
         .query(new PartialPath(deviceId), measurementId, context,
             null, null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     IoTDBDescriptor.getInstance().getConfig().setEnableSlidingMemTable(false);
   }
 

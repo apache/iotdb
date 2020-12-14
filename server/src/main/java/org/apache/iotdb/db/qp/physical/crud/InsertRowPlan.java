@@ -61,8 +61,8 @@ public class InsertRowPlan extends InsertPlan {
 
   private List<Object> failedValues;
 
-  // judge whether a insert should use flushingMemTable or not
-  private boolean toFlushingMemTable = false;
+  // judge whether a InsertRowPlan should be inserted into flushMemTable or not
+  private boolean toFlushMemTable = false;
 
   public InsertRowPlan() {
     super(OperatorType.INSERT);
@@ -509,11 +509,11 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public boolean isToFlushingMemTable() {
-    return toFlushingMemTable;
+  public boolean isToFlushMemTable() {
+    return toFlushMemTable;
   }
 
-  public void setToFlushingMemTable(boolean toFlushingMemTable) {
-    this.toFlushingMemTable = toFlushingMemTable;
+  public void setToFlushMemTable(boolean toFlushMemTable) {
+    this.toFlushMemTable = toFlushMemTable;
   }
 }

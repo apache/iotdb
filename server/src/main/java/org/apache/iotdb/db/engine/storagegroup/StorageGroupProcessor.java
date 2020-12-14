@@ -150,8 +150,8 @@ public class StorageGroupProcessor {
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
   /**
-   * a read write lock for guaranteeing concurrent safety when latestTimeForEachDevice is updated
-   * using flushingLatestTimeForEachDevice
+   * a read write lock for guaranteeing concurrent safety when partitionLatestFlushedTimeForEachDevice
+   * is updated using flushingLatestTimeForEachDevice
    */
   private final ReadWriteLock flushTimeUpdateLock = new ReentrantReadWriteLock();
   /**
@@ -910,7 +910,7 @@ public class StorageGroupProcessor {
     // judge whether to insert into flushing mem table or not when flushing mem table is alive
     if (tsFileProcessor.isFlushMemTableAlive()) {
       insertRowPlan
-          .setToFlushingMemTable(isInsertToFlushingMemTable(timePartitionId, insertRowPlan));
+          .setToFlushMemTable(isInsertToFlushingMemTable(timePartitionId, insertRowPlan));
     }
     // insert TsFileProcessor
     tsFileProcessor.insert(insertRowPlan);
@@ -1418,13 +1418,13 @@ public class StorageGroupProcessor {
     insertLock.writeLock().unlock();
   }
 
-  public void flushUpdateLock(){
+  private void flushUpdateLock(){
     if (config.isEnableSlidingMemTable()) {
       flushTimeUpdateLock.writeLock().lock();
     }
   }
 
-  public void flushUpdateUnLock(){
+  private void flushUpdateUnLock(){
     if (config.isEnableSlidingMemTable()) {
       flushTimeUpdateLock.writeLock().unlock();
     }
@@ -1694,7 +1694,8 @@ public class StorageGroupProcessor {
     return true;
   }
 
-  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor, boolean updateLatest) {
+  private boolean updateLatestFlushTimeCallback(TsFileProcessor processor,
+      boolean isUpdatePartitionLatestFlushedTime) {
     flushUpdateLock();
     try {
       // update the largest timestamp in the last flushing memtable
@@ -1708,7 +1709,7 @@ public class StorageGroupProcessor {
         return false;
       }
 
-      if (config.isEnableSlidingMemTable() && !updateLatest) {
+      if (config.isEnableSlidingMemTable() && !isUpdatePartitionLatestFlushedTime) {
         // use latestTimeForEachDevice to update flushingLatestTimeForEachDevice
         for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
           flushingLatestTimeForEachDevice
@@ -1717,17 +1718,17 @@ public class StorageGroupProcessor {
         }
         // when the processor is closing, update partitionLatestFlushedTimeForEachDevice immediately
         if (processor.isUpdateLatestTime()) {
-          updateLatestTime(processor, curPartitionDeviceLatestTime);
+          updatePartitionLatestFlushedTime(processor, curPartitionDeviceLatestTime);
         }
       } else {
         // is sliding window is enabled, use flushingLatestTimeForEachDevice to update
         if (config.isEnableSlidingMemTable()) {
           curPartitionDeviceLatestTime = flushingLatestTimeForEachDevice
               .get(processor.getTimeRangeId());
-          processor.setFlushingMemTable(null);
+          processor.setFlushMemTable(null);
           processor.setFlushMemTableAlive(false);
         }
-        updateLatestTime(processor, curPartitionDeviceLatestTime);
+        updatePartitionLatestFlushedTime(processor, curPartitionDeviceLatestTime);
       }
     } finally {
       flushUpdateUnLock();
@@ -1735,7 +1736,8 @@ public class StorageGroupProcessor {
     return true;
   }
 
-  private void updateLatestTime(TsFileProcessor processor, Map<String, Long> curPartitionDeviceLatestTime){
+  private void updatePartitionLatestFlushedTime(TsFileProcessor processor,
+      Map<String, Long> curPartitionDeviceLatestTime) {
     for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
@@ -2590,7 +2592,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface UpdateEndTimeCallBack {
 
-    boolean call(TsFileProcessor caller, boolean updateLatest);
+    boolean call(TsFileProcessor caller, boolean isUpdatePartitionLatestFlushedTime);
   }
 
   @FunctionalInterface

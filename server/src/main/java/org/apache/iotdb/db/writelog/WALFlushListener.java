@@ -37,7 +37,7 @@ public class WALFlushListener implements FlushListener {
   public void onFlushStart(IMemTable memTable) throws IOException {
     if (processor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
         .isEnableSlidingMemTable()) {
-      processor.getLogNode().changeWorkingToFlushing();
+      processor.getLogNode().flushWindowChange();
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       processor.getLogNode().notifyStartFlush();
@@ -48,7 +48,7 @@ public class WALFlushListener implements FlushListener {
   public void onFlushEnd(IMemTable memTable) {
     if (processor.isSequence() && IoTDBDescriptor.getInstance().getConfig()
         .isEnableSlidingMemTable()) {
-      processor.getLogNode().flushingWindowEnd();
+      processor.getLogNode().flushWindowEnd();
     }
     if (!memTable.isSignalMemTable() && IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       processor.getLogNode().notifyEndFlush();

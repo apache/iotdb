@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.writelog.io.ILogWriter;
 
-public class WalWriteBuffer {
+public class WalWriteProcessor {
 
   private boolean isPrevious;
 
@@ -37,7 +37,7 @@ public class WalWriteBuffer {
 
   private int bufferedLogNum = 0;
 
-  public WalWriteBuffer(boolean isPrevious) {
+  public WalWriteProcessor(boolean isPrevious) {
     this.isPrevious = isPrevious;
   }
 
