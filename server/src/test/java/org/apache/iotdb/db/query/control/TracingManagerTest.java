@@ -43,7 +43,6 @@ import org.junit.Test;
 public class TracingManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
-  File tracingFile = SystemFileFactory.INSTANCE.getFile(tracingDir, IoTDBConstant.TRACING_LOG);
   private TracingManager tracingManager;
   private BufferedReader bufferedReader;
   private final String sql = "select * from root.sg.device1 where time > 10";
@@ -54,6 +53,8 @@ public class TracingManagerTest {
   @Before
   public void setUp() throws Exception {
     tracingManager = TracingManager.getInstance();
+    File tracingFile = SystemFileFactory.INSTANCE
+        .getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
     bufferedReader = new BufferedReader(new FileReader(tracingFile));
     prepareTsFileResources();
   }

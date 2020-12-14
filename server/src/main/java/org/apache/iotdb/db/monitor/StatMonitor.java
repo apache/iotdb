@@ -159,7 +159,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
           .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
               Collections.singletonList(TSDataType.INT64),
               new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-              null, Collections.emptyMap()).get(0).right;
+              null, Collections.singletonMap(monitorSeries.getDevice(),
+                  Collections.singleton(monitorSeries.getMeasurement()))).get(0).right;
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }
@@ -193,6 +194,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   public void close() {
     config.setEnableStatMonitor(false);
+    config.setEnableMonitorSeriesWrite(false);
   }
 
   // implements methods of StatMonitorMean from here
