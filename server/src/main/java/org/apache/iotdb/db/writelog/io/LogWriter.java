@@ -45,25 +45,25 @@ public class LogWriter implements ILogWriter {
   private final CRC32 checkSummer = new CRC32();
   private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
   private final ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
-  private final long forcePeriodInMs;
+  private final boolean forceEachWrite;
 
   /**
    * @param logFilePath
-   * @param forcePeriodInMs
+   * @param forceEachWrite
    * @throws FileNotFoundException
    */
   @TestOnly
-  public LogWriter(String logFilePath, long forcePeriodInMs) throws FileNotFoundException {
+  public LogWriter(String logFilePath, boolean forceEachWrite) throws FileNotFoundException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    this.forcePeriodInMs = forcePeriodInMs;
+    this.forceEachWrite = forceEachWrite;
 
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
   }
 
-  public LogWriter(File logFile, long forcePeriodInMs) throws FileNotFoundException {
+  public LogWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
     this.logFile = logFile;
-    this.forcePeriodInMs = forcePeriodInMs;
+    this.forceEachWrite = forceEachWrite;
 
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
@@ -97,7 +97,7 @@ public class LogWriter implements ILogWriter {
       channel.write(logBuffer);
       channel.write(checkSumBuffer);
 
-      if (this.forcePeriodInMs == 0) {
+      if (this.forceEachWrite) {
         channel.force(true);
       }
     } catch (ClosedChannelException ignored) {

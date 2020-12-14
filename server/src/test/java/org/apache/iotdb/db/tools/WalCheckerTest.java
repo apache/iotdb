@@ -75,7 +75,7 @@ public class WalCheckerTest {
         File subDir = new File(tempRoot, "storage_group" + i);
         subDir.mkdir();
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
-            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs());
+            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
 
         ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
@@ -109,7 +109,7 @@ public class WalCheckerTest {
         File subDir = new File(tempRoot, "storage_group" + i);
         subDir.mkdir();
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
-            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs());
+            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
 
         ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";

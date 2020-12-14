@@ -67,7 +67,7 @@ public class LogWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws IOException {
-    LogWriter writer = new LogWriter(filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs());
+    LogWriter writer = new LogWriter(filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
     writer.write(logsBuffer);
     try {
       writer.force();

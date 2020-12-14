@@ -68,8 +68,6 @@ public class MLogWriter implements AutoCloseable {
   private final ByteBuffer mlogBuffer = ByteBuffer.allocate(
     IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
 
-  // we write log to channel every time, so we need not to call channel.force every time
-  private static final long DUMMY_FLUSH_TIME = 100;
   private static final String LOG_TOO_LARGE_INFO = "Log cannot fit into buffer, please increase mlog_buffer_size";
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
@@ -83,12 +81,12 @@ public class MLogWriter implements AutoCloseable {
     }
 
     logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
+    logWriter = new LogWriter(logFile, false);
   }
 
   public MLogWriter(String logFilePath) throws IOException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
+    logWriter = new LogWriter(logFile, false);
   }
 
   @Override
@@ -305,7 +303,7 @@ public class MLogWriter implements AutoCloseable {
       Files.delete(logFile.toPath());
     }
     logNum = 0;
-    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
+    logWriter = new LogWriter(logFile, false);
   }
 
   public int getLogNum() {

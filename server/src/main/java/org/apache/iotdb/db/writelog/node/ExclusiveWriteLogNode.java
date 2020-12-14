@@ -334,7 +334,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
     logger.debug("WAL file {} is opened", newFile);
-    currentFileWriter = new LogWriter(newFile, config.getForceWalPeriodInMs());
+    currentFileWriter = new LogWriter(newFile, config.getForceWalPeriodInMs() == 0);
   }
 
   @Override

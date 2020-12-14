@@ -57,7 +57,7 @@ public class MultiFileLogReaderTest {
         plan.serialize(buffer);
       }
       ILogWriter writer = new LogWriter(logFiles[i],
-        IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs());
+        IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
       writer.write(buffer);
       writer.force();
       writer.close();
