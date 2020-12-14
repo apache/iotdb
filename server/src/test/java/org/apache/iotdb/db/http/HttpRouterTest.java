@@ -157,5 +157,11 @@ public class HttpRouterTest extends HttpPrepData {
     Assert.assertEquals(SUCCESSFUL_RESPONSE,
         router.route(HttpMethod.POST, LOGIN_URI, null).toString());
     Assert.assertEquals("[[\"Time\",\"root.test.m6\"],[1,1.0],[2,2.0],[3,3.0]]", router.route(HttpMethod.POST, HttpConstant.ROUTING_SQL, sql).toString());
+
+    JsonObject sql1 = new JsonObject();
+    sql1.addProperty("sql", "select m6 from root.test where time >0 and time <4 align by device");
+    Assert.assertEquals(SUCCESSFUL_RESPONSE,
+        router.route(HttpMethod.POST, LOGIN_URI, null).toString());
+    Assert.assertEquals("[[\"Time\",\"Device\",\"m6\"],[1,\"root.test\",1.0],[2,\"root.test\",2.0],[3,\"root.test\",3.0]]", router.route(HttpMethod.POST, HttpConstant.ROUTING_SQL, sql1).toString());
   }
 }
