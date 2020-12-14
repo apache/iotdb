@@ -56,12 +56,12 @@ Notes:
 A newly created user doesn't use watermark by default. So the query result is the original data.
 
 ```
-.\start-client.bat -u root -pw root
+.\start-cli.bat -u root -pw root
 create user Alice 1234
 grant user Alice privileges 'READ_TIMESERIES' on root.vehicle
 exit
 
-.\start-client.bat -u Alice -pw 1234
+.\start-cli.bat -u Alice -pw 1234
 select * from root
 +-----------------------------------+------------------+
 |                               Time|root.vehicle.d0.s0|
@@ -111,11 +111,11 @@ Note that you can use `grant watermark_embedding to user1,user2,...` to grant wa
 Only root can run this command. After root grants watermark_embedding to Alice, all query results of Alice are watermarked.
 
 ```
-.\start-client.bat -u root -pw root
+.\start-cli.bat -u root -pw root
 grant watermark_embedding to Alice
 exit
 
-.\start-client.bat -u Alice -pw 1234
+.\start-cli.bat -u Alice -pw 1234
 select * from root
 +-----------------------------------+------------------+
 |                               Time|root.vehicle.d0.s0|

@@ -181,15 +181,6 @@
 
 ### 引擎层配置
 
-* back\_loop\_period\_in\_second
-
-|名字| back\_loop\_period\_in\_second |
-|:---:|:---|
-|描述| 系统统计量触发统计的频率，单位为秒。|
-|类型|Int32|
-|默认值| 5 |
-|改后生效方式|重启服务器生效|
-
 * data\_dirs
 
 |名字| data\_dirs |
@@ -352,23 +343,41 @@
 |默认值| MaxDiskUsableSpaceFirstStrategy |
 |改后生效方式|触发生效|
 
-* rpc_address
+* rpc\_address
 
-|名字| rpc_address |
+|名字| rpc\_address |
 |:---:|:---|
 |描述| |
 |类型|String|
 |默认值| "0.0.0.0" |
 |改后生效方式|重启服务器生效|
 
-* rpc_port
+* rpc\_port
 
-|名字| rpc_port |
+|名字| rpc\_port |
 |:---:|:---|
 |描述|jdbc服务监听端口。请确认该端口不是系统保留端口并且未被占用。|
 |类型|Short Int : [0,65535]|
 |默认值| 6667 |
-|改后生效方式|重启服务器生效||
+|改后生效方式|重启服务器生效|
+
+* rpc\_thrift\_compression\_enable
+
+|名字| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|描述|是否启用thrift的压缩机制。|
+|类型|true 或者 false|
+|默认值| false |
+|改后生效方式|重启服务器生效|
+
+* rpc\_advanced\_compression\_enable
+
+|名字| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|描述|是否启用thrift的自定制压缩机制。|
+|类型|true 或者 false|
+|默认值| false |
+|改后生效方式|重启服务器生效|
 
 * time\_zone
 
@@ -395,26 +404,6 @@
 |描述| 当IoTDB将内存中的数据写入磁盘时，最多启动多少个线程来执行该操作。如果该值小于等于0，那么采用机器所安装的CPU核的数量。默认值为0。|
 |类型| Int32 |
 |默认值| 0 |
-|改后生效方式|重启服务器生效|
-
-
-* stat\_monitor\_detect\_freq\_in\_second
-
-|名字| stat\_monitor\_detect\_freq\_in\_second |
-|:---:|:---|
-|描述| 每隔一段时间（以秒为单位）检测当前记录统计量时间范围是否超过stat_monitor_retain_interval，并进行定时清理。|
-|类型| Int32 |
-|默认值|600 |
-|改后生效方式|重启服务器生效|
-
-
-* stat\_monitor\_retain\_interval\_in\_second
-
-|名字| stat\_monitor\_retain\_interval\_in\_second |
-|:---:|:---|
-|描述| 系统统计信息的保留时间（以秒为单位），超过保留时间范围的统计数据将被定时清理。|
-|类型| Int32 |
-|默认值|600 |
 |改后生效方式|重启服务器生效|
 
 * tsfile\_storage\_fs
@@ -543,6 +532,16 @@
 |描述| openID 服务器地址 （当OpenIdAuthorizer被启用时必须设定）|
 |类型| String （一个http地址） |
 |默认值| 无 |
+|改后生效方式|重启服务器生效|
+
+
+* thrift\_max\_frame\_size
+
+|名字| thrift\_max\_frame\_size |
+|:---:|:---|
+|描述| RPC 请求/响应的最大字节数|
+|类型| long |
+|默认值| 67108864 (应大于等于 8 * 1024 * 1024) |
 |改后生效方式|重启服务器生效|
 
 

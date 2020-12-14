@@ -203,6 +203,35 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testPartialPathRangeDelete() throws SQLException {
+    prepareData();
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                    "root");
+         Statement statement = connection.createStatement()) {
+
+      statement.execute("DELETE FROM root.vehicle.d0.* WHERE time <= 300 and time > 150");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(250, cnt);
+      }
+
+      statement.execute("DELETE FROM root.vehicle.*.s0 WHERE time <= 100");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(150, cnt);
+      }
+    }
+    cleanData();
+  }
+
+  @Test
   public void testDelFlushingMemtable() throws SQLException {
     long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
@@ -214,7 +243,7 @@ public class IoTDBDeletionIT {
 
       for (int i = 1; i <= 10000; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
 
@@ -254,27 +283,27 @@ public class IoTDBDeletionIT {
       // prepare BufferWrite file
       for (int i = 201; i <= 300; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare Unseq-File
       for (int i = 1; i <= 100; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       statement.execute("merge");
       // prepare BufferWrite cache
       for (int i = 301; i <= 400; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
       // prepare Overflow cache
       for (int i = 101; i <= 200; i++) {
         statement.execute(
-            String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+            String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
                 i % 2 == 0));
       }
 
@@ -298,12 +327,12 @@ public class IoTDBDeletionIT {
 
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
             i % 2 == 0));
       }
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "\'" + i + "\'",
+        statement.execute(String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
             i % 2 == 0));
       }
 

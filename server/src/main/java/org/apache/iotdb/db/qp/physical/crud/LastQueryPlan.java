@@ -38,7 +38,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
     if (isValidExpression(expression)) {
       super.setExpression(expression);
     } else {
-      throw new QueryProcessException("Only \'>\' and \'>=\' are supported in LAST query");
+      throw new QueryProcessException("Only '>' and '>=' are supported in LAST query");
     }
   }
 

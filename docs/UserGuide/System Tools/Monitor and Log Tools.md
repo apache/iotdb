@@ -31,13 +31,21 @@ After starting JConsole tool and connecting to IoTDB server, a basic look at IoT
 
 #### JMX MBean Monitoring
 By using JConsole tool and connecting with JMX you are provided with some system statistics and parameters.
-This section describes how to use the JConsole ```Mbean``` tab to monitor the number of files opened by the IoTDB service process, the size of the data file, and so on. Once connected to JMX, you can find the ```MBean``` named ```org.apache.iotdb.service``` through the ```MBeans``` tab, as shown in the following Figure.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
+This section describes how to use the JConsole ```Mbean```tab of jconsole to monitor some system configurations of IoTDB, the statistics of writing, and so on. After connecting to JMX, you can find the "MBean" of "org.apache.iotdb.service", as shown in the figure below.
 
-There are several attributes under Monitor, including the numbers of files opened in different folders, the data file size statistics and the values of some system parameters. By double-clicking the value corresponding to an attribute it also displays a line chart of that attribute. Currently, all the opened file count statistics are only supported on ```MacOS``` and most ```Linux``` distro except ```CentOS```. For the OS not supported these statistics returns ```-2```. See the following section for specific introduction of the Monitor attributes.
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922876-16d4a700-f469-11ea-874d-dcf58d5bb1b3.png"> <br>
+
+There are several attributes under monitor, including data file directory, the statistics of writing and the values of some system parameters. It can also display a line chart of the property by double clicking the value corresponding to the property. For a detailed description of monitor attributes, see the following sections.
 
 ##### MBean Monitor Attributes List
+
+* SystemDirectory
+
+|Name| SystemDirectory |
+|:---:|:---|
+|Description| The absolute directory of data system file. |
+|Type| String |
 
 * DataSizeInByte
 
@@ -47,316 +55,89 @@ There are several attributes under Monitor, including the numbers of files opene
 |Unit| Byte |
 |Type| Long |
 
-* FileNodeNum
+* EnableStatMonitor
 
-|Name| FileNodeNum |
+|Name| EnableStatMonitor |
 |:---:|:---|
-|Description| The count number of FileNode. (Currently not supported)|
-|Type| Long |
-
-* OverflowCacheSize
-
-|Name| OverflowCacheSize |
-|:---:|:---|
-|Description| The size of out-of-order data cache. (Currently not supported)|
-|Unit| Byte |
-|Type| Long |
-
-* BufferWriteCacheSize
-
-|Name| BufferWriteCacheSize |
-|:---:|:---|
-|Description| The size of BufferWriter cache. (Currently not supported)|
-|Unit| Byte |
-|Type| Long |
-
-* BaseDirectory
-
-|Name| BaseDirectory |
-|:---:|:---|
-|Description| The absolute directory of data file. |
-|Type| String |
-
-* WriteAheadLogStatus
-
-|Name| WriteAheadLogStatus |
-|:---:|:---|
-|Description| The status of write-ahead-log (WAL). ```True``` means WAL is enabled. |
+|Description| If the monitor module is open |
 |Type| Boolean |
 
-* TotalOpenFileNum
+### Data Monitoring
 
-|Name| TotalOpenFileNum |
-|:---:|:---|
-|Description| All the opened file number of IoTDB server process. |
-|Type| Int |
+This module is for providing some statistics info about the writing operations:
 
-* DeltaOpenFileNum
+- the data size (in bytes) in IoTDB, the number of data points in IoTDB;
+- how many operations are successful or failed executed.
 
-|Name| DeltaOpenFileNum |
-|:---:|:---|
-|Description| The opened TsFile file number of IoTDB server process. |
-|Default Directory| /data/data/settled |
-|Type| Int |
+#### Enable/disable the module
 
-* WalOpenFileNum
+Users can choose to enable or disable the feature of data statistics monitoring (set the `enable_stat_monitor` item in the configuration file).
 
-|Name| WalOpenFileNum |
-|:---:|:---|
-|Description| The opened write-ahead-log file number of IoTDB server process. |
-|Default Directory| /data/wal |
-|Type| Int |
+#### Statistics Data Storing
 
-* MetadataOpenFileNum
+By default, the statistics data is only saved in memory and can be accessed using Jconsole.
 
-|Name| MetadataOpenFileNum |
-|:---:|:---|
-|Description| The opened meta-data file number of IoTDB server process. |
-|Default Directory| /data/system/schema |
-|Type| Int |
+The data can also be written as some time series on disk. To enable it, set `enable_monitor_series_write=true` in the configuration file. If so, using `select` statement in IoTDB-cli can query these time series.
 
-* DigestOpenFileNum
-
-|Name| DigestOpenFileNum |
-|:---:|:---|
-|Description| The opened info file number of IoTDB server process. |
-|Default Directory| /data/system/info |
-|Type| Int |
-
-* SocketOpenFileNum
-
-|Name| SocketOpenFileNum |
-|:---:|:---|
-|Description| The Socket link (TCP or UDP) number of the operation system. |
-|Type| Int |
-
-* MergePeriodInSecond
-
-|Name| MergePeriodInSecond |
-|:---:|:---|
-|Description| The interval at which the IoTDB service process periodically triggers the merge process. |
-|Unit| Second |
-|Type| Long |
-
-* ClosePeriodInSecond
-
-|Name| ClosePeriodInSecond |
-|:---:|:---|
-|Description| The interval at which the IoTDB service process periodically flushes memory data to disk. |
-|Unit| Second |
-|Type| Long |
-
-### Data Status Monitoring
-
-This module is the statistical monitoring method provided by IoTDB for users to store data information. The statistical data are recorded in the system and stored in the database. The current 0.8.0 version of IoTDB provides statistics for writing data.
-
-The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file).
+> Note:
+> if `enable_monitor_series_write=true`, when IoTDB is restarted, the previous statistics data will be recovered into memory.
+> if `enable_monitor_series_write=false`, IoTDB will forget all statistics data after the instance is restarted.
 
 #### Writing Data Monitor
 
-The current statistics of writing data by the system can be divided into two major modules: **Global Writing Data Statistics** and **Storage Group Writing Data Statistics**. **Global Writing Data Statistics** records the point number written by the user and the number of requests. **Storage Group Writing Data Statistics** records data of a certain storage group. 
+At present, the monitor system can be divided into two modules: global writing statistics and storage group writing statistics. The global statistics records the number of total points and requests, and the storage group statistics counts the write data of each storage group.
 
-The system defaults to collect data every 5 seconds, and writes the statistics to the IoTDB and stores them in a system-specified locate. (If you need to change the statistic frequency, you can set The `back_loop_period_in_second entry` in the configuration file, see Section [Engine Layer](../Server/Single%20Node%20Setup.md) for details). After the system is refreshed or restarted, IoTDB does not recover the statistics, and the statistics data will restart from zero.
+The system sets the collection granularity of the monitoring module to **update the statistical information once one data file is flushed into the disk **, so the data accuracy may be different from the actual situation. To obtain accurate information, **Please call the `flush` method before querying **. 
 
-To avoid the excessive use of statistical information, a mechanism is set to periodically clear invalid data for statistical information. The system deletes invalid data at regular intervals. The user set the trigger frequency (`stat_monitor_retain_interval_in_second`, default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the frequency of deleting data. By setting the valid data duration (`stat_monitor_detect_freq_in_second entry`, the default is 600s, see section [Engine Layer](../Server/Single%20Node%20Setup.md) for details) to set the time period of valid data, that is, the data within the time of the clear operation trigger time is stat_monitor_detect_freq_in_second is valid data. In order to ensure the stability of the system, it is not allowed to delete the statistics frequently. Therefore, if the configuration parameter time is less than the default value (600s), the system will abort the configuration parameter and use the default parameter.
+Here are the writing data statistics (the range supported is shown in brackets):
 
-It's convenient for you to use `select` clause to get the writing data statistics the same as other timeseries.
-
-Here are the writing data statistics:
-
-* TOTAL_POINTS (GLOABAL)
+* TOTAL_POINTS (GLOBAL)
 
 |Name| TOTAL\_POINTS |
 |:---:|:---|
-|Description| Calculate the global writing points number.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.global.TOTAL\_POINTS |
-|Reset After Restarting System| yes |
-|Example| select TOTAL_POINTS from root.stats.write.global|
+|Description| Calculate the total number of global writing points. |
+|Timeseries Name| root.stats.{"global" \|"storageGroupName"}.TOTAL\_POINTS |
 
-* TOTAL\_REQ\_SUCCESS (GLOABAL)
+* TOTAL\_REQ\_SUCCESS (GLOBAL)
 
 |Name| TOTAL\_REQ\_SUCCESS |
 |:---:|:---|
-|Description| Calculate the global successful requests number.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.global.TOTAL\_REQ\_SUCCESS |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_REQ\_SUCCESS from root.stats.write.global|
+|Description| Calculate the number of global successful requests. |
+|Timeseries Name|  root.stats."global".TOTAL\_REQ\_SUCCESS |
 
-* TOTAL\_REQ\_FAIL (GLOABAL)
+* TOTAL\_REQ\_FAIL (GLOBAL)
 
 |Name| TOTAL\_REQ\_FAIL |
 |:---:|:---|
-|Description| Calculate the global failed requests number.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.global.TOTAL\_REQ\_FAIL |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_REQ\_FAIL from root.stats.write.global|
+|Description| Calculate the number of global failed requests. |
+|Timeseries Name| root.stats."global".TOTAL\_REQ\_FAIL |
 
+The above attributes also support visualization in JConsole. For the statistical information of each storage group, in order to avoid the display confusion caused by too many storage groups, the user can input the storage group name in the operation method under monitor MBean to query the corresponding statistical information.
 
-* TOTAL\_POINTS\_FAIL (GLOABAL)
-
-|Name| TOTAL\_POINTS\_FAIL |
-|:---:|:---|
-|Description| Calculate the global failed writing points number.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.global.TOTAL\_POINTS\_FAIL |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_POINTS\_FAIL from root.stats.write.global|
-
-
-* TOTAL\_POINTS\_SUCCESS (GLOABAL)
-
-|Name| TOTAL\_POINTS\_SUCCESS |
-|:---:|:---|
-|Description| Calculate the c.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.global.TOTAL\_POINTS\_SUCCESS |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_POINTS\_SUCCESS from root.stats.write.global|
-
-* TOTAL\_REQ\_SUCCESS (STORAGE GROUP)
-
-|Name| TOTAL\_REQ\_SUCCESS |
-|:---:|:---|
-|Description| Calculate the successful requests number for specific storage group|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.\<storage\_group\_name\>.TOTAL\_REQ\_SUCCESS |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_REQ\_SUCCESS from root.stats.write.\<storage\_group\_name\>|
-
-* TOTAL\_REQ\_FAIL (STORAGE GROUP)
-
-|Name| TOTAL\_REQ\_FAIL |
-|:---:|:---|
-|Description| Calculate the fail requests number for specific storage group|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.\<storage\_group\_name\>.TOTAL\_REQ\_FAIL |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_REQ\_FAIL from root.stats.write.\<storage\_group\_name\>|
-
-
-* TOTAL\_POINTS\_SUCCESS (STORAGE GROUP)
-
-|Name| TOTAL\_POINTS\_SUCCESS |
-|:---:|:---|
-|Description| Calculate the successful writing points number for specific storage group.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.\<storage\_group\_name\>.TOTAL\_POINTS\_SUCCESS |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_POINTS\_SUCCESS from root.stats.write.\<storage\_group\_name\>|
-
-
-* TOTAL\_POINTS\_FAIL (STORAGE GROUP)
-
-|Name| TOTAL\_POINTS\_FAIL |
-|:---:|:---|
-|Description| Calculate the fail writing points number for specific storage group.|
-|Type| Writing data statistics |
-|Timeseries Name| root.stats.write.\<storage\_group\_name\>.TOTAL\_POINTS\_FAIL |
-|Reset After Restarting System| yes |
-|Example| select TOTAL\_POINTS\_FAIL from root.stats.write.\<storage\_group\_name\>|
-
-> Note: 
-> 
-> \<storage\_group\_name\> should be replaced by real storage group name, and the '.' in storage group need to be replaced by '_'. For example, the storage group name is 'root.a.b', when using in the statistics, it will change to 'root\_a\_b'
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png">
 
 ##### Example
 
-Here we give some example of using writing data statistics.
+Here we give some examples of using writing data statistics.
 
-To know the global successful writing points number, use `select` clause to query it's value. The query statement is:
+To know the total number of global writing points, use `select` clause to query it's value. The query statement is:
 
-```
-select TOTAL_POINTS_SUCCESS from root.stats.write.global
-```
-
-To know the successfule writing points number of root.ln (storage group), the query statement is:
-
-```
-select TOTAL_POINTS_SUCCESS from root.stats.write.root_ln
+```sql
+select TOTAL_POINTS from root.stats."global"
 ```
 
-To know the current timeseries point in the system, use `MAX_VALUE` function to query. Here is the query statement:
+To know the total number of global writing points of root.ln (storage group), the query statement is:
 
+```sql
+select TOTAL_POINTS from root.stats."root.ln"
 ```
-select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
+
+To know the latest statistics of the current system, you can use the latest data query. Here is the query statement:
+
+```sql
+flush
+select last TOTAL_POINTS from root.stats."global"
 ```
-
-#### File Size Monitor
-
-Sometimes we are concerned about how the data file size of IoTDB changes, maybe to help calculate how much disk space is left or the data ingestion speed. The File Size Monitor provides several statistics to show how different types of file-sizes change. 
-
-The file size monitor defaults to collect file size data every 5 seconds using the same shared parameter ```back_loop_period_in_second```, 
-
-Unlike Writing Data Monitor, currently File Size Monitor does not delete statistic data at regular intervals. 
-
-You can also use `select` clause to get the file size statistics like other time series.
-
-Here are the file size statistics:
-
-* DATA
-
-|Name| DATA |
-|:---:|:---|
-|Description| Calculate the sum of all the files's sizes under the data directory (```data/data``` by default) in byte.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.DATA |
-|Reset After Restarting System| No |
-|Example| select DATA from root.stats.file\_size.DATA|
-
-* SETTLED
-
-|Name| SETTLED |
-|:---:|:---|
-|Description| Calculate the sum of all the ```TsFile``` size (under ```data/data/settled``` by default) in byte. If there are multiple ```TsFile``` directories like ```{data/data/settled1, data/data/settled2}```, this statistic is the sum of their size.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.SETTLED |
-|Reset After Restarting System| No |
-|Example| select SETTLED from root.stats.file\_size.SETTLED|
-
-* OVERFLOW
-
-|Name| OVERFLOW |
-|:---:|:---|
-|Description| Calculate the sum of all the ```out-of-order data file``` size (under ```data/data/unsequence``` by default) in byte.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.OVERFLOW |
-|Reset After Restarting System| No |
-|Example| select OVERFLOW from root.stats.file\_size.OVERFLOW|
-
-
-* WAL
-
-|Name| WAL |
-|:---:|:---|
-|Description| Calculate the sum of all the ```Write-Ahead-Log file``` size (under ```data/wal``` by default) in byte.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.WAL |
-|Reset After Restarting System| No |
-|Example| select WAL from root.stats.file\_size.WAL|
-
-
-* INFO
-
-|Name| INFO|
-|:---:|:---|
-|Description| Calculate the sum of all the ```.restore```, etc. file size (under ```data/system/info```) in byte.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.INFO |
-|Reset After Restarting System| No |
-|Example| select INFO from root.stats.file\_size.INFO|
-
-* SCHEMA
-
-|Name| SCHEMA |
-|:---:|:---|
-|Description| Calculate the sum of all the ```metadata file``` size (under ```data/system/metadata```) in byte.|
-|Type| File size statistics |
-|Timeseries Name| root.stats.file\_size.SCHEMA |
-|Reset After Restarting System| No |
-|Example| select SCHEMA from root.stats.file\_size.SCHEMA|
 
 ## Performance Monitor
 

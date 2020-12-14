@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "IOTDBSession.h"
+#include "Session.h"
 
 using namespace std;
 

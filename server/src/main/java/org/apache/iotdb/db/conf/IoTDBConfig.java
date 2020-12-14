@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -110,6 +111,11 @@ public class IoTDBConfig {
   private boolean rpcThriftCompressionEnable = false;
 
   /**
+   * whether to use Snappy compression before sending data through the network
+   */
+  private boolean rpcAdvancedCompressionEnable = false;
+
+  /**
    * Port which the JDBC server listens to.
    */
   private int rpcPort = 6667;
@@ -149,7 +155,7 @@ public class IoTDBConfig {
   /**
    * Flush proportion for system
    */
-  private double flushProportion = 0.3;
+  private double flushProportion = 0.4;
 
   /**
    * Reject proportion for system
@@ -162,9 +168,9 @@ public class IoTDBConfig {
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
   /**
-   * When inserting rejected, waiting this time to check system again
+   * When inserting rejected, waiting period to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 10;
+  private int checkPeriodWhenInsertBlocked = 50;
 
   /**
    * When inserting rejected exceeds this, throw an exception
@@ -272,9 +278,41 @@ public class IoTDBConfig {
   private boolean enableMemControl = true;
 
   /**
+   * Is the write ahead log enable.
+   */
+  private boolean enableIndex = false;
+
+  /**
+   * How many threads can concurrently build index. When <= 0, use CPU core number.
+   */
+  private int concurrentIndexBuildThread = Runtime.getRuntime().availableProcessors();
+
+  /**
+   * If we enable the memory-control mechanism during index building , {@code indexBufferSize}
+   * refers to the byte-size of memory buffer threshold. For each index processor, all indexes in
+   * one {@linkplain org.apache.iotdb.db.index.IndexFileProcessor IndexFileProcessor} share a total
+   * common buffer size. With the memory-control mechanism, the occupied memory of all raw data and
+   * index structures will be counted. If the memory buffer size reaches this threshold, the indexes
+   * will be flushed to the disk file. As a result, data in one series may be divided into more than
+   * one part and indexed separately.
+   */
+  private long indexBufferSize = 128 * 1024 * 1024L;
+
+  /**
+   * the index framework adopts sliding window model to preprocess the original tv list in the
+   * subsequence matching task.
+   */
+  private int defaultIndexWindowRange = 10;
+
+  /**
+   * index directory.
+   */
+  private String indexRootFolder = "data" + File.separator + "index";
+
+  /**
    * When a TsFile's file size (in byte) exceed this, the TsFile is forced closed.
    */
-  private long tsFileSizeThreshold = 512 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 1L;
 
   /**
    * When a memTable's size (in byte) exceeds this, the memtable is flushed to disk.
@@ -366,23 +404,14 @@ public class IoTDBConfig {
   private boolean lastCacheEnable = true;
 
   /**
-   * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
-   * value is 5s.
-   */
-  private int backLoopPeriodSec = 5;
-  /**
    * Set true to enable statistics monitor service, false to disable statistics service.
    */
   private boolean enableStatMonitor = false;
+
   /**
-   * Set the time interval when StatMonitor performs delete detection. The default value is 600s.
+   * Set true to enable writing monitor time series.
    */
-  private int statMonitorDetectFreqSec = 60 * 10;
-  /**
-   * Set the maximum time to keep monitor statistics information in IoTDB. The default value is
-   * 600s.
-   */
-  private int statMonitorRetainIntervalSec = 60 * 10;
+  private boolean enableMonitorSeriesWrite = false;
 
   /**
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
@@ -833,6 +862,7 @@ public class IoTDBConfig {
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
+    indexRootFolder = addHomeDir(indexRootFolder);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1077,14 +1107,6 @@ public class IoTDBConfig {
     this.tsFileSizeThreshold = tsFileSizeThreshold;
   }
 
-  public int getBackLoopPeriodSec() {
-    return backLoopPeriodSec;
-  }
-
-  void setBackLoopPeriodSec(int backLoopPeriodSec) {
-    this.backLoopPeriodSec = backLoopPeriodSec;
-  }
-
   public boolean isEnableStatMonitor() {
     return enableStatMonitor;
   }
@@ -1093,28 +1115,20 @@ public class IoTDBConfig {
     this.enableStatMonitor = enableStatMonitor;
   }
 
+  public boolean isEnableMonitorSeriesWrite() {
+    return enableMonitorSeriesWrite;
+  }
+
+  public void setEnableMonitorSeriesWrite(boolean enableMonitorSeriesWrite) {
+    this.enableMonitorSeriesWrite = enableMonitorSeriesWrite;
+  }
+
   public int getRpcMaxConcurrentClientNum() {
     return rpcMaxConcurrentClientNum;
   }
 
   void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public int getStatMonitorDetectFreqSec() {
-    return statMonitorDetectFreqSec;
-  }
-
-  void setStatMonitorDetectFreqSec(int statMonitorDetectFreqSec) {
-    this.statMonitorDetectFreqSec = statMonitorDetectFreqSec;
-  }
-
-  public int getStatMonitorRetainIntervalSec() {
-    return statMonitorRetainIntervalSec;
-  }
-
-  void setStatMonitorRetainIntervalSec(int statMonitorRetainIntervalSec) {
-    this.statMonitorRetainIntervalSec = statMonitorRetainIntervalSec;
   }
 
   public int getmManagerCacheSize() {
@@ -1508,7 +1522,7 @@ public class IoTDBConfig {
     return rpcThriftCompressionEnable;
   }
 
-  void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
@@ -2006,12 +2020,12 @@ public class IoTDBConfig {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
-  public int getWaitingTimeWhenInsertBlocked() {
-    return waitingTimeWhenInsertBlockedInMs;
+  public int getCheckPeriodWhenInsertBlocked() {
+    return checkPeriodWhenInsertBlocked;
   }
 
-  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
-    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
+  public void setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    this.checkPeriodWhenInsertBlocked = checkPeriodWhenInsertBlocked;
   }
 
   public int getMaxWaitingTimeWhenInsertBlocked() {
@@ -2044,5 +2058,54 @@ public class IoTDBConfig {
 
   public void setDebugState(boolean debugState) {
     this.debugState = debugState;
+  }
+
+  public boolean isEnableIndex() {
+    return enableIndex;
+  }
+
+  public void setEnableIndex(boolean enableIndex) {
+    this.enableIndex = enableIndex;
+  }
+
+  void setConcurrentIndexBuildThread(int concurrentIndexBuildThread) {
+    this.concurrentIndexBuildThread = concurrentIndexBuildThread;
+  }
+
+  public int getConcurrentIndexBuildThread() {
+    return concurrentIndexBuildThread;
+  }
+
+  public long getIndexBufferSize() {
+    return indexBufferSize;
+  }
+
+  public void setIndexBufferSize(long indexBufferSize) {
+    this.indexBufferSize = indexBufferSize;
+  }
+
+  public String getIndexRootFolder() {
+    return indexRootFolder;
+  }
+
+  public void setIndexRootFolder(String indexRootFolder) {
+    this.indexRootFolder = indexRootFolder;
+  }
+
+  public int getDefaultIndexWindowRange() {
+    return defaultIndexWindowRange;
+  }
+
+  public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
+    this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public boolean isRpcAdvancedCompressionEnable() {
+    return rpcAdvancedCompressionEnable;
+  }
+
+  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
+    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
   }
 }

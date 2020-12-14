@@ -32,9 +32,9 @@ RUN apt update \
   && cd iotdb-master \
   && mvn package -pl server,client -am -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
   && cd target/ \
-  && unzip apache-iotdb-0.11.0-SNAPSHOT-bin.zip \
+  && unzip apache-iotdb-0.12.0-SNAPSHOT-bin.zip \
   && mkdir /iotdb \
-  && mv apache-iotdb-0.11.0-SNAPSHOT/* /iotdb/ \
+  && mv apache-iotdb-0.12.0-SNAPSHOT/* /iotdb/ \
   && cd ../../ \
   && mvn clean \
   && ls -lh ~/.m2 \

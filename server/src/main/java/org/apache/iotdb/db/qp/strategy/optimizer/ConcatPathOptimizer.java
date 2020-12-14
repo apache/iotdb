@@ -85,6 +85,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     checkAggrOfSelectOperator(select);
+    if (((QueryOperator) operator).isGroupByLevel()) {
+      checkAggrOfGroupByLevel(select);
+    }
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
@@ -93,7 +96,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         // concat paths and remove stars
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum);
+        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum,
+            ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -148,6 +152,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
+  private void checkAggrOfGroupByLevel(SelectOperator selectOperator) throws LogicalOptimizeException {
+    if (selectOperator.getAggregations().size() != 1) {
+      throw new LogicalOptimizeException(
+          "Aggregation function is restricted to one if group by level clause exists");
+    }
+  }
+
   private void extendListSafely(List<String> source, int index, List<String> target) {
     if (source != null && !source.isEmpty()) {
       target.add(source.get(index));
@@ -159,7 +170,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * selectOperator's suffixPathList. Treat aggregations similarly.
    */
   private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator, int limit,
-      int offset, int maxDeduplicatedPathNum)
+      int offset, int maxDeduplicatedPathNum, boolean needRemoveStar)
       throws LogicalOptimizeException, PathNumOverLimitException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
 
@@ -172,16 +183,19 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       PartialPath selectPath = suffixPaths.get(i);
       for (PartialPath fromPath : fromPaths) {
         PartialPath fullPath = fromPath.concatPath(selectPath);
-        if (selectPath.getTsAlias() != null) {
+        if (selectPath.isTsAliasExists()) {
           fullPath.setTsAlias(selectPath.getTsAlias());
         }
         allPaths.add(fullPath);
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
-
-    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
-        maxDeduplicatedPathNum);
+    if (needRemoveStar)
+      removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
+          maxDeduplicatedPathNum);
+    else{
+      selectOperator.setSuffixPathList(allPaths);
+    }
   }
 
   private FilterOperator concatFilter(List<PartialPath> fromPaths, FilterOperator operator,
@@ -284,7 +298,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         Pair<List<PartialPath>, Integer> pair = removeWildcard(paths.get(i), limit, offset);
 
         List<PartialPath> actualPaths = pair.left;
-        if (paths.get(i).getTsAlias() != null) {
+        if (paths.get(i).isTsAliasExists()) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
           } else if (actualPaths.size() >= 2) {

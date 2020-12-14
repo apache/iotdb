@@ -19,96 +19,36 @@
 
 package org.apache.iotdb.db.monitor;
 
-import java.io.File;
-import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.monitor.collector.FileSize;
-
 public class MonitorConstants {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  public static final String DATA_TYPE_INT64 = "INT64";
-  static final String STAT_STORAGE_GROUP_PREFIX = "root.stats";
-  private static final String[] STAT_STORAGE_GROUP_PREFIX_ARRAY = {"root", "stats"};
-  static final String FILENODE_PROCESSOR_CONST = "FILENODE_PROCESSOR_CONST";
-  private static final String FILENODE_MANAGER_CONST = "FILENODE_MANAGER_CONST";
-  static final String FILE_SIZE_CONST = "FILE_SIZE_CONST";
-  public static final String MONITOR_PATH_SEPARATOR = ".";
-  // statistic for file size statistic module
-  private static final String FILE_SIZE = "file_size";
-  public static final String FILE_SIZE_STORAGE_GROUP_NAME = STAT_STORAGE_GROUP_PREFIX
-      + MONITOR_PATH_SEPARATOR + FILE_SIZE;
-  // statistic for insert module
-  private static final String FILE_NODE_MANAGER_PATH = "write.global";
-  public static final String FILE_NODE_PATH = "write";
+  public static final String INT64 = "INT64";
+  public static final String PATH_SEPARATOR = ".";
+  // statistic for data inserting module
+  public static final String STAT_STORAGE_GROUP_NAME = "root.stats";
+  public static final String[] STAT_STORAGE_GROUP_ARRAY = {"root", "stats"};
+  public static final String[] STAT_GLOBAL_ARRAY = {"root", "stats", "\"global\""};
+
+
   /**
    * Stat information.
    */
-  static final String STAT_STORAGE_DELTA_NAME = STAT_STORAGE_GROUP_PREFIX
-      + MONITOR_PATH_SEPARATOR + FILE_NODE_MANAGER_PATH;
+  public enum StatMeasurementConstants {
+    TOTAL_POINTS("TOTAL_POINTS"), TOTAL_REQ_SUCCESS("TOTAL_REQ_SUCCESS"),
+    TOTAL_REQ_FAIL("TOTAL_REQ_FAIL");
 
-  /**
-   * function for initializing stats values.
-   *
-   * @param constantsType produce initialization values for Statistics Params
-   * @return HashMap contains all the Statistics Params
-   */
-  static HashMap<String, AtomicLong> initValues(String constantsType) {
-    HashMap<String, AtomicLong> hashMap = new HashMap<>();
-    switch (constantsType) {
-      case FILENODE_PROCESSOR_CONST:
-        for (FileNodeProcessorStatConstants statConstant : FileNodeProcessorStatConstants
-            .values()) {
-          hashMap.put(statConstant.name(), new AtomicLong(0));
-        }
-        break;
-      case FILENODE_MANAGER_CONST:
-        hashMap = (HashMap<String, AtomicLong>) FileSize.getInstance().getStatParamsHashMap();
-        break;
-      case FILE_SIZE_CONST:
-        for (FileSizeConstants kinds : FileSizeConstants.values()) {
-          hashMap.put(kinds.name(), new AtomicLong(0));
-        }
-        break;
-      default:
-
-        break;
+    StatMeasurementConstants(String measurement) {
+      this.measurement = measurement;
     }
-    return hashMap;
-  }
 
-  public enum FileNodeManagerStatConstants {
-    TOTAL_POINTS, TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
-  }
+    private String measurement;
 
-  public static String[] getStatStorageGroupPrefixArray() {
-    return STAT_STORAGE_GROUP_PREFIX_ARRAY;
-  }
-
-  public enum FileNodeProcessorStatConstants {
-    TOTAL_REQ_SUCCESS, TOTAL_REQ_FAIL, TOTAL_POINTS_SUCCESS, TOTAL_POINTS_FAIL
+    public String getMeasurement() {
+      return measurement;
+    }
   }
 
   public enum OsStatConstants {
     NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
     DISK_WRITE_SPEED, DISK_TPS
-  }
-
-  public enum FileSizeConstants {
-    // TODO add multi data dir monitor
-    WAL(new File(config.getWalDir()).getAbsolutePath()),
-    SYS(new File(config.getSystemDir()).getAbsolutePath());
-
-    public String getPath() {
-      return path;
-    }
-
-    private String path;
-
-    FileSizeConstants(String path) {
-      this.path = path;
-    }
   }
 }

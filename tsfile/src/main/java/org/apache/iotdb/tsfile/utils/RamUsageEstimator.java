@@ -163,10 +163,8 @@ public final class RamUsageEstimator {
     // Initialize empirically measured defaults. We'll modify them to the current
     // JVM settings later on if possible.
     int referenceSize = Constants.JRE_IS_64BIT ? 8 : 4;
-    int objectHeader = Constants.JRE_IS_64BIT ? 16 : 8;
     // The following is objectHeader + NUM_BYTES_INT, but aligned (object alignment)
     // so on 64 bit JVMs it'll be align(16 + 4, @8) = 24.
-    int arrayHeader = Constants.JRE_IS_64BIT ? 24 : 12;
 
     supportedFeatures = EnumSet.noneOf(JvmFeature.class);
 
@@ -193,8 +191,8 @@ public final class RamUsageEstimator {
 
     // "best guess" based on reference size. We will attempt to modify
     // these to exact values if there is supported infrastructure.
-    objectHeader = Constants.JRE_IS_64BIT ? (8 + referenceSize) : 8;
-    arrayHeader = Constants.JRE_IS_64BIT ? (8 + 2 * referenceSize) : 12;
+    int objectHeader = Constants.JRE_IS_64BIT ? (8 + referenceSize) : 8;
+    int arrayHeader = Constants.JRE_IS_64BIT ? (8 + 2 * referenceSize) : 12;
 
     // get the object header size:
     // - first try out if the field offsets are not scaled (see warning in Unsafe docs)
@@ -548,7 +546,6 @@ public final class RamUsageEstimator {
    * Create a cached information about shallow size and reference fields for a given class.
    */
   private static ClassCache createCacheEntry(final Class<?> clazz) {
-    ClassCache cachedInfo;
     long shallowInstanceSize = NUM_BYTES_OBJECT_HEADER;
     final ArrayList<Field> referenceFields = new ArrayList<Field>(32);
     for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
@@ -565,9 +562,9 @@ public final class RamUsageEstimator {
       }
     }
 
-    cachedInfo = new ClassCache(
+    ClassCache cachedInfo = new ClassCache(
             alignObjectSize(shallowInstanceSize),
-            referenceFields.toArray(new Field[referenceFields.size()]));
+            referenceFields.toArray(new Field[0]));
     return cachedInfo;
   }
 
