@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.constant;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
 /**
  * this class contains several constants used in SQL.
@@ -237,6 +237,11 @@ public class SQLConstant {
     tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
+
+    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
+    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
+    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
+
   }
 
   static {

@@ -93,7 +93,7 @@
     + 记录升级进度
 
 #### Merge
-> 在basedir/system/storage_groups/{StrorageGroup}/目录下
+> 在basedir/system/storage_groups/{StorageGroup}/目录下
 1. merge.mods
     + 记录合并过程中发生的删除等操作
 2. merge.log
@@ -117,7 +117,6 @@
 
 ## 配置文件
 1. iotdb-cluster.properties
-2. cluster-env.sh
 
 ## 状态相关文件
 > 在basedir目录下

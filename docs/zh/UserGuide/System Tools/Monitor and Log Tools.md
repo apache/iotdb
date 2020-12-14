@@ -32,13 +32,20 @@
 #### JMX MBean监控
 
 通过使用JConsole工具并与JMX连接，您可以查看一些系统统计信息和参数。
-本节描述如何使用JConsole的“ Mbean”选项卡来监视IoTDB服务进程打开的文件数，数据文件的大小等等。 连接到JMX后，您可以通过“ MBeans”标签找到名为“ org.apache.iotdb.service”的“ MBean”，如下图所示。
+本节描述如何使用JConsole的 "Mbean" 选项卡来监视IoTDB的一些系统配置、写入数据统计等等。 连接到JMX后，您可以通过 "MBeans" 标签找到名为 "org.apache.iotdb.service" 的 "MBean"，如下图所示。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/20263106/53316064-54aec080-3901-11e9-9a49-76563ac09192.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922876-16d4a700-f469-11ea-874d-dcf58d5bb1b3.png"> <br>
 
-Monitor下有几个属性，包括在不同文件夹中打开的文件数，数据文件大小统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。 特别是，当前所有打开的文件计数统计信息仅在`MacOS`和除`CentOS`以外的大多数`Linux`发行版中受支持。 对于不支持的操作系统，这些统计信息将返回“ -2”。 有关Monitor属性的具体介绍，请参见以下部分。
+Monitor下有几个属性，包括数据文件目录，写入数据统计信息以及某些系统参数的值。 通过双击与属性对应的值，它还可以显示该属性的折线图。有关Monitor属性的具体介绍，请参见以下部分。
 
 ##### MBean监视器属性列表
+
+- SystemDirectory
+
+| 名称 | SystemDirectory        |
+| :--: | :--------------------- |
+| 描述 | 数据系统文件的绝对目录 |
+| 类型 | String                 |
 
 - DataSizeInByte
 
@@ -48,35 +55,12 @@ Monitor下有几个属性，包括在不同文件夹中打开的文件数，数�
 | 单元 | Byte             |
 | 类型 | Long             |
 
-- FileNodeNum
+- EnableStatMonitor
 
-| 名称 | FileNodeNum                    |
-| :--: | :----------------------------- |
-| 描述 | ThFileNode的计数（当前不支持） |
-| 类型 | Long                           |
-
-- OverflowCacheSize
-
-| 名称 | OverflowCacheSize                |
-| :--: | :------------------------------- |
-| 描述 | 乱序数据缓存的大小（当前不支持） |
-| 单元 | Byte                             |
-| 类型 | Long                             |
-
-- BufferWriteCacheSize
-
-| Name | BufferWriteCacheSize                   |
-| :--: | :------------------------------------- |
-| 描述 | BufferedWriter缓存的大小（当前不支持） |
-| 单元 | Byte                                   |
-| 类型 | Long                                   |
-
-- BaseDirectory
-
-| 名称 | BaseDirectory      |
-| :--: | :----------------- |
-| 描述 | 数据文件的绝对目录 |
-| 类型 | String             |
+| 名称 | EnableStatMonitor    |
+| ---- | -------------------- |
+| 描述 | 系统监控模块是否开启 |
+| 类型 | Boolean              |
 
 - WriteAheadLogStatus
 
@@ -85,260 +69,83 @@ Monitor下有几个属性，包括在不同文件夹中打开的文件数，数�
 | 描述 | 预写日志（WAL）的状态。 True表示启用WAL。 |
 | 类型 | Boolean                                   |
 
-- TotalOpenFileNum
-
-| 名称 | TotalOpenFileNum                  |
-| :--: | :-------------------------------- |
-| 描述 | IoTDB服务器进程的所有打开的文件数 |
-| 类型 | Int                               |
-
-- DeltaOpenFileNum
-
-|   名称   | DeltaOpenFileNum                    |
-| :------: | :---------------------------------- |
-|   描述   | IoTDB服务器进程的打开的TsFile文件号 |
-| 默认路径 | /data/data/settled                  |
-|   类型   | Int                                 |
-
-- WalOpenFileNum
-
-|   名称   | WalOpenFileNum                           |
-| :------: | :--------------------------------------- |
-|   描述   | TIoTDB服务器进程的已打开的预写日志文件号 |
-| 默认路径 | /data/wal                                |
-|   类型   | Int                                      |
-
-- MetadataOpenFileNum
-
-|   名称   | MetadataOpenFileNum                   |
-| :------: | :------------------------------------ |
-|   描述   | IoTDB服务器进程的已打开元数据文件号。 |
-| 默认路径 | /data/system/schema                   |
-|   类型   | Int                                   |
-
-- DigestOpenFileNum
-
-|   名称   | DigestOpenFileNum                 |
-| :------: | :-------------------------------- |
-|   描述   | IoTDB服务器进程的打开的信息文件号 |
-| 默认路径 | /data/system/info                 |
-|   类型   | Int                               |
-
-- SocketOpenFileNum
-
-| 名称 | SocketOpenFileNum                  |
-| :--: | :--------------------------------- |
-| 描述 | 操作系统的套接字链接（TCP或UDP）号 |
-| 类型 | Int                                |
-
-- MergePeriodInSecond
-
-| 名称 | MergePeriodInSecond                     |
-| :--: | :-------------------------------------- |
-| 描述 | IoTDB服务过程定期触发合并过程的时间间隔 |
-| Unit | Second                                  |
-| 类型 | Long                                    |
-
-- ClosePeriodInSecond
-
-| 名称 | ClosePeriodInSecond                             |
-| :--: | :---------------------------------------------- |
-| 描述 | IoTDB服务进程定期将内存数据刷新到磁盘的时间间隔 |
-| Unit | Second                                          |
-| 类型 | Long                                            |
-
 ### 数据统计监控
 
-本模块是IoTDB为用户提供的对其中存储数据信息的数据统计监控方式，我们会在系统中为您记录各个模块的数据统计信息，并将其汇总存入数据库中。当前版本的IoTDB提供IoTDB写入数据的统计功能。
+本模块对数据写入操作提供一些统计信息的监控，包括：
+
+- IoTDB 中数据文件的大小 (以字节为单位) ，数据写入的总点数
+- 写入操作成功和失败的次数
+
+#### 开启/关闭监控
 
 用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[第3.4节](../Server/Config%20Manual.md)）。
 
+#### 统计数据存储
+
+默认情况下，统计数据只储存在内存中，可以使用 Jconsole 进行访问。
+
+统计数据还支持以时间序列的格式写入磁盘，可以通过设置配置文件中的`enable_monitor_series_write`开启。开启后，可以使用 `select` 命令来对这些统计数据进行查询。
+
+> 请注意：
+>
+> 如果 `enable_monitor_series_write=true`, 当 IoTDB 重启时，之前的统计数据会被重新载入内存。
+> 如果 `enable_monitor_series_write=false`, IoTDB 关闭时内存中所有的统计信息会被清空。
+
 #### 写入数据统计
 
-系统目前对写入数据的统计可分为两大模块： 全局（Global） 写入数据统计和存储组（Storage Group） 写入数据统计。 全局统计量记录了所有写入数据的点数、请求数统计，存储组统计量对某一个存储组的写入数据进行了统计，系统默认设定每 5 秒 （若需更改统计频率，您可以设定配置文件中的`back_loop_period_in_second`项，详细信息参见本文[3.4节](../Server/Config%20Manual.md)） 将统计量写入 IoTDB 中，并以系统指定的命名方式存储。系统刷新或者重启后， IoTDB 不对统计量做恢复处理，统计量从零值重新开始计算。
+系统目前对写入数据的统计可分为两大模块： 全局（Global） 写入数据统计和存储组（Storage Group） 写入数据统计。全局统计量记录了所有写入数据的点数、请求数统计，存储组统计量对每一个存储组的写入数据进行了统计。
 
-为了避免统计信息占用过多空间，我们为统计信息加入定期清除无效数据的机制。系统将每隔一段时间删除无效数据。用户可以通过设置删除机制触发频率（`stat_monitor_retain_interval_in_second`项，默认为600s，详细信息参见本文[3.4节](../Server/Config%20Manual.md)）配置删除数据的频率，通过设置有效数据的期限（`stat_monitor_detect_freq_in_second`项，默认为600s，详细信息参见本文[3.4节](../Server/Config%20Manual.md)）设置有效数据的范围，即距离清除操作触发时间为`stat_monitor_detect_freq_in_second`以内的数据为有效数据。为了保证系统的稳定，不允许频繁地删除统计量，因此如果配置参数的时间小于默认值，系统不采用配置参数而使用默认参数。
+系统设定监控模块的采集粒度为**每个数据文件刷入磁盘时更新一次统计信息**，因此数据精度可能和实际有所出入。如需获取准确信息，**请先调用 flush 方法后再查询**。
 
-注：当前版本统计的写入数据统计信息会同时统计用户写入的数据与系统内部监控数据。
 
-写入数据统计项列表：
+写入数据统计项列表（括号内为统计量支持的范围）：
 
-* TOTAL_POINTS (全局)
+* TOTAL_POINTS (全局，存储组)
 
-|名字| TOTAL\_POINTS |
-|:---:|:---|
-|描述| 写入总点数|
-|时间序列名称| root.stats.write.global.TOTAL\_POINTS |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL_POINTS from root.stats.write.global|
+|     名字     | TOTAL\_POINTS                                             |
+|:------------:|:--------------------------------------------------------- |
+|     描述     | 写入总点数                                                |
+| 时间序列名称 | root.stats.{"global" \| "storageGroupName"}.TOTAL\_POINTS |
 
 * TOTAL\_REQ\_SUCCESS (全局)
 
-|名字| TOTAL\_REQ\_SUCCESS |
-|:---:|:---|
-|描述| 写入请求成功次数|
-|时间序列名称| root.stats.write.global.TOTAL\_REQ\_SUCCESS |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_REQ\_SUCCESS from root.stats.write.global|
+|         名字         | TOTAL\_REQ\_SUCCESS                                     |
+|:--------------------:|:------------------------------------------------------- |
+|         描述         | 写入请求成功次数                                        |
+|     时间序列名称     | root.stats."global".TOTAL\_REQ\_SUCCESS             |
 
 * TOTAL\_REQ\_FAIL (全局)
 
-|名字| TOTAL\_REQ\_FAIL |
-|:---:|:---|
-|描述| 写入请求失败次数|
-|时间序列名称| root.stats.write.global.TOTAL\_REQ\_FAIL |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_REQ\_FAIL from root.stats.write.global|
+|         名字         | TOTAL\_REQ\_FAIL                                     |
+|:--------------------:|:---------------------------------------------------- |
+|         描述         | 写入请求失败次数                                     |
+|     时间序列名称     | root.stats."global".TOTAL\_REQ\_FAIL             |
 
+以上属性同样支持在 Jconsole 中进行可视化显示。对于每个存储组的统计信息，为了避免存储组过多造成显示混乱，用户可以在 Monitor Mbean 下的操作方法中输入存储组名进行相应的统计信息查询。
 
-* TOTAL\_POINTS\_FAIL (全局)
-
-|名字| TOTAL\_POINTS\_FAIL |
-|:---:|:---|
-|描述| 写入点数失败次数|
-|时间序列名称| root.stats.write.global.TOTAL\_POINTS\_FAIL |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_POINTS\_FAIL from root.stats.write.global|
-
-
-* TOTAL\_POINTS\_SUCCESS (全局)
-
-|名字| TOTAL\_POINTS\_SUCCESS |
-|:---:|:---|
-|描述| 写入点数成功次数|
-|时间序列名称| root.stats.write.global.TOTAL\_POINTS\_SUCCESS |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_POINTS\_SUCCESS from root.stats.write.global|
-
-* TOTAL\_REQ\_SUCCESS (存储组)
-
-|名字| TOTAL\_REQ\_SUCCESS |
-|:---:|:---|
-|描述| 写入存储组成功次数|
-|时间序列名称| root.stats.write.\<storage\_group\_name\>.TOTAL\_REQ\_SUCCESS |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_REQ\_SUCCESS from root.stats.write.\<storage\_group\_name\>|
-
-* TOTAL\_REQ\_FAIL (存储组)
-
-|名字| TOTAL\_REQ\_FAIL |
-|:---:|:---|
-|描述| 写入某个Storage group的请求失败次数|
-|时间序列名称| root.stats.write.\<storage\_group\_name\>.TOTAL\_REQ\_FAIL |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_REQ\_FAIL from root.stats.write.\<storage\_group\_name\>|
-
-
-* TOTAL\_POINTS\_SUCCESS (存储组)
-
-|名字| TOTAL\_POINTS\_SUCCESS |
-|:---:|:---|
-|描述| 写入某个Storage group成功的点数|
-|时间序列名称| root.stats.write.\<storage\_group\_name\>.TOTAL\_POINTS\_SUCCESS |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_POINTS\_SUCCESS from root.stats.write.\<storage\_group\_name\>|
-
-
-* TOTAL\_POINTS\_FAIL (存储组)
-
-|名字| TOTAL\_POINTS\_FAIL |
-|:---:|:---|
-|描述| 写入某个Storage group失败的点数|
-|时间序列名称| root.stats.write.\<storage\_group\_name\>.TOTAL\_POINTS\_FAIL |
-|服务器重启后是否重置| 是 |
-|例子| select TOTAL\_POINTS\_FAIL from root.stats.write.\<storage\_group\_name\>|
-
-> 其中，\<storage\_group\_name\> 为所需进行数据统计的存储组名称，存储组中的“.”使用“\_”代替。例如：名为'root.a.b'的存储组命名为：'root\_a\_b'。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/34242296/92922942-34a20c00-f469-11ea-8dc2-8229d454583c.png"> <br>
 
 ##### 例子
 
 下面为您展示两个具体的例子。用户可以通过`SELECT`语句查询自己所需要的写入数据统计项。（查询方法与普通的时间序列查询方式一致）
 
-我们以查询全局统计量总写入成功数（`TOTAL_POINTS_SUCCES`）为例，用IoTDB SELECT语句查询它的值。SQL语句如下：
+我们以查询全局统计量总点数（`TOTAL_POINTS`）为例，用IoTDB SELECT语句查询它的值。SQL语句如下：
 
-```
-select TOTAL_POINTS_SUCCESS from root.stats.write.global
-```
-
-我们以查询存储组root.ln的统计量总写入成功数（`TOTAL_POINTS_SUCCESS`）为例，用IoTDB SELECT语句查询它的值。SQL语句如下：
-
-```
-select TOTAL_POINTS_SUCCESS from root.stats.write.root_ln
+```sql
+select TOTAL_POINTS from root.stats."global"
 ```
 
-若您需要查询当前系统的写入统计信息，您可以使用`MAX_VALUE()`聚合函数进行查询，SQL语句如下：
+我们以查询存储组root.ln的统计量总点数（`TOTAL_POINTS`）为例，用IoTDB SELECT语句查询它的值。SQL语句如下：
+
+```sql
+select TOTAL_POINTS from root.stats."root.ln"
 ```
-select MAX_VALUE(TOTAL_POINTS_SUCCESS) from root.stats.write.root_ln
+
+若您需要查询当前系统的最新信息，您可以使用最新数据查询，SQL语句如下：
+```sql
+flush
+select last TOTAL_POINTS from root.stats."global"
 ```
-#### 文件大小监控
-
-有时我们担心IoTDB的数据文件大小如何变化，也许有助于计算剩余的磁盘空间或数据摄取速度。 文件大小监视提供了一些统计信息，以显示不同类型的文件大小如何变化。
-
-默认情况下，文件大小监视使用相同的共享参数```back_loop_period_in_second```每5秒收集一次文件大小数据 , 与写入数据监视不同，当前文件大小监视器将不会定期删除统计数据。
-
-您还可以像其他时间序列一样使用 `select` 子句来获取文件大小统计信息。
-
-以下是文件大小统计信息：
-
-- DATA
-
-|        Name        | DATA                                                         |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 计算数据目录下所有文件大小的总和（默认为```data/data```），以字节为单位 |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.DATA                                   |
-| 重新启动系统后重设 | 否                                                           |
-|        例子        | select DATA from root.stats.file\_size.DATA                  |
-
-- SETTLED
-
-|        Name        | SETTLED                                                      |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 以字节为单位计算所有```TsFile```大小（默认情况下在```data/data/settled```下）的总和。 如果有多个“ TsFile”目录，例如```{data/data/settled1,data/data/settled2}```，则此统计信息是它们大小的总和 |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.SETTLED                                |
-| 重新启动系统后重设 | 否                                                           |
-|        例子        | select SETTLED from root.stats.file\_size.SETTLED            |
-
-- OVERFLOW
-
-|        Name        | OVERFLOW                                                     |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 计算所有“乱序数据文件”大小的总和（默认为```data/data/unsequence```下），以字节为单位 |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.OVERFLOW                               |
-| 重新启动系统后重设 | 否                                                           |
-|        例子        | select OVERFLOW from root.stats.file\_size.OVERFLOW          |
-
-- WAL
-
-|        Name        | WAL                                                          |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 计算所有```Write-Ahead-Log file```大小的总和（默认为```data/wal```之下），以字节为单位 |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.WAL                                    |
-| 重新启动系统后重设 | 否                                                           |
-|        例子        | select WAL from root.stats.file\_size.WAL                    |
-
-- INFO
-
-|        Name        | INFO                                                         |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 计算所有```.restore```等文件大小的总和（以```data/system/info```命名），以字节为单位 |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.INFO                                   |
-| 重新启动系统后重设 | 否                                                           |
-|        例子        | select INFO from root.stats.file\_size.INFO                  |
-
-- SCHEMA
-
-|        Name        | SCHEMA                                                       |
-| :----------------: | :----------------------------------------------------------- |
-|        描述        | 计算所有```metadata file```大小（在```data/system/metadata```下）的总和（以字节为单位） |
-|        类型        | File size statistics                                         |
-|    时间序列名称    | root.stats.file\_size.SCHEMA                                 |
-| 重新启动系统后重设 | No                                                           |
-|        例子        | select SCHEMA from root.stats.file\_size.SCHEMA              |
 
 ## 性能监控
 

@@ -52,9 +52,9 @@ public class LastPointReader {
 
   private QueryDataSource dataSource;
 
-  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();;
+  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
 
-  public LastPointReader() {
+    public LastPointReader() {
 
   }
 
@@ -99,7 +99,8 @@ public class LastPointReader {
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
-        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (!timeseriesMetadata.isModified() &&
+            endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),

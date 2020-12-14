@@ -30,6 +30,7 @@ import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -57,6 +58,8 @@ public class IoTDBMultiSeriesIT {
   public static void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     // use small page setting
     // origin value
@@ -88,6 +91,8 @@ public class IoTDBMultiSeriesIT {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     TSFileDescriptor.getInstance().getConfig().setCompressor("SNAPPY");
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private static void insertData()
@@ -329,7 +334,7 @@ public class IoTDBMultiSeriesIT {
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
       hasResultSet = statement.execute("select s0 from root.vehicle.d0 where time > 22987");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -434,7 +439,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
+          "411: Meet error in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }

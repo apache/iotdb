@@ -81,6 +81,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
+  private long minPlanIndex = Long.MAX_VALUE;
+  private long maxPlanIndex = Long.MIN_VALUE;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -601,7 +603,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private List<TimeseriesMetadata> getDeviceTimeseriesMetadata(String device) throws IOException {
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
-        metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, false);
+        metadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE, true);
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
@@ -634,17 +636,15 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   private Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
       String name, MetadataIndexNodeType type, boolean exactSearch) throws IOException {
-    Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex
-        .getChildIndexEntry(name, exactSearch);
-    if (childIndexEntry == null) {
-      return null;
-    }
     if (!metadataIndex.getNodeType().equals(type)) {
-      return childIndexEntry;
+      return metadataIndex.getChildIndexEntry(name, exactSearch);
+    } else {
+      Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex
+          .getChildIndexEntry(name, false);
+      ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
+      return getMetadataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), name, type,
+          false);
     }
-    ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
-    return getMetadataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), name, type,
-        exactSearch);
   }
 
   /**
@@ -965,6 +965,8 @@ public class TsFileSequenceReader implements AutoCloseable {
             // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
+            minPlanIndex = Math.min(minPlanIndex, chunkGroupFooter.getMinPlanIndex());
+            maxPlanIndex = Math.max(maxPlanIndex, chunkGroupFooter.getMaxPlanIndex());
             deviceID = chunkGroupFooter.getDeviceID();
             if (newSchema != null) {
               for (MeasurementSchema tsSchema : measurementSchemaList) {
@@ -1109,5 +1111,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public enum LocateStatus {
     in, before, after
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
   }
 }
