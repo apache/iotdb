@@ -4,6 +4,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -25,6 +26,7 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -45,16 +47,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -67,15 +66,19 @@ public class SqlHandler extends Handler {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public JsonArray executeStatement(String sql, int fetchSize, ZoneId zoneId)
-      throws QueryProcessException, AuthException, IOException {
+  public JsonElement executeStatement(String sql, int fetchSize, ZoneId zoneId)
+      throws QueryProcessException, AuthException, StorageGroupNotSetException, StorageEngineException {
     checkLogin();
     PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(sql, zoneId, fetchSize);
     if (physicalPlan.isQuery()) {
       return internalExecuteQueryStatement(sql, physicalPlan, fetchSize);
+    } else {
+      if(executeNonQuery(physicalPlan)) {
+          return getSuccessfulObject();
       } else {
-        return executeUpdateStatement(physicalPlan);
+        throw new QueryProcessException(sql + "executed unsuccessfully");
       }
+    }
   }
 
   /**
@@ -84,7 +87,7 @@ public class SqlHandler extends Handler {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private JsonArray internalExecuteQueryStatement(String statement, PhysicalPlan plan, int fetchSize)
-      throws IOException, QueryProcessException {
+      throws QueryProcessException {
 
     long startTime = System.currentTimeMillis();
     long queryId = -1;
@@ -143,7 +146,7 @@ public class SqlHandler extends Handler {
       }
 
       // generate the queryId for the operation
-      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      queryId = generateQueryId(fetchSize, deduplicatedPathNum);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance()
@@ -173,13 +176,37 @@ public class SqlHandler extends Handler {
         ignoreTimeStamp = true;
       } // else default ignoreTimeStamp is false
 
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
-          && newDataSet instanceof NonAlignEngineDataSet) {
-        TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
-        resp.setNonAlignQueryDataSet(result);
-      } else {
-        TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
-        resp.setQueryDataSet(result);
+      while(newDataSet.hasNext()) {
+        RowRecord record = newDataSet.next();
+        JsonArray row = new JsonArray();
+        if(!ignoreTimeStamp) {
+          row.add(record.getTimestamp());
+        }
+        for(Field field : record.getFields()) {
+          switch (field.getDataType()) {
+            case INT32:
+              row.add(field.getIntV());
+              break;
+            case INT64:
+              row.add(field.getLongV());
+              break;
+            case FLOAT:
+              row.add(field.getFloatV());
+              break;
+            case DOUBLE:
+              row.add(field.getDoubleV());
+              break;
+            case TEXT:
+              row.add(field.getBinaryV().toString());
+              break;
+            case BOOLEAN:
+              row.add(field.getBoolV());
+              break;
+          }
+        }
+        if (jsonArray != null) {
+          jsonArray.add(row);
+        }
       }
 
       if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
@@ -353,7 +380,7 @@ public class SqlHandler extends Handler {
           break;
         case NonExist:
         case Constant:
-          type = TSDataType.TEXT;
+          break;
       }
       respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
@@ -383,9 +410,9 @@ public class SqlHandler extends Handler {
     return SchemaUtils.getSeriesTypeByPaths(path);
   }
 
-  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
+  private long generateQueryId(int fetchSize, int deduplicatedPathNum) {
     return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+        .assignQueryId(true, fetchSize, deduplicatedPathNum);
   }
 
   private boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
@@ -430,4 +457,12 @@ public class SqlHandler extends Handler {
     QueryResourceManager.getInstance().endQuery(queryId);
   }
 
+  private boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new QueryProcessException(
+          "Current system mode is read-only, does not support non-query operation");
+    }
+    return executor.processNonQuery(plan);
+  }
 }

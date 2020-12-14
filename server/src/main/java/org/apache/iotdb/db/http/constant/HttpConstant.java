@@ -67,6 +67,7 @@ public class HttpConstant {
   public static final String ATTRIBUTES = "attributes";
   public static final String NULL = "null";
   public static final String PATH = "path";
+  public static final String FETCH_SIZE = "fetchSize";
 
   public static final String DEVICE_ID = "deviceId";
   public static final String MEASUREMENTS = "measurements";

@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.http.router;
 
-import com.google.gson.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
-
 import java.io.IOException;
 import java.sql.SQLException;
-
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UnsupportedHttpMethodException;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.http.handler.GetTimeSeriesHandler;
 import org.apache.iotdb.db.http.handler.Handler;
 import org.apache.iotdb.db.http.handler.InsertHandler;
 import org.apache.iotdb.db.http.handler.QueryHandler;
+import org.apache.iotdb.db.http.handler.SqlHandler;
 import org.apache.iotdb.db.http.handler.StorageGroupsHandlers;
 import org.apache.iotdb.db.http.handler.TimeSeriesHandler;
 import org.apache.iotdb.db.http.handler.UsersHandler;
@@ -118,6 +121,10 @@ public class HttpRouter {
           throw new UnsupportedHttpMethodException(HttpConstant.ROUTING_GET_CHILD_PATHS + " only support GET");
         }
         return getChildPathsHandler.handle(decoder.parameters().get(HttpConstant.PATH).get(0));
+      case HttpConstant.ROUTING_SQL:
+        Map<String, List<String>> paras = decoder.parameters();
+        SqlHandler sqlHandler = new SqlHandler();
+        return sqlHandler.executeStatement(paras.get("sql").get(0), 100000, ZoneId.systemDefault());
       case "":
         JsonObject result = new JsonObject();
         result.addProperty(HttpConstant.RESULT, "Hello, IoTDB");
