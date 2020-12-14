@@ -81,7 +81,10 @@ public class UpgradeTask extends WrappedRunnable {
             Files.copy(modificationFile.toPath(),
                 FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()
                     + ModificationFile.FILE_SUFFIX).toPath());
+            upgradedResource.setModFile(new ModificationFile(upgradedResource.getTsFile().getName()
+                + ModificationFile.FILE_SUFFIX));
           }
+          upgradedResource.setHistoricalVersions(upgradeResource.getHistoricalVersions());
           upgradedResource.serialize();
           // delete tmp partition folder when it is empty
           if (upgradedFile.getParentFile().isDirectory()

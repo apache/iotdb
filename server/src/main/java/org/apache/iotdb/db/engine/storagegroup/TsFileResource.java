@@ -329,26 +329,24 @@ public class TsFileResource {
         for (int i = 0; i < versionSize; i++) {
           historicalVersions.add(ReadWriteIOUtils.readLong(inputStream));
         }
+        if (inputStream.available() >= Long.BYTES * 2) {
+          maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+          minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+        }
+        if (inputStream.available() > 0) {
+          String modFileName = null;
+          try {
+            modFileName = ReadWriteIOUtils.readString(inputStream);
+          } catch (IOException e) {
+            // ignore if the tail is corrupted
+          }
+          File modF = new File(file.getParentFile(), modFileName);
+          modFile = new ModificationFile(modF.getPath());
+        }
       } else {
         // use the version in file name as the historical version for files of old versions
         long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
-      }
-
-      if (inputStream.available() >= Long.BYTES * 2) {
-        maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-        minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      }
-
-      if (inputStream.available() > 0) {
-        String modFileName = null;
-        try {
-          modFileName = ReadWriteIOUtils.readString(inputStream);
-        } catch (IOException e) {
-          // ignore if the tail is corrupted
-        }
-        File modF = new File(file.getParentFile(), modFileName);
-        modFile = new ModificationFile(modF.getPath());
       }
     }
   }
