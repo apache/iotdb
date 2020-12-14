@@ -183,7 +183,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       PartialPath selectPath = suffixPaths.get(i);
       for (PartialPath fromPath : fromPaths) {
         PartialPath fullPath = fromPath.concatPath(selectPath);
-        if (selectPath.getTsAlias() != null) {
+        if (selectPath.isTsAliasExists()) {
           fullPath.setTsAlias(selectPath.getTsAlias());
         }
         allPaths.add(fullPath);
@@ -298,7 +298,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         Pair<List<PartialPath>, Integer> pair = removeWildcard(paths.get(i), limit, offset);
 
         List<PartialPath> actualPaths = pair.left;
-        if (paths.get(i).getTsAlias() != null) {
+        if (paths.get(i).isTsAliasExists()) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
           } else if (actualPaths.size() >= 2) {

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.executor;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -95,7 +95,7 @@ public interface IPlanExecutor {
    * execute batch insert plan
    *
    * @return result of each row
-   * @throws BatchInsertionException when some of the rows failed
+   * @throws BatchProcessException when some of the rows failed
    */
   void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;
 }

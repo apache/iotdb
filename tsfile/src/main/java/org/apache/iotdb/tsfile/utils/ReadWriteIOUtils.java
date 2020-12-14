@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,20 +106,6 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write if the object equals null. Eg, object equals null, then write true.
-   */
-  public static int writeIsNull(Object object, OutputStream outputStream) throws IOException {
-    return write(object == null, outputStream);
-  }
-
-  /**
-   * write if the object equals null. Eg, object equals null, then write true.
-   */
-  public static int writeIsNull(Object object, ByteBuffer buffer) {
-    return write(object == null, buffer);
-  }
-
-  /**
    * read a bool from byteBuffer.
    */
   public static boolean readIsNull(InputStream inputStream) throws IOException {
@@ -143,6 +130,12 @@ public class ReadWriteIOUtils {
     return length;
   }
 
+  public static void write(List<Map<String, String>> maps, DataOutputStream stream) throws IOException {
+    for (Map<String, String> map : maps) {
+      write(map, stream);
+    }
+  }
+
   public static int write(Map<String, String> map, ByteBuffer buffer) {
     int length = 0;
     byte[] bytes;
@@ -163,11 +156,17 @@ public class ReadWriteIOUtils {
     return length;
   }
 
+  public static void write(List<Map<String, String>> maps, ByteBuffer buffer) {
+    for (Map<String, String> map : maps) {
+      write(map, buffer);
+    }
+  }
+
   /**
    * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
    */
   public static int write(Boolean flag, OutputStream outputStream) throws IOException {
-    if (flag) {
+    if (Boolean.TRUE.equals(flag)) {
       outputStream.write(1);
     } else {
       outputStream.write(0);
@@ -180,7 +179,7 @@ public class ReadWriteIOUtils {
    */
   public static int write(Boolean flag, ByteBuffer buffer) {
     byte a;
-    if (flag) {
+    if (Boolean.TRUE.equals(flag)) {
       a = 1;
     } else {
       a = 0;
@@ -381,21 +380,10 @@ public class ReadWriteIOUtils {
     return len;
   }
 
-  /**
-   * write byteBuffer.array to outputStream without capacity.
-   */
-  public static int writeWithoutSize(ByteBuffer byteBuffer, OutputStream outputStream)
-      throws IOException {
-    byte[] bytes = byteBuffer.array();
-    outputStream.write(bytes);
-    return bytes.length;
-  }
-
-  public static int writeWithoutSize(ByteBuffer byteBuffer, int offset, int len,
+  public static void writeWithoutSize(ByteBuffer byteBuffer, int offset, int len,
       OutputStream outputStream) throws IOException {
     byte[] bytes = byteBuffer.array();
     outputStream.write(bytes, offset, len);
-    return len;
   }
 
   /**
@@ -647,7 +635,7 @@ public class ReadWriteIOUtils {
   public static byte[] readBytes(InputStream inputStream, int length) throws IOException {
     byte[] bytes = new byte[length];
     int offset = 0;
-    int len = 0;
+    int len;
     while (bytes.length - offset > 0
         && (len = inputStream.read(bytes, offset, bytes.length - offset)) != -1) {
       offset += len;
@@ -667,6 +655,14 @@ public class ReadWriteIOUtils {
       map.put(key, value);
     }
     return map;
+  }
+
+  public static List<Map<String, String>> readMaps(ByteBuffer buffer, int totalSize) {
+    List<Map<String, String>> results = new ArrayList<>(totalSize);
+    for (int i = 0; i < totalSize; i++) {
+      results.add(ReadWriteIOUtils.readMap(buffer));
+    }
+    return results;
   }
 
 
@@ -703,29 +699,6 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[byteLength];
     buffer.get(bytes);
     ByteBuffer byteBuffer = ByteBuffer.allocate(byteLength);
-    byteBuffer.put(bytes);
-    byteBuffer.flip();
-    return byteBuffer;
-  }
-
-  /**
-   * read bytes from an inputStream where the length is specified at the head of the inputStream.
-   * Make sure {@code inputStream} contains an integer numeric (the first 4 bytes) indicating
-   * the length of the following data.
-   *
-   * @param inputStream contains a length and a stream
-   * @return bytebuffer
-   * @throws IOException if the read length doesn't equal to the self description length.
-   */
-  public static ByteBuffer readByteBufferWithSelfDescriptionLength(InputStream inputStream)
-      throws IOException {
-    int length = readInt(inputStream);
-    byte[] bytes = new byte[length];
-    int readLen = inputStream.read(bytes);
-    if (readLen != length) {
-      throw new IOException(String.format(RETURN_ERROR, length, readLen));
-    }
-    ByteBuffer byteBuffer = ByteBuffer.allocate(length);
     byteBuffer.put(bytes);
     byteBuffer.flip();
     return byteBuffer;
@@ -778,39 +751,6 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * List&lt;Integer&gt;.
-   */
-  public static List<Integer> readIntegerList(InputStream inputStream) throws IOException {
-    int size = readInt(inputStream);
-    if (size <= 0) {
-      return null;
-    }
-
-    List<Integer> list = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      list.add(readInt(inputStream));
-    }
-
-    return list;
-  }
-
-  /**
-   * read integer list with self define length.
-   */
-  public static List<Integer> readIntegerList(ByteBuffer buffer) {
-    int size = readInt(buffer);
-    if (size <= 0) {
-      return null;
-    }
-
-    List<Integer> list = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      list.add(readInt(buffer));
-    }
-    return list;
-  }
-
-  /**
    * read string list with self define length.
    */
   public static List<String> readStringList(InputStream inputStream) throws IOException {
@@ -830,7 +770,7 @@ public class ReadWriteIOUtils {
   public static List<String> readStringList(ByteBuffer buffer) {
     int size = readInt(buffer);
     if (size <= 0) {
-      return null;
+      return Collections.emptyList();
     }
 
     List<String> list = new ArrayList<>();
@@ -922,7 +862,7 @@ public class ReadWriteIOUtils {
         outputStream.write(bytes);
       } else if (value instanceof Boolean) {
         outputStream.write(BOOLEAN.ordinal());
-        outputStream.write(((Boolean) value) ? 1 : 0);
+        outputStream.write(Boolean.TRUE.equals(value) ? 1 : 0);
       } else if (value == null) {
         outputStream.write(NULL.ordinal());
       } else {
@@ -967,7 +907,7 @@ public class ReadWriteIOUtils {
 
   public static ByteBuffer clone(ByteBuffer original) {
     ByteBuffer clone = ByteBuffer.allocate(original.remaining());
-    while(original.hasRemaining()) {
+    while (original.hasRemaining()) {
       clone.put(original.get());
     }
 
