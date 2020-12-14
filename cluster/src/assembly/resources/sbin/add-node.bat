@@ -57,10 +57,10 @@ popd
 set IOTDB_CONF=%IOTDB_HOME%\conf
 set IOTDB_LOGS=%IOTDB_HOME%\logs
 
-IF EXIST "%IOTDB_CONF%\cluster-env.bat" (
-    CALL "%IOTDB_CONF%\cluster-env.bat"
+IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+    CALL "%IOTDB_CONF%\iotdb-env.bat"
     ) ELSE (
-    echo "can't find %IOTDB_CONF%\cluster-env.bat"
+    echo "can't find %IOTDB_CONF%\iotdb-env.bat"
     )
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
