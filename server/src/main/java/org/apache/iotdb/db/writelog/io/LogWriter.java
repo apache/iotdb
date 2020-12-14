@@ -37,7 +37,7 @@ import java.util.zip.CRC32;
  * each log calculated using CRC32.
  */
 public class LogWriter implements ILogWriter {
-  private final static Logger logger = LoggerFactory.getLogger(LogWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   private File logFile;
   private FileOutputStream fileOutputStream;
