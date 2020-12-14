@@ -156,11 +156,6 @@
             <artifactId>powermock-api-mockito2</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.clearspring.analytics</groupId>
-            <artifactId>stream</artifactId>
-            <version>2.9.5</version>
-        </dependency>
         <!--        compile group: 'io.jsonwebtoken', name: 'jjwt', version: '0.9.1'-->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
