@@ -542,7 +542,7 @@ public class StorageEngine implements IService {
     }
 
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
-    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllPartition()) {
+    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
       if (processor == null) {
         continue;
       }
@@ -598,7 +598,7 @@ public class StorageEngine implements IService {
     }
 
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
-    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllPartition()) {
+    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
       if (processor != null) {
         logger
             .info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
@@ -646,7 +646,7 @@ public class StorageEngine implements IService {
 
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         for (StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath)
-            .getAllPartition()) {
+            .getAllVirutalStorageGroupProcessor()) {
           if(storageGroupProcessor != null){
             storageGroupProcessor.delete(newPath, startTime, endTime, planIndex);
           }
@@ -672,7 +672,7 @@ public class StorageEngine implements IService {
 
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
         for (StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath)
-            .getAllPartition()) {
+            .getAllVirutalStorageGroupProcessor()) {
           if(storageGroupProcessor != null){
             storageGroupProcessor.delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
           }
@@ -705,7 +705,7 @@ public class StorageEngine implements IService {
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
-      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllPartition()) {
+      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
         if (storageGroupProcessor != null) {
           totalUpgradeFileNum += storageGroupProcessor.countUpgradeFiles();
         }
@@ -725,7 +725,7 @@ public class StorageEngine implements IService {
           "Current system mode is read only, does not support file upgrade");
     }
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
-      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllPartition()) {
+      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
         if (storageGroupProcessor != null) {
           storageGroupProcessor.upgrade();
         }
@@ -744,7 +744,7 @@ public class StorageEngine implements IService {
     }
 
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
-      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllPartition()) {
+      for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
         if (storageGroupProcessor != null) {
           storageGroupProcessor.merge(fullMerge);
         }
@@ -766,7 +766,7 @@ public class StorageEngine implements IService {
     logger.info("Force to delete the data in storage group processor {}", storageGroupPath);
 
     for (StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath)
-        .getAllPartition()) {
+        .getAllVirutalStorageGroupProcessor()) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.syncDeleteDataFiles();
       }
@@ -791,7 +791,7 @@ public class StorageEngine implements IService {
       return;
     }
 
-    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroup).getAllPartition()){
+    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroup).getAllVirutalStorageGroupProcessor()){
       if(storageGroupProcessor != null){
         storageGroupProcessor.setDataTTL(dataTTL);
       }
@@ -805,7 +805,7 @@ public class StorageEngine implements IService {
 
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
-    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllPartition()) {
+    for (StorageGroupProcessor processor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()) {
       if (processor != null) {
         processor.deleteFolder(systemDir + File.pathSeparator + storageGroupPath);
       }
@@ -865,7 +865,7 @@ public class StorageEngine implements IService {
   public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
     for (Entry<PartialPath, VirtualStorageGroupManager> entry : processorMap.entrySet()) {
-      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllPartition()){
+      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllVirutalStorageGroupProcessor()){
         if(storageGroupProcessor != null){
           List<TsFileResource> allResources = storageGroupProcessor.getSequenceFileTreeSet();
           allResources.addAll(storageGroupProcessor.getUnSequenceFileList());
@@ -895,7 +895,7 @@ public class StorageEngine implements IService {
       return false;
     }
 
-    for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllPartition()){
+    for(StorageGroupProcessor storageGroupProcessor : virtualStorageGroupManager.getAllVirutalStorageGroupProcessor()){
       if(storageGroupProcessor != null && storageGroupProcessor.isFileAlreadyExist(tsFileResource, partitionNum)){
         return true;
       }
@@ -913,7 +913,7 @@ public class StorageEngine implements IService {
   public void setPartitionVersionToMax(PartialPath storageGroup, long partitionId,
       long newMaxVersion)
       throws StorageEngineException {
-    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroup).getAllPartition()){
+    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroup).getAllVirutalStorageGroupProcessor()){
       if(storageGroupProcessor != null){
         storageGroupProcessor.setPartitionFileVersionToMax(partitionId, newMaxVersion);
       }
@@ -922,7 +922,7 @@ public class StorageEngine implements IService {
 
   public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter)
       throws StorageEngineException {
-    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath).getAllPartition()){
+    for(StorageGroupProcessor storageGroupProcessor : processorMap.get(storageGroupPath).getAllVirutalStorageGroupProcessor()){
       if(storageGroupProcessor != null){
         storageGroupProcessor.removePartitions(filter);
       }
@@ -942,7 +942,7 @@ public class StorageEngine implements IService {
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
     Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
     for (Entry<PartialPath, VirtualStorageGroupManager> entry : processorMap.entrySet()) {
-      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllPartition()) {
+      for(StorageGroupProcessor storageGroupProcessor : entry.getValue().getAllVirutalStorageGroupProcessor()) {
         if (storageGroupProcessor != null) {
           List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
           for (TsFileProcessor tsFileProcessor : storageGroupProcessor.getWorkSequenceTsFileProcessors()) {
