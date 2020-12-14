@@ -393,7 +393,7 @@ It costs 0.006s
 The SQL statement is:
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 and temperature > 20 group by([2017-11-01T00:00:00, 2017-11-07T23:00:00), 3h, 1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 where group by([2017-11-01T00:00:00, 2017-11-07T23:00:00), 3h, 1d);
 ```
 which means:
 
@@ -405,13 +405,13 @@ The second parameter of the GROUP BY statement above is the time interval for di
 
 The third parameter of the GROUP BY statement above is the sliding step for each time interval moving.
 
-Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T01:00:00, 2017-11-07T23:00:00] and satisfying root.ln.wf01.wt01.temperature > 20), and map these data to the previously segmented time axis (in this case there are mapped data in every 3-hour period for each day from 2017-11-01T00:00:00 to 2017-11-07T23:00:00).
+Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T00:00:00, 2017-11-07T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 3-hour period for each day from 2017-11-01T00:00:00 to 2017-11-07T23:00:00).
 
 ```
 +-----------------------------+-------------------------------+----------------------------------------+
 |                         Time|count(root.ln.wf01.wt01.status)|max_value(root.ln.wf01.wt01.temperature)|
 +-----------------------------+-------------------------------+----------------------------------------+
-|2017-11-01T00:00:00.000+08:00|                            119|                                   25.98|
+|2017-11-01T00:00:00.000+08:00|                            180|                                   25.98|
 |2017-11-02T00:00:00.000+08:00|                            179|                                   25.98|
 |2017-11-03T00:00:00.000+08:00|                            180|                                   25.96|
 |2017-11-04T00:00:00.000+08:00|                            180|                                   25.96|
@@ -428,7 +428,7 @@ It costs 0.018s
 The SQL statement is:
 
 ```
-select count(status) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
+select count(status) from root.ln.wf01.wt01 group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
 which means:
@@ -439,11 +439,11 @@ The first parameter of the GROUP BY statement above is the display window parame
 
 The start time is 2017-11-01T00:00:00. The sliding step will increment monthly based on the start date, and the 1st day of the month will be used as the time interval's start time.
 
-The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1mo) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-01T00:00:00, 2019-12-01T00:00:00), [2018-02-01T00:00:00, 2018-03-01T00:00:00), [2018-05-03T00:00:00, 2018-06-01T00:00:00)), etc.
+The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1mo) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-01T00:00:00, 2017-12-01T00:00:00), [2018-02-01T00:00:00, 2018-03-01T00:00:00), [2018-05-03T00:00:00, 2018-06-01T00:00:00)), etc.
 
 The third parameter of the GROUP BY statement above is the sliding step for each time interval moving.
 
-Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T01:00:00, 2019-11-07T23:00:00], and map these data to the previously segmented time axis (in this case there are mapped data of the first month in every two month period from 2017-11-01T00:00:00 to 2019-11-07T23:00:00).
+Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T00:00:00, 2019-11-07T23:00:00], and map these data to the previously segmented time axis (in this case there are mapped data of the first month in every two month period from 2017-11-01T00:00:00 to 2019-11-07T23:00:00).
 
 The SQL execution result is:
 
@@ -470,7 +470,7 @@ The SQL execution result is:
 对应的SQL语句是:
 
 ```
-select count(status) from root.ln.wf01.wt01 where time > 2017-10-31T01:00:00 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
+select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
 which means:
@@ -483,7 +483,7 @@ Different from the previous example, the start time is set to 2017-10-31T00:00:0
 
 The start time is 2017-10-31T00:00:00. The sliding step will increment monthly based on the start time, and the 1st day of the month will be used as the time interval's start time.
 
-The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1mo) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-10-31T00:00:00, 2019-11-31T00:00:00), [2018-02-31T00:00:00, 2018-03-31T00:00:00), [2018-05-31T00:00:00, 2018-06-31T00:00:00), etc.
+The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1mo) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-10-31T00:00:00, 2017-11-31T00:00:00), [2018-02-31T00:00:00, 2018-03-31T00:00:00), [2018-05-31T00:00:00, 2018-06-31T00:00:00), etc.
 
 The third parameter of the GROUP BY statement above is the sliding step for each time interval moving.
 

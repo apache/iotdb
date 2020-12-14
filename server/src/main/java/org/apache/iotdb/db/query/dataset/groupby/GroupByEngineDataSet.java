@@ -88,7 +88,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       long intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
       if (isSlidingStepByMonth) {
         intervalTimes = (int) intervalNum - 1;
-        curStartTime = startTime + calcIntervalByMonth(intervalTimes * slidingStep / MS_TO_MONTH, startTime);
+        curStartTime = calcIntervalByMonth(intervalTimes * slidingStep / MS_TO_MONTH);
       } else {
         curStartTime = slidingStep * (intervalNum - 1) + startTime;
       }
@@ -101,7 +101,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     if (isIntervalByMonth) {
       //calculate interval length by natural month based on curStartTime
       //ie. startTIme = 1/31, interval = 1mo, curEndTime will be set to 2/29
-      curEndTime = Math.min(startTime + calcIntervalByMonth(interval + slidingStep * intervalTimes, startTime), endTime);
+      curEndTime = Math.min(calcIntervalByMonth(interval + slidingStep * intervalTimes), endTime);
     } else {
       curEndTime = Math.min(curStartTime + interval, endTime);
     }
@@ -117,26 +117,23 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     if (hasCachedTimeInterval) {
       return true;
     }
-
+    
+    // for group by natural months addition
     intervalTimes += ascending ? 1 : -1;
-    //group by natural month, given startTime recalculate interval and sliding step
-    if (isIntervalByMonth) {
-      curInterval = calcIntervalByMonth(intervalTimes * slidingStep + interval, startTime);
-    }
-    if (isSlidingStepByMonth) {
-      curSlidingStep = calcIntervalByMonth(slidingStep * intervalTimes, curStartTime);
-    }
 
-    // check if the next interval out of range
     if (ascending) {
-      curStartTime += curSlidingStep;
+      if (isSlidingStepByMonth) {
+        curStartTime = calcIntervalByMonth(slidingStep * intervalTimes);
+      } else {
+        curStartTime += curSlidingStep;
+      }
       //This is an open interval , [0-100)
       if (curStartTime >= endTime) {
         return false;
       }
     } else {
       if (isSlidingStepByMonth) {
-        curStartTime = startTime + calcIntervalByMonth(slidingStep * intervalTimes, startTime);
+        curStartTime = calcIntervalByMonth(slidingStep * intervalTimes);
       } else {
         curStartTime -= curSlidingStep;
       }
@@ -147,18 +144,23 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
 
     hasCachedTimeInterval = true;
     if (isIntervalByMonth) {
-      curEndTime = Math.min(startTime + curInterval, endTime);
+      curEndTime = Math.min(calcIntervalByMonth(intervalTimes * slidingStep + interval), endTime);
     } else {
       curEndTime = Math.min(curStartTime + curInterval, endTime);
     }
     return true;
   }
 
-  public long calcIntervalByMonth(long numMonths, long curStartTime) {
+  /**
+   * add natural months based on the first starttime to avoid edge cases, ie 2/28
+   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
+   * @return curStartTime
+   */
+  public long calcIntervalByMonth(long numMonths) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeInMillis(startTime);
     calendar.add(Calendar.MONTH, (int) (numMonths));
-    return calendar.getTimeInMillis() - curStartTime;
+    return calendar.getTimeInMillis();
   }
 
   @Override
