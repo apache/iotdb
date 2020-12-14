@@ -24,8 +24,6 @@ import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
@@ -41,7 +39,7 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.strategy.ParseDriver;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
@@ -56,10 +54,10 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
  */
 public class Planner {
 
-  protected ParseDriver parseDriver;
+  protected LogicalGenerator logicalGenerator;
 
   public Planner() {
-    this.parseDriver = new ParseDriver();
+    this.logicalGenerator = new LogicalGenerator();
   }
 
   @TestOnly
@@ -73,7 +71,7 @@ public class Planner {
    */
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
-    Operator operator = parseDriver.parse(sqlStr, zoneId);
+    Operator operator = logicalGenerator.generate(sqlStr, zoneId);
     int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
         .getMaxDeduplicatedPathNum(fetchSize);
     if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {

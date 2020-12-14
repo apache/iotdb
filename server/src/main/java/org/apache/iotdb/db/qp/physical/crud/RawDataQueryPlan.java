@@ -99,4 +99,7 @@ public class RawDataQueryPlan extends QueryPlan {
         .add(path.getMeasurement());
   }
 
+  public Map<String, Set<String>> getDeviceToMeasurements() {
+    return deviceToMeasurements;
+  }
 }

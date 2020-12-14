@@ -33,7 +33,6 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryIndexOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -86,6 +85,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     checkAggrOfSelectOperator(select);
+    if (((QueryOperator) operator).isGroupByLevel()) {
+      checkAggrOfGroupByLevel(select);
+    }
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
@@ -95,7 +97,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
         concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum,
-            !(operator instanceof QueryIndexOperator));
+            ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -150,6 +152,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
+  private void checkAggrOfGroupByLevel(SelectOperator selectOperator) throws LogicalOptimizeException {
+    if (selectOperator.getAggregations().size() != 1) {
+      throw new LogicalOptimizeException(
+          "Aggregation function is restricted to one if group by level clause exists");
+    }
+  }
+
   private void extendListSafely(List<String> source, int index, List<String> target) {
     if (source != null && !source.isEmpty()) {
       target.add(source.get(index));
@@ -174,7 +183,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       PartialPath selectPath = suffixPaths.get(i);
       for (PartialPath fromPath : fromPaths) {
         PartialPath fullPath = fromPath.concatPath(selectPath);
-        if (selectPath.getTsAlias() != null) {
+        if (selectPath.isTsAliasExists()) {
           fullPath.setTsAlias(selectPath.getTsAlias());
         }
         allPaths.add(fullPath);
@@ -289,7 +298,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         Pair<List<PartialPath>, Integer> pair = removeWildcard(paths.get(i), limit, offset);
 
         List<PartialPath> actualPaths = pair.left;
-        if (paths.get(i).getTsAlias() != null) {
+        if (paths.get(i).isTsAliasExists()) {
           if (actualPaths.size() == 1) {
             actualPaths.get(0).setTsAlias(paths.get(i).getTsAlias());
           } else if (actualPaths.size() >= 2) {

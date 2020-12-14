@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -54,13 +53,14 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -68,10 +68,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
@@ -185,9 +188,9 @@ public class StorageEngine implements IService {
      * recover all storage group processors.
      */
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    List<Future> futures = new ArrayList<>();
+    List<Future<Void>> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
+      futures.add(recoveryThreadPool.submit(() -> {
         try {
           StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
               storageGroup.getFullPath(), fileFlushPolicy);
@@ -204,7 +207,7 @@ public class StorageEngine implements IService {
         return null;
       }));
     }
-    for (Future future : futures) {
+    for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (ExecutionException e) {
@@ -323,6 +326,7 @@ public class StorageEngine implements IService {
       storageGroupPath = storageGroupMNode.getPartialPath();
       StorageGroupProcessor processor = processorMap.get(storageGroupPath);
       if (processor == null) {
+        waitAllSgReady(storageGroupPath);
         // if finish recover
         if (isAllSgReady.get()) {
           synchronized (storageGroupMNode) {
@@ -338,11 +342,6 @@ public class StorageEngine implements IService {
               processorMap.put(storageGroupPath, processor);
             }
           }
-        } else {
-          // not finished recover, refuse the request
-          throw new StorageEngineException(
-              "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
-              TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
         }
       }
       return processor;
@@ -351,6 +350,31 @@ public class StorageEngine implements IService {
     }
   }
 
+  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
+    if (isAllSgReady.get()) {
+      return;
+    }
+
+    long waitStart = System.currentTimeMillis();
+    long waited = 0L;
+    final long MAX_WAIT = 5000L;
+    while (!isAllSgReady.get() && waited < MAX_WAIT) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineException(e);
+      }
+      waited = System.currentTimeMillis() - waitStart;
+    }
+
+    if (!isAllSgReady.get()) {
+      // not finished recover, refuse the request
+      throw new StorageEngineException(
+          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
+          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+    }
+  }
 
   /**
    * This function is just for unit test.
@@ -372,6 +396,9 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
+      if (config.isEnableStatMonitor()) {
+        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
+      }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -381,7 +408,7 @@ public class StorageEngine implements IService {
    * insert a InsertTabletPlan to a storage group
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchInsertionException {
+      throws StorageEngineException, BatchProcessException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
@@ -392,6 +419,19 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
+    if (config.isEnableStatMonitor()) {
+      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
+    }
+  }
+
+  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+    StatMonitor monitor = StatMonitor.getInstance();
+    int successPointsNum =
+        insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    // update to storage group statistics
+    processor.updateMonitorSeriesValue(successPointsNum);
+    // update to global statistics
+    monitor.updateStatGlobalValue(successPointsNum);
   }
 
   /**
@@ -464,30 +504,30 @@ public class StorageEngine implements IService {
       boolean isSync)
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
-    if (processor != null) {
-      logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-          storageGroupPath, isSeq, partitionId);
-      processor.writeLock();
-      // to avoid concurrent modification problem, we need a new array list
-      List<TsFileProcessor> processors = isSeq ?
-          new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
-          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
-      try {
-        for (TsFileProcessor tsfileProcessor : processors) {
-          if (tsfileProcessor.getTimeRangeId() == partitionId) {
-            if (isSync) {
-              processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
-            } else {
-              processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
-            }
-            break;
-          }
-        }
-      } finally {
-        processor.writeUnlock();
-      }
-    } else {
+    if (processor == null) {
       throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+    }
+
+    logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+        storageGroupPath, isSeq, partitionId);
+    processor.writeLock();
+    // to avoid concurrent modification problem, we need a new array list
+    List<TsFileProcessor> processors = isSeq ?
+        new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
+        new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
+    try {
+      for (TsFileProcessor tsfileProcessor : processors) {
+        if (tsfileProcessor.getTimeRangeId() == partitionId) {
+          if (isSync) {
+            processor.syncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+          } else {
+            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+          }
+          break;
+        }
+      }
+    } finally {
+      processor.writeUnlock();
     }
   }
 
@@ -820,5 +860,23 @@ public class StorageEngine implements IService {
    */
   public void mergeUnLock(List<StorageGroupProcessor> list) {
     list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
+  }
+
+  /**
+   * block insertion if the insertion is rejected by memory control
+   */
+  public static void blockInsertionIfReject() throws WriteProcessRejectException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+              "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 }

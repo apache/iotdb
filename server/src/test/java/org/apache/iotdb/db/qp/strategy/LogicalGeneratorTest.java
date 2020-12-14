@@ -28,17 +28,19 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class LogicalGeneratorTest {
 
-  LogicalGenerator generator;
+  IoTDBSqlVisitor visitor;
 
   @Before
   public void setUp() throws Exception {
-    generator = new LogicalGenerator(ZonedDateTime.now().getOffset());
+    visitor = new IoTDBSqlVisitor();
+    visitor.setZoneId(ZonedDateTime.now().getOffset());
   }
 
   @After
@@ -46,8 +48,8 @@ public class LogicalGeneratorTest {
   }
 
   @Test
-  public void testParseTimeFormatNow() throws LogicalOperatorException {
-    long now = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+  public void testParseTimeFormatNow() {
+    long now = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
     for (int i = 0; i <= 12; i++) {
       ZoneOffset offset1, offset2;
       if (i < 10) {
@@ -68,18 +70,18 @@ public class LogicalGeneratorTest {
   }
 
   @Test
-  public void testParseTimeFormatNowPrecision() throws LogicalOperatorException {
+  public void testParseTimeFormatNowPrecision() {
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ms");
-    long now_ms = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_ms = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
     String ms_str = String.valueOf(now_ms);
 
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("us");
-    long now_us = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_us = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
     String us_str = String.valueOf(now_us);
 
     IoTDBDescriptor.getInstance().getConfig().setTimestampPrecision("ns");
-    long now_ns = generator.parseTimeFormat(SQLConstant.NOW_FUNC);
+    long now_ns = visitor.parseTimeFormat(SQLConstant.NOW_FUNC);
     String ns_str = String.valueOf(now_ns);
 
     assertEquals(ms_str.length() + 3, (us_str).length());
@@ -88,12 +90,12 @@ public class LogicalGeneratorTest {
   }
 
   @Test(expected = SQLParserException.class)
-  public void testParseTimeFormatFail1() throws LogicalOperatorException {
-    generator.parseTimeFormat(null);
+  public void testParseTimeFormatFail1() {
+    visitor.parseTimeFormat(null);
   }
 
   @Test(expected = SQLParserException.class)
-  public void testParseTimeFormatFail2() throws LogicalOperatorException {
-    generator.parseTimeFormat("");
+  public void testParseTimeFormatFail2() {
+    visitor.parseTimeFormat("");
   }
 }

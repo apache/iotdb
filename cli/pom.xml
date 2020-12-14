@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-cli</artifactId>
@@ -37,7 +37,7 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
+            <artifactId>iotdb-session</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -46,6 +46,11 @@
             <version>${project.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -67,7 +72,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
-            <version>0.11.0-SNAPSHOT</version>
+            <version>0.12.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

@@ -151,29 +151,10 @@ public class IoTDBDescriptor {
       conf.setEnableStatMonitor(Boolean
           .parseBoolean(properties.getProperty("enable_stat_monitor",
               Boolean.toString(conf.isEnableStatMonitor()))));
-      conf.setBackLoopPeriodSec(Integer
-          .parseInt(properties.getProperty("back_loop_period_in_second",
-              Integer.toString(conf.getBackLoopPeriodSec()))));
-      int statMonitorDetectFreqSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_detect_freq_in_second",
-              Integer.toString(conf.getStatMonitorDetectFreqSec())));
-      int statMonitorRetainIntervalSec = Integer.parseInt(
-          properties.getProperty("stat_monitor_retain_interval_in_second",
-              Integer.toString(conf.getStatMonitorRetainIntervalSec())));
-      // the conf value must > default value, or may cause system unstable
-      if (conf.getStatMonitorDetectFreqSec() < statMonitorDetectFreqSec) {
-        conf.setStatMonitorDetectFreqSec(statMonitorDetectFreqSec);
-      } else {
-        logger.info("The stat_monitor_detect_freq_sec value is smaller than default,"
-            + " use default value");
-      }
 
-      if (conf.getStatMonitorRetainIntervalSec() < statMonitorRetainIntervalSec) {
-        conf.setStatMonitorRetainIntervalSec(statMonitorRetainIntervalSec);
-      } else {
-        logger.info("The stat_monitor_retain_interval_sec value is smaller than default,"
-            + " use default value");
-      }
+      conf.setEnableMonitorSeriesWrite(Boolean
+          .parseBoolean(properties.getProperty("enable_monitor_series_write",
+              Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setEnableMetricService(Boolean.parseBoolean(properties
           .getProperty("enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
@@ -196,6 +177,10 @@ public class IoTDBDescriptor {
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
               Boolean.toString(conf.isRpcThriftCompressionEnable()))));
+
+      conf.setRpcAdvancedCompressionEnable(
+          Boolean.parseBoolean(properties.getProperty("rpc_advanced_compression_enable",
+              Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
@@ -288,9 +273,9 @@ public class IoTDBDescriptor {
           .getProperty("avg_series_point_number_threshold",
               Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
-      conf.setWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
-          .getProperty("waiting_time_when_insert_blocked",
-              Integer.toString(conf.getWaitingTimeWhenInsertBlocked()))));
+      conf.setCheckPeriodWhenInsertBlocked(Integer.parseInt(properties
+          .getProperty("check_period_when_insert_blocked",
+              Integer.toString(conf.getCheckPeriodWhenInsertBlocked()))));
 
       conf.setMaxWaitingTimeWhenInsertBlocked(Integer.parseInt(properties
           .getProperty("max_waiting_time_when_insert_blocked",
@@ -527,6 +512,10 @@ public class IoTDBDescriptor {
 
       conf.setThriftMaxFrameSize(Integer.parseInt(properties
           .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+      if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
+        conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
+      }
 
       conf.setThriftInitBufferSize(Integer.parseInt(properties
           .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));

@@ -38,11 +38,20 @@ public abstract class AbstractScript {
       if (line == null) {
         break;
       } else {
+        // remove thing after "connection refused", only for test
+        if(line.contains("Connection refused")) {
+          line = line.substring(0, line.indexOf("Connection refused") + "Connection refused".length());
+        }
         outputList.add(line);
       }
     }
     r.close();
     p.destroy();
+
+    System.out.println("Process output:");
+    for (String s : outputList) {
+      System.out.println(s);
+    }
 
     for (int i = 0; i < output.length; i++) {
       assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
