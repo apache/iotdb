@@ -61,13 +61,13 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
   @Override
   void putLog(PhysicalPlan plan) {
-    logBuffer.mark();
+    logBufferWorking.mark();
     Pair<PhysicalPlan, Short> similarPlanIndex = findSimilarPlan(plan);
     try {
       serialize(plan, similarPlanIndex);
     } catch (BufferOverflowException e) {
       logger.info("WAL BufferOverflow !");
-      logBuffer.reset();
+      logBufferWorking.reset();
       sync();
       serialize(plan, similarPlanIndex);
     }
@@ -77,13 +77,13 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
 
   @Override
   public void notifyStartFlush() {
-    lock.writeLock().lock();
+    lock.lock();
     try {
       close();
       nextFileWriter();
       planWindow.clear();
     } finally {
-      lock.writeLock().unlock();
+      lock.unlock();
     }
   }
 
@@ -96,8 +96,8 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   private void serializeNonDifferentially(PhysicalPlan plan) {
-    logBuffer.putShort((short) -1);
-    plan.serialize(logBuffer);
+    logBufferWorking.putShort((short) -1);
+    plan.serialize(logBufferWorking);
   }
 
   private void serializeDifferentially(PhysicalPlan plan,
@@ -111,8 +111,8 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   private void serializeDifferentially(InsertPlan plan, InsertPlan base, short index) {
-    logBuffer.putShort(index);
-    plan.serialize(logBuffer, base);
+    logBufferWorking.putShort(index);
+    plan.serialize(logBufferWorking, base);
   }
 
   private Pair<PhysicalPlan, Short> findSimilarPlan(PhysicalPlan plan) {
