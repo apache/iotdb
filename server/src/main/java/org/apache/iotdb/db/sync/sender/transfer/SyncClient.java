@@ -68,14 +68,15 @@ import org.apache.iotdb.db.sync.sender.recover.ISyncSenderLogger;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -273,8 +274,15 @@ public class SyncClient implements ISyncClient {
 
   @Override
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
-    transport = new TFastFramedTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
-    TProtocol protocol = new TBinaryProtocol(transport);
+    transport = RpcTransportFactory.INSTANCE
+        .getTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
+    TProtocol protocol = null;
+    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      protocol = new TCompactProtocol(transport);
+    } else {
+      protocol = new TBinaryProtocol(transport);
+    }
+
     serviceClient = new SyncService.Client(protocol);
     try {
       if (!transport.isOpen()) {
@@ -359,7 +367,7 @@ public class SyncClient implements ISyncClient {
   private boolean tryToSyncSchema() {
     int schemaPos = readSyncSchemaPos(getSchemaPosFile());
 
-    // start to sync file data and get md5 of this file.
+    // start to sync file data and get digest of this file.
     try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
       schemaFileLinePos = 0;
@@ -398,8 +406,8 @@ public class SyncClient implements ISyncClient {
         }
       }
 
-      // check md5
-      return checkMD5ForSchema(new BigInteger(1, md.digest()).toString(16));
+      // check digest
+      return checkDigestForSchema(new BigInteger(1, md.digest()).toString(16));
     } catch (NoSuchAlgorithmException | IOException | TException e) {
       logger.error("Can not finish transfer schema to receiver", e);
       return false;
@@ -407,16 +415,16 @@ public class SyncClient implements ISyncClient {
   }
 
   /**
-   * Check MD5 of schema to make sure that the receiver receives the schema correctly
+   * Check digest of schema to make sure that the receiver receives the schema correctly
    */
-  private boolean checkMD5ForSchema(String md5OfSender) throws TException {
-    SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
-    if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
+  private boolean checkDigestForSchema(String digestOfSender) throws TException {
+    SyncStatus status = serviceClient.checkDataDigest(digestOfSender);
+    if (status.code == SUCCESS_CODE && digestOfSender.equals(status.msg)) {
       logger.info("Receiver has received schema successfully.");
       return true;
     } else {
       logger
-          .error("MD5 check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
+          .error("Digest check of schema file {} failed, retry", getSchemaLogFile().getAbsoluteFile());
       return false;
     }
   }
@@ -621,13 +629,13 @@ public class SyncClient implements ISyncClient {
         }
 
         // the file is sent successfully
-        String md5OfSender = (new BigInteger(1, md.digest())).toString(16);
-        SyncStatus status = serviceClient.checkDataMD5(md5OfSender);
-        if (status.code == SUCCESS_CODE && md5OfSender.equals(status.msg)) {
+        String digestOfSender = (new BigInteger(1, md.digest())).toString(16);
+        SyncStatus status = serviceClient.checkDataDigest(digestOfSender);
+        if (status.code == SUCCESS_CODE && digestOfSender.equals(status.msg)) {
           logger.info("Receiver has received {} successfully.", snapshotFile.getAbsoluteFile());
           break;
         } else {
-          logger.error("MD5 check of tsfile {} failed, retry", snapshotFile.getAbsoluteFile());
+          logger.error("Digest check of tsfile {} failed, retry", snapshotFile.getAbsoluteFile());
         }
       }
     } catch (IOException | TException | NoSuchAlgorithmException e) {

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,8 +33,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -95,8 +97,11 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
-          e);
+      if (!(e.getCause() instanceof ClosedByInterruptException) &&
+          !(e.getCause() instanceof ClosedChannelException)) {
+        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
+            e);
+      }
     }
   }
 
@@ -111,9 +116,12 @@ public class SchemaUtils {
     TSDataType dataType = schema.getType();
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
-    IoTDB.metaManager.cacheMeta(path,
-        new MeasurementMeta(new MeasurementSchema(path.getMeasurement(),
-        dataType, encoding, compressionType)));
+    MeasurementSchema measurementSchema = new MeasurementSchema(path.getMeasurement(),
+        dataType, encoding, compressionType);
+
+    MeasurementMNode measurementMNode = new MeasurementMNode(null, path.getMeasurement(),
+        measurementSchema, null);
+    IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
   public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)

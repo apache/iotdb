@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class InsertTabletPlan extends InsertPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
@@ -57,8 +58,8 @@ public class InsertTabletPlan extends InsertPlan {
   // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission without data loss in cluster version
   boolean isExecuting = false;
   // cached values
-  private Long maxTime = null;
-  private Long minTime = null;
+  private Long maxTime = Long.MIN_VALUE;
+  private Long minTime = Long.MAX_VALUE;
   private List<PartialPath> paths;
   private int start;
   private int end;
@@ -163,10 +164,11 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(DataOutputStream stream) throws IOException {
-    for (TSDataType dataType : dataTypes) {
-      if (dataType == null) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      if (measurements[i] == null) {
         continue;
       }
+      TSDataType dataType = dataTypes[i];
       stream.writeShort(dataType.serialize());
     }
   }
@@ -228,8 +230,9 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   private void writeDataTypes(ByteBuffer buffer) {
-    for (TSDataType dataType : dataTypes) {
-      if (dataType != null) {
+    for (int i = 0, dataTypesLength = dataTypes.length; i < dataTypesLength; i++) {
+      TSDataType dataType = dataTypes[i];
+      if (measurements[i] != null) {
         dataType.serializeTo(buffer);
       }
     }
@@ -469,6 +472,7 @@ public class InsertTabletPlan extends InsertPlan {
     rowCount = rows;
     this.times = new long[rows];
     deserializeTimes(buffer, rows);
+    updateTimesCache();
 
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
     this.index = buffer.getLong();
@@ -493,30 +497,13 @@ public class InsertTabletPlan extends InsertPlan {
     columns[index] = column;
   }
 
+  @Override
   public long getMinTime() {
-    if (minTime != null) {
-      return minTime;
-    }
-    minTime = Long.MAX_VALUE;
-    for (Long time : times) {
-      if (time < minTime) {
-        minTime = time;
-      }
-    }
     return minTime;
   }
 
   public long getMaxTime() {
-    if (maxTime != null) {
-      return maxTime;
-    }
-    long tmpMaxTime = Long.MIN_VALUE;
-    for (Long time : times) {
-      if (time > tmpMaxTime) {
-        tmpMaxTime = time;
-      }
-    }
-    return tmpMaxTime;
+    return maxTime;
   }
 
   public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
@@ -562,6 +549,18 @@ public class InsertTabletPlan extends InsertPlan {
 
   public void setTimes(long[] times) {
     this.times = times;
+    updateTimesCache();
+  }
+
+  private void updateTimesCache() {
+    for (Long time : times) {
+      if (time > maxTime) {
+        maxTime = time;
+      }
+      if (time < minTime) {
+        minTime = time;
+      }
+    }
   }
 
   public int getRowCount() {
@@ -631,6 +630,21 @@ public class InsertTabletPlan extends InsertPlan {
             range);
     result = 31 * result + Arrays.hashCode(times);
     return result;
+  }
+
+  @Override
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      columns[index] = failedColumns.get(i);
+    }
+    super.recoverFromFailure();
+
+    failedColumns = null;
   }
 
   @Override

@@ -91,6 +91,9 @@ public class TsFileIOWriter {
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
+  private long minPlanIndex;
+  private long maxPlanIndex;
+
   /**
    * empty construct function.
    */
@@ -157,7 +160,7 @@ public class TsFileIOWriter {
     }
     long dataSize = out.getPosition() - currentChunkGroupStartOffset;
     ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupDeviceId, dataSize,
-        chunkMetadataList.size());
+        chunkMetadataList.size(), minPlanIndex, maxPlanIndex);
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     chunkGroupMetadataList
         .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
@@ -448,5 +451,21 @@ public class TsFileIOWriter {
    */
   public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
     return deviceTimeseriesMetadataMap;
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public void setMinPlanIndex(long minPlanIndex) {
+    this.minPlanIndex = minPlanIndex;
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  public void setMaxPlanIndex(long maxPlanIndex) {
+    this.maxPlanIndex = maxPlanIndex;
   }
 }

@@ -16,13 +16,11 @@
 # under the License.
 #
 
-import sys
 # Uncomment the following line to use apache-iotdb module installed by pip3
-#import iotdb
-sys.path.append("./utils")
-from IoTDBConstants import *
-from Tablet import Tablet
-from Session import Session
+
+from iotdb.Session import Session
+from iotdb.utils.Tablet import Tablet
+from iotdb.utils.IoTDBConstants import *
 
 # creating session connection.
 ip = "127.0.0.1"

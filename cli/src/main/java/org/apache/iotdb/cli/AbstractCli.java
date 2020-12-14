@@ -26,11 +26,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -44,9 +40,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
-import org.apache.thrift.TException;
 
 public abstract class AbstractCli {
 
@@ -89,21 +85,17 @@ public abstract class AbstractCli {
   private static final String SHOW_METADATA_COMMAND = "show timeseries";
   static final int MAX_HELP_CONSOLE_WIDTH = 88;
   static final String TIMESTAMP_STR = "Time";
-  static final int ISO_DATETIME_LEN = 35;
   private static final String IMPORT_CMD = "import";
-  private static final String DEFAULT_TIME_FORMAT = "default";
-  private static String timeFormat = DEFAULT_TIME_FORMAT;
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
-  static int maxTimeLength = ISO_DATETIME_LEN;
-  static int maxValueLength = 15;
-  static String TIMESTAMP_PRECISION = "ms";
+  static String timestampPrecision = "ms";
+  static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+
   private static int lineCount = 0;
   private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
   private static boolean isReachEnd = false;
 
-  static String formatTime = "%" + maxTimeLength + "s|";
   static String host = "127.0.0.1";
   static String port = "6667";
   static String username;
@@ -131,9 +123,6 @@ public abstract class AbstractCli {
   }
 
 
-  private static String getTimestampPrecision() {
-    return TIMESTAMP_PRECISION;
-  }
 
   private static void printCount(int cnt) {
     if (cnt == 0) {
@@ -189,67 +178,6 @@ public abstract class AbstractCli {
     return options;
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
-      long timestamp, ZoneId zoneid, String timestampPrecision) {
-    if (timestampPrecision.equals("ms")) {
-      long integerofDate = timestamp / 1000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 3) {
-        for (int i = 0; i < 3 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    } else if (timestampPrecision.equals("us")) {
-      long integerofDate = timestamp / 1000_000;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 6) {
-        for (int i = 0; i < 6 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    } else {
-      long integerofDate = timestamp / 1000_000_000L;
-      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
-      ZonedDateTime dateTime = ZonedDateTime
-          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
-      String datetime = dateTime.format(formatter);
-      int length = digits.length();
-      if (length != 9) {
-        for (int i = 0; i < 9 - length; i++) {
-          digits.insert(0, "0");
-        }
-      }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    }
-  }
-
-  private static String formatDatetime(long timestamp, ZoneId zoneId) {
-    ZonedDateTime dateTime;
-    switch (timeFormat) {
-      case "long":
-      case "number":
-        return Long.toString(timestamp);
-      case DEFAULT_TIME_FORMAT:
-      case "iso8601":
-        return parseLongToDateWithPrecision(
-            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, getTimestampPrecision());
-      default:
-        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
-        return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
-    }
-  }
-
   static String checkRequiredArg(String arg, String name, CommandLine commandLine,
       boolean isRequired,
       String defaultValue) throws ArgsErrorException {
@@ -272,29 +200,6 @@ public abstract class AbstractCli {
     return str;
   }
 
-  static void setTimeFormat(String newTimeFormat) {
-    switch (newTimeFormat.trim().toLowerCase()) {
-      case "long":
-      case "number":
-        maxTimeLength = maxValueLength;
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
-      case DEFAULT_TIME_FORMAT:
-      case "iso8601":
-        maxTimeLength = ISO_DATETIME_LEN;
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
-      default:
-        // use java default SimpleDateFormat to check whether input time format is legal
-        // if illegal, it will throw an exception
-        new SimpleDateFormat(newTimeFormat.trim());
-        maxTimeLength = Math.max(TIMESTAMP_STR.length(), newTimeFormat.length());
-        timeFormat = newTimeFormat;
-        break;
-    }
-    formatTime = "%" + maxTimeLength + "s|";
-  }
-
   private static void setFetchSize(String fetchSizeString) {
     long tmp = Long.parseLong(fetchSizeString.trim());
     if (tmp > Integer.MAX_VALUE || tmp < 0) {
@@ -306,8 +211,8 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp < 0) {
-      maxPrintRowCount = Integer.MAX_VALUE;
+    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+      throw new NumberFormatException();
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -407,7 +312,7 @@ public abstract class AbstractCli {
     }
 
     if (specialCmd.startsWith(SET_MAX_DISPLAY_NUM)) {
-      setMaxDisplaNum(specialCmd, cmd);
+      setMaxDisplayNum(specialCmd, cmd);
       return OperationResult.CONTINUE_OPER;
     }
 
@@ -459,7 +364,7 @@ public abstract class AbstractCli {
       return;
     }
     try {
-      setTimeFormat(cmd.split("=")[1]);
+      timeFormat = RpcUtils.setTimeFormat(cmd.split("=")[1]);
     } catch (Exception e) {
       println(String.format("time display format error, %s", e.getMessage()));
       return;
@@ -506,7 +411,7 @@ public abstract class AbstractCli {
     println("Fetch size has set to " + values[1].trim());
   }
 
-  private static void setMaxDisplaNum(String specialCmd, String cmd) {
+  private static void setMaxDisplayNum(String specialCmd, String cmd) {
     String[] values = specialCmd.split("=");
     if (values.length != 2) {
       println(String.format("Max display number format error, please input like %s = 10000",
@@ -537,14 +442,9 @@ public abstract class AbstractCli {
           + "Noted that your file path cannot contain any space character)");
       return;
     }
-    try {
-      println(cmd.split(" ")[1]);
-      ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
-          connection.getTimeZone());
-    } catch (SQLException e) {
-      println(String.format("Failed to import from %s because %s",
-          cmd.split(" ")[1], e.getMessage()));
-    }
+    println(cmd.split(" ")[1]);
+    ImportCsv.importCsvFromFile(host, port, username, password, cmd.split(" ")[1],
+        connection.getTimeZone());
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
@@ -638,7 +538,8 @@ public abstract class AbstractCli {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
           if (printTimestamp && i == 1) {
-            tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+                resultSet.getLong(TIMESTAMP_STR), zoneId);
           } else {
             tmp = resultSet.getString(i);
           }
@@ -657,13 +558,13 @@ public abstract class AbstractCli {
     } else {
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
-          String tmp;
-          tmp = resultSet.getString(i);
+          String tmp = resultSet.getString(i);
           if (tmp == null) {
             tmp = NULL;
           }
           if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = formatDatetime(Long.parseLong(tmp), zoneId);
+            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+                Long.parseLong(tmp), zoneId);
           }
           lists.get(i - 1).add(tmp);
           if (maxSizeList.get(i - 1) < tmp.length()) {

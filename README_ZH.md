@@ -70,14 +70,7 @@ IoTDB的主要特点如下:
     - [停止 IoTDB](#停止-iotdb)
   - [只编译 server](#只编译-server)
   - [只编译 cli](#只编译-cli)
-  - [使用 import-csv.sh](#使用-import-csvsh)
-    - [创建元数据](#创建元数据)
-    - [从 csv 文件导入数据的示例](#从-csv-文件导入数据的示例)
-    - [运行 import shell](#运行-import-shell)
-    - [错误的数据文件](#错误的数据文件)
-  - [使用 export-csv.sh](#使用-export-csvsh)
-    - [运行 export shell](#运行-export-shell)
-    - [执行查询](#执行查询)
+  - [导入导出CSV工具](#导入导出CSV工具)
 
 <!-- /TOC -->
 
@@ -333,61 +326,9 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
-## 使用 import-csv.sh
+# 导入导出CSV工具
 
-### 创建元数据
-
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
-### 从 csv 文件导入数据的示例
-
-```
-Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,'hello',200,300,400
-2,500,'world',600,700,800
-3,900,'IoTDB',1000,1100,1200
-```
-
-### 运行 import shell
-```
-# Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-
-# Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-```
-
-### 错误的数据文件
-
-`csvInsertError.error`
-
-## 使用 export-csv.sh
-
-### 运行 export shell
-
-```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-```
-
-### 执行查询
-
-```
-select * from root.fit.d1
-```
-
+查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/Master/System%20Tools/CSV%20Tool.html)
 
 # 常见编译错误
 查看 [常见编译错误](https://iotdb.apache.org/zh/Development/ContributeGuide.html#%E5%B8%B8%E8%A7%81%E7%BC%96%E8%AF%91%E9%94%99%E8%AF%AF)

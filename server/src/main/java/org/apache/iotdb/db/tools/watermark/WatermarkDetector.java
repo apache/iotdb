@@ -102,7 +102,6 @@ public class WatermarkDetector {
               isTrue = EncodingUtils.testBit(doubleToLongBits, targetBitPosition);
               break;
             default:
-              ;
           }
           if (isTrue) {
             trueNums[groupId] += 1;

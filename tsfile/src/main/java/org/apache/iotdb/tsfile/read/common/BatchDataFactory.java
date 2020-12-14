@@ -27,11 +27,14 @@ public class BatchDataFactory {
     throw new IllegalStateException("Factory class");
   }
 
-  public static BatchData createBatchData(TSDataType dataType, boolean ascending) {
+  public static BatchData createBatchData(TSDataType dataType, boolean ascending, boolean isWriteDesc) {
     if (ascending) {
       return new BatchData(dataType);
+    } else if (isWriteDesc) {
+      return new DescReadWriteBatchData(dataType);
+    } else {
+      return new DescReadBatchData(dataType);
     }
-    return new DescBatchData(dataType);
   }
 
   public static BatchData createBatchData(TSDataType dataType) {

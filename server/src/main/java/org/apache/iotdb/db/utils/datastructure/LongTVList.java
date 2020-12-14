@@ -46,7 +46,7 @@ public class LongTVList extends TVList {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
-    minTime = minTime <= timestamp ? minTime : timestamp;
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     size++;
@@ -181,6 +181,11 @@ public class LongTVList extends TVList {
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
   }
 
   @Override

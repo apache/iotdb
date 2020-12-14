@@ -192,17 +192,17 @@ public class MergeManager implements IService, MergeManagerMBean {
   }
 
   @Override
-  public void waitAndStop(long millseconds) {
+  public void waitAndStop(long milliseconds) {
     if (mergeTaskPool != null) {
       if (timedMergeThreadPool != null) {
-        awaitTermination(timedMergeThreadPool, millseconds);
+        awaitTermination(timedMergeThreadPool, milliseconds);
         timedMergeThreadPool = null;
       }
-      awaitTermination(taskCleanerThreadPool, millseconds);
+      awaitTermination(taskCleanerThreadPool, milliseconds);
       taskCleanerThreadPool = null;
 
-      awaitTermination(mergeTaskPool, millseconds);
-      awaitTermination(mergeChunkSubTaskPool, millseconds);
+      awaitTermination(mergeTaskPool, milliseconds);
+      awaitTermination(mergeChunkSubTaskPool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       long startTime = System.currentTimeMillis();
       while (!mergeTaskPool.isTerminated() || !mergeChunkSubTaskPool.isTerminated()) {
@@ -227,12 +227,12 @@ public class MergeManager implements IService, MergeManagerMBean {
     }
   }
 
-  private void awaitTermination(ExecutorService service, long millseconds) {
+  private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
       service.shutdown();
-      service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
+      service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      logger.warn("MergeThreadPool can not be closed in {} ms", millseconds);
+      logger.warn("MergeThreadPool can not be closed in {} ms", milliseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();

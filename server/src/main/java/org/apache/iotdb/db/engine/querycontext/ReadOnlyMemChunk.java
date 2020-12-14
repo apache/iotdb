@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -30,14 +31,21 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReadOnlyMemChunk {
+
+  // deletion list for this chunk
+  private final List<TimeRange> deletionList;
 
   private String measurementUid;
   private TSDataType dataType;
   private TSEncoding encoding;
 
+  private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
   private long version;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
@@ -48,19 +56,36 @@ public class ReadOnlyMemChunk {
 
   private IPointReader chunkPointReader;
 
+  private int chunkDataSize;
+
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TSEncoding encoding,
-      TVList tvList, Map<String, String> props, long version)
+      TVList tvList, Map<String, String> props, long version, int size,
+      List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     this.encoding = encoding;
     this.version = version;
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
-      this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+      try {
+        this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+      } catch (NumberFormatException e) {
+        logger.warn("The format of MAX_POINT_NUMBER {}  is not correct."
+            + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+      }
+      if (floatPrecision < 0) {
+        logger.warn("The MAX_POINT_NUMBER shouldn't be less than 0."
+            + " Using default float precision {}.",
+            TSFileDescriptor.getInstance().getConfig().getFloatPrecision());
+        floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
+      }
     }
-    tvList.sort();
+
     this.chunkData = tvList;
-    this.chunkPointReader = tvList.getIterator(floatPrecision, encoding);
+    this.chunkDataSize = size;
+    this.deletionList = deletionList;
+
+    this.chunkPointReader = tvList.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     initChunkMeta();
   }
 
@@ -68,7 +93,7 @@ public class ReadOnlyMemChunk {
     Statistics statsByType = Statistics.getStatsByType(dataType);
     ChunkMetadata metaData = new ChunkMetadata(measurementUid, dataType, 0, statsByType);
     if (!isEmpty()) {
-      IPointReader iterator = chunkData.getIterator(floatPrecision, encoding);
+      IPointReader iterator = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
         switch (dataType) {
@@ -114,7 +139,7 @@ public class ReadOnlyMemChunk {
   }
 
   public IPointReader getPointReader() {
-    chunkPointReader = chunkData.getIterator(floatPrecision, encoding);
+    chunkPointReader = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     return chunkPointReader;
   }
 
