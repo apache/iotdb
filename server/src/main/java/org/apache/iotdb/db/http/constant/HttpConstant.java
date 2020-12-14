@@ -41,7 +41,6 @@ public class HttpConstant {
   public static final String PREVIOUS = "previous";
   public static final String DURATION = "duration";
   public static final String PREVIOUS_UNTIL_LAST = "previousUntilLast";
-  public static final String IS_AGGREGATED = "isAggregated";
   public static final String SAMPLING_POINTS = "samplingPoints";
   public static final String SAMPLING_INTERVAL = "samplingInterval";
   public static final String STEP = "step";
