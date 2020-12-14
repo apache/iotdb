@@ -109,6 +109,12 @@ public class Session {
     this.zoneId = zoneId;
   }
 
+  public void setFetchSize(int fetchSize){
+    this.fetchSize = fetchSize;
+  }
+
+  public int getFetchSize(){ return this.fetchSize; }
+
   public synchronized void open() throws IoTDBConnectionException {
     open(false, Config.DEFAULT_TIMEOUT_MS);
   }

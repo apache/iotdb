@@ -29,7 +29,7 @@
 
 ## 如何建立
 
-跑`mvn compile -DskipTests  -P compile-site -P download-website` 
+跑`mvn compile -DskipTests  -P compile-site -P download-site` 
 
 ## 如何调试
 

@@ -19,6 +19,11 @@
 package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -176,4 +181,89 @@ public class RpcUtils {
     return resp;
   }
 
+  public static final String DEFAULT_TIME_FORMAT = "default";
+  public static final String DEFAULT_TIMESTAMP_PRECISION = "ms";
+
+  public static String setTimeFormat(String newTimeFormat) {
+    String timeFormat;
+    switch (newTimeFormat.trim().toLowerCase()) {
+      case "long":
+      case "number":
+        timeFormat = newTimeFormat.trim().toLowerCase();
+        break;
+      case DEFAULT_TIME_FORMAT:
+      case "iso8601":
+        timeFormat = newTimeFormat.trim().toLowerCase();
+        break;
+      default:
+        // use java default SimpleDateFormat to check whether input time format is legal
+        // if illegal, it will throw an exception
+        new SimpleDateFormat(newTimeFormat.trim());
+        timeFormat = newTimeFormat;
+        break;
+    }
+    return timeFormat;
+  }
+
+  public static String formatDatetime(String timeFormat, String timePrecision, long timestamp,
+      ZoneId zoneId) {
+    ZonedDateTime dateTime;
+    switch (timeFormat) {
+      case "long":
+      case "number":
+        return Long.toString(timestamp);
+      case DEFAULT_TIME_FORMAT:
+      case "iso8601":
+        return parseLongToDateWithPrecision(
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, timestamp, zoneId, timePrecision);
+      default:
+        dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId);
+        return dateTime.format(DateTimeFormatter.ofPattern(timeFormat));
+    }
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+      long timestamp, ZoneId zoneid, String timestampPrecision) {
+    if (timestampPrecision.equals("ms")) {
+      long integerofDate = timestamp / 1000;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 3) {
+        for (int i = 0; i < 3 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else if (timestampPrecision.equals("us")) {
+      long integerofDate = timestamp / 1000_000;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 6) {
+        for (int i = 0; i < 6 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else {
+      long integerofDate = timestamp / 1000_000_000L;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 9) {
+        for (int i = 0; i < 9 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    }
+  }
 }

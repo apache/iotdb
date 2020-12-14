@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.rpc;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -366,7 +366,7 @@ public class IoTDBRpcDataSet {
   }
 
   public Object getObject(String columnName) throws StatementExecutionException {
-    return getValueByName(columnName);
+    return getObjectByName(columnName);
   }
 
   public String getString(int columnIndex) throws StatementExecutionException {
@@ -416,11 +416,40 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
-        try {
-          return new String(values[index], "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-          return new String(values[index]);
-        }
+        return new String(values[index], StandardCharsets.UTF_8);
+      default:
+        return null;
+    }
+  }
+
+  public Object getObjectByName(String columnName) throws StatementExecutionException {
+    checkRecord();
+    if (columnName.equals(TIMESTAMP_STR)) {
+      return BytesUtils.bytesToLong(time);
+    }
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    if (index < 0 || index >= values.length || isNull(index, rowsIndex - 1)) {
+      lastReadWasNull = true;
+      return null;
+    }
+    lastReadWasNull = false;
+    return getObject(index, columnTypeDeduplicatedList.get(index), values);
+  }
+
+  public Object getObject(int index, TSDataType tsDataType, byte[][] values) {
+    switch (tsDataType) {
+      case BOOLEAN:
+        return BytesUtils.bytesToBool(values[index]);
+      case INT32:
+        return BytesUtils.bytesToInt(values[index]);
+      case INT64:
+        return BytesUtils.bytesToLong(values[index]);
+      case FLOAT:
+        return BytesUtils.bytesToFloat(values[index]);
+      case DOUBLE:
+        return BytesUtils.bytesToDouble(values[index]);
+      case TEXT:
+        return new String(values[index], StandardCharsets.UTF_8);
       default:
         return null;
     }

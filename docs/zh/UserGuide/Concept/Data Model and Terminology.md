@@ -193,7 +193,6 @@ IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，�
   ```
   Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
   RelativeTime = (now() | DATETIME) ((+|-) Duration)+
-        
   ```
 
   <center>**The syntax of the duration unit**
@@ -220,5 +219,5 @@ IoTDB在显示时间戳时可以支持LONG类型以及DATETIME-DISPLAY类型，�
   now() - 1d2h //比服务器时间早1天2小时的时间
   now() - 1w //比服务器时间早1周的时间
   ```
-  > 注意：'+'和'—'的左右两边必须有空格 
+  > 注意：'+'和'-'的左右两边必须有空格 
 
