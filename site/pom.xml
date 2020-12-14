@@ -34,7 +34,8 @@
     <distributionManagement>
         <site>
             <id>apache.website</id>
-            <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url>
+            <!--  <url>scm:git:https://gitbox.apache.org/repos/asf/iotdb-website.git</url> -->
+            <url>scm:git:https://github.com/samginshen/iotdb-website.git</url>
         </site>
     </distributionManagement>
     <profiles>
@@ -159,6 +160,9 @@
             Use -Dsite.download.existing.htmls=true to contain all other htmls (v0.8,v0.9 etc..)
             -->
             <id>compile-site</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <!-- Copy master documents-->
@@ -423,6 +427,9 @@
         </profile>
         <profile>
             <id>compile-site-0.11</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <!-- download 0.11 docs from iotdb repo -->
@@ -515,6 +522,9 @@
         </profile>
         <profile>
             <id>compile-site-0.10</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <!-- download 0.10 docs from iotdb repo -->
@@ -607,6 +617,9 @@
         </profile>
         <profile>
             <id>compile-site-0.9</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <!-- download 0.9 docs from iotdb repo -->
@@ -699,6 +712,9 @@
         </profile>
         <profile>
             <id>compile-site-0.8</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <build>
                 <plugins>
                     <!-- download 0.8 docs from iotdb repo -->
