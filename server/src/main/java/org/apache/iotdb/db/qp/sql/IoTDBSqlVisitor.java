@@ -224,6 +224,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
           "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
   private ZoneId zoneId;
   QueryOperator queryOp;
+  private boolean isParsingSlidingStep;
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -1254,7 +1255,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     queryOp.setSlidingStep(queryOp.getUnit());
     // parse sliding step
     if (ctx.DURATION().size() == 2) {
+      isParsingSlidingStep = true;
       queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+      isParsingSlidingStep = false;
       if (queryOp.getSlidingStep() < queryOp.getUnit()) {
         throw new SQLParserException(
             "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
@@ -1658,6 +1661,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
           i++;
           unit += durationStr.charAt(i);
+        }
+        if (unit.toLowerCase().equals("mo")) {
+          //interval is by month, sliding step by default equals to interval
+          if (!isParsingSlidingStep) {
+            queryOp.setIntervalByMonth(true);
+          }
+          queryOp.setSlidingStepByMonth(true);
+        } else if (isParsingSlidingStep) {
+          //parsing sliding step value, and unit is not by month
+          queryOp.setSlidingStepByMonth(false);
         }
         total += DatetimeUtils
             .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
