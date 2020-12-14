@@ -26,15 +26,15 @@
 
 ```
 # Unix/OS X
-> tools/print-tsfile-specific-measurement.sh file_path measurement_name
+> tools/print-tsfile-specific-measurement.sh file_path timeseries_path
 
 # Windows
-> tools\print-tsfile-specific-measurement.bat file_path measurement_name
+> tools\print-tsfile-specific-measurement.bat file_path timeseries_path
 ```
 
 file_path：tsfile 文件的绝对路径
 
-measurement_name：时间序列名
+timeseries_path：时间序列完整路径
 
 ## 示例
 

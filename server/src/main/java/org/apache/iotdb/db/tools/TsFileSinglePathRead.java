@@ -40,6 +40,9 @@ public class TsFileSinglePathRead {
       filename = args[0];
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
+      if (!reader.isComplete()){
+        throw new RuntimeException("The analyzed data file is incomplete, process will stop");
+      }
       // get the chunkMetaList of the specific path
       List<ChunkMetadata> chunkMetadataList = reader
           .getChunkMetadataList(new Path(path, true), true);

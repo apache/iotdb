@@ -26,15 +26,15 @@ You can use this tool when you want to analyze the chunk data of a specific time
 
 ```
 # Unix/OS X
-> tools/print-tsfile-specific-measurement.sh file_path measurement_name
+> tools/print-tsfile-specific-measurement.sh file_path timeseries_path
 
 # Windows
-> tools\print-tsfile-specific-measurement.bat file_path measurement_name
+> tools\print-tsfile-specific-measurement.bat file_path timeseries_path
 ```
 
 file_path：The absolute path of the tsfile file
 
-measurement_name：time series name
+timeseries_path：time series absolute path
 
 ## Example
 
