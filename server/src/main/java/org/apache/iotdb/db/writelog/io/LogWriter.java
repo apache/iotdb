@@ -57,20 +57,16 @@ public class LogWriter implements ILogWriter {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
     this.forcePeriodInMs = forcePeriodInMs;
 
-    if (channel == null) {
-      fileOutputStream = new FileOutputStream(logFile, true);
-      channel = fileOutputStream.getChannel();
-    }
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   public LogWriter(File logFile, long forcePeriodInMs) throws FileNotFoundException {
     this.logFile = logFile;
     this.forcePeriodInMs = forcePeriodInMs;
 
-    if (channel == null) {
-      fileOutputStream = new FileOutputStream(logFile, true);
-      channel = fileOutputStream.getChannel();
-    }
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   @Override

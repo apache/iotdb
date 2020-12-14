@@ -65,7 +65,7 @@ public class MLogWriter implements AutoCloseable {
   private LogWriter logWriter;
   private int logNum;
   private static final String DELETE_FAILED_FORMAT = "Deleting %s failed with exception %s";
-  private ByteBuffer mlogBuffer = ByteBuffer.allocate(
+  private final ByteBuffer mlogBuffer = ByteBuffer.allocate(
     IoTDBDescriptor.getInstance().getConfig().getMlogBufferSize());
 
   // we write log to channel every time, so we need not to call channel.force every time
@@ -305,7 +305,7 @@ public class MLogWriter implements AutoCloseable {
       Files.delete(logFile.toPath());
     }
     logNum = 0;
-    logWriter = new LogWriter(logFile, 0L);
+    logWriter = new LogWriter(logFile, DUMMY_FLUSH_TIME);
   }
 
   public int getLogNum() {
