@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.rescon.CachedStringPool;
+
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -236,21 +236,18 @@ public class MNode implements Serializable {
     this.name = name;
   }
 
-  public void serializeTo(BufferedWriter bw) throws IOException {
-    serializeChildren(bw);
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
 
-    String s = String.valueOf(MetadataConstant.MNODE_TYPE) + "," + name + ","
-        + (children == null ? "0" : children.size());
-    bw.write(s);
-    bw.newLine();
+    logWriter.serializeMNode(this);
   }
 
-  void serializeChildren(BufferedWriter bw) throws IOException {
+  void serializeChildren(MLogWriter logWriter) throws IOException {
     if (children == null) {
       return;
     }
     for (Entry<String, MNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo(bw);
+      entry.getValue().serializeTo(logWriter);
     }
   }
 }

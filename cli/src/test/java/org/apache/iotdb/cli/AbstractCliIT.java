@@ -31,6 +31,7 @@ import org.apache.iotdb.cli.AbstractCli.OperationResult;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -152,7 +153,6 @@ public class AbstractCliIT {
         .handleInputCmd(String.format("%s=xxx", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
     assertEquals(OperationResult.CONTINUE_OPER, AbstractCli
         .handleInputCmd(String.format("%s=default", AbstractCli.SET_TIMESTAMP_DISPLAY), connection));
-    testSetTimeFormat();
 
     assertEquals(OperationResult.CONTINUE_OPER, AbstractCli
         .handleInputCmd(String.format("%s=", AbstractCli.SET_MAX_DISPLAY_NUM), connection));
@@ -180,33 +180,6 @@ public class AbstractCliIT {
         .handleInputCmd(String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
   }
 
-  private void testSetTimeFormat() {
-    AbstractCli.setTimeFormat("long");
-    assertEquals(AbstractCli.maxTimeLength, AbstractCli.maxValueLength);
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-    AbstractCli.setTimeFormat("number");
-    assertEquals(AbstractCli.maxTimeLength, AbstractCli.maxValueLength);
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-    AbstractCli.setTimeFormat("default");
-    assertEquals(AbstractCli.ISO_DATETIME_LEN, AbstractCli.maxTimeLength);
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-    AbstractCli.setTimeFormat("iso8601");
-    assertEquals(AbstractCli.ISO_DATETIME_LEN, AbstractCli.maxTimeLength);
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-    AbstractCli.setTimeFormat("yyyy-MM-dd HH:mm:ssZZ");
-    assertEquals(AbstractCli.maxTimeLength, "yyyy-MM-dd HH:mm:ssZZ".length());
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-    AbstractCli.setTimeFormat("dd");
-    assertEquals(AbstractCli.maxTimeLength, AbstractCli.TIMESTAMP_STR.length());
-    assertEquals(AbstractCli.formatTime, "%" + AbstractCli.maxTimeLength + "s|");
-
-  }
-
   private void testSetMaxDisplayNumber() {
     try {
       AbstractCli.setMaxDisplayNumber("10");
@@ -217,19 +190,19 @@ public class AbstractCliIT {
     try {
       AbstractCli.setMaxDisplayNumber("111111111111111");
       fail();
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException ignored) {
     }
 
     try {
       AbstractCli.setMaxDisplayNumber("-10");
       fail();
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException ignored) {
     }
 
     try {
       AbstractCli.setMaxDisplayNumber("0");
       fail();
-    } catch (NumberFormatException e) {
+    } catch (NumberFormatException ignored) {
     }
   }
 }

@@ -84,7 +84,6 @@ public class UpgradeTask extends WrappedRunnable {
             upgradedResource.setModFile(new ModificationFile(upgradedResource.getTsFile().getName()
                 + ModificationFile.FILE_SUFFIX));
           }
-          upgradedResource.setHistoricalVersions(upgradeResource.getHistoricalVersions());
           upgradedResource.serialize();
           // delete tmp partition folder when it is empty
           if (upgradedFile.getParentFile().isDirectory()

@@ -77,6 +77,8 @@ public class FileLoaderUtils {
             .updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   /**

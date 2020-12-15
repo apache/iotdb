@@ -18,36 +18,55 @@
  */
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 /**
- * LogWriter writes the binarized logs into a file using FileChannel together with check sums of
+ * LogWriter writes the binary logs into a file using FileChannel together with check sums of
  * each log calculated using CRC32.
  */
 public class LogWriter implements ILogWriter {
+  private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
   private File logFile;
   private FileOutputStream fileOutputStream;
   private FileChannel channel;
-  private CRC32 checkSummer = new CRC32();
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
-  private ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
+  private final CRC32 checkSummer = new CRC32();
+  private final ByteBuffer lengthBuffer = ByteBuffer.allocate(4);
+  private final ByteBuffer checkSumBuffer = ByteBuffer.allocate(8);
+  private final boolean forceEachWrite;
 
-  public LogWriter(String logFilePath) {
+  /**
+   * @param logFilePath
+   * @param forceEachWrite
+   * @throws FileNotFoundException
+   */
+  @TestOnly
+  public LogWriter(String logFilePath, boolean forceEachWrite) throws FileNotFoundException {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    this.forceEachWrite = forceEachWrite;
+
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
-  public LogWriter(File logFile) {
+  public LogWriter(File logFile, boolean forceEachWrite) throws FileNotFoundException {
     this.logFile = logFile;
+    this.forceEachWrite = forceEachWrite;
+
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
   }
 
   @Override
@@ -73,18 +92,22 @@ public class LogWriter implements ILogWriter {
     lengthBuffer.flip();
     checkSumBuffer.flip();
 
-    channel.write(lengthBuffer);
-    channel.write(logBuffer);
-    channel.write(checkSumBuffer);
+    try {
+      channel.write(lengthBuffer);
+      channel.write(logBuffer);
+      channel.write(checkSumBuffer);
 
-    if (config.getForceWalPeriodInMs() == 0) {
-      channel.force(true);
+      if (this.forceEachWrite) {
+        channel.force(true);
+      }
+    } catch (ClosedChannelException ignored) {
+      logger.warn("someone interrupt current thread, so no need to do write for io safety");
     }
   }
 
   @Override
   public void force() throws IOException {
-    if (channel != null) {
+    if (channel != null && channel.isOpen()) {
       channel.force(true);
     }
   }
@@ -92,10 +115,20 @@ public class LogWriter implements ILogWriter {
   @Override
   public void close() throws IOException {
     if (channel != null) {
+      if (channel.isOpen()) {
+        channel.force(true);
+      }
       fileOutputStream.close();
       fileOutputStream = null;
       channel.close();
       channel = null;
     }
+  }
+
+  @Override
+  public String toString() {
+    return "LogWriter{" +
+        "logFile=" + logFile +
+        '}';
   }
 }

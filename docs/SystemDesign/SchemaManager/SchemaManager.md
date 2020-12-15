@@ -179,10 +179,10 @@ The root node exists by default. Creating storage groups, deleting storage group
 
 ### Create condition
 
-To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.txt` and executing the commands line by line. There are two ways to create MTree snapshot:
+To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.bin` and executing the commands line by line. There are two ways to create MTree snapshot:
 1. Background checking and creating automatically: Every 10 minutes, background thread checks the last modified time of MTree. If:
-  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.txt` hasn’t been updated for more than 1 hour
-  * `mlog.txt` has reached 100000 lines (could be configured)
+  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.bin` hasn’t been updated for more than 1 hour
+  * `mlog.bin` has reached 100000 lines (could be configured)
 
 2. Creating manually: Users can use `create snapshot for schema` to create MTree snapshot
 
@@ -196,10 +196,10 @@ The method is `MManager.createMTreeSnapshot()`:
   * MeasurementMNode: 2, name, alias, TSDataType, TSEncoding, CompressionType, props, offset, children size
 
 3. After serialization, rename the temp file to a formal file (`mtree.snapshot`), to avoid crush of server and failure of serialization.
-4. Clear `mlog.txt` by `MLogWriter.clear()` method:
-  * Close BufferedWriter and delete `mlog.txt` file
+4. Clear `mlog.bin` by `MLogWriter.clear()` method:
+  * Close BufferedWriter and delete `mlog.bin` file
   * Create a new BufferedWriter
-  * Set `lineNumber` as 0. `lineNumber` records the line number of `mlog.txt`, which is used for background thread to check whether it is larger than the threshold configured by user.
+  * Set `logNumber` as 0. `logNumber` records the log number of `mlog.bin`, which is used for background thread to check whether it is larger than the threshold configured by user.
 
 5. Release the read lock.
 
@@ -209,13 +209,13 @@ The method is `MManager.initFromLog()`:
 
 1. Check whether the temp file `mtree.snapshot.tmp` exists. If so, there may exist crush of server and failure of serialization. Delete the temp file.
 2. Check whether the snapshot file `mtree.snapshot` exists. If not, use a new MTree; otherwise, start deserializing from snapshot and get MTree
-3. Read and operate all lines in `mlog.txt` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.txt` afterwards.
+3. Read and operate all lines in `mlog.bin` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.bin` afterwards.
 
 ## Log management of metadata
 
-* org.apache.iotdb.db.metadata.MLogWriter
+* org.apache.iotdb.db.metadata.logfile.MLogWriter
 
-All metadata operations are recorded in a metadata log file, which defaults to data/system/schema/mlog.txt.
+All metadata operations are recorded in a metadata log file, which defaults to data/system/schema/mlog.bin.
 
 When the system restarted, the logs in mlog will be replayed. Until the replaying finished, you need to mark writeToLog to false. When the restart is complete, the writeToLog needs to be set to true.
 
@@ -270,7 +270,7 @@ sql examples and the corresponding mlog record:
 ## TLog
 * org.apache.iotdb.db.metadata.TagLogFile
 
-All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.txt.
+All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.bin.
 
 * Total number of bytes of persistence for tags and attributes of each time series is L, which can be configured in the iotdb-engine.properties
 

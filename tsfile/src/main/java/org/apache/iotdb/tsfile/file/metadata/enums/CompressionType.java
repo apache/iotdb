@@ -19,7 +19,53 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum CompressionType {
-  UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4;
+  /**
+   * Do not comprocess
+   */
+  UNCOMPRESSED("", (byte) 0),
+
+  /**
+   * SNAPPY
+   */
+  SNAPPY(".snappy", (byte) 1),
+
+  /**
+   * GZIP
+   */
+  GZIP(".gzip", (byte) 2),
+
+  /**
+   * LZO
+   */
+  LZO(".lzo", (byte) 3),
+
+  /**
+   * SDT
+   */
+  SDT(".sdt", (byte) 4),
+
+  /**
+   * PAA
+   */
+  PAA(".paa", (byte) 5),
+
+  /**
+   * PLA
+   */
+  PLA(".pla", (byte) 6),
+
+  /**
+   * LZ4
+   */
+  LZ4(".lz4", (byte) 7);
+
+  private final String extensionName;
+  private final byte index;
+
+  CompressionType(String extensionName, byte index) {
+    this.extensionName = extensionName;
+    this.index = index;
+  }
 
   /**
    * deserialize byte number.
@@ -28,27 +74,12 @@ public enum CompressionType {
    * @return CompressionType
    */
   public static CompressionType deserialize(byte compressor) {
-    if (compressor >= 8 || compressor < 0) {
-      throw new IllegalArgumentException("Invalid input: " + compressor);
+    for (CompressionType compressionType : CompressionType.values()) {
+      if (compressor == compressionType.index) {
+        return compressionType;
+      }
     }
-    switch (compressor) {
-      case 1:
-        return SNAPPY;
-      case 2:
-        return GZIP;
-      case 3:
-        return LZO;
-      case 4:
-        return SDT;
-      case 5:
-        return PAA;
-      case 6:
-        return PLA;
-      case 7:
-        return LZ4;
-      default:
-        return UNCOMPRESSED;
-    }
+    throw new IllegalArgumentException("Invalid input: " + compressor);
   }
 
   public static int getSerializedSize() {
@@ -59,24 +90,7 @@ public enum CompressionType {
    * @return byte number
    */
   public byte serialize() {
-    switch (this) {
-      case SNAPPY:
-        return 1;
-      case GZIP:
-        return 2;
-      case LZO:
-        return 3;
-      case SDT:
-        return 4;
-      case PAA:
-        return 5;
-      case PLA:
-        return 6;
-      case LZ4:
-        return 7;
-      default:
-        return 0;
-    }
+    return this.index;
   }
 
   /**
@@ -85,24 +99,7 @@ public enum CompressionType {
    * @return extension (string type), for example: .snappy, .gz, .lzo
    */
   public String getExtension() {
-    switch (this) {
-      case SNAPPY:
-        return ".snappy";
-      case GZIP:
-        return ".gz";
-      case LZO:
-        return ".lzo";
-      case SDT:
-        return ".sdt";
-      case PAA:
-        return ".paa";
-      case PLA:
-        return ".pla";
-      case LZ4:
-        return ".lz4";
-      default:
-        return "";
-    }
+    return extensionName;
   }
 
 }

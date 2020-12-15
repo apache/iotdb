@@ -84,6 +84,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
+  private long minPlanIndex = Long.MAX_VALUE;
+  private long maxPlanIndex = Long.MIN_VALUE;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -502,6 +504,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     long start = 0;
     int size = 0;
     List<TimeseriesMetadata> timeseriesMetadataMap = getDeviceTimeseriesMetadata(device);
+    if (timeseriesMetadataMap.isEmpty()) {
+      return new HashMap<>();
+    }
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap) {
       if (start == 0) {
         start = timeseriesMetadata.getOffsetOfChunkMetaDataList();
@@ -687,6 +692,21 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     buffer.flip();
     return buffer.getLong();
+  }
+
+  public void readPlanIndex() throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    minPlanIndex = buffer.getLong();
+    buffer.clear();
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    maxPlanIndex = buffer.getLong();
   }
 
   /**
@@ -1044,6 +1064,9 @@ public class TsFileSequenceReader implements AutoCloseable {
             versionInfo.add(new Pair<>(position(), version));
             truncatedSize = this.position();
             break;
+          case MetaMarker.OPERATION_INDEX_RANGE:
+            readPlanIndex();
+            break;
           default:
             // the disk file is corrupted, using this file may be dangerous
             throw new IOException("Unexpected marker " + marker);
@@ -1177,5 +1200,13 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public enum LocateStatus {
     in, before, after
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
   }
 }

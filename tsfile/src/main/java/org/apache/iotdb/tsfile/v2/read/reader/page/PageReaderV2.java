@@ -55,7 +55,7 @@ public class PageReaderV2 extends PageReader {
       return super.getAllSatisfiedPageData(ascending);
     }
 
-    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
