@@ -113,7 +113,8 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
-  5: required int clientPort
+  5: optional int clientPort
+  6: optional string clientIp
 }
 
 // leader -> follower

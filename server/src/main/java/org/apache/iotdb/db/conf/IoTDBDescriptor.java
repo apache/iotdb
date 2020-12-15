@@ -18,19 +18,16 @@
  */
 package org.apache.iotdb.db.conf;
 
+import com.google.common.net.InetAddresses;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.Properties;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -49,6 +46,7 @@ public class IoTDBDescriptor {
 
   protected IoTDBDescriptor() {
     loadProps();
+
   }
 
   public static IoTDBDescriptor getInstance() {
@@ -137,6 +135,7 @@ public class IoTDBDescriptor {
           ));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      replaceHostnameWithIP();
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
@@ -568,6 +567,18 @@ public class IoTDBDescriptor {
       conf.updatePath();
     }
   }
+
+  // to keep consistent with the cluster module.
+  private void replaceHostnameWithIP() throws UnknownHostException {
+    boolean isInvalidRpcIp = InetAddresses.isInetAddress(conf.getRpcAddress());
+    if (!isInvalidRpcIp) {
+      InetAddress address = InetAddress.getByName(getConfig().getRpcAddress());
+      getConfig().setRpcAddress(address.getHostAddress());
+    }
+    logger.debug("after replace, the rpc_address={},", conf.getRpcAddress());
+  }
+
+
 
   private void loadWALProps(Properties properties) {
     conf.setEnableWal(Boolean.parseBoolean(properties.getProperty("enable_wal",
