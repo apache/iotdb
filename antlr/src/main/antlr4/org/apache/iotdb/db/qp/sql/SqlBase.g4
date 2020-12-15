@@ -622,7 +622,7 @@ nodeNameWithoutStar
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
     ;
 
 dateFormat
