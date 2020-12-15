@@ -159,11 +159,10 @@ public class ChunkReader implements IChunkReader {
       unCompressor.uncompress(compressedPageBody, 0, compressedPageBodyLength,
           uncompressedPageData, 0);
     } catch (Exception e) {
-      System.out.println("error: ");
-      System.out.println("uncompress size: " + pageHeader.getUncompressedSize());
-      System.out.println("compressed size: " + pageHeader.getCompressedSize());
-      System.out.println("page header: " + pageHeader);
-      e.printStackTrace();
+      throw new IOException("Uncompress error! uncompress size: " + pageHeader.getUncompressedSize() +
+          "compressed size: " + pageHeader.getCompressedSize() +
+          "page header: " + pageHeader +
+          e.getMessage());
     }
 
     ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);

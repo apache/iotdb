@@ -694,11 +694,15 @@ public class TsFileResource {
    * make sure Either the deviceToIndex is not empty Or the path contains a partition folder
    */
   public long getTimePartition() {
-    if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
-      return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
+    try {
+      if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
+        return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
+      }
+      String[] splits = FilePathUtils.splitTsFilePath(this);
+      return Long.parseLong(splits[splits.length - 2]);
+    } catch (NumberFormatException e) {
+      return 0;
     }
-    String[] splits = FilePathUtils.splitTsFilePath(this);
-    return Long.parseLong(splits[splits.length - 2]);
   }
 
   /**
@@ -845,8 +849,6 @@ public class TsFileResource {
 
   /**
    * For merge, the index range of the new file should be the union of all files' in this merge.
-   *
-   * @param another
    */
   public void updatePlanIndexes(TsFileResource another) {
     maxPlanIndex = Math.max(maxPlanIndex, another.maxPlanIndex);
