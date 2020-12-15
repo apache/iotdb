@@ -333,7 +333,7 @@ public class CompactionUtils {
       PartialPath seriesPath) {
     List<Modification> modifications =
         modificationCache.computeIfAbsent(reader.getFileName(),
-            (fileName) -> new LinkedList<>(
+            fileName -> new LinkedList<>(
                 new ModificationFile(fileName + ModificationFile.FILE_SUFFIX)
                     .getModifications()));
     List<Modification> seriesModifications = new LinkedList<>();
