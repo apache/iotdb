@@ -46,6 +46,7 @@ import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -327,48 +328,41 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
         long offset = logAnalyzer.getOffset();
         String targetFile = logAnalyzer.getTargetFile();
-        boolean isMergeFinished = logAnalyzer.isMergeFinished();
         boolean fullMerge = logAnalyzer.isFullMerge();
         boolean isSeq = logAnalyzer.isSeq();
-        if (targetFile == null) {
+        if (targetFile == null || sourceFileList.isEmpty()) {
+          return;
+        }
+        File target = new File(targetFile);
+        if (deviceSet.isEmpty()) {
+          // if not in compaction, just delete the target file
+          if (target.exists()) {
+            Files.delete(target.toPath());
+          }
           return;
         }
         if (fullMerge) {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
           TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
           long timePartition = targetTsFileResource.getTimePartition();
-          if (!isMergeFinished) {
-            File target = new File(targetFile);
-            if (!deviceSet.isEmpty()) {
-              // if not in compaction, just delete the target file
-              if (target.exists()) {
-                Files.delete(target.toPath());
-              }
-            } else {
-              RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-                  new File(targetFile));
-              // if not complete compaction, resume merge
-              if (writer.hasCrashed()) {
-                if (offset > 0) {
-                  writer.getIOWriterOut().truncate(offset - 1);
-                }
-                writer.close();
-                CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
-                    storageGroupName);
-                CompactionUtils
-                    .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
-                        compactionLogger, deviceSet, isSeq);
-                compactionLogger.logMergeFinish();
-                compactionLogger.close();
-              } else {
-                writer.close();
-              }
-              // complete compaction and delete source file
-              deleteAllSubLevelFiles(isSeq, timePartition);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+          // if not complete compaction, resume merge
+          if (writer.hasCrashed()) {
+            if (offset > 0) {
+              writer.getIOWriterOut().truncate(offset - 1);
             }
+            writer.close();
+            CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
+                storageGroupName);
+            CompactionUtils
+                .merge(targetTsFileResource, getTsFileList(isSeq), storageGroupName,
+                    compactionLogger, deviceSet, isSeq);
+            compactionLogger.close();
           } else {
-            deleteAllSubLevelFiles(isSeq, timePartition);
+            writer.close();
           }
+          // complete compaction and delete source file
+          deleteAllSubLevelFiles(isSeq, timePartition);
         } else {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
           TsFileResource targetResource = getTsFileResource(targetFile, isSeq);
@@ -378,48 +372,30 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
             sourceTsFileResources.add(getTsFileResource(file, isSeq));
           }
-          if (sourceFileList.isEmpty()) {
-            return;
-          }
           int level = getMergeLevel(new File(sourceFileList.get(0)));
-          if (!isMergeFinished) {
-            File target = new File(targetFile);
-            if (deviceSet.isEmpty()) {
-              // if not in compaction, just delete the target file
-              if (target.exists()) {
-                Files.delete(target.toPath());
-              }
-            } else {
-              RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(
-                  new File(targetFile));
-              // if not complete compaction, resume merge
-              if (writer.hasCrashed()) {
-                if (offset > 0) {
-                  writer.getIOWriterOut().truncate(offset - 1);
-                }
-                writer.close();
-                CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
-                    storageGroupName);
-                CompactionUtils
-                    .merge(targetResource, sourceTsFileResources, storageGroupName,
-                        compactionLogger, deviceSet,
-                        isSeq);
-                compactionLogger.logMergeFinish();
-                compactionLogger.close();
-              } else {
-                writer.close();
-              }
-              // complete compaction and delete source file
-              deleteLevelFilesInDisk(sourceTsFileResources);
-              deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+          // if not complete compaction, resume merge
+          if (writer.hasCrashed()) {
+            if (offset > 0) {
+              writer.getIOWriterOut().truncate(offset - 1);
             }
+            writer.close();
+            CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
+                storageGroupName);
+            CompactionUtils
+                .merge(targetResource, sourceTsFileResources, storageGroupName,
+                    compactionLogger, deviceSet,
+                    isSeq);
+            compactionLogger.close();
           } else {
-            deleteLevelFilesInDisk(sourceTsFileResources);
-            deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+            writer.close();
           }
+          // complete compaction and delete source file
+          deleteLevelFilesInDisk(sourceTsFileResources);
+          deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       logger.error("recover level tsfile management error ", e);
     } finally {
       if (logFile.exists()) {
@@ -550,7 +526,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 storageGroupName, i, toMergeTsFiles.size());
             writeLock();
             try {
-              compactionLogger.logMergeFinish();
               if (sequence) {
                 sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
               } else {

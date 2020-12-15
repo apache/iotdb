@@ -40,7 +40,7 @@ public class CompactionLogger {
   public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
     logStream = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(storageGroupDir,
-            storageGroupName + COMPACTION_LOG_NAME), false));
+            storageGroupName + COMPACTION_LOG_NAME), true));
   }
 
   public void close() throws IOException {
@@ -48,9 +48,7 @@ public class CompactionLogger {
   }
 
   public void logDevice(String device, long offset) throws IOException {
-    logStream.write(device);
-    logStream.newLine();
-    logStream.write(String.valueOf(offset));
+    logStream.write(device + CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPARATOR + offset);
     logStream.newLine();
     logStream.flush();
   }
@@ -59,18 +57,6 @@ public class CompactionLogger {
     logStream.write(prefix);
     logStream.newLine();
     logStream.write(file.getAbsolutePath());
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logMergeFinish() throws IOException {
-    logStream.write(MERGE_FINISHED);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFullMerge() throws IOException {
-    logStream.write(FULL_MERGE);
     logStream.newLine();
     logStream.flush();
   }

@@ -112,7 +112,6 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
-    compactionLogger.logMergeFinish();
     compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
@@ -264,7 +263,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     BufferedWriter logStream = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(tempSGDir.getPath(),
             COMPACTION_TEST_SG + COMPACTION_LOG_NAME), false));
-    for (int i = 0; i < logs.size() - 2; i++) {
+    for (int i = 0; i < logs.size() - 1; i++) {
       logStream.write(logs.get(i));
       logStream.newLine();
     }
@@ -272,7 +271,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
     TsFileOutput out = FSFactoryProducer.getFileOutputFactory()
         .getTsFileOutput(targetTsFileResource.getTsFile().getPath(), true);
-    out.truncate(Long.parseLong(logs.get(logs.size() - 3)) - 1);
+    out.truncate(Long.parseLong(logs.get(logs.size() - 1).split(" ")[1]) - 1);
     out.close();
 
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
@@ -333,7 +332,6 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), false);
-    compactionLogger.logMergeFinish();
     compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();

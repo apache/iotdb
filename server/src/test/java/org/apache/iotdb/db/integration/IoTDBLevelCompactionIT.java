@@ -697,7 +697,7 @@ public class IoTDBLevelCompactionIT {
                     + "%d,%d)", i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      
+
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
@@ -852,7 +852,7 @@ public class IoTDBLevelCompactionIT {
   }
 
   /**
-   * test seq max level num = 0
+   * test seq file num in each level = 0
    */
   @Test
   public void testCompactionSeqFileNumInEachLevelError0() throws SQLException {
@@ -1070,6 +1070,179 @@ public class IoTDBLevelCompactionIT {
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
           assertEquals(time + 1, s1);
+          assertEquals(time + 2, s2);
+          assertEquals(time + 3, s3);
+          cnt++;
+        }
+      }
+      assertEquals(100, cnt);
+    }
+
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(prevUnSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnSeqLevelNum);
+  }
+
+  /**
+   * test compaction with deletion timeseries
+   */
+  @Test
+  public void testCompactionWithDeletionTimeseries() throws SQLException {
+    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
+    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
+    int prevUnSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig()
+        .getUnseqFileNumInEachLevel();
+    int prevUnSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    boolean prevEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
+        .isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(3);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute("CREATE TIMESERIES root.compactionTest.s" + i + " WITH DATATYPE=INT64,"
+              + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+
+      for (int i = 0; i < 1; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+      statement.execute("DELETE timeseries root.compactionTest.s1");
+
+      for (int i = 1; i < 2; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s2,s3) VALUES (%d,"
+                    + "%d,%d)", i, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s2 = resultSet.getLong("root.compactionTest.s2");
+          long s3 = resultSet.getLong("root.compactionTest.s3");
+          assertEquals(time + 2, s2);
+          assertEquals(time + 3, s3);
+          cnt++;
+        }
+      }
+      assertEquals(2, cnt);
+    }
+
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(prevUnSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnSeqLevelNum);
+  }
+
+  /**
+   * test compaction with deletion timeseries and create different type
+   */
+  @Test
+  public void testCompactionWithDeletionTimeseriesAndCreateDifferentTypeTest() throws SQLException {
+    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
+    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
+    int prevUnSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig()
+        .getUnseqFileNumInEachLevel();
+    int prevUnSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    boolean prevEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
+        .isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(3);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.compactionTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute("CREATE TIMESERIES root.compactionTest.s" + i + " WITH DATATYPE=INT64,"
+              + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+
+      for (int i = 10000; i < 10001; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+
+      for (int i = 0; i < 50; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", i, i + 1, i + 2, i + 3));
+        if (i % 2 == 1) {
+          statement.execute("FLUSH");
+        }
+      }
+      statement.execute("FLUSH");
+      statement.execute("DELETE timeseries root.compactionTest.s1");
+      statement.execute(
+          "create timeseries root.compactionTest.s1 with datatype=FLOAT, encoding=PLAIN");
+
+      for (int i = 10001; i < 10005; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+
+      int cnt;
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s2 = resultSet.getLong("root.compactionTest.s2");
+          long s3 = resultSet.getLong("root.compactionTest.s3");
+          assertEquals(time + 2, s2);
+          assertEquals(time + 3, s3);
+          cnt++;
+        }
+      }
+      assertEquals(55, cnt);
+
+      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
+      for (int i = 10010; i < 10055; i++) {
+        statement
+            .execute(
+                String.format("INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d,"
+                    + "%d,%d)", i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
+        cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s2 = resultSet.getLong("root.compactionTest.s2");
+          long s3 = resultSet.getLong("root.compactionTest.s3");
           assertEquals(time + 2, s2);
           assertEquals(time + 3, s3);
           cnt++;
