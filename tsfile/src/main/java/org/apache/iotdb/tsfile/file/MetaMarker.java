@@ -36,7 +36,7 @@ public class MetaMarker {
   /**
    * means this chunk has only one page
    */
-  public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 4;
+  public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 
   private MetaMarker() {
   }
