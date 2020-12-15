@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,12 +19,19 @@
 
 -->
 
-# 0.11.x -> 0.12.x
+# 工具说明
 
-from txt format to binary format, updated by Chao Wang
+0.12.x版本之后，IoTDB将元数据文件编码成二进制。
 
-# 0.10.x -> 0.11.x
+如果想要解析元数据成人可读的方式，可以使用本工具来解析指定元数据文件。
 
-Last updated on 2020-11-5 by Haonan Hou
+该工具可以同时解析snapshot文件和mlog文件。
 
-No change.
+# 使用方式
+
+Linux/MacOS
+> ./mLogParser.sh -f /your path/mlog.bin -o /your path/mlog.txt
+
+Windows
+
+> .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt

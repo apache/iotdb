@@ -16,32 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public class SetStorageGroupPlan extends PhysicalPlan {
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
+public class ChangeAliasPlan extends PhysicalPlan {
   private PartialPath path;
+  private String alias;
 
-  public SetStorageGroupPlan() {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  public ChangeAliasPlan() {
+    super(false, Operator.OperatorType.CHANGE_ALIAS);
   }
 
-  public SetStorageGroupPlan(PartialPath path) {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  public ChangeAliasPlan(PartialPath path, String alias) {
+    super(false, Operator.OperatorType.CHANGE_ALIAS);
     this.path = path;
+    this.alias = alias;
   }
-  
+
   public PartialPath getPath() {
     return path;
   }
@@ -50,34 +53,47 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  @Override
-  public List<PartialPath> getPaths() {
-    return path != null ? Collections.singletonList(path) : Collections.emptyList();
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
-    putString(stream, path.getFullPath());
-    stream.writeLong(index);
+  public List<PartialPath> getPaths() {
+    List<PartialPath> ret = new ArrayList<>();
+    if (path != null) {
+      ret.add(path);
+    }
+    return ret;
   }
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    int type = PhysicalPlanType.CHANGE_ALIAS.ordinal();
+    buffer.put((byte) type);
     putString(buffer, path.getFullPath());
-    buffer.putLong(index);
+    putString(buffer, alias);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.write((byte) PhysicalPlanType.CHANGE_ALIAS.ordinal());
+    putString(stream, path.getFullPath());
+    putString(stream, alias);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     path = new PartialPath(readString(buffer));
-    this.index = buffer.getLong();
+    alias = readString(buffer);
   }
 
   @Override
   public String toString() {
-    return "SetStorageGroup{" + path + '}';
+    return "ChangeAlias{" + path + "," + alias + "}";
   }
 
   @Override
@@ -88,12 +104,12 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
-    return Objects.equals(path, that.path);
+    ChangeAliasPlan that = (ChangeAliasPlan) o;
+    return Objects.equals(path, that.path) && Objects.equals(alias, that.alias);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path);
+    return Objects.hash(path, alias);
   }
 }

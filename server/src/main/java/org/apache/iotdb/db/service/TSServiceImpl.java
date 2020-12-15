@@ -772,9 +772,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return resp;
     } catch (Exception e) {
-      logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       if (e instanceof NullPointerException) {
-        e.printStackTrace();
+        logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      } else {
+        logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       }
       if (queryId != -1) {
         try {

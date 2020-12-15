@@ -23,21 +23,21 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Queue;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -45,9 +45,12 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.utils.datastructure.RandomAccessArrayDeque;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -85,10 +88,6 @@ public abstract class PhysicalPlan {
   protected PhysicalPlan(boolean isQuery, Operator.OperatorType operatorType) {
     this.isQuery = isQuery;
     this.operatorType = operatorType;
-  }
-
-  public String printQueryPlan() {
-    return "abstract plan";
   }
 
   public abstract List<PartialPath> getPaths();
@@ -163,7 +162,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer, PhysicalPlan base) throws IllegalPathException {
+  public void deserialize(ByteBuffer buffer, PhysicalPlan base) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -221,6 +220,8 @@ public abstract class PhysicalPlan {
 
   public static class Factory {
 
+    public static final String UNRECOGNIZED_LOG_TYPE = "unrecognized log type ";
+
     private Factory() {
       // hidden initializer
     }
@@ -228,7 +229,7 @@ public abstract class PhysicalPlan {
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException, IllegalPathException {
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
-        throw new IOException("unrecognized log type " + typeNum);
+        throw new IOException(UNRECOGNIZED_LOG_TYPE + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       return create(type, buffer);
@@ -237,7 +238,6 @@ public abstract class PhysicalPlan {
     public static PhysicalPlan create(PhysicalPlanType type, ByteBuffer buffer)
         throws IllegalPathException, IOException {
       PhysicalPlan plan;
-      // TODO-Cluster: support more plans
       switch (type) {
         case INSERT:
           plan = new InsertRowPlan();
@@ -351,8 +351,28 @@ public abstract class PhysicalPlan {
           plan = new CreateMultiTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case CHANGE_ALIAS:
+          plan = new ChangeAliasPlan();
+          plan.deserialize(buffer);
+          break;
+        case CHANGE_TAG_OFFSET:
+          plan = new ChangeTagOffsetPlan();
+          plan.deserialize(buffer);
+          break;
+        case MNODE:
+          plan = new MNodePlan();
+          plan.deserialize(buffer);
+          break;
+        case MEASUREMENT_MNODE:
+          plan = new MeasurementMNodePlan();
+          plan.deserialize(buffer);
+          break;
+        case STORAGE_GROUP_MNODE:
+          plan = new StorageGroupMNodePlan();
+          plan.deserialize(buffer);
+          break;
         default:
-          throw new IOException("unrecognized log type " + type);
+          throw new IOException(UNRECOGNIZED_LOG_TYPE + type);
       }
       return plan;
     }
@@ -363,7 +383,7 @@ public abstract class PhysicalPlan {
       short baseIndex = buffer.getShort();
       int typeNum = buffer.get();
       if (typeNum >= PhysicalPlanType.values().length) {
-        throw new IOException("unrecognized log type " + typeNum);
+        throw new IOException(UNRECOGNIZED_LOG_TYPE + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
       PhysicalPlan plan;
@@ -404,7 +424,8 @@ public abstract class PhysicalPlan {
     REVOKE_WATERMARK_EMBEDDING, CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE,
     REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
     DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES, LOAD_CONFIGURATION, CREATE_MULTI_TIMESERIES,
-    ALTER_TIMESERIES, FLUSH, CREATE_INDEX, DROP_INDEX
+    ALTER_TIMESERIES, FLUSH, CREATE_INDEX, DROP_INDEX,
+    CHANGE_TAG_OFFSET, CHANGE_ALIAS, MNODE, MEASUREMENT_MNODE, STORAGE_GROUP_MNODE
   }
 
   public long getIndex() {

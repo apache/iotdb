@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.nio.BufferOverflowException;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -76,7 +77,7 @@ public class DifferentialWriteLogNode extends ExclusiveWriteLogNode {
   }
 
   @Override
-  public void notifyStartFlush() {
+  public void notifyStartFlush() throws FileNotFoundException {
     lock.lock();
     try {
       close();
