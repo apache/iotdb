@@ -28,8 +28,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +46,8 @@ public class SlotPartitionTable implements PartitionTable {
   private int replicationNum =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
-  private int raftGroupNum = 2;
+  private int multiRaftFactor =
+      ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
 
   //all nodes
   private List<Node> nodeRing = new ArrayList<>();
@@ -55,12 +56,12 @@ public class SlotPartitionTable implements PartitionTable {
 
   //The following fields are used for determining which node a data item belongs to.
   // the slots held by each node
-  private Map<Pair<Node, Integer>, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
+  private Map<RaftNode, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
   // each slot is managed by whom
-  private Pair<Node, Integer>[] slotNodes = new Pair[ClusterConstant.SLOT_NUM];
+  private RaftNode[] slotNodes = new RaftNode[ClusterConstant.SLOT_NUM];
   // the nodes that each slot belongs to before a new node is added, used for the new node to
   // find the data source
-  private Map<Pair<Node, Integer>, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
+  private Map<RaftNode, Map<Integer, RaftNode>> previousNodeMap = new ConcurrentHashMap<>();
 
   //the filed is used for determining which nodes need to be a group.
   // the data groups which this node belongs to.
@@ -112,30 +113,28 @@ public class SlotPartitionTable implements PartitionTable {
     // evenly assign the slots to each node
     int nodeNum = nodeRing.size();
     int slotsPerNode = totalSlotNumbers / nodeNum;
-    int slotsPerRaftGroup = slotsPerNode / raftGroupNum;
+    int slotsPerRaftGroup = slotsPerNode / multiRaftFactor;
     for (Node node : nodeRing) {
-      for (int i = 0; i < raftGroupNum; i++) {
-        nodeSlotMap.put(new Pair<>(node, i), new ArrayList<>());
+      for (int i = 0; i < multiRaftFactor; i++) {
+        nodeSlotMap.put(new RaftNode(node, i), new ArrayList<>());
       }
     }
 
     for (int i = 0; i < totalSlotNumbers; i++) {
       int nodeIdx = i / slotsPerNode;
+      int raftId = i % slotsPerNode / slotsPerRaftGroup;
       if (nodeIdx >= nodeNum) {
         // the last node may receive a little more if total slots cannot de divided by node number
         nodeIdx--;
       }
-      for (int j = 0; j < nodeIdx; j++) {
-        int groupIdx = j / slotsPerRaftGroup;
-        if (groupIdx >= raftGroupNum) {
-          groupIdx--;
-        }
-        nodeSlotMap.get(new Pair<>(nodeRing.get(nodeIdx), groupIdx)).add(i);
+      if (raftId >= multiRaftFactor) {
+        raftId--;
       }
+      nodeSlotMap.get(new RaftNode(nodeRing.get(nodeIdx), raftId)).add(i);
     }
 
     // build the index to find a node by slot
-    for (Entry<Pair<Node, Integer>, List<Integer>> entry : nodeSlotMap.entrySet()) {
+    for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
       for (Integer slot : entry.getValue()) {
         slotNodes[slot] = entry.getKey();
       }
@@ -155,8 +154,8 @@ public class SlotPartitionTable implements PartitionTable {
       if (startIndex < 0) {
         startIndex = startIndex + nodeRing.size();
       }
-      for (int j = 0; j < raftGroupNum; j++) {
-        ret.add(getHeaderGroup(new Pair<>(nodeRing.get(startIndex), j)));
+      for (int j = 0; j < multiRaftFactor; j++) {
+        ret.add(getHeaderGroup(new RaftNode(nodeRing.get(startIndex), j)));
       }
     }
 
@@ -165,13 +164,13 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public PartitionGroup getHeaderGroup(Pair<Node, Integer> pair) {
-    PartitionGroup ret = new PartitionGroup(pair.right);
+  public PartitionGroup getHeaderGroup(RaftNode raftNode) {
+    PartitionGroup ret = new PartitionGroup(raftNode.getRaftId());
 
     // assuming the nodes are [1,2,3,4,5]
-    int nodeIndex = nodeRing.indexOf(pair.left);
+    int nodeIndex = nodeRing.indexOf(raftNode.getNode());
     if (nodeIndex == -1) {
-      logger.error("Node {} is not in the cluster", pair.left);
+      logger.error("Node {} is not in the cluster", raftNode.getNode());
       return null;
     }
     int endIndex = nodeIndex + replicationNum;
@@ -187,10 +186,15 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
+  public PartitionGroup getHeaderGroup(Node node) {
+    return getHeaderGroup(new RaftNode(node, 0));
+  }
+
+  @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      Pair<Node, Integer> pair = routeToHeaderByTime(storageGroupName, timestamp);
-      return getHeaderGroup(pair);
+      RaftNode raftNode = routeToHeaderByTime(storageGroupName, timestamp);
+      return getHeaderGroup(raftNode);
     }
   }
 
@@ -200,24 +204,24 @@ public class SlotPartitionTable implements PartitionTable {
           Thread.currentThread().getStackTrace());
       return null;
     }
-    Pair<Node, Integer> pair = slotNodes[slot];
-    logger.debug("The slot of {} is held by {}", slot, pair);
-    if (pair.left == null) {
+    RaftNode raftNode = slotNodes[slot];
+    logger.debug("The slot of {} is held by {}", slot, raftNode);
+    if (raftNode.getNode() == null) {
       logger.warn("The slot {} is incorrect", slot);
       return null;
     }
-    return getHeaderGroup(pair);
+    return getHeaderGroup(raftNode);
   }
 
   @Override
-  public Pair<Node, Integer> routeToHeaderByTime(String storageGroupName, long timestamp) {
+  public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
       int slot = getSlotStrategy()
           .calculateSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
-      Pair<Node, Integer> pair = slotNodes[slot];
+      RaftNode raftNode = slotNodes[slot];
       logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
-          slot, pair);
-      return pair;
+          slot, raftNode);
+      return raftNode;
     }
   }
 
@@ -325,9 +329,9 @@ public class SlotPartitionTable implements PartitionTable {
     try {
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
-      for (Entry<Pair<Node, Integer>, List<Integer>> entry : nodeSlotMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey().left, dataOutputStream);
-        dataOutputStream.writeInt(entry.getKey().right);
+      for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey().getNode(), dataOutputStream);
+        dataOutputStream.writeInt(entry.getKey().getRaftId());
         SerializeUtils.serialize(entry.getValue(), dataOutputStream);
       }
 
@@ -363,11 +367,11 @@ public class SlotPartitionTable implements PartitionTable {
       SerializeUtils.deserialize(node, buffer);
       int id = buffer.getInt();
       SerializeUtils.deserialize(slots, buffer);
-      Pair pair = new Pair<>(node, id);
-      nodeSlotMap.put(pair, slots);
+      RaftNode raftNode = new RaftNode(node, id);
+      nodeSlotMap.put(raftNode, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer slot : slots) {
-        slotNodes[slot] = pair;
+        slotNodes[slot] = raftNode;
       }
     }
 
@@ -388,9 +392,9 @@ public class SlotPartitionTable implements PartitionTable {
 //    }
     lastLogIndex = buffer.getLong();
 
-    for (Pair<Node, Integer> nodeIntegerPair : nodeSlotMap.keySet()) {
-      if (!nodeRing.contains(nodeIntegerPair.left)) {
-        nodeRing.add(nodeIntegerPair.left);
+    for (RaftNode raftNode : nodeSlotMap.keySet()) {
+      if (!nodeRing.contains(raftNode.getNode())) {
+        nodeRing.add(raftNode.getNode());
       }
     }
     nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
@@ -404,15 +408,19 @@ public class SlotPartitionTable implements PartitionTable {
     return nodeRing;
   }
 
-  public Map<Integer, Node> getPreviousNodeMap(Node node) {
-    return previousNodeMap.get(node);
+  public Map<Integer, RaftNode> getPreviousNodeMap(RaftNode raftNode) {
+    return previousNodeMap.get(raftNode);
   }
 
-  public List<Integer> getNodeSlots(Node header) {
+  public List<Integer> getNodeSlots(Node header, int raftId) {
+    return getNodeSlots(new RaftNode(header, raftId));
+  }
+
+  public List<Integer> getNodeSlots(RaftNode header) {
     return nodeSlotMap.get(header);
   }
 
-  public Map<Pair<Node, Integer>, List<Integer>> getAllNodeSlots() {
+  public Map<RaftNode, List<Integer>> getAllNodeSlots() {
     return nodeSlotMap;
   }
 
@@ -516,9 +524,9 @@ public class SlotPartitionTable implements PartitionTable {
 
   private void calculateGlobalGroups() {
     globalGroups = new ArrayList<>();
-    for (Node n : getAllNodes()) {
-      for (int i = 0; i < raftGroupNum; i++) {
-        globalGroups.add(getHeaderGroup(new Pair<>(n, i)));
+    for (Node node : getAllNodes()) {
+      for (int i = 0; i < multiRaftFactor; i++) {
+        globalGroups.add(getHeaderGroup(new RaftNode(node, i)));
       }
     }
   }

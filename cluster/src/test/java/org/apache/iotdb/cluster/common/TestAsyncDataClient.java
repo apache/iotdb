@@ -68,9 +68,9 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void fetchSingleSeries(Node header, long readerId,
+  public void fetchSingleSeries(Node header, int raftId, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeries(header, readerId,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeries(header, raftId, readerId,
         resultHandler)).start();
   }
 
@@ -89,16 +89,16 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
+  public void fetchSingleSeriesByTimestamp(Node header, int raftId, long readerId, long time,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeriesByTimestamp(header,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeriesByTimestamp(header, raftId,
         readerId, time, resultHandler)).start();
   }
 
   @Override
-  public void getAllPaths(Node header, List<String> paths, boolean withAlias,
+  public void getAllPaths(Node header, int raftId, List<String> paths, boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getAllPaths(header,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getAllPaths(header, raftId,
         paths, withAlias, resultHandler)).start();
   }
 
@@ -176,9 +176,9 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
+  public void getGroupByResult(Node header, int raftId, long executorId, long startTime, long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getGroupByResult(header, executorId,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getGroupByResult(header, raftId, executorId,
         startTime, endTime, resultHandler)).start();
   }
 

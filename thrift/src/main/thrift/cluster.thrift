@@ -121,6 +121,11 @@ struct Node {
   5: required int clientPort
 }
 
+struct RaftNode {
+  1: required Node node
+  2: required int raftId
+}
+
 // leader -> follower
 struct StartUpStatus {
   1: required long partitionInterval

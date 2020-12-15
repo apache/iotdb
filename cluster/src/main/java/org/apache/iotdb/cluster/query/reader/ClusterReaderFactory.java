@@ -128,7 +128,7 @@ public class ClusterReaderFactory {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
       if (logger.isDebugEnabled()) {
         logger.debug("{}: creating a local reader for {}#{}", metaGroupMember.getName(),
             path.getFullPath(),
@@ -224,7 +224,7 @@ public class ClusterReaderFactory {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(),
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId(),
               String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
                   context.getQueryId()));
       IPointReader seriesPointReader = getSeriesPointReader(path, deviceMeasurements, dataType,
@@ -268,7 +268,7 @@ public class ClusterReaderFactory {
     }
     return new SeriesRawDataPointReader(
         getSeriesReader(path, allSensors, dataType, timeFilter,
-            valueFilter, context, dataGroupMember.getHeader(), ascending));
+            valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(), ascending));
 
   }
 
@@ -287,11 +287,11 @@ public class ClusterReaderFactory {
   private SeriesReader getSeriesReader(PartialPath path, Set<String> allSensors, TSDataType
       dataType,
       Filter timeFilter,
-      Filter valueFilter, QueryContext context, Node header, boolean ascending)
+      Filter valueFilter, QueryContext context, Node header, int raftId, boolean ascending)
       throws StorageEngineException, QueryProcessException {
     ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots =
-        ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
+        ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header, raftId);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
@@ -409,7 +409,7 @@ public class ClusterReaderFactory {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember = metaGroupMember
-          .getLocalDataMember(partitionGroup.getHeader());
+          .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataGroupMember);
       logger.debug("{}: creating a local group by executor for {}#{}", metaGroupMember.getName(),
           path.getFullPath(), context.getQueryId());
@@ -461,13 +461,13 @@ public class ClusterReaderFactory {
 
         if (executorId != -1) {
           // record the queried node to release resources later
-          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
           logger.debug("{}: get an executorId {} for {}@{} from {}", metaGroupMember.getName(),
               executorId,
               aggregationTypes, path, node);
           // create a remote executor with the return id
           RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
-              metaGroupMember, node, partitionGroup.getHeader());
+              metaGroupMember, node, partitionGroup.getHeader(), partitionGroup.getId());
           for (Integer aggregationType : aggregationTypes) {
             remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
                 AggregationType.values()[aggregationType], dataType, ascending));
@@ -530,7 +530,7 @@ public class ClusterReaderFactory {
     }
 
     SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
-        valueFilter, context, dataGroupMember.getHeader(), ascending);
+        valueFilter, context, dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId(), ascending);
     if (seriesReader.isEmpty()) {
       return null;
     }
@@ -556,8 +556,8 @@ public class ClusterReaderFactory {
       throw new StorageEngineException(e);
     }
     SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
-        TimeFilter.gtEq(Long.MIN_VALUE),
-        null, context, dataGroupMember.getHeader(), ascending);
+        TimeFilter.gtEq(Long.MIN_VALUE), null, context, dataGroupMember.getHeader(),
+        dataGroupMember.getRaftGroupId(), ascending);
     try {
       if (seriesReader.isEmpty()) {
         return null;

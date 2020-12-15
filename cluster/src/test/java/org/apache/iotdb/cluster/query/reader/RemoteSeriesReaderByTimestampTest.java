@@ -63,7 +63,7 @@ public class RemoteSeriesReaderByTimestampTest {
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, node, null) {
           @Override
-          public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
+          public void fetchSingleSeriesByTimestamp(Node header, int raftId, long readerId, long time,
               AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
             if (failedNodes.contains(node)) {
               throw new TException("Node down.");

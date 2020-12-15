@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -95,6 +96,7 @@ public class SlotPartitionTableTest {
   SlotPartitionTable localTable;
   Node localNode;
   int replica_size = 5;
+  int raftId = 0;
   MManager[] mManager;
 
   SlotPartitionTable[] tables;//The PartitionTable on each node.
@@ -133,11 +135,11 @@ public class SlotPartitionTableTest {
     for (int i = 0; i < 20; i++) {
       storageNames[i] = String.format("root.sg.l2.l3.%d", i);
       //determine which node the sg belongs to
-      Node node = localTable.routeToHeaderByTime(storageNames[i], 0);
-      nodeSGs[node.getMetaPort() - 30000].add(storageNames[i]);
+      RaftNode node = localTable.routeToHeaderByTime(storageNames[i], 0);
+      nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i]);
       storageNames[i + 20] = String.format("root.sg.l2.l3.l4.%d", i + 20);
       node = localTable.routeToHeaderByTime(storageNames[i + 20], 0);
-      nodeSGs[node.getMetaPort() - 30000].add(storageNames[i + 20]);
+      nodeSGs[node.getNode().getMetaPort() - 30000].add(storageNames[i + 20]);
     }
     for (int i = 0; i < 20; i++) {
       mManager[i] = MManagerWhiteBox.newMManager("target/schemas/mlog_" + i);
@@ -238,9 +240,9 @@ public class SlotPartitionTableTest {
 
   @Test
   public void routeToHeader() {
-    Node node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
-    Node node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
-    Node node3 = localTable
+    RaftNode node1 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 0);
+    RaftNode node2 = localTable.routeToHeaderByTime("root.sg.l2.l3.l4.28", 1);
+    RaftNode node3 = localTable
         .routeToHeaderByTime("root.sg.l2.l3.l4.28", 1 + StorageEngine.getTimePartitionInterval());
     assertEquals(node1, node2);
     assertNotEquals(node2, node3);
@@ -283,7 +285,7 @@ public class SlotPartitionTableTest {
   @Test
   public void getPreviousNodeMap() {
     //before adding or deleting node, it should be null
-    assertNull(localTable.getPreviousNodeMap(localNode));
+    assertNull(localTable.getPreviousNodeMap(new RaftNode(localNode, 0)));
     //TODO after adding or deleting node, it has data
   }
 
@@ -510,7 +512,7 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testRemoveNode() {
-    List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0));
+    List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0), raftId);
     NodeRemovalResult nodeRemovalResult = localTable.removeNode(getNode(0));
     assertFalse(localTable.getAllNodes().contains(getNode(0)));
     PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup();

@@ -212,8 +212,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    asyncService.requestCommitIndex(header, resultHandler);
+  public void requestCommitIndex(Node header, int raftId, AsyncMethodCallback<Long> resultHandler) {
+    asyncService.requestCommitIndex(header, raftId, resultHandler);
   }
 
   @Override
@@ -253,9 +253,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void matchTerm(long index, long term, Node header,
+  public void matchTerm(long index, long term, Node header, int raftId,
       AsyncMethodCallback<Boolean> resultHandler) {
-    asyncService.matchTerm(index, term, header, resultHandler);
+    asyncService.matchTerm(index, term, header, raftId, resultHandler);
   }
 
   @Override
@@ -319,8 +319,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public long requestCommitIndex(Node header) throws TException {
-    return syncService.requestCommitIndex(header);
+  public long requestCommitIndex(Node header, int raftId) throws TException {
+    return syncService.requestCommitIndex(header, raftId);
   }
 
   @Override
@@ -329,8 +329,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header) {
-    return syncService.matchTerm(index, term, header);
+  public boolean matchTerm(long index, long term, Node header, int raftId) {
+    return syncService.matchTerm(index, term, header, raftId);
   }
 
   @Override

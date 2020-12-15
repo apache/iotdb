@@ -138,7 +138,7 @@ public class ClusterPreviousFill extends PreviousFill {
   private void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     try {
       fillHandler
           .onComplete(
@@ -157,7 +157,7 @@ public class ClusterPreviousFill extends PreviousFill {
     PreviousFillRequest request = new PreviousFillRequest(arguments.getPath().getFullPath(),
         arguments.getQueryTime(),
         arguments.getBeforeRange(), context.getQueryId(), metaGroupMember.getThisNode(),
-        group.getHeader(),
+        group.getHeader(), group.getId(),
         arguments.getDataType().ordinal(),
         arguments.getDeviceMeasurements());
 

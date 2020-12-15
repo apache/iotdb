@@ -143,7 +143,9 @@ public abstract class RaftMember {
    * the lock is to make sure that only one thread can apply snapshot at the same time
    */
   private final Object snapshotApplyLock = new Object();
+
   protected Node thisNode = ClusterConstant.EMPTY_NODE;
+
   /**
    * the nodes that belong to the same raft group as thisNode.
    */
@@ -702,7 +704,7 @@ public abstract class RaftMember {
     }
     logger.info("{}: Start to make {} catch up", name, follower);
     if (!catchUpService.isShutdown()) {
-      Future<?> future = catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower),
+      Future<?> future = catchUpService.submit(new CatchUpTask(follower, getRaftGroupId(), peerMap.get(follower),
           this, lastLogIdx));
       catchUpService.submit(() -> {
         try {
@@ -1007,7 +1009,7 @@ public abstract class RaftMember {
       return commitIdResult.get();
     }
     synchronized (commitIdResult) {
-      client.requestCommitIndex(getHeader(), get,new GenericHandler<>(leader.get(), commitIdResult));
+      client.requestCommitIndex(getHeader(), getRaftGroupId(), new GenericHandler<>(leader.get(), commitIdResult));
       commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
     }
     return commitIdResult.get();
@@ -1023,7 +1025,7 @@ public abstract class RaftMember {
     }
     long commitIndex;
     try {
-      commitIndex = client.requestCommitIndex(getHeader());
+      commitIndex = client.requestCommitIndex(getHeader(), getRaftGroupId());
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
@@ -1864,7 +1866,12 @@ public abstract class RaftMember {
     return Response.RESPONSE_AGREE;
   }
 
+  public int getRaftGroupId() {
+    return allNodes.getId();
+  }
+
   enum AppendLogResult {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
+
 }

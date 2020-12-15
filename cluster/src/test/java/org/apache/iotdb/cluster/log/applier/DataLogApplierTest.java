@@ -92,7 +92,7 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public DataGroupMember getLocalDataMember(Node header, Object request) {
+    public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
       return testDataGroupMember;
     }
 
@@ -146,9 +146,9 @@ public class DataLogApplierTest extends IoTDBTest {
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, node, null) {
           @Override
-          public void getAllPaths(Node header, List<String> path, boolean withAlias,
+          public void getAllPaths(Node header, int raftId, List<String> path, boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path,
+            new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, raftId, path,
                 withAlias, resultHandler)).start();
           }
 

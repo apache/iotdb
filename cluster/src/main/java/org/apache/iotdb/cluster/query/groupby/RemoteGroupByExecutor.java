@@ -47,17 +47,18 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   private MetaGroupMember metaGroupMember;
   private Node source;
   private Node header;
+  private int raftId;
 
   private List<AggregateResult> results = new ArrayList<>();
 
 
   public RemoteGroupByExecutor(long executorId,
-      MetaGroupMember metaGroupMember, Node source, Node header) {
+      MetaGroupMember metaGroupMember, Node source, Node header, int raftId) {
     this.executorId = executorId;
     this.metaGroupMember = metaGroupMember;
     this.source = source;
     this.header = header;
-
+    this.raftId = raftId;
   }
 
   @Override
@@ -81,11 +82,11 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
         AsyncDataClient client = metaGroupMember
             .getClientProvider().getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffers = SyncClientAdaptor
-            .getGroupByResult(client, header, executorId, curStartTime, curEndTime);
+            .getGroupByResult(client, header, raftId, executorId, curStartTime, curEndTime);
       } else {
         SyncDataClient syncDataClient = metaGroupMember
             .getClientProvider().getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
-        aggrBuffers = syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        aggrBuffers = syncDataClient.getGroupByResult(header, raftId, executorId, curStartTime, curEndTime);
         ClientUtils.putBackSyncClient(syncDataClient);
       }
 
@@ -116,11 +117,11 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
         AsyncDataClient client = metaGroupMember
             .getClientProvider().getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffer = SyncClientAdaptor
-            .peekNextNotNullValue(client, header, executorId, nextStartTime, nextEndTime);
+            .peekNextNotNullValue(client, header, raftId,executorId, nextStartTime, nextEndTime);
       } else {
         SyncDataClient syncDataClient = metaGroupMember
             .getClientProvider().getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
-        aggrBuffer = syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        aggrBuffer = syncDataClient.peekNextNotNullValue(header, raftId, executorId, nextStartTime, nextEndTime);
         ClientUtils.putBackSyncClient(syncDataClient);
       }
 

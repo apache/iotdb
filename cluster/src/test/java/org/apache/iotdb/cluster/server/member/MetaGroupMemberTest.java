@@ -305,13 +305,13 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header,
+      public DataGroupMember getLocalDataMember(Node header, int raftId,
           Object request) {
         return getDataGroupMember(header);
       }
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header) {
+      public DataGroupMember getLocalDataMember(Node header, int raftId) {
         return getDataGroupMember(header);
       }
 

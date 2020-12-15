@@ -92,7 +92,7 @@ public class DataSourceInfo {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
           if (newReaderId != -1) {
             // register the node so the remote resources can be released
-            context.registerRemoteNode(node, partitionGroup.getHeader());
+            context.registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
@@ -168,6 +168,10 @@ public class DataSourceInfo {
     } finally {
       client.putBack();
     }
+  }
+
+  public int getRaftId() {
+    return partitionGroup.getId();
   }
 
   public long getReaderId() {

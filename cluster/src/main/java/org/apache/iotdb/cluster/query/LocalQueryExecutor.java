@@ -425,7 +425,7 @@ public class LocalQueryExecutor {
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable()).getNodeSlots(
-            dataGroupMember.getHeader());
+            dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
     try {
       if (ascending) {
         AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
@@ -490,7 +490,7 @@ public class LocalQueryExecutor {
 
     ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-        .getNodeSlots(dataGroupMember.getHeader());
+        .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
     LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
         deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
     for (Integer aggregationType : aggregationTypes) {

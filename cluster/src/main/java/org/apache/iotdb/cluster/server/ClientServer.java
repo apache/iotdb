@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -294,8 +295,8 @@ public class ClientServer extends TSServiceImpl {
     RemoteQueryContext context = queryContextMap.remove(queryId);
     if (context != null) {
       // release the resources in every queried node
-      for (Entry<Node, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
-        Node header = headerEntry.getKey();
+      for (Entry<RaftNode, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
+        RaftNode header = headerEntry.getKey();
         Set<Node> queriedNodes = headerEntry.getValue();
 
         for (Node queriedNode : queriedNodes) {
@@ -305,12 +306,12 @@ public class ClientServer extends TSServiceImpl {
               AsyncDataClient client = metaGroupMember
                   .getClientProvider().getAsyncDataClient(queriedNode,
                       RaftServer.getReadOperationTimeoutMS());
-              client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
+              client.endQuery(header.getNode(), header.getRaftId(), metaGroupMember.getThisNode(), queryId, handler);
             } else {
               SyncDataClient syncDataClient = metaGroupMember
                   .getClientProvider().getSyncDataClient(queriedNode,
                       RaftServer.getReadOperationTimeoutMS());
-              syncDataClient.endQuery(header, metaGroupMember.getThisNode(), queryId);
+              syncDataClient.endQuery(header.getNode(), header.getRaftId(), metaGroupMember.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);

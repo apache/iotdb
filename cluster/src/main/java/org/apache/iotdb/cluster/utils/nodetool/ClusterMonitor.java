@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -104,10 +106,10 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<PartitionGroup> localGroups = partitionTable.getLocalGroups();
-    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
+    Map<RaftNode, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (PartitionGroup group : localGroups) {
-      raftGroupMapSlotNum.put(group, nodeSlotMap.get(group.getHeader()).size());
+      raftGroupMapSlotNum.put(group, nodeSlotMap.get(new RaftNode(group.getHeader(), group.getId())).size());
     }
     return raftGroupMapSlotNum;
   }
@@ -119,11 +121,14 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       return null;
     }
     List<Node> allNodes = partitionTable.getAllNodes();
-    Map<Node, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
+    Map<RaftNode, List<Integer>> nodeSlotMap = ((SlotPartitionTable) partitionTable).getAllNodeSlots();
     Map<PartitionGroup, Integer> raftGroupMapSlotNum = new HashMap<>();
     for (Node header : allNodes) {
-      raftGroupMapSlotNum
-          .put(partitionTable.getHeaderGroup(header), nodeSlotMap.get(header).size());
+      for(int raftId = 0; raftId < ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor(); raftId++) {
+        RaftNode raftNode = new RaftNode(header, raftId);
+        raftGroupMapSlotNum
+            .put(partitionTable.getHeaderGroup(raftNode), nodeSlotMap.get(raftNode).size());
+      }
     }
     return raftGroupMapSlotNum;
   }

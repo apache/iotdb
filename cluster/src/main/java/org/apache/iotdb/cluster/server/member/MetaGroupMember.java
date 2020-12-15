@@ -95,6 +95,7 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -147,7 +148,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -305,12 +305,11 @@ public class MetaGroupMember extends RaftMember {
    * close the partition through that member. Notice: only partitions owned by this node can be
    * closed by the method.
    *
-   * @return true if the member is a leader and the partition is closed, false otherwise
    */
   public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    Pair<Node, Integer> pair = partitionTable.routeToHeaderByTime(storageGroupName,
+    RaftNode raftNode = partitionTable.routeToHeaderByTime(storageGroupName,
         partitionId * StorageEngine.getTimePartitionInterval());
-    DataGroupMember localDataMember = getLocalDataMember(pair);
+    DataGroupMember localDataMember = getLocalDataMember(raftNode);
     if (localDataMember == null || localDataMember.getCharacter() != NodeCharacter.LEADER) {
       return;
     }
@@ -485,7 +484,6 @@ public class MetaGroupMember extends RaftMember {
    * This node is not a seed node and wants to join an established cluster. Pick up a node randomly
    * from the seed nodes and send a join request to it.
    *
-   * @return true if the node has successfully joined the cluster, false otherwise.
    */
   public void joinCluster() throws ConfigInconsistentException, StartUpCheckFailureException {
     if (allNodes.size() == 1) {
@@ -1662,7 +1660,7 @@ public class MetaGroupMember extends RaftMember {
           .getOperationStartTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
           entry.getValue().getHeader());
-      result = getLocalDataMember(entry.getValue().getHeader())
+      result = getLocalDataMember(entry.getValue().getHeader(), entry.getValue().getId())
           .executeNonQueryPlan(entry.getKey());
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
@@ -1839,7 +1837,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         PartialPath storageGroupName = IoTDB.metaManager
             .getStorageGroupPath(path);
-        Set<Node> groupHeaders = new HashSet<>();
+        Set<RaftNode> groupHeaders = new HashSet<>();
         for (int i = 0; i < intervals.getIntervalSize(); i++) {
           // compute the headers of groups involved in every interval
           PartitionUtils
@@ -1847,7 +1845,7 @@ public class MetaGroupMember extends RaftMember {
                   intervals.getUpperBound(i), partitionTable, groupHeaders);
         }
         // translate the headers to groups
-        for (Node groupHeader : groupHeaders) {
+        for (RaftNode groupHeader : groupHeaders) {
           partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
         }
       } catch (MetadataException e) {
@@ -2130,17 +2128,26 @@ public class MetaGroupMember extends RaftMember {
    * @param request the toString() of this parameter should explain what the request is and it is
    *                only used in logs for tracing
    */
-  public DataGroupMember getLocalDataMember(Node header, Object request) {
-    return dataClusterServer.getDataMember(header, null, request);
+  public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
+    return dataClusterServer.getDataMember(new RaftNode(header, raftId), null, request);
   }
 
   /**
    * Get a local DataGroupMember that is in the group of "header" for an internal request.
    *
-   * @param pair the header of the group which the local node is in
+   * @param node the header of the group which the local node is in
    */
-  public DataGroupMember getLocalDataMember(Pair<Node, Integer> pair) {
-    return dataClusterServer.getDataMember(pair, null, "Internal call");
+  public DataGroupMember getLocalDataMember(Node node, int raftId) {
+    return dataClusterServer.getDataMember(new RaftNode(node, raftId), null, "Internal call");
+  }
+
+  /**
+   * Get a local DataGroupMember that is in the group of "header" for an internal request.
+   *
+   * @param raftNode the header of the group which the local node is in
+   */
+  public DataGroupMember getLocalDataMember(RaftNode raftNode) {
+    return dataClusterServer.getDataMember(raftNode, null, "Internal call");
   }
 
   public DataClientProvider getClientProvider() {

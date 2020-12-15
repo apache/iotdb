@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -389,7 +390,7 @@ public class PartitionUtils {
    */
   public static void getIntervalHeaders(String storageGroupName, long timeLowerBound,
       long timeUpperBound,
-      PartitionTable partitionTable, Set<Node> result) {
+      PartitionTable partitionTable, Set<RaftNode> result) {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
     long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;
     while (currPartitionStart <= timeUpperBound) {

@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -280,8 +281,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<String> getUnregisteredTimeseries(Node header, int raftId,
-      List<String> timeseriesList)
+  public List<String> getUnregisteredTimeseries(Node header, int raftId, List<String> timeseriesList)
       throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getUnregisteredTimeseries(timeseriesList);

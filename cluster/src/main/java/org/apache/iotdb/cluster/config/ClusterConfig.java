@@ -46,6 +46,9 @@ public class ClusterConfig {
   private int replicationNum = 2;
 
   @ClusterConsistent
+  private int multiRaftFactor = 2;
+
+  @ClusterConsistent
   private String clusterName = "default";
 
   @ClusterConsistent
@@ -232,6 +235,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public int getMultiRaftFactor() {
+    return multiRaftFactor;
+  }
+
+  public void setMultiRaftFactor(int multiRaftFactor) {
+    this.multiRaftFactor = multiRaftFactor;
   }
 
   void setClusterName(String clusterName) {

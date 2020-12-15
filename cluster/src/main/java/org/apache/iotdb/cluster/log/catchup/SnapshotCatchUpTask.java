@@ -51,8 +51,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       .getCatchUpTimeoutMS();
   private Snapshot snapshot;
 
-  SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, RaftMember raftMember) {
-    super(logs, node, raftMember);
+  SnapshotCatchUpTask(List<Log> logs, Snapshot snapshot, Node node, int raftId, RaftMember raftMember) {
+    super(logs, node, raftId, raftMember);
     this.snapshot = snapshot;
   }
 

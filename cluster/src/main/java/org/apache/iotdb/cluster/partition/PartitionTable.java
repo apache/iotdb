@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -55,7 +56,7 @@ public interface PartitionTable {
    * @param timestamp
    * @return
    */
-  Pair<Node, Integer> routeToHeaderByTime(String storageGroupName, long timestamp);
+  RaftNode routeToHeaderByTime(String storageGroupName, long timestamp);
 
   /**
    * Add a new node to update the partition table.
@@ -79,10 +80,12 @@ public interface PartitionTable {
   List<PartitionGroup> getLocalGroups();
 
   /**
-   * @param pair
+   * @param raftNode
    * @return the partition group starting from the header.
    */
-  PartitionGroup getHeaderGroup(Pair<Node, Integer> pair);
+  PartitionGroup getHeaderGroup(RaftNode raftNode);
+
+  PartitionGroup getHeaderGroup(Node node);
 
   ByteBuffer serialize();
 

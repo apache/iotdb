@@ -123,6 +123,7 @@ public class DataGroupMemberTest extends MemberTest {
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
   private int prevReplicationNum;
+  private int raftId = 0;
 
   @Before
   public void setUp() throws Exception {
@@ -210,7 +211,7 @@ public class DataGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+            public void requestCommitIndex(Node header, int raftId, AsyncMethodCallback<Long> resultHandler) {
               new Thread(() -> {
                 if (enableSyncLeader) {
                   resultHandler.onComplete(-1L);
@@ -253,7 +254,7 @@ public class DataGroupMemberTest extends MemberTest {
   @Test
   public void testAddNode() {
     System.out.println("Start testAddNode()");
-    PartitionGroup partitionGroup = new PartitionGroup(TestUtils.getNode(0),
+    PartitionGroup partitionGroup = new PartitionGroup(raftId, TestUtils.getNode(0),
         TestUtils.getNode(50), TestUtils.getNode(90));
     DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
         new PartitionGroup(partitionGroup));
@@ -632,7 +633,7 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+        .fetchSingleSeries(TestUtils.getNode(0), raftId, readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 10; i++) {
@@ -643,7 +644,7 @@ public class DataGroupMemberTest extends MemberTest {
     }
     assertFalse(batchData.hasCurrent());
 
-    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), raftId, TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -690,7 +691,7 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+        .fetchSingleSeries(TestUtils.getNode(0), raftId, readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 9; i++) {
@@ -701,7 +702,7 @@ public class DataGroupMemberTest extends MemberTest {
     }
     assertFalse(batchData.hasCurrent());
 
-    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), raftId, TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -751,13 +752,13 @@ public class DataGroupMemberTest extends MemberTest {
 
     for (int i = 5; i < 10; i++) {
       new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), raftId, readerId, i,
               dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
 
-    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), raftId, TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -806,13 +807,13 @@ public class DataGroupMemberTest extends MemberTest {
         dataResult);
     for (int i = 5; i < 9; i++) {
       new DataAsyncService(dataGroupMember)
-          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+          .fetchSingleSeriesByTimestamp(TestUtils.getNode(0), raftId, readerId, i,
               dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
 
-    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), raftId, TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -823,7 +824,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<GetAllPathsResult> pathResult = new AtomicReference<>();
     GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
-        .getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), false, handler);
+        .getAllPaths(TestUtils.getNode(0), raftId, Collections.singletonList(path), false, handler);
     List<String> result = pathResult.get().paths;
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
@@ -835,7 +836,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() {
     System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
-    new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
+    new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), raftId, 0, 0,
         new AsyncMethodCallback<ByteBuffer>() {
           @Override
           public void onComplete(ByteBuffer buffer) {
@@ -850,7 +851,7 @@ public class DataGroupMemberTest extends MemberTest {
     assertTrue(exception instanceof ReaderNotFoundException);
     assertEquals("The requested reader 0 is not found", exception.getMessage());
 
-    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), 0,
+    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), raftId, 0,
         new AsyncMethodCallback<ByteBuffer>() {
           @Override
           public void onComplete(ByteBuffer buffer) {
@@ -995,7 +996,7 @@ public class DataGroupMemberTest extends MemberTest {
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
       new DataAsyncService(dataGroupMember)
-          .getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
+          .getGroupByResult(TestUtils.getNode(10), raftId, executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNotNull(byteBuffers);
@@ -1024,7 +1025,7 @@ public class DataGroupMemberTest extends MemberTest {
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
       new DataAsyncService(dataGroupMember)
-          .getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
+          .getGroupByResult(TestUtils.getNode(30), raftId, executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNull(byteBuffers);

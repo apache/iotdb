@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -57,7 +58,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
+    public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
       return null;
     }
 
@@ -77,7 +78,12 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public PartitionGroup getHeaderGroup(Node header) {
+    public PartitionGroup getHeaderGroup(RaftNode header) {
+      return null;
+    }
+
+    @Override
+    public PartitionGroup getHeaderGroup(Node node) {
       return null;
     }
 

@@ -230,13 +230,13 @@ public class MemberTest {
     MetaGroupMember ret = new TestMetaGroupMember() {
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header,
+      public DataGroupMember getLocalDataMember(Node header, int raftId,
           Object request) {
         return getDataGroupMember(header);
       }
 
       @Override
-      public DataGroupMember getLocalDataMember(Node header) {
+      public DataGroupMember getLocalDataMember(Node header, int raftId) {
         return getDataGroupMember(header);
       }
 

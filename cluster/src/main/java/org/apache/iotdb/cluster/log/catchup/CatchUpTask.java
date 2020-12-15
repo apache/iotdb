@@ -55,9 +55,12 @@ public class CatchUpTask implements Runnable {
   private long lastLogIndex;
   private boolean abort;
   private String name;
+  private int raftId;
 
-  public CatchUpTask(Node node, Peer peer, RaftMember raftMember, long lastLogIdx) {
+
+  public CatchUpTask(Node node, int raftId, Peer peer, RaftMember raftMember, long lastLogIdx) {
     this.node = node;
+    this.raftId = raftId;
     this.peer = peer;
     this.raftMember = raftMember;
     this.logs = Collections.emptyList();
@@ -242,14 +245,14 @@ public class CatchUpTask implements Runnable {
         return false;
       }
       Node header = raftMember.getHeader();
-      matched = SyncClientAdaptor.matchTerm(client, node, logIndex, logTerm, header);
+      matched = SyncClientAdaptor.matchTerm(client, node, logIndex, logTerm, header, raftId);
     } else {
       Client client = raftMember.getSyncClient(node);
       if (client == null) {
         return false;
       }
       try {
-        matched = client.matchTerm(logIndex, logTerm, raftMember.getHeader());
+        matched = client.matchTerm(logIndex, logTerm, raftMember.getHeader(), raftId);
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         throw e;
@@ -321,11 +324,11 @@ public class CatchUpTask implements Runnable {
         doSnapshot();
         // snapshot may overlap with logs
         removeSnapshotLogs();
-        SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
+        SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftId, raftMember);
         catchUpSucceeded = task.call();
       } else {
         logger.info("{}: performing a log catch-up to {}", raftMember.getName(), node);
-        LogCatchUpTask task = new LogCatchUpTask(logs, node, raftMember);
+        LogCatchUpTask task = new LogCatchUpTask(logs, node, raftId, raftMember);
         catchUpSucceeded = task.call();
       }
       if (catchUpSucceeded) {

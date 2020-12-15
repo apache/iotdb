@@ -25,13 +25,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.query.context.QueryContext;
 
 public class RemoteQueryContext extends QueryContext {
   /**
    * The remote nodes that are queried in this query, grouped by the header nodes.
    */
-  private Map<Node, Set<Node>> queriedNodesMap = new HashMap<>();
+  private Map<RaftNode, Set<Node>> queriedNodesMap = new HashMap<>();
   /**
    * The readers constructed locally to respond a remote query.
    */
@@ -46,8 +47,8 @@ public class RemoteQueryContext extends QueryContext {
     super(jobId);
   }
 
-  public void registerRemoteNode(Node node, Node header) {
-    queriedNodesMap.computeIfAbsent(header, n -> new HashSet<>()).add(node);
+  public void registerRemoteNode(Node node, Node header, int raftId) {
+    queriedNodesMap.computeIfAbsent(new RaftNode(header, raftId), n -> new HashSet<>()).add(node);
   }
 
   public void registerLocalReader(long readerId) {
@@ -66,7 +67,7 @@ public class RemoteQueryContext extends QueryContext {
     return localGroupByExecutorIds;
   }
 
-  public Map<Node, Set<Node>> getQueriedNodesMap() {
+  public Map<RaftNode, Set<Node>> getQueriedNodesMap() {
     return queriedNodesMap;
   }
 }

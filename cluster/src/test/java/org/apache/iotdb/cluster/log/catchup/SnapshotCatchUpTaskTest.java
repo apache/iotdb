@@ -152,7 +152,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertEquals(logList, receivedLogs);
@@ -172,7 +172,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     task.call();
 
     assertTrue(receivedLogs.isEmpty());
@@ -195,7 +195,7 @@ public class SnapshotCatchUpTaskTest {
       Snapshot snapshot = new TestSnapshot(9989);
       Node receiver = new Node();
       sender.setCharacter(NodeCharacter.LEADER);
-      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+      SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
       task.call();
 
       assertEquals(logList, receivedLogs);
@@ -213,7 +213,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");
@@ -244,7 +244,7 @@ public class SnapshotCatchUpTaskTest {
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.ELECTOR);
-    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
+    LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, 0, sender);
     try {
       task.call();
       fail("Expected LeaderUnknownException");

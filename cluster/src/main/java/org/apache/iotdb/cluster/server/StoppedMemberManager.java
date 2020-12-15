@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
@@ -54,7 +55,7 @@ public class StoppedMemberManager {
   private static final String REMOVED = "0";
   private static final String RESUMED = "1";
 
-  private Map<Pair<Node, Integer>, DataGroupMember> removedMemberMap = new HashMap<>();
+  private Map<RaftNode, DataGroupMember> removedMemberMap = new HashMap<>();
   private DataGroupMember.Factory memberFactory;
   private Node thisNode;
 
@@ -69,11 +70,11 @@ public class StoppedMemberManager {
    * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
    * can recover it as a data source for data transfers.
    *
-   * @param pair
+   * @param raftNode
    * @param dataGroupMember
    */
-  public synchronized void put(Pair<Node, Integer> pair, DataGroupMember dataGroupMember) {
-    removedMemberMap.put(pair, dataGroupMember);
+  public synchronized void put(RaftNode raftNode, DataGroupMember dataGroupMember) {
+    removedMemberMap.put(raftNode, dataGroupMember);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
       StringBuilder builder = new StringBuilder(REMOVED);
       for (Node node : dataGroupMember.getAllNodes()) {
@@ -82,7 +83,7 @@ public class StoppedMemberManager {
       writer.write(builder.toString());
       writer.newLine();
     } catch (IOException e) {
-      logger.error("Cannot record removed member of header {}", pair, e);
+      logger.error("Cannot record removed member of header {}", raftNode, e);
     }
   }
 
@@ -90,20 +91,20 @@ public class StoppedMemberManager {
    * When a DataGroupMember is resumed, add it here and record this removal, so in next start-up we
    * will not recover it here.
    *
-   * @param pair
+   * @param raftNode
    */
-  public synchronized void remove(Pair<Node, Integer> pair) {
-    removedMemberMap.remove(pair);
+  public synchronized void remove(RaftNode raftNode) {
+    removedMemberMap.remove(raftNode);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
-      writer.write(RESUMED + ";" + pair.toString());
+      writer.write(RESUMED + ";" + raftNode.toString());
       writer.newLine();
     } catch (IOException e) {
-      logger.error("Cannot record resumed member of header {}", pair, e);
+      logger.error("Cannot record resumed member of header {}", raftNode, e);
     }
   }
 
-  public synchronized DataGroupMember get(Pair<Node, Integer> pair) {
-    return removedMemberMap.get(pair);
+  public synchronized DataGroupMember get(RaftNode raftNode) {
+    return removedMemberMap.get(raftNode);
   }
 
   private void recover() {
@@ -147,7 +148,7 @@ public class StoppedMemberManager {
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
     member.setReadOnly();
     //TODO CORRECT
-    removedMemberMap.put(new Pair(partitionGroup.getHeader(), 0), member);
+    removedMemberMap.put(new RaftNode(partitionGroup.getHeader(), 0), member);
   }
 
   private void parseResumed(String[] split) {

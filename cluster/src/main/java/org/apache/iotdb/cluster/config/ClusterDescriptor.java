@@ -208,8 +208,11 @@ public class ClusterDescriptor {
     config.setMaxConcurrentClientNum(Integer.parseInt(properties.getProperty(
         "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
+    config.setMultiRaftFactor(Integer.parseInt(properties.getProperty(
+        "multi_raft_factor", String.valueOf(config.getMultiRaftFactor()))));
+
     config.setReplicationNum(Integer.parseInt(properties.getProperty(
-        "default_replica_num", String.valueOf(config.getReplicationNum()))));
+        "", String.valueOf(config.getReplicationNum()))));
 
     config.setClusterName(properties.getProperty("cluster_name", config.getClusterName()));
 

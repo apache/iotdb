@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -31,6 +30,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.thrift.TException;
@@ -72,8 +72,7 @@ public class PullSnapshotHintService {
 
   public void registerHint(PullSnapshotTaskDescriptor descriptor) {
     PullSnapshotHint hint = new PullSnapshotHint();
-    hint.receivers = new ArrayList<>(descriptor.getPreviousHolders());
-    hint.header = descriptor.getPreviousHolders().getHeader();
+    hint.receivers = new PartitionGroup(descriptor.getPreviousHolders());
     hint.slots = descriptor.getSlots();
     hints.add(hint);
   }
@@ -116,7 +115,7 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
-    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots);
+    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.getRaftId(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
@@ -124,7 +123,7 @@ public class PullSnapshotHintService {
     if (syncDataClient == null) {
       return false;
     }
-    return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
+    return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.getRaftId(), hint.slots);
   }
 
   private static class PullSnapshotHint {
@@ -132,10 +131,16 @@ public class PullSnapshotHintService {
     /**
      * Nodes to send this hint;
      */
-    private List<Node> receivers;
-
-    private Node header;
+    private PartitionGroup receivers;
 
     private List<Integer> slots;
+
+    public Node getHeader() {
+      return receivers.getHeader();
+    }
+
+    public int getRaftId() {
+      return receivers.getId();
+    }
   }
 }

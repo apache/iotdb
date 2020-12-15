@@ -75,6 +75,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
@@ -235,10 +236,6 @@ public class DataGroupMember extends RaftMember {
   @Override
   public Node getHeader() {
     return allNodes.get(0);
-  }
-
-  public Integer getRaftGroupId() {
-    return allNodes.getId();
   }
 
   public ClusterQueryManager getQueryManager() {
@@ -470,29 +467,28 @@ public class DataGroupMember extends RaftMember {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot<Snapshot> snapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Map<Integer, Node> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
-          .getPreviousNodeMap(newNode);
+      Map<Integer, RaftNode> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
+          .getPreviousNodeMap(new RaftNode(newNode, getRaftGroupId()));
 
       // group the slots by their owners
-      Map<Node, List<Integer>> holderSlotsMap = new HashMap<>();
+      Map<RaftNode, List<Integer>> holderSlotsMap = new HashMap<>();
       for (int slot : slots) {
         // skip the slot if the corresponding data is already replicated locally
         if (snapshot.getSnapshot(slot) == null) {
-          Node node = prevHolders.get(slot);
-          if (node != null) {
-            holderSlotsMap.computeIfAbsent(node, n -> new ArrayList<>()).add(slot);
+          RaftNode raftNode = prevHolders.get(slot);
+          if (raftNode != null) {
+            holderSlotsMap.computeIfAbsent(raftNode, n -> new ArrayList<>()).add(slot);
           }
         }
       }
 
       // pull snapshots from each owner's data group
-      for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
-        Node node = entry.getKey();
+      for (Entry<RaftNode, List<Integer>> entry : holderSlotsMap.entrySet()) {
+        RaftNode raftNode = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
         PullSnapshotTaskDescriptor taskDescriptor =
             new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable()
-                .getHeaderGroup(new Pair<>(node, getRaftGroupId())),
-                nodeSlots, false);
+                .getHeaderGroup(raftNode), nodeSlots, false);
         pullFileSnapshot(taskDescriptor, null);
       }
     }
@@ -626,9 +622,9 @@ public class DataGroupMember extends RaftMember {
       List<Pair<Long, Boolean>> tmpPairList = entry.getValue();
       for (Pair<Long, Boolean> pair : tmpPairList) {
         long partitionId = pair.left;
-        Pair<Node, Integer> pair = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
+        RaftNode raftNode = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
             partitionId * StorageEngine.getTimePartitionInterval());
-        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(pair);
+        DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(raftNode);
         if (localDataMember.getHeader().equals(this.getHeader())) {
           localListPair.add(new Pair<>(partitionId, pair.right));
         }
@@ -741,7 +737,7 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
-        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
         initPeerMap();
         if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately

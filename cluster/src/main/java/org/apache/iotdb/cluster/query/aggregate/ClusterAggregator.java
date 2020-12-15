@@ -125,7 +125,7 @@ public class ClusterAggregator {
           , partitionGroup, context, ascending);
     } else {
       // perform the aggregations locally
-      DataGroupMember dataMember = metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
+      DataGroupMember dataMember = metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger
@@ -186,7 +186,7 @@ public class ClusterAggregator {
             results.add(result);
           }
           // register the queried node to release resources when the query ends
-          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
           logger.debug("{}: queried aggregation {} of {} from {} of {} are {}",
               metaGroupMember.getName(),
               aggregations, path, node, partitionGroup.getHeader(), results);

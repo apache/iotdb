@@ -69,7 +69,6 @@ public class PartitionGroup extends ArrayList<Node> {
     return Objects.hash(id, getHeader());
   }
 
-
   public Node getHeader() {
     return get(0);
   }

@@ -172,7 +172,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         List<PartialPath> seriesPaths,
         QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
-      DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+      DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
@@ -231,7 +231,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       }
       buffer = SyncClientAdaptor
           .last(asyncDataClient, seriesPaths, dataTypeOrdinals, context, queryPlan.getDeviceToMeasurements(),
-              group.getHeader());
+              group.getHeader(), group.getId());
       return buffer;
     }
 
@@ -240,7 +240,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       ByteBuffer result = syncDataClient
           .last(new LastQueryRequest(PartialPath.toStringList(seriesPaths), dataTypeOrdinals,
-              context.getQueryId(), queryPlan.getDeviceToMeasurements(), group.getHeader(),
+              context.getQueryId(), queryPlan.getDeviceToMeasurements(), group.getHeader(), group.getId(),
               syncDataClient.getNode()));
       ClientUtils.putBackSyncClient(syncDataClient);
       return result;

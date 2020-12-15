@@ -73,7 +73,7 @@ public class RemoteSimpleSeriesReaderTest {
       public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
         return new AsyncDataClient(null, null, node, null) {
           @Override
-          public void fetchSingleSeries(Node header, long readerId,
+          public void fetchSingleSeries(Node header, int raftId, long readerId,
               AsyncMethodCallback<ByteBuffer> resultHandler)
               throws TException {
             if (failedNodes.contains(node)) {

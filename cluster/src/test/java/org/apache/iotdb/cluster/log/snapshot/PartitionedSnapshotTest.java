@@ -84,8 +84,7 @@ public class PartitionedSnapshotTest extends DataSnapshotTest {
     snapshot.setLastLogIndex(10);
     snapshot.setLastLogTerm(5);
 
-    SnapshotInstaller<PartitionedSnapshot> defaultInstaller = snapshot
-        .getDefaultInstaller(dataGroupMember);
+    SnapshotInstaller<PartitionedSnapshot> defaultInstaller = snapshot.getDefaultInstaller(dataGroupMember);
     for (int i = 0; i < 10; i++) {
       dataGroupMember.getSlotManager().setToPulling(i, TestUtils.getNode(0));
     }

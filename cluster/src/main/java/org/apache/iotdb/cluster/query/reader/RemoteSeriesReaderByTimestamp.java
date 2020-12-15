@@ -67,7 +67,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       fetchResult.set(null);
       try {
         sourceInfo.getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
-            .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+            .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(), sourceInfo.getRaftId(),
                 sourceInfo.getReaderId(), timestamp, handler);
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
@@ -90,7 +90,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       SyncDataClient curSyncClient = sourceInfo
           .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
       ByteBuffer buffer = curSyncClient
-          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(), sourceInfo.getRaftId(),
               sourceInfo.getReaderId(), timestamp);
       curSyncClient.putBack();
       return buffer;
