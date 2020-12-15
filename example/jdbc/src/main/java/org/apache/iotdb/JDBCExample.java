@@ -50,9 +50,7 @@ public class JDBCExample {
       }
 
       for (int i = 0; i <= 100; i++) {
-        statement.addBatch(
-            "insert into root.sg1.d1(timestamp, s1, s2, s3) values(" + i + "," + 1 + "," + 1 + ","
-                + 1 + ")");
+        statement.addBatch(prepareInsertStatment(i));
       }
       statement.executeBatch();
       statement.clearBatch();
@@ -92,4 +90,10 @@ public class JDBCExample {
       System.out.println("--------------------------\n");
     }
   }
+  
+  private static String prepareInsertStatment(int time) {
+    return "insert into root.sg1.d1(timestamp, s1, s2, s3) values(" + time + "," + 1 + "," + 1 + ","
+        + 1 + ")";
+  }
+
 }
