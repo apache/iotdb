@@ -1796,7 +1796,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void parseAttributeClauses(AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
-    final String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
+    final String dataType = ctx.rawDataType().getChild(0).getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
     createTimeSeriesOperator.setDataType(tsDataType);
 
