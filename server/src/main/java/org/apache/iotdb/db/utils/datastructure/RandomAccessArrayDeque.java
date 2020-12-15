@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import java.io.Serializable;
 import java.util.AbstractCollection;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.Deque;
@@ -41,8 +39,9 @@ import java.util.function.Consumer;
  * by a simple extension.
  * @param <E>
  */
+@SuppressWarnings("SuspiciousSystemArraycopy")
 public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
-    implements Deque<E>, Cloneable, Serializable, RandomAccess
+    implements Deque<E>, RandomAccess
 {
   /**
    * The array in which the elements of the deque are stored.
@@ -54,20 +53,20 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * other.  We also guarantee that all array cells not holding
    * deque elements are always null.
    */
-  transient Object[] elements; // non-private to simplify nested class access
+  Object[] elements; // non-private to simplify nested class access
 
   /**
    * The index of the element at the head of the deque (which is the
    * element that would be removed by remove() or pop()); or an
    * arbitrary number equal to tail if the deque is empty.
    */
-  transient int head;
+  int head;
 
   /**
    * The index at which the next element would be added to the tail
    * of the deque (via addLast(E), add(E), or push(E)).
    */
-  transient int tail;
+  int tail;
 
   /**
    * The minimum capacity that we'll use for a newly created deque.
@@ -145,14 +144,6 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
 
   /**
    * Constructs an empty array deque with an initial capacity
-   * sufficient to hold 16 elements.
-   */
-  public RandomAccessArrayDeque() {
-    elements = new Object[16];
-  }
-
-  /**
-   * Constructs an empty array deque with an initial capacity
    * sufficient to hold the specified number of elements.
    *
    * @param numElements  lower bound on initial capacity of the deque
@@ -161,23 +152,8 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     allocateElements(numElements);
   }
 
-  /**
-   * Constructs a deque containing the elements of the specified
-   * collection, in the order they are returned by the collection's
-   * iterator.  (The first element returned by the collection's
-   * iterator becomes the first element, or <i>front</i> of the
-   * deque.)
-   *
-   * @param c the collection whose elements are to be placed into the deque
-   * @throws NullPointerException if the specified collection is null
-   */
-  public RandomAccessArrayDeque(Collection<? extends E> c) {
-    allocateElements(c.size());
-    addAll(c);
-  }
-
   public E get(int index) {
-    if (index >= size()) {
+    if (index >= size() || index < 0) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
 
@@ -195,10 +171,12 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param e the element to add
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public void addFirst(E e) {
     if (e == null)
       throw new NullPointerException();
-    elements[head = (head - 1) & (elements.length - 1)] = e;
+    head = (head - 1) & (elements.length - 1);
+    elements[head] = e;
     if (head == tail)
       doubleCapacity();
   }
@@ -211,6 +189,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param e the element to add
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public void addLast(E e) {
     if (e == null)
       throw new NullPointerException();
@@ -226,6 +205,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return {@code true} (as specified by {@link Deque#offerFirst})
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public boolean offerFirst(E e) {
     addFirst(e);
     return true;
@@ -238,6 +218,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return {@code true} (as specified by {@link Deque#offerLast})
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public boolean offerLast(E e) {
     addLast(e);
     return true;
@@ -246,6 +227,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   /**
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E removeFirst() {
     E x = pollFirst();
     if (x == null)
@@ -256,6 +238,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   /**
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E removeLast() {
     E x = pollLast();
     if (x == null)
@@ -263,9 +246,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     return x;
   }
 
+  @Override
   public E pollFirst() {
     int h = head;
-    @SuppressWarnings("unchecked")
     E result = (E) elements[h];
     // Element is null if deque empty
     if (result == null)
@@ -275,9 +258,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     return result;
   }
 
+  @Override
   public E pollLast() {
     int t = (tail - 1) & (elements.length - 1);
-    @SuppressWarnings("unchecked")
     E result = (E) elements[t];
     if (result == null)
       return null;
@@ -289,8 +272,8 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   /**
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E getFirst() {
-    @SuppressWarnings("unchecked")
     E result = (E) elements[head];
     if (result == null)
       throw new NoSuchElementException();
@@ -300,21 +283,21 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   /**
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E getLast() {
-    @SuppressWarnings("unchecked")
     E result = (E) elements[(tail - 1) & (elements.length - 1)];
     if (result == null)
       throw new NoSuchElementException();
     return result;
   }
 
-  @SuppressWarnings("unchecked")
+  @Override
   public E peekFirst() {
     // elements[head] is null if deque empty
     return (E) elements[head];
   }
 
-  @SuppressWarnings("unchecked")
+  @Override
   public E peekLast() {
     return (E) elements[(tail - 1) & (elements.length - 1)];
   }
@@ -331,6 +314,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param o element to be removed from this deque, if present
    * @return {@code true} if the deque contained the specified element
    */
+  @Override
   public boolean removeFirstOccurrence(Object o) {
     if (o == null)
       return false;
@@ -359,6 +343,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param o element to be removed from this deque, if present
    * @return {@code true} if the deque contained the specified element
    */
+  @Override
   public boolean removeLastOccurrence(Object o) {
     if (o == null)
       return false;
@@ -386,9 +371,9 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return {@code true} (as specified by {@link Collection#add})
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public boolean add(E e) {
-    addLast(e);
-    return true;
+    return offerLast(e);
   }
 
   /**
@@ -400,6 +385,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return {@code true} (as specified by {@link Queue#offer})
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public boolean offer(E e) {
     return offerLast(e);
   }
@@ -415,6 +401,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return the head of the queue represented by this deque
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E remove() {
     return removeFirst();
   }
@@ -429,6 +416,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return the head of the queue represented by this deque, or
    *         {@code null} if this deque is empty
    */
+  @Override
   public E poll() {
     return pollFirst();
   }
@@ -443,6 +431,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return the head of the queue represented by this deque
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E element() {
     return getFirst();
   }
@@ -456,6 +445,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return the head of the queue represented by this deque, or
    *         {@code null} if this deque is empty
    */
+  @Override
   public E peek() {
     return peekFirst();
   }
@@ -471,6 +461,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param e the element to push
    * @throws NullPointerException if the specified element is null
    */
+  @Override
   public void push(E e) {
     addFirst(e);
   }
@@ -485,6 +476,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *         of the stack represented by this deque)
    * @throws NoSuchElementException {@inheritDoc}
    */
+  @Override
   public E pop() {
     return removeFirst();
   }
@@ -509,8 +501,8 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    */
   private boolean delete(int i) {
     checkInvariants();
-    final Object[] elements = this.elements;
-    final int mask = elements.length - 1;
+    final Object[] localElements = this.elements;
+    final int mask = localElements.length - 1;
     final int h = head;
     final int t = tail;
     final int front = (i - h) & mask;
@@ -523,23 +515,23 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     // Optimize for least element motion
     if (front < back) {
       if (h <= i) {
-        System.arraycopy(elements, h, elements, h + 1, front);
+        System.arraycopy(localElements, h, localElements, h + 1, front);
       } else { // Wrap around
-        System.arraycopy(elements, 0, elements, 1, i);
-        elements[0] = elements[mask];
-        System.arraycopy(elements, h, elements, h + 1, mask - h);
+        System.arraycopy(localElements, 0, localElements, 1, i);
+        localElements[0] = localElements[mask];
+        System.arraycopy(localElements, h, localElements, h + 1, mask - h);
       }
-      elements[h] = null;
+      localElements[h] = null;
       head = (h + 1) & mask;
       return false;
     } else {
       if (i < t) { // Copy the null tail as well
-        System.arraycopy(elements, i + 1, elements, i, back);
+        System.arraycopy(localElements, i + 1, localElements, i, back);
         tail = t - 1;
       } else { // Wrap around
-        System.arraycopy(elements, i + 1, elements, i, mask - i);
-        elements[mask] = elements[0];
-        System.arraycopy(elements, 1, elements, 0, t);
+        System.arraycopy(localElements, i + 1, localElements, i, mask - i);
+        localElements[mask] = localElements[0];
+        System.arraycopy(localElements, 1, localElements, 0, t);
         tail = (t - 1) & mask;
       }
       return true;
@@ -553,6 +545,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *
    * @return the number of elements in this deque
    */
+  @Override
   public int size() {
     return (tail - head) & (elements.length - 1);
   }
@@ -562,6 +555,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *
    * @return {@code true} if this deque contains no elements
    */
+  @Override
   public boolean isEmpty() {
     return head == tail;
   }
@@ -574,10 +568,12 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *
    * @return an iterator over the elements in this deque
    */
+  @Override
   public Iterator<E> iterator() {
     return new DeqIterator();
   }
 
+  @Override
   public Iterator<E> descendingIterator() {
     return new DescendingIterator();
   }
@@ -600,14 +596,15 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
      */
     private int lastRet = -1;
 
+    @Override
     public boolean hasNext() {
       return cursor != fence;
     }
 
+    @Override
     public E next() {
       if (cursor == fence)
         throw new NoSuchElementException();
-      @SuppressWarnings("unchecked")
       E result = (E) elements[cursor];
       // This check doesn't catch all possible comodifications,
       // but does catch the ones that corrupt traversal
@@ -618,6 +615,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       return result;
     }
 
+    @Override
     public void remove() {
       if (lastRet < 0)
         throw new IllegalStateException();
@@ -628,13 +626,16 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       lastRet = -1;
     }
 
+    @Override
     public void forEachRemaining(Consumer<? super E> action) {
       Objects.requireNonNull(action);
       Object[] a = elements;
-      int m = a.length - 1, f = fence, i = cursor;
+      int m = a.length - 1;
+      int f = fence;
+      int i = cursor;
       cursor = f;
       while (i != f) {
-        @SuppressWarnings("unchecked") E e = (E)a[i];
+        E e = (E)a[i];
         i = (i + 1) & m;
         if (e == null)
           throw new ConcurrentModificationException();
@@ -653,15 +654,16 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
     private int fence = head;
     private int lastRet = -1;
 
+    @Override
     public boolean hasNext() {
       return cursor != fence;
     }
 
+    @Override
     public E next() {
       if (cursor == fence)
         throw new NoSuchElementException();
       cursor = (cursor - 1) & (elements.length - 1);
-      @SuppressWarnings("unchecked")
       E result = (E) elements[cursor];
       if (head != fence || result == null)
         throw new ConcurrentModificationException();
@@ -669,6 +671,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       return result;
     }
 
+    @Override
     public void remove() {
       if (lastRet < 0)
         throw new IllegalStateException();
@@ -688,6 +691,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param o object to be checked for containment in this deque
    * @return {@code true} if this deque contains the specified element
    */
+  @Override
   public boolean contains(Object o) {
     if (o == null)
       return false;
@@ -715,6 +719,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @param o element to be removed from this deque, if present
    * @return {@code true} if this deque contained the specified element
    */
+  @Override
   public boolean remove(Object o) {
     return removeFirstOccurrence(o);
   }
@@ -723,6 +728,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * Removes all of the elements from this deque.
    * The deque will be empty after this call returns.
    */
+  @Override
   public void clear() {
     int h = head;
     int t = tail;
@@ -750,6 +756,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *
    * @return an array containing all of the elements in this deque
    */
+  @Override
   public Object[] toArray() {
     return copyElements(new Object[size()]);
   }
@@ -790,7 +797,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    *         this deque
    * @throws NullPointerException if the specified array is null
    */
-  @SuppressWarnings("unchecked")
+  @Override
   public <T> T[] toArray(T[] a) {
     int size = size();
     if (a.length < size)
@@ -805,44 +812,6 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
   // *** Object methods ***
 
   /**
-   * Returns a copy of this deque.
-   *
-   * @return a copy of this deque
-   */
-  public RandomAccessArrayDeque<E> clone() {
-    try {
-      @SuppressWarnings("unchecked")
-      RandomAccessArrayDeque<E> result = (RandomAccessArrayDeque<E>) super.clone();
-      result.elements = Arrays.copyOf(elements, elements.length);
-      return result;
-    } catch (CloneNotSupportedException e) {
-      throw new AssertionError();
-    }
-  }
-
-  private static final long serialVersionUID = 2340985798034038923L;
-
-  /**
-   * Saves this deque to a stream (that is, serializes it).
-   *
-   * @serialData The current size ({@code int}) of the deque,
-   * followed by all of its elements (each an object reference) in
-   * first-to-last order.
-   */
-  private void writeObject(java.io.ObjectOutputStream s)
-      throws java.io.IOException {
-    s.defaultWriteObject();
-
-    // Write out size
-    s.writeInt(size());
-
-    // Write out elements in order.
-    int mask = elements.length - 1;
-    for (int i = head; i != tail; i = (i + 1) & mask)
-      s.writeObject(elements[i]);
-  }
-
-  /**
    * Creates a <em><a href="Spliterator.html#binding">late-binding</a></em>
    * and <em>fail-fast</em> {@link Spliterator} over the elements in this
    * deque.
@@ -855,6 +824,7 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
    * @return a {@code Spliterator} over the elements in this deque
    * @since 1.8
    */
+  @Override
   public Spliterator<E> spliterator() {
     return new DeqSpliterator<>(this, -1, -1);
   }
@@ -880,25 +850,31 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       return t;
     }
 
+    @Override
     public DeqSpliterator<E> trySplit() {
-      int t = getFence(), h = index, n = deq.elements.length;
+      int t = getFence();
+      int h = index;
+      int n = deq.elements.length;
       if (h != t && ((h + 1) & (n - 1)) != t) {
         if (h > t)
           t += n;
-        int m = ((h + t) >>> 1) & (n - 1);
-        return new DeqSpliterator<>(deq, h, index = m);
+        index = ((h + t) >>> 1) & (n - 1);
+        return new DeqSpliterator<>(deq, h, index);
       }
       return null;
     }
 
+    @Override
     public void forEachRemaining(Consumer<? super E> consumer) {
       if (consumer == null)
         throw new NullPointerException();
       Object[] a = deq.elements;
-      int m = a.length - 1, f = getFence(), i = index;
+      int m = a.length - 1;
+      int f = getFence();
+      int i = index;
       index = f;
       while (i != f) {
-        @SuppressWarnings("unchecked") E e = (E)a[i];
+        E e = (E)a[i];
         i = (i + 1) & m;
         if (e == null)
           throw new ConcurrentModificationException();
@@ -906,13 +882,16 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       }
     }
 
+    @Override
     public boolean tryAdvance(Consumer<? super E> consumer) {
       if (consumer == null)
         throw new NullPointerException();
       Object[] a = deq.elements;
-      int m = a.length - 1, f = getFence(), i = index;
+      int m = a.length - 1;
+      getFence();
+      int i = index;
       if (i != fence) {
-        @SuppressWarnings("unchecked") E e = (E)a[i];
+        E e = (E)a[i];
         index = (i + 1) & m;
         if (e == null)
           throw new ConcurrentModificationException();
@@ -922,11 +901,12 @@ public class RandomAccessArrayDeque<E> extends AbstractCollection<E>
       return false;
     }
 
+    @Override
     public long estimateSize() {
       int n = getFence() - index;
       if (n < 0)
         n += deq.elements.length;
-      return (long) n;
+      return n;
     }
 
     @Override
