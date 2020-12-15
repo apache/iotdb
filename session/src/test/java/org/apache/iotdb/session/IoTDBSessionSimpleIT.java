@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -387,5 +388,32 @@ public class IoTDBSessionSimpleIT {
 
     session.deleteStorageGroup(storageGroup);
     session.close();
+  }
+
+  @Test
+  public void deleteData() throws StatementExecutionException, IoTDBConnectionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    String device = "root.sg1.d1";
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      schemaList.add(new MeasurementSchema("s" + i, TSDataType.INT64));
+    }
+    Tablet tablet = new Tablet(device, schemaList, 1000);
+    while(tablet.rowSize < 10) {
+      tablet.addTimestamp(tablet.rowSize, tablet.rowSize);
+      for (int i = 0; i < 3; i++) {
+        tablet.addValue("s" + i, tablet.rowSize, (long) tablet.rowSize);
+      }
+      tablet.rowSize++;
+    }
+    session.insertTablet(tablet);
+    session.executeNonQueryStatement("flush");
+    session.deleteData(Collections.singletonList("root.sg1.d1.s1"), 4, 6);
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg1.d1 where time < 6 and time > 4");
+    while(dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record.toString());
+    }
   }
 }
