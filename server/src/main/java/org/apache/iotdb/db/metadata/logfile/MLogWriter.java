@@ -380,9 +380,9 @@ public class MLogWriter implements AutoCloseable {
         }
 
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-          TSDataType.deserialize(Short.parseShort(args[2])),
-          TSEncoding.deserialize(Short.parseShort(args[3])),
-          CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
+          TSDataType.deserialize((byte) Short.parseShort(args[2])),
+          TSEncoding.deserialize((byte) Short.parseShort(args[3])),
+          CompressionType.deserialize((byte) Short.parseShort(args[4])), props, null, null, alias);
 
         plan.setTagOffset(offset);
         createTimeseries(plan);

@@ -266,7 +266,7 @@ public class IoTDBSessionIteratorIT {
     List<TSDataType> types = new ArrayList<>();
     for (int i = 1; i <= 6; i++) {
       measurements.add("s" + i);
-      types.add(TSDataType.deserialize((short) (i - 1)));
+      types.add(TSDataType.deserialize((byte) (i - 1)));
     }
 
     for (long time = 0; time < 10; time++) {
