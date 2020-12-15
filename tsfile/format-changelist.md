@@ -19,6 +19,11 @@
 
 -->
 
+# 0.10.x (version-2) -> 0.12.x (version-3)
+| PR#   | Name                                                        | Author          | Changes                                                      |
+| ----- | ----------------------------------------------------------- | --------------- | ------------------------------------------------------------ |
+| 2263  | Move memtable plan index from ChunkGroupFooter to a separate marker      | jt2594838       | Add min/max plan index after MetaMarker.OPERATION_INDEX_RANGE when a memtable is flush|
+
 
 # 0.9.x (version-1) -> 0.10.x (version-2)
 

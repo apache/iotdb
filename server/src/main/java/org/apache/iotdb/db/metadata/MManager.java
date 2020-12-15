@@ -21,9 +21,7 @@ package org.apache.iotdb.db.metadata;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
@@ -45,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -60,21 +59,31 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -89,11 +98,13 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
  * into files. This class contains all the interfaces to modify the metadata for delta system. All
  * the operations will be insert into the logs temporary in case the downtime of the delta system.
  */
+@SuppressWarnings("java:S1135") // ignore todos
 public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
@@ -135,6 +146,7 @@ public class MManager {
 
   private File logFile;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
+  private ScheduledExecutorService timedForceMLogThread;
 
   /**
    * threshold total size of MTree
@@ -186,12 +198,13 @@ public class MManager {
       }
     };
 
+
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-          "timedCreateMTreeSnapshotThread"));
+        "timedCreateMTreeSnapshotThread"));
       timedCreateMTreeSnapshotThread
-          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+          MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
     }
   }
 
@@ -222,11 +235,10 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      logWriter.setLineNumber(lineNumber);
+      logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
-      mtree = new MTree();
-      logger.error("Cannot read MTree from file, using an empty new one", e);
+      logger.error("Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     reportedDataTypeTotalNum = 0L;
     initialized = true;
@@ -257,26 +269,35 @@ public class MManager {
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
-      try (FileReader fr = new FileReader(logFile);
-          BufferedReader br = new BufferedReader(fr)) {
-        String cmd;
-        while ((cmd = br.readLine()) != null) {
-          try {
-            operation(cmd);
-            idx++;
-          } catch (Exception e) {
-            logger.error("Can not operate cmd {}", cmd, e);
-          }
-        }
+      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);) {
+        idx = applyMlog(mLogReader);
+        logger.debug("spend {} ms to deserialize mtree from mlog.bin",
+            System.currentTimeMillis() - time);
+        return idx;
+      } catch (Exception e) {
+        throw new IOException("Failed to parser mlog.bin for err:" +  e.toString());
       }
-      logger.debug("spend {} ms to deserialize mtree from mlog.txt",
-          System.currentTimeMillis() - time);
-      return idx;
-    } else if (mtreeSnapshot.exists()) {
-      throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
     } else {
       return 0;
     }
+  }
+
+  private int applyMlog(MLogReader mLogReader) {
+    int idx = 0;
+    while (mLogReader.hasNext()) {
+      PhysicalPlan plan = null;
+      try {
+        plan = mLogReader.next();
+        if (plan == null) {
+          continue;
+        }
+        operation(plan);
+        idx++;
+      } catch (Exception e) {
+        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+      }
+    }
+    return idx;
   }
 
   /**
@@ -303,102 +324,66 @@ public class MManager {
         timedCreateMTreeSnapshotThread.shutdownNow();
         timedCreateMTreeSnapshotThread = null;
       }
+      if (timedForceMLogThread != null) {
+        timedForceMLogThread.shutdownNow();
+        timedForceMLogThread = null;
+      }
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     }
   }
 
-  public void operation(String cmd) throws IOException, MetadataException {
-    // see createTimeseries() to get the detailed format of the cmd
-    String[] args = cmd.trim().split(",", -1);
-    switch (args[0]) {
-      case MetadataOperationType.CREATE_TIMESERIES:
-        if (args.length > 8) {
-          String[] tmpArgs = new String[8];
-          tmpArgs[0] = args[0];
-          int i = 1;
-          tmpArgs[1] = "";
-          for (; i < args.length - 7; i++) {
-            tmpArgs[1] += args[i] + ",";
-          }
-          tmpArgs[1] += args[i++];
-          for (int j = 2; j < 8; j++) {
-            tmpArgs[j] = args[i++];
-          }
-          args = tmpArgs;
-        }
-        Map<String, String> props = null;
-        if (!args[5].isEmpty()) {
-          String[] keyValues = args[5].split("&");
-          String[] kv;
-          props = new HashMap<>();
-          for (String keyValue : keyValues) {
-            kv = keyValue.split("=");
-            props.put(kv[0], kv[1]);
-          }
-        }
-
-        String alias = null;
-        if (!args[6].isEmpty()) {
-          alias = args[6];
-        }
-        long offset = -1L;
-        Map<String, String> tagMap = null;
-        if (!args[7].isEmpty()) {
-          offset = Long.parseLong(args[7]);
-          tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
-        }
-
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-            TSDataType.deserialize(Byte.parseByte(args[2])),
-            TSEncoding.deserialize(Byte.parseByte(args[3])),
-            CompressionType.deserialize(Byte.parseByte(args[4])), props, tagMap, null, alias);
-
-        createTimeseries(plan, offset);
+  public void operation(PhysicalPlan plan) throws IOException, MetadataException {
+    switch (plan.getOperatorType()) {
+      case CREATE_TIMESERIES:
+        CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
+        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
-      case MetadataOperationType.DELETE_TIMESERIES:
-        if (args.length > 2) {
-          StringBuilder tmp = new StringBuilder();
-          for (int i = 1; i < args.length - 1; i++) {
-            tmp.append(args[i]).append(",");
-          }
-          tmp.append(args[args.length - 1]);
-          args[1] = tmp.toString();
-        }
-        String failedTimeseries = deleteTimeseries(new PartialPath(args[1]));
-        if (!failedTimeseries.isEmpty()) {
-          throw new DeleteFailedException(failedTimeseries);
-        }
+      case DELETE_TIMESERIES:
+        DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
+        // cause we only has one path for one DeleteTimeSeriesPlan
+        deleteTimeseries(deleteTimeSeriesPlan.getPaths().get(0));
         break;
-      case MetadataOperationType.SET_STORAGE_GROUP:
-        try {
-          setStorageGroup(new PartialPath(args[1]));
-        }
-        // two time series may set one storage group concurrently,
-        // that's normal in our concurrency control protocol
-        catch (MetadataException e){
-          logger.info("concurrently operate set storage group cmd {} twice", cmd);
-        }
+      case SET_STORAGE_GROUP:
+        SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
+        setStorageGroup(setStorageGroupPlan.getPath());
         break;
-      case MetadataOperationType.DELETE_STORAGE_GROUP:
-        deleteStorageGroups(Collections.singletonList(new PartialPath(args[1])));
+      case DELETE_STORAGE_GROUP:
+        DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
+        deleteStorageGroups(deleteStorageGroupPlan.getPaths());
         break;
-      case MetadataOperationType.SET_TTL:
-        setTTL(new PartialPath(args[1]), Long.parseLong(args[2]));
+      case TTL:
+        SetTTLPlan setTTLPlan = (SetTTLPlan) plan;
+        setTTL(setTTLPlan.getStorageGroup(), setTTLPlan.getDataTTL());
         break;
-      case MetadataOperationType.CHANGE_OFFSET:
-        changeOffset(new PartialPath(args[1]), Long.parseLong(args[2]));
+      case CHANGE_ALIAS:
+        ChangeAliasPlan changeAliasPlan = (ChangeAliasPlan) plan;
+        changeAlias(changeAliasPlan.getPath(), changeAliasPlan.getAlias());
         break;
-      case MetadataOperationType.CHANGE_ALIAS:
-        changeAlias(new PartialPath(args[1]), args[2]);
+      case CHANGE_TAG_OFFSET:
+        ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
+        changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
       default:
-        logger.error("Unrecognizable command {}", cmd);
+        logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
+  }
+
+  private void ensureStorageGroup(PartialPath path) throws MetadataException {
+    try {
+      mtree.getStorageGroupPath(path);
+    } catch (StorageGroupNotSetException e) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw e;
+      }
+      PartialPath storageGroupPath =
+          MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+      setStorageGroup(storageGroupPath);
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -411,16 +396,7 @@ public class MManager {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
 
-      try {
-        mtree.getStorageGroupPath(path);
-      } catch (StorageGroupNotSetException e) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw e;
-        }
-        PartialPath storageGroupPath =
-            MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
-        setStorageGroup(storageGroupPath);
-      }
+      ensureStorageGroup(path);
 
       TSDataType type = plan.getDataType();
       // create time series in MTree
@@ -455,12 +431,13 @@ public class MManager {
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
-        logWriter.createTimeseries(plan, offset);
+        plan.setTagOffset(offset);
+        logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
 
     } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
+      throw new MetadataException(e);
     }
   }
 
@@ -478,8 +455,7 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // just log it, created by multiple thread
-      logger.info("Concurrent create timeseries failed, use other thread's result");
+      // ignore
     }
   }
 
@@ -487,6 +463,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
+   * TODO: directly return the failed string set
    * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -495,26 +472,36 @@ public class MManager {
     }
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
+      if(allTimeseries.isEmpty()){
+        throw new PathNotExistException(prefixPath.getFullPath());
+      }
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 
       Set<String> failedNames = new HashSet<>();
       for (PartialPath p : allTimeseries) {
-        try {
-          PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
-          if (!isRecovering) {
-            if (emptyStorageGroup != null) {
-              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-            }
-            logWriter.deleteTimeseries(p.getFullPath());
-          }
-        } catch (DeleteFailedException e) {
-          failedNames.add(e.getName());
-        }
+        deleteSingleTimeseriesInternal(p, failedNames);
       }
-      return String.join(",", failedNames);
+      return failedNames.isEmpty() ? null : String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
+    }
+  }
+
+  private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
+      throws MetadataException, IOException {
+    DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan();
+    try {
+      PartialPath emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+      if (!isRecovering) {
+        if (emptyStorageGroup != null) {
+          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+        }
+        deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
+        logWriter.deleteTimeseries(deleteTimeSeriesPlan);
+      }
+    } catch (DeleteFailedException e) {
+      failedNames.add(e.getName());
     }
   }
 
@@ -588,7 +575,7 @@ public class MManager {
     try {
       mtree.setStorageGroup(storageGroup);
       if (!isRecovering) {
-        logWriter.setStorageGroup(storageGroup.getFullPath());
+        logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -622,7 +609,7 @@ public class MManager {
 
         // if success
         if (!isRecovering) {
-          logWriter.deleteStorageGroup(storageGroup.getFullPath());
+          logWriter.deleteStorageGroup(storageGroup);
         }
       }
     } catch (IOException e) {
@@ -814,7 +801,7 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
-      QueryContext context) throws MetadataException {
+                                                             QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
     }
@@ -973,17 +960,12 @@ public class MManager {
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    try {
-      MNode node = mtree.getNodeByPath(device);
-      MNode leaf = node.getChild(measurement);
-      if (leaf != null) {
-        return ((MeasurementMNode) leaf).getSchema();
-      }
-      return null;
-    } catch (PathNotExistException | IllegalPathException e) {
-      //do nothing and throw it directly.
-      throw e;
+    MNode node = mtree.getNodeByPath(device);
+    MNode leaf = node.getChild(measurement);
+    if (leaf != null) {
+      return ((MeasurementMNode) leaf).getSchema();
     }
+    return null;
   }
 
   /**
@@ -1048,16 +1030,10 @@ public class MManager {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path.getFullPath());
       }
+      shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
     }
 
     try {
-      try {
-        node = mNodeCache.get(path);
-        return node;
-      } catch (CacheException e) {
-        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
-      }
-
       if (shouldSetStorageGroup) {
         PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(path, sgLevel);
         setStorageGroup(storageGroupPath);
@@ -1117,7 +1093,7 @@ public class MManager {
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException, IOException {
     getStorageGroupNodeByStorageGroupPath(storageGroup).setDataTTL(dataTTL);
     if (!isRecovering) {
-      logWriter.setTTL(storageGroup.getFullPath(), dataTTL);
+      logWriter.setTTL(storageGroup, dataTTL);
     }
   }
 
@@ -1190,7 +1166,7 @@ public class MManager {
 
       leafMNode.setAlias(alias);
       // persist to WAL
-      logWriter.changeAlias(fullPath.getFullPath(), alias);
+      logWriter.changeAlias(fullPath, alias);
     }
 
     if (tagsMap == null && attributesMap == null) {
@@ -1199,20 +1175,20 @@ public class MManager {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagLogFile.write(tagsMap, attributesMap);
-      logWriter.changeOffset(fullPath.getFullPath(), offset);
+      logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
           tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
       return;
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1248,7 +1224,7 @@ public class MManager {
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
           tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+            .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
     }
@@ -1278,20 +1254,20 @@ public class MManager {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-      logWriter.changeOffset(fullPath.getFullPath(), offset);
+      logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       return;
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Entry<String, String> entry : attributesMap.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       if (pair.right.containsKey(key)) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+          String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
       }
       pair.right.put(key, value);
     }
@@ -1316,25 +1292,25 @@ public class MManager {
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
       long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-      logWriter.changeOffset(fullPath.getFullPath(), offset);
+      logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
         tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+          .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
       }
       return;
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Entry<String, String> entry : tagsMap.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       if (pair.left.containsKey(key)) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+          String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
       }
       pair.left.put(key, value);
     }
@@ -1344,7 +1320,7 @@ public class MManager {
 
     // update tag inverted map
     tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
+      .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
   }
 
   /**
@@ -1645,16 +1621,18 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    */
   public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
-
-    return mtree.determineStorageGroup(path);
-
+    Map<String, String> sgPathMap = mtree.determineStorageGroup(path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    }
+    return sgPathMap;
   }
 
   /**
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(PartialPath path, MeasurementMeta meta) {
+  public void cacheMeta(PartialPath path, MeasurementMNode measurementMNode) {
     // do nothing
   }
 
@@ -1683,6 +1661,11 @@ public class MManager {
     return null;
   }
 
+  @TestOnly
+  public void flushAllMlogForTest() throws IOException {
+    logWriter.close();
+  }
+
   private void checkMTreeModified() {
     if (logWriter == null || logFile == null) {
       // the logWriter is not initialized now, we skip the check once.
@@ -1693,14 +1676,14 @@ public class MManager {
         logger.debug("MTree snapshot need not be created. Time from last modification: {} ms.",
             System.currentTimeMillis() - logFile.lastModified());
       }
-    } else if (logWriter.getLineNumber() < mtreeSnapshotInterval) {
+    } else if (logWriter.getLogNum() < mtreeSnapshotInterval) {
       if (logger.isDebugEnabled()) {
         logger.debug("MTree snapshot need not be created. New mlog line number: {}.",
-            logWriter.getLineNumber());
+            logWriter.getLogNum());
       }
     } else {
       logger.info("New mlog line number: {}, time from last modification: {} ms",
-          logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
+          logWriter.getLogNum(), System.currentTimeMillis() - logFile.lastModified());
       createMTreeSnapshot();
     }
   }
@@ -1787,8 +1770,8 @@ public class MManager {
         if (measurementMNode.getSchema().getType() != insertDataType) {
           logger.warn("DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
               measurementList[i], insertDataType, measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException = new DataTypeMismatchException(measurementList[i],
-                  insertDataType, measurementMNode.getSchema().getType());
+          DataTypeMismatchException mismatchException = new DataTypeMismatchException(
+              measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {

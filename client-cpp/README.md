@@ -18,9 +18,15 @@
     under the License.
 
 -->
-# IoTDB C++ Client
+# Building C++ Client
 
-To compile cpp client, add "mvn -Pclient-cpp" option when running maven command in IoTDB root directory.
+To compile cpp client, add "-P client-cpp" option to maven build command.
 
-Compiling these modules requires  installing some tools first, 
-for more information, read ../compile-tools/README.md
+The compiling requires the module "compile-tools" to be built first.
+For more information, please refer to "compile-tools/README.md".
+
+
+## Compile and Test:
+
+`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
+
