@@ -1288,7 +1288,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
+      if (typeClause.ALL() != null) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
           long preRange;
@@ -1796,7 +1796,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   public void parseAttributeClauses(AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
-    final String dataType = ctx.rawDataType().getChild(0).getText().toUpperCase();
+    final String dataType = ctx.dataType().getChild(0).getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
     createTimeSeriesOperator.setDataType(tsDataType);
 

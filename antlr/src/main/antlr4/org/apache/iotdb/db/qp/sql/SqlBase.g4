@@ -157,7 +157,7 @@ aliasClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ rawDataType (COMMA ENCODING OPERATOR_EQ encoding)?
+    : DATATYPE OPERATOR_EQ dataType (COMMA ENCODING OPERATOR_EQ encoding)?
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause?
@@ -299,9 +299,9 @@ groupByLevelClause
     ;
 
 typeClause
-    : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET previousClause RS_BRACKET
-    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -621,12 +621,8 @@ nodeNameWithoutStar
     | ASC
     ;
 
-rawDataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
-    ;
-
 dataType
-    : rawDataType | ALL
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
     ;
 
 dateFormat
