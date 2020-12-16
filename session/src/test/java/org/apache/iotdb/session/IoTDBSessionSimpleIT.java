@@ -256,7 +256,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testCreateMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException, MetadataException {
+      throws IoTDBConnectionException, StatementExecutionException, MetadataException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -317,9 +317,9 @@ public class IoTDBSessionSimpleIT {
     for (String path : devices) {
       for (int i = 0; i < 10; i++) {
         String[] ss = path.split("\\.");
-        String deviceId = storageGroup;
+        StringBuilder deviceId = new StringBuilder(storageGroup);
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
+          deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
@@ -329,7 +329,7 @@ public class IoTDBSessionSimpleIT {
         measurements.add(sensorId);
         types.add(TSDataType.INT64);
         values.add(100L);
-        session.insertRecord(deviceId, i, measurements, types, values);
+        session.insertRecord(deviceId.toString(), i, measurements, types, values);
       }
     }
 
@@ -390,30 +390,4 @@ public class IoTDBSessionSimpleIT {
     session.close();
   }
 
-  @Test
-  public void deleteData() throws StatementExecutionException, IoTDBConnectionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-    String device = "root.sg1.d1";
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      schemaList.add(new MeasurementSchema("s" + i, TSDataType.INT64));
-    }
-    Tablet tablet = new Tablet(device, schemaList, 1000);
-    while(tablet.rowSize < 10) {
-      tablet.addTimestamp(tablet.rowSize, tablet.rowSize);
-      for (int i = 0; i < 3; i++) {
-        tablet.addValue("s" + i, tablet.rowSize, (long) tablet.rowSize);
-      }
-      tablet.rowSize++;
-    }
-    session.insertTablet(tablet);
-    session.executeNonQueryStatement("flush");
-    session.deleteData(Collections.singletonList("root.sg1.d1.s1"), 4, 6);
-    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg1.d1 where time < 6 and time > 4");
-    while(dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      System.out.println(record.toString());
-    }
-  }
 }
