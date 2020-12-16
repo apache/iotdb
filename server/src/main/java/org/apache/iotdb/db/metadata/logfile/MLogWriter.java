@@ -252,6 +252,9 @@ public class MLogWriter implements AutoCloseable {
             logger.error("failed to upgrade cmd {}.", cmd, e);
           }
         }
+
+        // rename .bin.tmp to .bin
+        FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
       }
     } else if (!logFile.exists() && !tmpLogFile.exists()) {
       // if both .bin and .bin.tmp do not exist, nothing to do
@@ -284,9 +287,6 @@ public class MLogWriter implements AutoCloseable {
         throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpOldLogFile, e.getMessage()));
       }
     }
-
-    // rename .bin.tmp to .bin
-    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
 
   public static void upgradeMLog() throws IOException {
