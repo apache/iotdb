@@ -92,14 +92,14 @@ public class UpgradeTask extends WrappedRunnable {
           }
           // rename all files to 0 level
           upgradedFile = upgradedResource.getTsFile();
-          File zeroMergeVersionFile = getMaxMergeVersionFile(upgradedFile);
-          fsFactory.moveFile(upgradedFile, zeroMergeVersionFile);
-          fsFactory.moveFile(
-              fsFactory.getFile(upgradedFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-              fsFactory
-                  .getFile(
-                      zeroMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-          upgradedResource.setFile(upgradedFile);
+//          File zeroMergeVersionFile = getMaxMergeVersionFile(upgradedFile);
+//          fsFactory.moveFile(upgradedFile, zeroMergeVersionFile);
+//          fsFactory.moveFile(
+//              fsFactory.getFile(upgradedFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+//              fsFactory
+//                  .getFile(
+//                      zeroMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+//          upgradedResource.setFile(upgradedFile);
         }
         // delete old modificationFile
         if (modificationFile.exists()) {
@@ -126,7 +126,7 @@ public class UpgradeTask extends WrappedRunnable {
     }
   }
 
-  private List<TsFileResource> generateUpgradedFiles() throws WriteProcessException {
+  private List<TsFileResource> generateUpgradedFiles() throws Exception {
     upgradeResource.readLock();
     String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
@@ -136,9 +136,10 @@ public class UpgradeTask extends WrappedRunnable {
       TsFileOnlineUpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger
           .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
+      throw e;
     } finally {
       upgradeResource.readUnlock();
     }

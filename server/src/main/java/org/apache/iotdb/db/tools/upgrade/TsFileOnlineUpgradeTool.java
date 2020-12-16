@@ -112,7 +112,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       return;
     }
 
-    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length +
+        TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);
     // start to scan chunks and chunkGroups
     boolean newChunkGroup = true;
@@ -189,6 +190,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     } catch (IOException e2) {
       logger.info("TsFile upgrade process cannot proceed at position {} " +
           "because : {}", reader.position(), e2);
+      throw e2;
     } finally {
       if (reader != null) {
         reader.close();
@@ -222,13 +224,14 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       List<Boolean> needToDecodeInfoInChunk = needToDecodeInfoInChunkGroup.get(i);
       valueDecoder = Decoder
           .getDecoderByType(schema.getEncodingType(), schema.getType());
+      boolean isOnlyOnePageChunk = pageDataInChunk.size() == 1;
       for (int j = 0; j < pageDataInChunk.size(); j++) {
         if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
           decodeAndWritePageInToFiles(oldTsFile, schema, pageDataInChunk.get(j),
               chunkWritersInChunkGroup);
         } else {
           writePageInToFile(oldTsFile, schema, pageHeadersInChunk.get(j),
-              pageDataInChunk.get(j), chunkWritersInChunkGroup);
+              pageDataInChunk.get(j), chunkWritersInChunkGroup, isOnlyOnePageChunk);
         }
       }
     }
@@ -273,7 +276,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
   private void writePageInToFile(File oldTsFile, MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup,
+      boolean isOnlyOnePageChunk)
       throws PageException {
     long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
@@ -281,7 +285,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
         .getOrDefault(partitionId, new HashMap<>());
     ChunkWriterImpl chunkWriter = chunkWriters
         .getOrDefault(schema, new ChunkWriterImpl(schema));
-    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
+    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader, isOnlyOnePageChunk);
     chunkWriters.put(schema, chunkWriter);
     chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
