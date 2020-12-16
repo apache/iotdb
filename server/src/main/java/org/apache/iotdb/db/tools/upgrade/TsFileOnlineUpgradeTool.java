@@ -43,9 +43,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
+import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -116,7 +116,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     reader.position(headerLength);
     // start to scan chunks and chunkGroups
     boolean newChunkGroup = true;
-    int chunkGroupCount = 0;
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
@@ -138,13 +137,15 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
                 header.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             TSDataType dataType = header.getDataType();
+            TSEncoding encoding = header.getEncodingType();
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
             for (int j = 0; j < header.getNumOfPages(); j++) {
               // a new Page
               PageHeader pageHeader = reader.readPageHeader(dataType);
-              boolean needToDecode = checkIfNeedToDecode(dataType, pageHeader);
+              boolean needToDecode = 
+                  checkIfNeedToDecode(dataType, encoding, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData = !needToDecode
                   ? reader.readCompressedPage(pageHeader) 
@@ -168,9 +169,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             measurementSchemaList.clear();
             needToDecodeInfoInChunkGroup.clear();
             newChunkGroup = true;
-            chunkGroupCount++;
             break;
-
           case MetaMarker.VERSION:
             long version = reader.readVersion();
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
@@ -180,7 +179,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           default:
             // the disk file is corrupted, using this file may be dangerous
             logger.error("Unrecognized marker detected, this file may be corrupted");
-            return;
+            throw new IOException();
         }
       }
       // close upgraded tsFiles and generate resources for them
@@ -188,8 +187,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
     } catch (IOException e2) {
-      logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
-          + "recovered, because : {}", reader.position(), chunkGroupCount, e2.getMessage());
+      logger.info("TsFile upgrade process cannot proceed at position {} " +
+          "because : {}", reader.position(), e2);
     } finally {
       if (reader != null) {
         reader.close();
@@ -197,10 +196,11 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     }
   }
 
-  private boolean checkIfNeedToDecode(TSDataType dataType, PageHeader pageHeader) {
+  private boolean checkIfNeedToDecode(TSDataType dataType, TSEncoding encoding,
+      PageHeader pageHeader) {
     return dataType == TSDataType.BOOLEAN ||
         dataType == TSDataType.TEXT ||
-        dataType == TSDataType.INT32 ||
+        (dataType == TSDataType.INT32 && encoding == TSEncoding.PLAIN) ||
         StorageEngine.getTimePartition(pageHeader.getStartTime()) 
         != StorageEngine.getTimePartition(pageHeader.getEndTime());
   }
@@ -224,10 +224,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           .getDecoderByType(schema.getEncodingType(), schema.getType());
       for (int j = 0; j < pageDataInChunk.size(); j++) {
         if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
-          decodeAndWritePageToFiles(oldTsFile, schema, pageDataInChunk.get(j),
+          decodeAndWritePageInToFiles(oldTsFile, schema, pageDataInChunk.get(j),
               chunkWritersInChunkGroup);
         } else {
-          writePageToFile(oldTsFile, schema, pageHeadersInChunk.get(j),
+          writePageInToFile(oldTsFile, schema, pageHeadersInChunk.get(j),
               pageDataInChunk.get(j), chunkWritersInChunkGroup);
         }
       }
@@ -270,7 +270,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     );
   }
 
-  private void writePageToFile(File oldTsFile, MeasurementSchema schema,
+  private void writePageInToFile(File oldTsFile, MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
       Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
@@ -286,12 +286,12 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
 
-  private void decodeAndWritePageToFiles(File oldTsFile, MeasurementSchema schema,
+  private void decodeAndWritePageInToFiles(File oldTsFile, MeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws IOException {
     valueDecoder.reset();
-    PageReader pageReader = new PageReader(pageData, schema.getType(), valueDecoder,
+    PageReaderV2 pageReader = new PageReaderV2(pageData, schema.getType(), valueDecoder,
         defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     while (batchData.hasCurrent()) {
