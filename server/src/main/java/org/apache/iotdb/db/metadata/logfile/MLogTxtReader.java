@@ -50,7 +50,9 @@ public class MLogTxtReader implements AutoCloseable {
   }
 
   public String next() {
-    return cmd;
+    String ret = cmd;
+    cmd = null;
+    return ret;
   }
 
   public boolean hasNext() {
