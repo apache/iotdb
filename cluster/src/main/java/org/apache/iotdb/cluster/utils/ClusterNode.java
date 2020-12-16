@@ -28,11 +28,12 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
  */
 public class ClusterNode extends Node {
 
+  //TODO hxd: maintain the client IP and Port
   public ClusterNode() {
   }
 
-  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort) {
-    super(ip, metaPort, nodeIdentifier, dataPort, clientPort);
+  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort) {
+    super(ip, metaPort, nodeIdentifier, dataPort);
   }
 
   public ClusterNode(Node other) {

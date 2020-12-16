@@ -961,7 +961,7 @@ public class IoTDBConfig {
     return rpcAddress;
   }
 
-  void setRpcAddress(String rpcAddress) {
+  public void setRpcAddress(String rpcAddress) {
     this.rpcAddress = rpcAddress;
   }
 

@@ -44,7 +44,7 @@ public class SyncClientPool {
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
   private SyncClientFactory syncClientFactory;
 
-  public SyncClientPool(SyncClientFactory syncClientFactory) {
+  public SyncClientPool (SyncClientFactory syncClientFactory) {
     this.syncClientFactory = syncClientFactory;
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();

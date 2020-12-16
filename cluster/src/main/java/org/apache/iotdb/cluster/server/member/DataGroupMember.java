@@ -158,11 +158,11 @@ public class DataGroupMember extends RaftMember {
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
+        new AsyncClientPool(nodes.getHeader().getIp(), new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool(nodes.getHeader().getIp(), new AsyncDataHeartbeatClient.FactoryAsync(factory), false),
         new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
-        new AsyncClientPool(new SingleManagerFactory(factory)));
+        new AsyncClientPool(nodes.getHeader().getIp(), new SingleManagerFactory(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;

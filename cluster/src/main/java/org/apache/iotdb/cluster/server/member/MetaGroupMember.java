@@ -269,9 +269,9 @@ public class MetaGroupMember extends RaftMember {
   }
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
-    super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
+    super("Meta", new AsyncClientPool("Meta", new AsyncMetaClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool("Meta", new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new ArrayList<>();
     initPeerMap();

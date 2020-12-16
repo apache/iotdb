@@ -25,7 +25,7 @@ public class AsyncMetaClientTest {
 
   @Test
   public void test() throws IOException, TException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool(new FactoryAsync(new Factory()));
+    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", new FactoryAsync(new Factory()));
     AsyncMetaClient client;
     Node node = TestUtils.getNode(0);
     client = new AsyncMetaClient(new Factory(), new TAsyncClientManager(),

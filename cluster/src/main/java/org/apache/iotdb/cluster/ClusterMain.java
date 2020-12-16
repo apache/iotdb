@@ -44,7 +44,6 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.service.RPCService;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -71,28 +70,31 @@ public class ClusterMain {
   private static final String OPTION_CLUSTER_RPC_PORT = "rpc_port";
   private static final String OPTION_SEED_NODES = "seed_nodes";
   private static final String OPTION_DEBUG_RPC_PORT = "debug_rpc_port";
+  private static final String OPTION_CLUSTER_RPC_IP = "rpc_address";
 
   private static MetaClusterServer metaServer;
 
   public static void main(String[] args) {
     if (args.length < 1) {
       logger.error("Usage: <-s|-a|-r> [-{} <internal meta port>] "
-          + "[-{} <internal data port>] "
-          + "[-{} <cluster rpc port>] "
-          + "[-{} <node1:meta_port:data_port:cluster_rpc_port,"
-          +               "node2:meta_port:data_port:cluster_rpc_port,"
-          +           "...,noden:meta_port:data_port:cluster_rpc_port,>] "
-          + "[-{} <rpc port>]\n"
-          + "-s: start the node as a seed\n"
-          + "-a: start the node as a new node\n"
-          + "-r: remove the node out of the cluster\n"
-          + "",
-          OPTION_INTERVAL_META_PORT,
-          OPTION_INTERVAL_DATA_PORT,
-          OPTION_CLUSTER_RPC_PORT,
-          OPTION_SEED_NODES,
-          OPTION_DEBUG_RPC_PORT
-          );
+        + "[-{} <internal data port>] "
+        + "[-{} <cluster rpc port>] "
+        + "[-{} <cluster RPC address>]\n"
+        + "[-{} <node1:meta_port:data_port:cluster_rpc_port,"
+        + "node2:meta_port:data_port:cluster_rpc_port,"
+        + "...,noden:meta_port:data_port:cluster_rpc_port,>] "
+        + "[-{} <debug rpc port>]"
+        + "-s: start the node as a seed\n"
+        + "-a: start the node as a new node\n"
+        + "-r: remove the node out of the cluster\n"
+        + "",
+        OPTION_INTERVAL_META_PORT,
+        OPTION_INTERVAL_DATA_PORT,
+        OPTION_CLUSTER_RPC_PORT,
+        OPTION_CLUSTER_RPC_IP,
+        OPTION_SEED_NODES,
+        OPTION_DEBUG_RPC_PORT
+      );
       return;
     }
     String mode = args[0];
@@ -231,6 +233,11 @@ public class ClusterMain {
     clusterRpcPort.setRequired(false);
     options.addOption(clusterRpcPort);
 
+    Option clusterRpcIP = new Option(OPTION_CLUSTER_RPC_IP, OPTION_CLUSTER_RPC_IP, true,
+        "IP for client service");
+    clusterRpcIP.setRequired(false);
+    options.addOption(clusterRpcIP);
+
     Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
         "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
     seedNodes.setRequired(false);
@@ -261,6 +268,12 @@ public class ClusterMain {
       if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
         clusterConfig.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(
             OPTION_CLUSTER_RPC_PORT)));
+        logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
+      }
+
+      if (commandLine.hasOption(OPTION_CLUSTER_RPC_IP)) {
+        IoTDBDescriptor.getInstance().getConfig()
+            .setRpcAddress(commandLine.getOptionValue(OPTION_CLUSTER_RPC_IP));
         logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
       }
 

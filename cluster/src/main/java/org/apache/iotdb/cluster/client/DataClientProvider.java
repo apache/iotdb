@@ -41,7 +41,7 @@ public class DataClientProvider {
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       dataSyncClientPool = new SyncClientPool(new SyncDataClient.FactorySync(factory));
     } else {
-      dataAsyncClientPool = new AsyncClientPool(new FactoryAsync(factory));
+      dataAsyncClientPool = new AsyncClientPool("dataClientProvider", new FactoryAsync(factory));
     }
   }
 

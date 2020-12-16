@@ -54,18 +54,18 @@ public class AsyncClientPool {
   private static final int MAX_ERROR_COUNT = 3;
   private static final int PROBE_NODE_STATUS_PERIOD_SECOND = 60;
 
-  public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
-    this(asyncClientFactory, true);
+  public AsyncClientPool(String namePredix, AsyncClientFactory asyncClientFactory) {
+    this(namePredix, asyncClientFactory, true);
   }
 
-  public AsyncClientPool(AsyncClientFactory asyncClientFactory, boolean blockOnError) {
+  public AsyncClientPool(String namePredix, AsyncClientFactory asyncClientFactory, boolean blockOnError) {
     this.asyncClientFactory = asyncClientFactory;
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     this.blockOnError = blockOnError;
     if (blockOnError) {
       this.cleanErrorClientExecutorService = new ScheduledThreadPoolExecutor(1,
-          new BasicThreadFactory.Builder().namingPattern("clean-error-client-%d").daemon(true)
+          new BasicThreadFactory.Builder().namingPattern(namePredix + "-clean-error-client-%d").daemon(true)
               .build());
       this.cleanErrorClientExecutorService
           .scheduleAtFixedRate(this::cleanErrorClients, PROBE_NODE_STATUS_PERIOD_SECOND,

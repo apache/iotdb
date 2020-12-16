@@ -29,7 +29,9 @@ import org.apache.iotdb.cluster.utils.Constants;
 public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
 
   public TestPartitionedLogManager() {
-    super(new TestLogApplier(), null, new Node("localhost", 30001, 1, 40001, Constants.RPC_PORT), null, null,
+    super(new TestLogApplier(), null,
+        new Node("localhost", 30001, 1, 40001).setClientIp("localhost")
+            .setClientPort(Constants.RPC_PORT), null, null,
         null);
   }
 
@@ -37,9 +39,9 @@ public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
       PartitionTable partitionTable,
       Node header,
       SnapshotFactory factory) {
-    super(logApplier, partitionTable, header, new Node("localhost", 30001, 1, 40001, Constants.RPC_PORT),
-        factory,
-        null);
+    super(logApplier, partitionTable, header,
+        new Node("localhost", 30001, 1, 40001).setClientIp("localhost")
+            .setClientPort(Constants.RPC_PORT), factory, null);
   }
 
   @Override
