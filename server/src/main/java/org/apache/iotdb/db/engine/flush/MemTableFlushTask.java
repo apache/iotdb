@@ -113,6 +113,7 @@ public class MemTableFlushTask {
 
     try {
       writer.writeVersion(memTable.getVersion());
+      writer.writePlanIndices();
     } catch (IOException e) {
       throw new ExecutionException(e);
     }

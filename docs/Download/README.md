@@ -29,14 +29,14 @@
 	    <th>release notes</th>  
 	</tr>
 	<tr>
-            <td>0.11.0</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip">Release</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-bin.zip.asc">ASC</a></td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip">Sources</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.0/apache-iotdb-0.11.0-source-release.zip.asc">ASC</a></td>
-            <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.0/RELEASE_NOTES.md">release notes</a></td>
+            <td>0.11.1</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip">Release</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip">Sources</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip.asc">ASC</a></td>
+            <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
 	<tr>
           <td>0.10.1</td>

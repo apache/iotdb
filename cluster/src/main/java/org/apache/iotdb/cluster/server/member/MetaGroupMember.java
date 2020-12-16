@@ -1468,7 +1468,7 @@ public class MetaGroupMember extends RaftMember {
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
           return processPartitionedPlan(plan);
-        } catch (MetadataException e) {
+        } catch (MetadataException | CheckConsistencyException e) {
           logger.error(
               String.format("Failed to set storage group or create timeseries, because %s", e));
         }
@@ -1551,7 +1551,7 @@ public class MetaGroupMember extends RaftMember {
     boolean hasCreate;
     try {
       hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | CheckConsistencyException e) {
       return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     if (hasCreate) {
