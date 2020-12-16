@@ -246,12 +246,19 @@ public class MLogWriter implements AutoCloseable {
         // upgrade from old character log file to new binary mlog
         while (mLogTxtReader.hasNext()) {
           String cmd = mLogTxtReader.next();
+          if (cmd == null) {
+            // no more cmd
+            break;
+          }
           try {
             mLogWriter.operation(cmd, isSnapshot);
           } catch (MetadataException e) {
             logger.error("failed to upgrade cmd {}.", cmd, e);
           }
         }
+
+        // rename .bin.tmp to .bin
+        FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
       }
     } else if (!logFile.exists() && !tmpLogFile.exists()) {
       // if both .bin and .bin.tmp do not exist, nothing to do
@@ -284,9 +291,6 @@ public class MLogWriter implements AutoCloseable {
         throw new IOException(String.format(DELETE_FAILED_FORMAT, tmpOldLogFile, e.getMessage()));
       }
     }
-
-    // rename .bin.tmp to .bin
-    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
 
   public static void upgradeMLog() throws IOException {
