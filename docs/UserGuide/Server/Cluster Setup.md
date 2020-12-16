@@ -61,16 +61,16 @@ When both exist, the specified configuration item will overwrite the configurati
 > sed -i -e 's/6667/6669/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-engine.properties
 
 # Second step: Unix/OS X/Windows (git bash or WSL)
-> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/cluster-env.sh
-> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/cluster-env.sh
+> sed -i -e 's/31999/32000/g' ./cluster/target/cluster-0.11.0-SNAPSHOT1/conf/iotdb-env.sh
+> sed -i -e 's/31999/32001/g' ./cluster/target/cluster-0.11.0-SNAPSHOT2/conf/iotdb-env.sh
 > chmod -R 777 ./cluster/target/
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT/sbin/start-node.sh >/dev/null 2>&1 &
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT1/sbin/start-node.sh -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561 >/dev/null 2>&1 &
 > nohup ./cluster/target/cluster-0.11.0-SNAPSHOT2/sbin/start-node.sh -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562 >/dev/null 2>&1 &
 
 # Second step: Windows (MinGW)
-> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
-> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\cluster-env.bat
+> sed -i -e 's/31999/32000/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
+> sed -i -e 's/31999/32001/g'  cluster\target\cluster-0.11.0-SNAPSHOT\conf\iotdb-env.bat
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT\sbin\start-node.bat 
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
@@ -106,7 +106,7 @@ What's more, Users can configure settings of TsFile (the data files), such as th
 
 * `iotdb-cluster.properties`. Some configurations required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
 
-For detailed description of the two configuration files `iotdb-engine.properties`, `cluster-env.sh`/`cluster-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). 
+For detailed description of the two configuration files `iotdb-engine.properties`, `iotdb-env.sh`/`iotdb-env.bat`, please refer to [Configuration Manual](Config%20Manual.md). 
 The configuration items described below are in the `iotdb-cluster.properties` file.
 
 * internal\_meta\_port

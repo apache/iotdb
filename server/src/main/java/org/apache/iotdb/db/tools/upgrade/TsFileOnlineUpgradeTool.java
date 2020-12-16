@@ -279,6 +279,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     return readData(position, Byte.BYTES).get();
   }
 
+  @Override
   public void close() throws IOException {
     this.tsFileInput.close();
   }

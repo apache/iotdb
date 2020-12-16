@@ -38,9 +38,6 @@ public class ChunkGroupFooter {
 
   private int numberOfChunks;
 
-  private long minPlanIndex;
-  private long maxPlanIndex;
-
   // this field does not need to be serialized.
   private int serializedSize;
 
@@ -51,16 +48,13 @@ public class ChunkGroupFooter {
    * @param dataSize       data size
    * @param numberOfChunks number of chunks
    */
-  public ChunkGroupFooter(String deviceID, long dataSize, int numberOfChunks, long minPlanIndex,
-      long maxPlanIndex) {
+  public ChunkGroupFooter(String deviceID, long dataSize, int numberOfChunks) {
     this.deviceID = deviceID;
     this.dataSize = dataSize;
     this.numberOfChunks = numberOfChunks;
-    this.minPlanIndex = minPlanIndex;
-    this.maxPlanIndex = maxPlanIndex;
     this.serializedSize =
         Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
-            + Long.BYTES + Integer.BYTES + Long.BYTES + Long.BYTES;
+            + Long.BYTES + Integer.BYTES;
   }
 
   public static int getSerializedSize(String deviceID) {
@@ -89,9 +83,7 @@ public class ChunkGroupFooter {
     String deviceID = ReadWriteIOUtils.readString(inputStream);
     long dataSize = ReadWriteIOUtils.readLong(inputStream);
     int numOfChunks = ReadWriteIOUtils.readInt(inputStream);
-    long minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-    long maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-    return new ChunkGroupFooter(deviceID, dataSize, numOfChunks, minPlanIndex, maxPlanIndex);
+    return new ChunkGroupFooter(deviceID, dataSize, numOfChunks);
   }
 
   /**
@@ -116,9 +108,7 @@ public class ChunkGroupFooter {
     String deviceID = ReadWriteIOUtils.readStringWithLength(buffer, size);
     long dataSize = ReadWriteIOUtils.readLong(buffer);
     int numOfChunks = ReadWriteIOUtils.readInt(buffer);
-    long minPlanIndex = ReadWriteIOUtils.readLong(buffer);
-    long maxPlanIndex = ReadWriteIOUtils.readLong(buffer);
-    return new ChunkGroupFooter(deviceID, dataSize, numOfChunks, minPlanIndex, maxPlanIndex);
+    return new ChunkGroupFooter(deviceID, dataSize, numOfChunks);
   }
 
   public int getSerializedSize() {
@@ -154,8 +144,6 @@ public class ChunkGroupFooter {
     length += ReadWriteIOUtils.write(deviceID, outputStream);
     length += ReadWriteIOUtils.write(dataSize, outputStream);
     length += ReadWriteIOUtils.write(numberOfChunks, outputStream);
-    length += ReadWriteIOUtils.write(minPlanIndex, outputStream);
-    length += ReadWriteIOUtils.write(maxPlanIndex, outputStream);
     return length;
   }
 
@@ -163,15 +151,6 @@ public class ChunkGroupFooter {
   public String toString() {
     return "CHUNK_GROUP_FOOTER{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
         + ", numberOfChunks="
-        + numberOfChunks + ", serializedSize=" + serializedSize + ", logIndex=[" + minPlanIndex
-        + "," + maxPlanIndex + "]}";
-  }
-
-  public long getMinPlanIndex() {
-    return minPlanIndex;
-  }
-
-  public long getMaxPlanIndex() {
-    return maxPlanIndex;
+        + numberOfChunks + ", serializedSize=" + serializedSize;
   }
 }

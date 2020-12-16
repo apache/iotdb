@@ -62,7 +62,7 @@ public class TsFileSequenceReaderTest {
   }
 
   @Test
-  public void testReadTsFileSequently() throws IOException {
+  public void testReadTsFileSequentially() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
         .getBytes().length);

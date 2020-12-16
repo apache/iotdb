@@ -19,24 +19,22 @@
 
 -->
 
-# ��ת��ѹ��
+# 旋转门压缩
 
-��ת��ѹ����SDT���㷨��һ������ѹ���㷨��SDT�ļ��㸴�ӶȽϵͣ���ʹ��������������ʾ�������ݡ�
+旋转门压缩（SDT）算法是一种有损压缩算法。SDT的计算复杂度较低，并使用线性趋势来表示大量数据。
 
-IoTDB�������ڴ���ʱ������ʱָ��SDT�����ԣ���֧�������������ԣ�
+IoTDB允许您在创建时间序列时指定SDT的属性，并支持以下三个属性：
 
-* CompDev (ѹ��ƫ��)
+* CompDev (压缩偏差)
 
-CompDev��SDT������Ҫ�Ĳ�����������ǰ�����͵�ǰ����֮����������ơ�
+CompDev是SDT中最重要的参数，代表当前样本和当前线性之间的最大差趋势。
 
-* CompMin (��Сѹ�����)
+* CompMin (最小压缩间隔)
 
-CompMin��Ҫ���ڼ�����㡣 CompMin���������洢�����ݵ�֮���ʱ����룬�����ǰ���ʱ�䵽��һ���洢�ĵ��ʱ�����С�ڻ����compMin��
-����ѹ��ƫ��ֵ��������洢��ǰ���ݵ㡣
+CompMin主要用于减少噪点。 CompMin测量两个存储的数据点之间的时间距离，如果当前点的时间到上一个存储的点的时间距离小于或等于compMin， 无论压缩偏差值，都不会存储当前数据点。
 
-* CompMax (Compression Maximum)
+* CompMax (最大压缩间隔)
 
-CompMax���ڶ��ڼ����һ���洢�ĵ㵽��ǰ��֮���ʱ����롣�������洢��֮���ʱ�������ǰ��ʱ�䵽��һ���洢���ʱ�����
-���ڻ����compMax������ѹ��ƫ��ֵ������洢��ǰ���ݵ㡣
+CompMax用于定期检查上一个存储的点到当前点之间的时间距离。它测量存储点之间的时间差。如果当前点时间到上一个存储点的时间距离 大于或等于compMax，无论压缩偏差值，都会存储当前数据点。
 
-SDT��ָ���﷨�������[5.4��](../Operation%20Manual/SQL%20Reference.md)��
+SDT的指定语法详见本文[5.4节](../Operation%20Manual/SQL%20Reference.md)。

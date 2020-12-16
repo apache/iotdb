@@ -52,6 +52,9 @@ public class SessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
+    //set session fetchSize
+    session.setFetchSize(10000);
+
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {

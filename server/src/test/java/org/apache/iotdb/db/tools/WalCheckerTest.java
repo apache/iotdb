@@ -28,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -74,7 +75,7 @@ public class WalCheckerTest {
         File subDir = new File(tempRoot, "storage_group" + i);
         subDir.mkdir();
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
-            + WAL_FILE_NAME);
+            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
 
         ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
@@ -108,7 +109,7 @@ public class WalCheckerTest {
         File subDir = new File(tempRoot, "storage_group" + i);
         subDir.mkdir();
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
-            + WAL_FILE_NAME);
+            + WAL_FILE_NAME, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
 
         ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
