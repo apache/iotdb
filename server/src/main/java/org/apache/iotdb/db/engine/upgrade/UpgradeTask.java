@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.upgrade;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
@@ -146,6 +144,7 @@ public class UpgradeTask extends WrappedRunnable {
     return upgradedResources;
   }
 
+  @SuppressWarnings("unused")
   private File getMaxMergeVersionFile(File seqFile) {
     String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.FILE_NAME_SEPARATOR);
