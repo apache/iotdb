@@ -702,12 +702,10 @@ public class PlanExecutor implements IPlanExecutor {
         Arrays.asList(
             new PartialPath(COLUMN_FUNCTION_NAME, false),
             new PartialPath(COLUMN_FUNCTION_CLASS, false)
-            // new PartialPath(COLUMN_FUNCTION_TEMPORARY, false)
         ),
         Arrays.asList(
             TSDataType.TEXT,
             TSDataType.TEXT
-            // TSDataType.BOOLEAN
         )
     );
     for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
@@ -718,7 +716,6 @@ public class PlanExecutor implements IPlanExecutor {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
-      // rowRecord.addField(info.isTemporary(), TSDataType.BOOLEAN);
       listDataSet.putRecord(rowRecord);
     }
     return listDataSet;
