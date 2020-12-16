@@ -203,6 +203,24 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testFullDeleteWithoutWhereClause() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM root.vehicle.d0.s0");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+      cleanData();
+    }
+  }
+
+  @Test
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
     try (Connection connection = DriverManager
