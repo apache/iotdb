@@ -246,6 +246,10 @@ public class MLogWriter implements AutoCloseable {
         // upgrade from old character log file to new binary mlog
         while (mLogTxtReader.hasNext()) {
           String cmd = mLogTxtReader.next();
+          if (cmd == null) {
+            // no more cmd
+            break;
+          }
           try {
             mLogWriter.operation(cmd, isSnapshot);
           } catch (MetadataException e) {
