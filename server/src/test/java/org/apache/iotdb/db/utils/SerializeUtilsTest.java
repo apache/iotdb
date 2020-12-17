@@ -66,10 +66,10 @@ public class SerializeUtilsTest {
     List<Integer> intlist = Arrays.asList(12, 34, 567, 8910);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream outputStream = new DataOutputStream(baos);
-    SerializeUtils.serialize(intlist, outputStream);
+    SerializeUtils.serializeIntList(intlist, outputStream);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
     List<Integer> anotherIntlist = new ArrayList<>();
-    SerializeUtils.deserialize(anotherIntlist, buffer);
+    SerializeUtils.deserializeIntList(anotherIntlist, buffer);
     Assert.assertEquals(intlist, anotherIntlist);
   }
 
@@ -79,11 +79,11 @@ public class SerializeUtilsTest {
     Set<Integer> intSet = new TreeSet<>(intlist);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream outputStream = new DataOutputStream(baos);
-    SerializeUtils.serialize(intSet, outputStream);
+    SerializeUtils.serializeIntSet(intSet, outputStream);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    List<Integer> anotherIntlist = new ArrayList<>();
-    SerializeUtils.deserialize(anotherIntlist, buffer);
-    Assert.assertEquals(intlist, anotherIntlist);
+    Set<Integer> anotherIntlist = new TreeSet<>();
+    SerializeUtils.deserializeIntSet(anotherIntlist, buffer);
+    Assert.assertEquals(intSet, anotherIntlist);
   }
 
   @Test

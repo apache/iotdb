@@ -82,7 +82,7 @@ public class SerializeUtils {
     return result;
   }
 
-  public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntList(List<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -93,14 +93,14 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(List<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntList(List<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
     }
   }
 
-  public static void serialize(Set<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntSet(Set<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -111,7 +111,7 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(Set<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntSet(Set<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
