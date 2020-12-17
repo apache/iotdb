@@ -29,9 +29,7 @@ public class PathPrivilegeTest {
   public void testPathPrivilege() {
     PathPrivilege pathPrivilege = new PathPrivilege();
     pathPrivilege.setPath("root.ln");
-    Set<Integer> set = new HashSet<>();
-    set.add(1);
-    pathPrivilege.setPrivileges(set);
+    pathPrivilege.setPrivileges("root.ln", Collections.singleton(1));
     Assert.assertEquals("root.ln : INSERT_TIMESERIES", pathPrivilege.toString());
     PathPrivilege pathPrivilege1 = new PathPrivilege();
     pathPrivilege1.setPath("root.sg");
