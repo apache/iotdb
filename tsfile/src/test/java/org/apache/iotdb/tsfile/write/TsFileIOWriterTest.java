@@ -66,6 +66,9 @@ public class TsFileIOWriterTest {
     writer.endChunkGroup();
 
     writer.writeVersion(0L);
+    writer.setMinPlanIndex(100);
+    writer.setMaxPlanIndex(10000);
+    writer.writePlanIndices();
     // end file
     writer.endFile();
   }
@@ -103,6 +106,11 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(MetaMarker.VERSION, reader.readMarker());
 
     reader.readVersion();
+
+    Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
+    reader.readPlanIndex();
+    Assert.assertEquals(100, reader.getMinPlanIndex());
+    Assert.assertEquals(10000, reader.getMaxPlanIndex());
 
     Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
 
