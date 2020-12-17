@@ -1802,9 +1802,15 @@ public class MetaGroupMember extends RaftMember {
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
-    Client client = getClientProvider().getSyncDataClient(receiver,
-        RaftServer.getWriteOperationTimeoutMS());
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
+      throws IOException {
+    Client client = null;
+    try {
+      client = getClientProvider().getSyncDataClient(receiver,
+          RaftServer.getWriteOperationTimeoutMS());
+    } catch (TException e) {
+      throw new IOException(e);
+    }
     return forwardPlanSync(plan, receiver, header, client);
   }
 

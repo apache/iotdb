@@ -72,7 +72,7 @@ public class ClusterPreviousFill extends PreviousFill {
   @Override
   public void configureFill(PartialPath path, TSDataType dataType, long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context)  {
+      QueryContext context) {
     try {
       fillResult = performPreviousFill(path, dataType, queryTime, getBeforeRange(),
           deviceMeasurements, context);
@@ -195,7 +195,8 @@ public class ClusterPreviousFill extends PreviousFill {
       byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
     } catch (Exception e) {
       logger
-          .error("{}: Cannot perform previous fill of {} to {}", metaGroupMember, arguments.getPath(), node,
+          .error("{}: Cannot perform previous fill of {} to {}", metaGroupMember,
+              arguments.getPath(), node,
               e);
     }
     return byteBuffer;
@@ -204,10 +205,10 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteSyncPreviousFill(Node node, PreviousFillRequest request,
       PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
-        RaftServer.getReadOperationTimeoutMS());
-
+    SyncDataClient syncDataClient = null;
     try {
+      syncDataClient = metaGroupMember.getClientProvider().getSyncDataClient(node,
+          RaftServer.getReadOperationTimeoutMS());
       byteBuffer = syncDataClient.previousFill(request);
     } catch (Exception e) {
       logger
