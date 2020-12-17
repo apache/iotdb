@@ -92,7 +92,7 @@ public class LastQueryExecutor {
             selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (Boolean.TRUE.equals(lastPairList.get(i).left)) {
+      if (lastPairList.get(i).right != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -108,8 +108,12 @@ public class LastQueryExecutor {
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
-        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
-        resultRecord.addField(valueField);
+        if (lastTimeValuePair.getValue() != null) {
+          valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+          resultRecord.addField(valueField);
+        } else {
+          resultRecord.addField(null);
+        }
 
         dataSet.putRecord(resultRecord);
       }
