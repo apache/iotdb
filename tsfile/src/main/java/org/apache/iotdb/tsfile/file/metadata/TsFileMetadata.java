@@ -90,6 +90,10 @@ public class TsFileMetadata {
     return bloomFilter;
   }
 
+  public void setBloomFilter(BloomFilter bloomFilter) {
+    this.bloomFilter = bloomFilter;
+  }
+
   /**
    * use the given outputStream to serialize.
    *

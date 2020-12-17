@@ -65,7 +65,7 @@ public class ChunkHeader {
         compressionType, encoding);
   }
 
-  private ChunkHeader(byte chunkType, String measurementID, int dataSize, int headerSize,
+  public ChunkHeader(byte chunkType, String measurementID, int dataSize, int headerSize,
       TSDataType dataType, CompressionType compressionType, TSEncoding encoding) {
     this.chunkType = chunkType;
     this.measurementID = measurementID;

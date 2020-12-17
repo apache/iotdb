@@ -38,9 +38,12 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
+import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.rescon.CachedStringPool;
+import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -117,14 +120,16 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  private boolean isOldTsFileResource = false;
+
   /**
-   * generated upgraded TsFile ResourceList used for upgrading v0.9.x/v1 -> 0.10/v2
+   * generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3
    */
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.9.x/v1 ->
-   * 0.10/v2
+   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
+   * 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
@@ -306,8 +311,19 @@ public class TsFileResource {
       this.endTimes = endTimesArray;
       this.deviceToIndex = deviceMap;
 
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      if (isOldTsFileResource) {
+        if (inputStream.available() > 0) {
+          int versionSize = ReadWriteIOUtils.readInt(inputStream);
+          for (int i = 0; i < versionSize; i++) {
+            // historicalVersions
+            ReadWriteIOUtils.readLong(inputStream);
+          }
+        }
+      }
+      else {
+        maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+        minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      }
 
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
@@ -531,11 +547,9 @@ public class TsFileResource {
     return tsFileLock.tryWriteLock();
   }
 
-//  void doUpgrade() {
-//    if (UpgradeUtils.isNeedUpgrade(this)) {
-//      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-//    }
-//  }
+  void doUpgrade() {
+    UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
+  }
 
   public void removeModFile() throws IOException {
     getModFile().remove();
@@ -855,5 +869,9 @@ public class TsFileResource {
 
   public void setMinPlanIndex(long minPlanIndex) {
     this.minPlanIndex = minPlanIndex;
+  }
+
+  public void setOldTsFileResource(boolean isOldTsFileResource) {
+    this.isOldTsFileResource = isOldTsFileResource;
   }
 }

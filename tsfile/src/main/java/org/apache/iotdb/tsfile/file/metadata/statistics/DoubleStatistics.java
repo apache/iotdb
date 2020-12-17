@@ -227,7 +227,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readDouble(inputStream);
     this.maxValue = ReadWriteIOUtils.readDouble(inputStream);
     this.firstValue = ReadWriteIOUtils.readDouble(inputStream);
@@ -236,7 +236,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);

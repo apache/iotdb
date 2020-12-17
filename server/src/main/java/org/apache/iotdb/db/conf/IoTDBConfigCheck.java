@@ -32,12 +32,14 @@ import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +48,8 @@ public class IoTDBConfigCheck {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
@@ -197,19 +201,21 @@ public class IoTDBConfigCheck {
     if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
       logger.info("Upgrading IoTDB from v0.11 to v0.12, checking files...");
       checkUnClosedTsFileV2();
+      moveTsFileV2();
       upgradePropertiesFile();
       logger.info("Upgrade to IoTDB v0.12 successfully!");
+      logger.info("Start upgrading Version-2 TsFiles...");
     }
 
     MLogWriter.upgradeMLog();
 
+    logger.info("Mlog upgraded!");
     checkProperties();
   }
 
   /**
    * upgrade 0.11 properties to 0.12 properties
    */
-  @SuppressWarnings("unused")
   private void upgradePropertiesFile()
       throws IOException {
     // create an empty tmpPropertiesFile
@@ -308,12 +314,11 @@ public class IoTDBConfigCheck {
   /**
    * ensure all TsFiles are closed in 0.11 when starting 0.12
    */
-  @SuppressWarnings("unused")
   private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
       && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
-      logger.error("Unclosed Version-2 TsFile detected, please run 'flush' on v0.11 IoTDB"
-        + " before upgrading to v0.12");
+      logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
+          + "on v0.11 IoTDB before upgrading to v0.12");
       System.exit(-1);
     }
     checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -322,7 +327,7 @@ public class IoTDBConfigCheck {
 
   private void checkUnClosedTsFileV2InFolders(List<String> folders) {
     for (String baseDir : folders) {
-      File fileFolder = FSFactoryProducer.getFSFactory().getFile(baseDir);
+      File fileFolder = fsFactory.getFile(baseDir);
       if (!fileFolder.isDirectory()) {
         continue;
       }
@@ -334,18 +339,92 @@ public class IoTDBConfigCheck {
           if (!partitionDir.isDirectory()) {
             continue;
           }
-          File[] tsfiles = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(partitionDir.toString(), TsFileConstant.TSFILE_SUFFIX);
-          File[] resources = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
+          File[] tsfiles = fsFactory
+              .listFilesBySuffix(partitionDir.toString(), TsFileConstant.TSFILE_SUFFIX);
+          File[] resources = fsFactory
+              .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
           if (tsfiles.length != resources.length) {
-            logger.error("Unclosed Version-2 TsFile detected, please run 'flush' on v0.10 IoTDB"
-              + " before upgrading to v0.11");
+            logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
+                + "on v0.11 IoTDB before upgrading to v0.12");
             System.exit(-1);
           }
         }
       }
     }
   }
+
+  private void moveTsFileV2() {
+    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    moveFileToUpgradeFolder(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+    logger.info("Move version-2 TsFile successfully");
+  }
+
+  private void moveFileToUpgradeFolder(List<String> folders) {
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir);
+      if (!fileFolder.isDirectory()) {
+        continue;
+      }
+      for (File storageGroup : fileFolder.listFiles()) {
+        if (!storageGroup.isDirectory()) {
+          continue;
+        }
+        File upgradeFolder = fsFactory.getFile(storageGroup, IoTDBConstant.UPGRADE_FOLDER_NAME);
+        // create upgrade directory if not exist
+        if (upgradeFolder.mkdirs()) {
+          logger.info("Upgrade Directory {} doesn't exist, create it",
+              upgradeFolder.getPath());
+        } else if (!upgradeFolder.exists()) {
+          logger.error("Create upgrade Directory {} failed",
+              upgradeFolder.getPath());
+        }
+        for (File partitionDir : storageGroup.listFiles()) {
+          if (!partitionDir.isDirectory() || 
+              partitionDir.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            continue;
+          }
+          File[] oldTsfileArray = fsFactory
+              .listFilesBySuffix(partitionDir.getAbsolutePath(), TsFileConstant.TSFILE_SUFFIX);
+          File[] oldResourceFileArray = fsFactory
+              .listFilesBySuffix(partitionDir.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
+          File[] oldModificationFileArray = fsFactory
+              .listFilesBySuffix(partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
+          // move the old files to upgrade folder if exists
+          if (oldTsfileArray.length != 0) {
+            // create upgrade directory if not exist
+            if (upgradeFolder.mkdirs()) {
+              logger.info("Upgrade Directory {} doesn't exist, create it",
+                  upgradeFolder.getPath());
+            } else if (!upgradeFolder.exists()) {
+              logger.error("Create upgrade Directory {} failed",
+                  upgradeFolder.getPath());
+            }
+            // move .tsfile to upgrade folder
+            for (File file : oldTsfileArray) {
+              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+                logger.error("Failed to move tsfile {} to upgrade folder", file);
+                System.exit(-1);
+              }
+            }
+            // move .resource to upgrade folder
+            for (File file : oldResourceFileArray) {
+              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+                logger.error("Failed to move resource {} to upgrade folder", file);
+                System.exit(-1);
+              }
+            }
+            // move .mods to upgrade folder
+            for (File file : oldModificationFileArray) {
+              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+                logger.error("Failed to move mod file {} to upgrade folder", file);
+                System.exit(-1);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
 }
 

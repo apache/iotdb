@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -381,18 +382,20 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * write the page header and data into the PageWriter's output stream.
    *
-   * @NOTE: for upgrading 0.9/v1 to 0.10/v2 TsFile
+   * @NOTE: for upgrading 0.11/v2 to 0.12/v3 TsFile
    */
-  @Override
-  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
-      throws PageException {
-    numOfPages++;
+  public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header,
+      boolean isOnlyOnePageChunk) throws PageException {
 
     // write the page header to pageBuffer
     try {
       logger.debug("start to flush a page header into buffer, buffer position {} ",
           pageBuffer.size());
-      header.serializeTo(pageBuffer);
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+      if (!isOnlyOnePageChunk) {
+        header.getStatistics().serialize(pageBuffer);
+      }
       logger
           .debug("finish to flush a page header {} of {} into buffer, buffer position {} ", header,
               measurementSchema.getMeasurementId(), pageBuffer.size());
@@ -403,7 +406,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       throw new PageException(
           "IO Exception in writeDataPageHeader,ignore this page", e);
     }
-
+    numOfPages++;
     // write page content to temp PBAOS
     try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
       channel.write(data);

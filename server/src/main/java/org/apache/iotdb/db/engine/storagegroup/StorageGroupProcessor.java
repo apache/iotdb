@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -121,7 +122,6 @@ public class StorageGroupProcessor {
 
   public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /**
@@ -177,6 +177,8 @@ public class StorageGroupProcessor {
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
+
+  private AtomicInteger upgradeFileCount = new AtomicInteger();
   /*
    * time partition id -> map, which contains
    * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
@@ -295,6 +297,10 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
+
+      if (upgradeSeqFileList.size() + upgradeUnseqFileList.size() != 0) {
+        upgradeFileCount.set(upgradeSeqFileList.size() + upgradeUnseqFileList.size());
+      }
 
       // split by partition so that we can find the last file of each partition and decide to
       // close it or not
@@ -447,57 +453,13 @@ public class StorageGroupProcessor {
       // the process was interrupted before the merged files could be named
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
-      File[] oldTsfileArray = fsFactory
-          .listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX);
-      File[] oldResourceFileArray = fsFactory
-          .listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
-      File[] oldModificationFileArray = fsFactory
-          .listFilesBySuffix(fileFolder.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
-      File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
-      // move the old files to upgrade folder if exists
-      if (oldTsfileArray.length != 0 || oldResourceFileArray.length != 0) {
-        // create upgrade directory if not exist
-        if (upgradeFolder.mkdirs()) {
-          logger.info("Upgrade Directory {} doesn't exist, create it",
-              upgradeFolder.getPath());
-        } else if (!upgradeFolder.exists()) {
-          logger.error("Create upgrade Directory {} failed",
-              upgradeFolder.getPath());
-        }
-        // move .tsfile to upgrade folder
-        for (File file : oldTsfileArray) {
-          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
-          }
-        }
-        // move .resource to upgrade folder
-        for (File file : oldResourceFileArray) {
-          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
-          }
-        }
-        // move .mods to upgrade folder
-        for (File file : oldModificationFileArray) {
-          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-            logger.error(FAIL_TO_UPGRADE_FOLDER, file);
-          }
-        }
-
-        Collections.addAll(upgradeFiles,
-            fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
-      }
-      // if already move old files to upgradeFolder 
-      else if (upgradeFolder.exists()) {
-        Collections.addAll(upgradeFiles,
-            fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
-      }
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
           if (!partitionFolder.isDirectory()) {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
-          } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+          } 
+          else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
             // some TsFileResource may be being persisted when the system crashed, try recovering such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
@@ -507,6 +469,11 @@ public class StorageGroupProcessor {
             continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(tsFiles,
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
+          }
+          else {
+            // move 
+            Collections.addAll(upgradeFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
           }
         }
@@ -522,6 +489,7 @@ public class StorageGroupProcessor {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(true);
       // make sure the flush command is called before IoTDB is down.
+      fileResource.setOldTsFileResource(true);
       fileResource.deserialize();
       upgradeRet.add(fileResource);
     }
@@ -1735,19 +1703,19 @@ public class StorageGroupProcessor {
    * @return total num of the tsfiles which need to be upgraded in the storage group
    */
   public int countUpgradeFiles() {
-    return upgradeSeqFileList.size() + upgradeUnseqFileList.size();
+    return upgradeFileCount.get();
   }
 
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
-//      seqTsFileResource.doUpgrade();
+      seqTsFileResource.doUpgrade();
     }
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
-//      unseqTsFileResource.doUpgrade();
+      unseqTsFileResource.doUpgrade();
     }
   }
 
@@ -1760,23 +1728,25 @@ public class StorageGroupProcessor {
               resource.getEndTime(index))
       );
     }
-    insertLock.writeLock().lock();
-    tsFileManagement.writeLock();
-    try {
-      if (tsFileResource.isSeq()) {
-        tsFileManagement.addAll(upgradedResources, true);
-        upgradeSeqFileList.remove(tsFileResource);
-      } else {
-        tsFileManagement.addAll(upgradedResources, false);
-        upgradeUnseqFileList.remove(tsFileResource);
-      }
-    } finally {
-      tsFileManagement.writeUnlock();
-      insertLock.writeLock().unlock();
-    }
 
+    insertLock.writeLock().lock();  
+    tsFileManagement.writeLock(); 
+    try { 
+      if (tsFileResource.isSeq()) { 
+        tsFileManagement.addAll(upgradedResources, true); 
+        upgradeSeqFileList.remove(tsFileResource);  
+      } else {  
+        tsFileManagement.addAll(upgradedResources, false);  
+        upgradeUnseqFileList.remove(tsFileResource);  
+      } 
+    } finally { 
+      tsFileManagement.writeUnlock(); 
+      insertLock.writeLock().unlock();  
+    }
+    upgradeFileCount.getAndAdd(-1);
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
-    if (countUpgradeFiles() == 0) {
+    if (upgradeFileCount.get() == 0) {
+      
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
           .entrySet()) {
         long timePartitionId = entry.getKey();

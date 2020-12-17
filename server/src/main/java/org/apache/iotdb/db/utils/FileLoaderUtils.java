@@ -155,7 +155,8 @@ public class FileLoaderUtils {
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      chunkReader = new ChunkReader(chunk, timeFilter, chunkMetaData.isFromOldTsFile());
+      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+      chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader.loadPageReaderList();
