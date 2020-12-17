@@ -29,6 +29,6 @@ public class TsFileProcessorException extends IoTDBException {
   }
 
   public TsFileProcessorException(Exception exception) {
-    super(exception.getMessage(), TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
+    super(exception, TSStatusCode.TSFILE_PROCESSOR_ERROR.getStatusCode());
   }
 }

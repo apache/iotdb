@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -60,6 +64,7 @@ public class TimeSeriesMetadataCache {
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+  private final Map<String, WeakReference<String>> devices = Collections.synchronizedMap(new WeakHashMap<>());
 
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
@@ -127,7 +132,7 @@ public class TimeSeriesMetadataCache {
       printCacheLog(true);
     } else {
       // allow for the parallelism of different devices
-      synchronized (key.device.intern()) {
+      synchronized (devices.computeIfAbsent(key.device, WeakReference::new)) {
         // double check
         lock.readLock().lock();
         try {

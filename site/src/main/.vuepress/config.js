@@ -522,7 +522,7 @@ var config = {
 							['Concept/Data Model and Terminology','Data Model and Terminology'],
 							['Concept/Data Type','Data Type'],
 							['Concept/Encoding','Encoding'],
-							['Concept/Compression','Compression']
+							['Concept/Compression','Compression'],
 							['Concept/SDT','SDT']
 						]
 					},
@@ -1137,7 +1137,7 @@ var config = {
 							['Concept/Data Model and Terminology','数据模型与技术'],
 							['Concept/Data Type','数据类型'],
 							['Concept/Encoding','编码方式'],
-							['Concept/Compression','压缩方式']
+							['Concept/Compression','压缩方式'],
 							['Concept/SDT','旋转门压缩']
 						]
 					},

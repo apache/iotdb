@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 import com.google.common.util.concurrent.RateLimiter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,7 +36,13 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -47,7 +54,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,13 +69,18 @@ public class CompactionUtils {
   }
 
   private static Pair<ChunkMetadata, Chunk> readByAppendMerge(
-      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap) throws IOException {
+      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap,
+      Map<String, List<Modification>> modificationCache, PartialPath seriesPath)
+      throws IOException {
     ChunkMetadata newChunkMetadata = null;
     Chunk newChunk = null;
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry : readerChunkMetadataMap
         .entrySet()) {
-      for (ChunkMetadata chunkMetadata : entry.getValue()) {
-        Chunk chunk = entry.getKey().readMemChunk(chunkMetadata);
+      TsFileSequenceReader reader = entry.getKey();
+      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      modifyChunkMetaDataWithCache(reader, chunkMetadataList, modificationCache, seriesPath);
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Chunk chunk = reader.readMemChunk(chunkMetadata);
         if (newChunkMetadata == null) {
           newChunkMetadata = chunkMetadata;
           newChunk = chunk;
@@ -84,12 +95,14 @@ public class CompactionUtils {
 
   private static long readByDeserializeMerge(
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap, long maxVersion,
-      Map<Long, TimeValuePair> timeValuePairMap)
+      Map<Long, TimeValuePair> timeValuePairMap, Map<String, List<Modification>> modificationCache,
+      PartialPath seriesPath)
       throws IOException {
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry : readerChunkMetadataMap
         .entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      modifyChunkMetaDataWithCache(reader, chunkMetadataList, modificationCache, seriesPath);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         maxVersion = Math.max(chunkMetadata.getVersion(), maxVersion);
         IChunkReader chunkReader = new ChunkReaderByTimestamp(
@@ -109,9 +122,12 @@ public class CompactionUtils {
 
   private static long writeByAppendMerge(long maxVersion, String device,
       RateLimiter compactionWriteRateLimiter,
-      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadatasMap,
-      TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
-    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendMerge(readerChunkMetadatasMap);
+      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
+      TsFileResource targetResource, RestorableTsFileIOWriter writer,
+      Map<String, List<Modification>> modificationCache)
+      throws IOException, IllegalPathException {
+    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendMerge(entry.getValue(),
+        modificationCache, new PartialPath(device, entry.getKey()));
     ChunkMetadata newChunkMetadata = chunkPair.left;
     Chunk newChunk = chunkPair.right;
     if (newChunkMetadata != null && newChunk != null) {
@@ -129,20 +145,29 @@ public class CompactionUtils {
   private static long writeByDeserializeMerge(long maxVersion, String device,
       RateLimiter compactionRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
-      TsFileResource targetResource, RestorableTsFileIOWriter writer) throws IOException {
+      TsFileResource targetResource, RestorableTsFileIOWriter writer,
+      Map<String, List<Modification>> modificationCache) throws IOException, IllegalPathException {
     Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
-    maxVersion = readByDeserializeMerge(entry.getValue(), maxVersion, timeValuePairMap);
-    Iterator<List<ChunkMetadata>> chunkMetadataListIterator = entry.getValue().values()
-        .iterator();
-    if (!chunkMetadataListIterator.hasNext()) {
+    Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = entry.getValue();
+    maxVersion = readByDeserializeMerge(readerChunkMetadataMap, maxVersion, timeValuePairMap,
+        modificationCache, new PartialPath(device, entry.getKey()));
+    boolean isChunkMetadataEmpty = true;
+    for (List<ChunkMetadata> chunkMetadataList : readerChunkMetadataMap.values()) {
+      if (!chunkMetadataList.isEmpty()) {
+        isChunkMetadataEmpty = false;
+        break;
+      }
+    }
+    if (isChunkMetadataEmpty) {
       return maxVersion;
     }
-    List<ChunkMetadata> chunkMetadataList = chunkMetadataListIterator.next();
-    if (chunkMetadataList.isEmpty()) {
-      return maxVersion;
+    IChunkWriter chunkWriter;
+    try {
+      chunkWriter = new ChunkWriterImpl(
+          IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
+    } catch (MetadataException e) {
+      throw new IOException(e);
     }
-    IChunkWriter chunkWriter = new ChunkWriterImpl(
-        new MeasurementSchema(entry.getKey(), chunkMetadataList.get(0).getDataType()), true);
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
       writeTVPair(timeValuePair, chunkWriter);
       targetResource.updateStartTime(device, timeValuePair.getTimestamp());
@@ -182,9 +207,10 @@ public class CompactionUtils {
   public static void merge(TsFileResource targetResource,
       List<TsFileResource> tsFileResources, String storageGroup,
       CompactionLogger compactionLogger,
-      Set<String> devices, boolean sequence) throws IOException {
+      Set<String> devices, boolean sequence) throws IOException, IllegalPathException {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+    Map<String, List<Modification>> modificationCache = new HashMap<>();
     RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
     Set<String> tsFileDevicesMap = getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap,
         storageGroup);
@@ -231,7 +257,7 @@ public class CompactionUtils {
             .entrySet()) {
           maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
               entry,
-              targetResource, writer);
+              targetResource, writer, modificationCache);
         }
         writer.endChunkGroup();
         writer.writeVersion(maxVersion);
@@ -253,13 +279,13 @@ public class CompactionUtils {
             logger.debug("{} [Compaction] page enough large, use append merge", storageGroup);
             // append page in chunks, so we do not have to deserialize a chunk
             maxVersion = writeByAppendMerge(maxVersion, device, compactionWriteRateLimiter,
-                readerChunkMetadatasMap, targetResource, writer);
+                entry, targetResource, writer, modificationCache);
           } else {
             logger
                 .debug("{} [Compaction] page too small, use deserialize merge", storageGroup);
             // we have to deserialize chunks to merge pages
             maxVersion = writeByDeserializeMerge(maxVersion, device, compactionWriteRateLimiter,
-                entry, targetResource, writer);
+                entry, targetResource, writer, modificationCache);
           }
         }
         writer.endChunkGroup();
@@ -273,11 +299,10 @@ public class CompactionUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
-    Set<Long> historicalVersions = new HashSet<>();
+
     for (TsFileResource tsFileResource : tsFileResources) {
-      historicalVersions.addAll(tsFileResource.getHistoricalVersions());
+      targetResource.updatePlanIndexes(tsFileResource);
     }
-    targetResource.setHistoricalVersions(historicalVersions);
     targetResource.serialize();
     writer.endFile();
     targetResource.close();
@@ -301,5 +326,22 @@ public class CompactionUtils {
             return null;
           }
         });
+  }
+
+  private static void modifyChunkMetaDataWithCache(TsFileSequenceReader reader,
+      List<ChunkMetadata> chunkMetadataList, Map<String, List<Modification>> modificationCache,
+      PartialPath seriesPath) {
+    List<Modification> modifications =
+        modificationCache.computeIfAbsent(reader.getFileName(),
+            fileName -> new LinkedList<>(
+                new ModificationFile(fileName + ModificationFile.FILE_SUFFIX)
+                    .getModifications()));
+    List<Modification> seriesModifications = new LinkedList<>();
+    for (Modification modification : modifications) {
+      if (modification.getPath().matchFullPath(seriesPath)) {
+        seriesModifications.add(modification);
+      }
+    }
+    modifyChunkMetaData(chunkMetadataList, seriesModifications);
   }
 }

@@ -180,9 +180,13 @@ public class WriteLogNodeTest {
 
     File walFile = new File(
         config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
-    assertTrue(!walFile.exists());
+    assertFalse(walFile.exists());
 
     logNode.write(deletePlan);
+    System.out.println("Waiting for wal file to be created");
+    while (!walFile.exists()) {
+
+    }
     assertTrue(walFile.exists());
 
     logNode.delete();
@@ -209,7 +213,10 @@ public class WriteLogNodeTest {
 
     File walFile = new File(
         config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
-    assertTrue(walFile.exists());
+    System.out.println("Waiting for wal to be created");
+    while (!walFile.exists()) {
+
+    }
 
     assertTrue(new File(logNode.getLogDirectory()).exists());
     logNode.delete();

@@ -59,6 +59,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
 
   private List<PartialPath> selectedSeries;

@@ -102,7 +102,6 @@
                 <executions>
                     <execution>
                         <id>unpack-client</id>
-                        <phase>generate-sources</phase>
                         <goals>
                             <goal>unpack</goal>
                         </goals>

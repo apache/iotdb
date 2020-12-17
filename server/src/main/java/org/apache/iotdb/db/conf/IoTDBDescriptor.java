@@ -173,6 +173,10 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("rpc_thrift_compression_enable",
               Boolean.toString(conf.isRpcThriftCompressionEnable()))));
 
+      conf.setRpcAdvancedCompressionEnable(
+          Boolean.parseBoolean(properties.getProperty("rpc_advanced_compression_enable",
+              Boolean.toString(conf.isRpcAdvancedCompressionEnable()))));
+
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
@@ -233,6 +237,12 @@ public class IoTDBDescriptor {
           Integer.toString(conf.getWalBufferSize())));
       if (walBufferSize > 0) {
         conf.setWalBufferSize(walBufferSize);
+      }
+
+      int mlogBufferSize = Integer.parseInt(properties.getProperty("mlog_buffer_size",
+        Integer.toString(conf.getMlogBufferSize())));
+      if (mlogBufferSize > 0) {
+        conf.setMlogBufferSize(mlogBufferSize);
       }
 
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
@@ -503,6 +513,10 @@ public class IoTDBDescriptor {
 
       conf.setThriftMaxFrameSize(Integer.parseInt(properties
           .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
+
+      if (conf.getThriftMaxFrameSize() < IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2) {
+        conf.setThriftMaxFrameSize(IoTDBConstant.LEFT_SIZE_IN_REQUEST * 2);
+      }
 
       conf.setThriftInitBufferSize(Integer.parseInt(properties
           .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));

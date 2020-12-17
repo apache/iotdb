@@ -227,6 +227,25 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 6667 |
 |Effective|After restart system|
 
+* rpc\_thrift\_compression\_enable
+
+|Name| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+* rpc\_advanced\_compression\_enable
+
+|Name| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's advanced compression.|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+
 * time\_zone
 
 |Name| time\_zone |
@@ -563,6 +582,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| String (a http url) |
 |Default|no |
 |Effective|After restart system|
+
+* thrift\_max\_frame\_size
+
+|Name| thrift\_max\_frame\_size |
+|:---:|:---|
+|Description| the max bytes in a RPC request/response|
+|Type| long |
+|Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Effective|After restart system|
+
 
 ## Automatic Schema Creation and Type Inference
 

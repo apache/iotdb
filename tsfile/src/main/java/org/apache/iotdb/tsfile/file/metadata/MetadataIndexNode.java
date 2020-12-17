@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -31,8 +32,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
 
-  private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
-      .getMaxDegreeOfIndexNode();
+  private static final TSFileConfig config =
+      TSFileDescriptor.getInstance().getConfig();
   private List<MetadataIndexEntry> children;
   private long endOffset;
 
@@ -75,7 +76,7 @@ public class MetadataIndexNode {
   }
 
   boolean isFull() {
-    return children.size() == MAX_DEGREE_OF_INDEX_NODE;
+    return children.size() == config.getMaxDegreeOfIndexNode();
   }
 
   MetadataIndexEntry peek() {
