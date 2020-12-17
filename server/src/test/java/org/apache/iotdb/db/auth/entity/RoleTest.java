@@ -31,9 +31,7 @@ public class RoleTest {
     Role role = new Role("role");
     PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
     role.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    Set<Integer> set = new HashSet<>();
-    set.add(1);
-    role.setPrivileges("root.ln", set);
+    role.setPrivileges("root.ln", Collections.singleton(1));
     Assert.assertEquals("Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}",
         role.toString());
     Role role1 = new Role("role1");
