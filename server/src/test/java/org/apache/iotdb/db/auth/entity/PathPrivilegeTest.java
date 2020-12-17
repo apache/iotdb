@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.auth.entity;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.Assert;
@@ -29,11 +30,11 @@ public class PathPrivilegeTest {
   public void testPathPrivilege() {
     PathPrivilege pathPrivilege = new PathPrivilege();
     pathPrivilege.setPath("root.ln");
-    pathPrivilege.setPrivileges("root.ln", Collections.singleton(1));
+    pathPrivilege.setPrivileges(Collections.singleton(1));
     Assert.assertEquals("root.ln : INSERT_TIMESERIES", pathPrivilege.toString());
     PathPrivilege pathPrivilege1 = new PathPrivilege();
     pathPrivilege1.setPath("root.sg");
-    pathPrivilege1.setPrivileges(set);
+    pathPrivilege1.setPrivileges(Collections.singleton(1));
     Assert.assertNotEquals(pathPrivilege, pathPrivilege1);
     pathPrivilege.deserialize(pathPrivilege1.serialize());
     Assert.assertEquals("root.sg : INSERT_TIMESERIES", pathPrivilege.toString());
