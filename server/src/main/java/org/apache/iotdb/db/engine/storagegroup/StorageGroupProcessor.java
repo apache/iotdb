@@ -1729,26 +1729,23 @@ public class StorageGroupProcessor {
       );
     }
 
+    insertLock.writeLock().lock();  
+    tsFileManagement.writeLock(); 
+    try { 
+      if (tsFileResource.isSeq()) { 
+        tsFileManagement.addAll(upgradedResources, true); 
+        upgradeSeqFileList.remove(tsFileResource);  
+      } else {  
+        tsFileManagement.addAll(upgradedResources, false);  
+        upgradeUnseqFileList.remove(tsFileResource);  
+      } 
+    } finally { 
+      tsFileManagement.writeUnlock(); 
+      insertLock.writeLock().unlock();  
+    }
     upgradeFileCount.getAndAdd(-1);
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
     if (upgradeFileCount.get() == 0) {
-      
-      insertLock.writeLock().lock();
-      tsFileManagement.writeLock();
-      try {
-        for (TsFileResource upgradeResource : upgradeSeqFileList) {
-          tsFileManagement.addAll(upgradeResource.getUpgradedResources(), true);
-        }
-        upgradeSeqFileList.clear();
-        for (TsFileResource upgradeResource : upgradeUnseqFileList) {
-          tsFileManagement.addAll(upgradeResource.getUpgradedResources(), false);
-        }
-        upgradeUnseqFileList.clear();
-      } finally {
-        tsFileManagement.writeUnlock();
-        insertLock.writeLock().unlock();
-      }
-      
       
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
           .entrySet()) {
