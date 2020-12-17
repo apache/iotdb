@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -28,17 +29,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MLogWriter {
+public class MLogTxtWriter implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
+  private static final Logger logger = LoggerFactory.getLogger(MLogTxtWriter.class);
   private static final String STRING_TYPE = "%s,%s,%s" + System.lineSeparator();
   private static final String LINE_SEPARATOR = System.lineSeparator();
   private final File logFile;
@@ -46,7 +52,7 @@ public class MLogWriter {
   private FileChannel channel;
   private final AtomicInteger lineNumber;
 
-  public MLogWriter(String schemaDir, String logFileName) throws IOException {
+  public MLogTxtWriter(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!metadataDir.exists()) {
       if (metadataDir.mkdirs()) {
@@ -62,6 +68,14 @@ public class MLogWriter {
     lineNumber = new AtomicInteger(0);
   }
 
+  public MLogTxtWriter(String logFileName) throws FileNotFoundException {
+    logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
+    fileOutputStream = new FileOutputStream(logFile, true);
+    channel = fileOutputStream.getChannel();
+    lineNumber = new AtomicInteger(0);
+  }
+
+  @Override
   public void close() throws IOException {
     fileOutputStream.close();
   }
@@ -154,8 +168,12 @@ public class MLogWriter {
     }
 
     // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
-    if (tmpLogFile.exists() && !tmpLogFile.delete()) {
-      throw new IOException("Deleting " + tmpLogFile + "failed.");
+    if (tmpLogFile.exists()) {
+      try {
+        Files.delete(Paths.get(tmpLogFile.toURI()));
+      } catch (IOException e) {
+        throw new IOException("Deleting " + tmpLogFile + "failed with exception " + e.getMessage());
+      }
     }
     // upgrading
     try (BufferedReader reader = new BufferedReader(new FileReader(logFile));
@@ -182,6 +200,50 @@ public class MLogWriter {
     fileOutputStream = new FileOutputStream(logFile, true);
     channel = fileOutputStream.getChannel();
     lineNumber.set(0);
+  }
+
+  public void serializeMNode(MNodePlan plan) throws IOException {
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
+    s.append(",").append(plan.getName()).append(",");
+    s.append(plan.getChildSize());
+    s.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(s.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void serializeMeasurementMNode(MeasurementMNodePlan plan) throws IOException {
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE));
+    s.append(",").append(plan.getName()).append(",");
+    if (plan.getAlias() != null) {
+      s.append(plan.getAlias());
+    }
+    MeasurementSchema schema = plan.getSchema();
+    s.append(",").append(schema.getType().ordinal()).append(",");
+    s.append(schema.getEncodingType().ordinal()).append(",");
+    s.append(schema.getCompressor().ordinal()).append(",");
+    if (schema.getProps() != null) {
+      for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
+        s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
+      }
+    }
+    s.append(",").append(plan.getOffset()).append(",");
+    s.append(plan.getChildSize());
+    s.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(s.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void serializeStorageGroupMNode(StorageGroupMNodePlan plan) throws IOException {
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
+    s.append(",").append(plan.getName()).append(",");
+    s.append(plan.getDataTTL()).append(",");
+    s.append(plan.getChildSize());
+    s.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(s.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
   }
 
   int getLineNumber() {
