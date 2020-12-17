@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.*;
 import org.junit.Assert;
@@ -32,13 +33,16 @@ import org.junit.Test;
 public class MemUtilsTest {
 
   @Test
-  public void recordSizeTest() throws IllegalPathException {
+  public void getRecordSizeTest() {
     Assert.assertEquals(12, MemUtils.getRecordSize(TSDataType.INT32, 10, true));
     Assert.assertEquals(16, MemUtils.getRecordSize(TSDataType.INT64, 10, true));
     Assert.assertEquals(12, MemUtils.getRecordSize(TSDataType.FLOAT, 10.0, true));
     Assert.assertEquals(16, MemUtils.getRecordSize(TSDataType.DOUBLE, 10.0, true));
     Assert.assertEquals(8, MemUtils.getRecordSize(TSDataType.TEXT, "10", false));
+  }
 
+  @Test
+  public void getRecordSizeWithInsertPlanTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
     List<Integer> dataTypes = new ArrayList<>();
@@ -57,8 +61,11 @@ public class MemUtilsTest {
     Assert.assertEquals(sizeSum, MemUtils.getRecordSize(insertPlan, 0, 1, false));
   }
 
+  /**
+   * This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem()
+   */
   @Test
-  public void TsRecordSizeTest() {
+  public void getMemSizeTest() {
     int totalSize = 0;
     String device = "root.sg.d1";
     TSRecord record = new TSRecord(0, device);
@@ -88,7 +95,12 @@ public class MemUtilsTest {
     totalSize += MemUtils.getDataPointMem(point5);
     record.addTuple(point5);
 
-    totalSize += 8 * record.dataPointList.size() + MemUtils.getStringMem(device)+ 16;
+    DataPoint point6 = new StringDataPoint("s5", Binary.valueOf("123"));
+    Assert.assertEquals(MemUtils.getStringMem("s6") + 129, MemUtils.getDataPointMem(point6));
+    totalSize += MemUtils.getDataPointMem(point6);
+    record.addTuple(point6);
+
+    totalSize += 8 * record.dataPointList.size() + MemUtils.getStringMem(device) + 16;
 
     Assert.assertEquals(totalSize, MemUtils.getTsRecordMem(record));
   }

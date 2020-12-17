@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.commons.lang.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -38,6 +41,22 @@ public class BooleanTVListTest {
     for (int i = tvList.size / 2 + 1; i < tvList.size; i++) {
       Assert.assertFalse(tvList.getBoolean(i));
       Assert.assertEquals(i, tvList.getTime(i));
+    }
+  }
+
+  @Test
+  public void testBooleanTVLists() {
+    BooleanTVList tvList = new BooleanTVList();
+    List<Boolean> booleanList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add(i);
+      booleanList.add(i % 2 == 0);
+    }
+    tvList.putBooleans(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(booleanList.toArray(new Boolean[0])), 0, 1000);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
     }
   }
 }

@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.commons.lang.ArrayUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,6 +50,23 @@ public class DoubleTVListTest {
     for (int i = 0; i < tvList.size; i++) {
       Assert.assertEquals(i, tvList.getDouble(i), delta);
       Assert.assertEquals(i, tvList.getTime(i));
+    }
+  }
+
+  @Test
+  public void testDoubleTVLists() {
+    DoubleTVList tvList = new DoubleTVList();
+    List<Double> doubleList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add(i);
+      doubleList.add((double) i);
+    }
+    tvList.putDoubles(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(doubleList.toArray(new Double[0]), 0.0d), 0, 1000);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals((double) tvList.size - i, tvList.getDouble((int)i), delta);
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
     }
   }
 }

@@ -21,51 +21,37 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang.ArrayUtils;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class FloatTVListTest {
-  public static float delta = 0.001f;
+public class BinaryTVListTest {
 
   @Test
-  public void testFloatTVList1() {
-    FloatTVList tvList = new FloatTVList();
+  public void testBinaryTVList() {
+    BinaryTVList tvList = new BinaryTVList();
     for (int i = 0; i < 1000; i++) {
-      tvList.putFloat(i, (float) i);
+      tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
     }
-    tvList.sort();
     for (int i = 0; i < tvList.size; i++) {
-      Assert.assertEquals((float) i, tvList.getFloat(i), delta);
+      Assert.assertEquals(String.valueOf(i), tvList.getBinary(i).toString());
       Assert.assertEquals(i, tvList.getTime(i));
     }
   }
 
   @Test
-  public void testFloatTVList2() {
-    FloatTVList tvList = new FloatTVList();
-    for (int i = 1000; i >= 0; i--) {
-      tvList.putFloat(i, (float) i);
-    }
-    tvList.sort();
-    for (int i = 0; i < tvList.size; i++) {
-      Assert.assertEquals((float) i, tvList.getFloat(i), delta);
-      Assert.assertEquals(i, tvList.getTime(i));
-    }
-  }
-
-  @Test
-  public void testFloatTVLists() {
-    FloatTVList tvList = new FloatTVList();
-    List<Float> floatList = new ArrayList<>();
+  public void testBinaryTVLists() {
+    BinaryTVList tvList = new BinaryTVList();
+    Binary[] binaryList = new Binary[1001];
     List<Long> timeList = new ArrayList<>();
-    for (long i = 1000; i >= 0; i--) {
-      timeList.add(i);
-      floatList.add((float) i);
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long)i);
+      binaryList[i] = Binary.valueOf(String.valueOf(i));
     }
-    tvList.putFloats(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
-        ArrayUtils.toPrimitive(floatList.toArray(new Float[0]), 0.0F), 0, 1000);
+    tvList.putBinaries(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        binaryList, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals((float) tvList.size - i, tvList.getFloat((int)i), delta);
       Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
     }
   }

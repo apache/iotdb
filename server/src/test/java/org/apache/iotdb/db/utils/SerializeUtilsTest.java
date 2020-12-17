@@ -215,6 +215,9 @@ public class SerializeUtilsTest {
     }
   }
 
+  /**
+   * This method tests SerializeUtils.serializeTVPair() and SerializeUtils.deserializeTVPair()
+   */
   @Test
   public void serdesTVPairTest() {
     List<TimeValuePair> TVPairs = new ArrayList<>();
@@ -242,6 +245,9 @@ public class SerializeUtilsTest {
 
   }
 
+  /**
+   * This method tests SerializeUtils.serializeTVPairs() and SerializeUtils.deserializeTVPairs()
+   */
   @Test
   public void serdesTVPairsTest() {
     List<List<TimeValuePair>> TVPairs = new ArrayList<>();
@@ -268,6 +274,9 @@ public class SerializeUtilsTest {
     }
   }
 
+  /**
+   * This method tests SerializeUtils.serializeObject() and SerializeUtils.deserializeObject()
+   */
   @Test
   public void serdesObjectTest() {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -277,6 +286,9 @@ public class SerializeUtilsTest {
     Assert.assertEquals(1, SerializeUtils.deserializeObject(buffer));
   }
 
+  /**
+   * This method tests SerializeUtils.serializeObjects() and SerializeUtils.deserializeObjects()
+   */
   @Test
   public void serdesObjectsTest() {
     Object[] objects = { 1, "2", 3d};
@@ -287,8 +299,11 @@ public class SerializeUtilsTest {
     Assert.assertArrayEquals(objects, SerializeUtils.deserializeObjects(buffer));
   }
 
+  /**
+   * This method tests SerializeUtils.serializeLongs() and SerializeUtils.deserializeLongs()
+   */
   @Test
-  public void serdesLongTest() {
+  public void serdesLongsTest() {
     long[] array = {1, 10, 100, 1000, 10000};
     ByteBuffer buffer = SerializeUtils.serializeLongs(array);
     Assert.assertArrayEquals(array, SerializeUtils.deserializeLongs(buffer));
