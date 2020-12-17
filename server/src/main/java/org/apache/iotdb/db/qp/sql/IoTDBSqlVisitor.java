@@ -295,6 +295,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       Pair<Long, Long> timeInterval = parseDeleteTimeInterval(deleteDataOp);
       deleteDataOp.setStartTime(timeInterval.left);
       deleteDataOp.setEndTime(timeInterval.right);
+    } else {
+      deleteDataOp.setStartTime(Long.MIN_VALUE);
+      deleteDataOp.setEndTime(Long.MAX_VALUE);
     }
     return deleteDataOp;
   }

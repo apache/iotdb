@@ -890,6 +890,11 @@ Msg: 303: Check metadata error: For delete statement, where clause can only cont
 expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
 ```
 
+如果delete语句中未指定where子句，则会删除时间序列中的所有数据。
+```
+delete from root.ln.wf02.status
+```
+
 #### 多传感器时间序列值删除    
 
 当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.md)进行删除操作，进行此操作的SQL语句为：
