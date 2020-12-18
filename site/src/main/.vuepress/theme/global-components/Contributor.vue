@@ -302,6 +302,13 @@
           id: 'chaow',
           date: '2020/09/04'
         },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Houliang Qi',
+          role: 'Committer',
+          id: 'neuyilan',
+          date: '2020/12/18'
+        },
         ]
       }
     },
