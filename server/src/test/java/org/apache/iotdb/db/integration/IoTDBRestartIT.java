@@ -219,8 +219,6 @@ public class IoTDBRestartIT {
     EnvironmentUtils.cleanEnv();
   }
 
-
-
   @Test
   public void testRestartEndTime()
       throws SQLException, ClassNotFoundException, IOException, StorageEngineException {

@@ -51,8 +51,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   private List<Map<String, String>> tags = null;
   private List<Map<String, String>> attributes = null;
 
-  /*
-   ** record the result of creation of time series
+  /**
+   * record the result of creation of time series
    */
   private Map<Integer, TSStatus> results = new TreeMap<>();
   private List<Integer> indexes;

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.metadata.MetadataConstant;
+
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -121,26 +122,10 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(BufferedWriter bw) throws IOException {
-    serializeChildren(bw);
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    if (alias != null) {
-      s.append(alias);
-    }
-    s.append(",").append(schema.getType().ordinal()).append(",");
-    s.append(schema.getEncodingType().ordinal()).append(",");
-    s.append(schema.getCompressor().ordinal()).append(",");
-    if (schema.getProps() != null) {
-      for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
-        s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
-      }
-    }
-    s.append(",").append(offset).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
-    bw.newLine();
+    logWriter.serializeMeasurementMNode(this);
   }
 
   /**
@@ -164,6 +149,16 @@ public class MeasurementMNode extends MNode {
         Byte.parseByte(nodeInfo[4]), Byte.parseByte(nodeInfo[5]), props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
+    return node;
+  }
+
+  /**
+   * deserialize MeasuremetMNode from MeasurementNodePlan
+   */
+  public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
+    MeasurementMNode node = new MeasurementMNode(null, plan.getName(),
+      plan.getSchema(), plan.getAlias());
+    node.setOffset(plan.getOffset());
 
     return node;
   }
