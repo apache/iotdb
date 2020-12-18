@@ -17,12 +17,28 @@
  */
 package org.apache.iotdb.db.mqtt;
 
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class BrokerAuthenticatorTest {
+
+    @Before
+    public void before() {
+        EnvironmentUtils.envSetUp();
+    }
+
+    @After
+    public void after() throws IOException, StorageEngineException {
+        EnvironmentUtils.cleanEnv();
+    }
 
     @Test
     public void checkValid() {

@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth;
+package org.apache.iotdb.db.auth.role;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
-import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -65,73 +68,73 @@ public class LocalFileRoleManagerTest {
 
     // create
     Role role = manager.getRole(roles[0].getName());
-    assertEquals(null, role);
+    assertNull(role);
     for (Role role1 : roles) {
-      assertEquals(true, manager.createRole(role1.getName()));
+      assertTrue(manager.createRole(role1.getName()));
     }
     for (Role role1 : roles) {
       role = manager.getRole(role1.getName());
       assertEquals(role1.getName(), role.getName());
     }
 
-    assertEquals(false, manager.createRole(roles[0].getName()));
+    assertFalse(manager.createRole(roles[0].getName()));
     boolean caught = false;
     try {
       manager.createRole("too");
     } catch (AuthException e) {
       caught = true;
     }
-    assertEquals(true, caught);
+    assertTrue(caught);
 
     // delete
-    assertEquals(false, manager.deleteRole("not a role"));
-    assertEquals(true, manager.deleteRole(roles[roles.length - 1].getName()));
-    assertEquals(null, manager.getRole(roles[roles.length - 1].getName()));
-    assertEquals(false, manager.deleteRole(roles[roles.length - 1].getName()));
+    assertFalse(manager.deleteRole("not a role"));
+    assertTrue(manager.deleteRole(roles[roles.length - 1].getName()));
+    assertNull(manager.getRole(roles[roles.length - 1].getName()));
+    assertFalse(manager.deleteRole(roles[roles.length - 1].getName()));
 
     // grant privilege
     role = manager.getRole(roles[0].getName());
     String path = "root.a.b.c";
     int privilegeId = 0;
-    assertEquals(false, role.hasPrivilege(path, privilegeId));
-    assertEquals(true, manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
-    assertEquals(true, manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1));
-    assertEquals(false, manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
+    assertFalse(role.hasPrivilege(path, privilegeId));
+    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
+    assertTrue(manager.grantPrivilegeToRole(role.getName(), path, privilegeId + 1));
+    assertFalse(manager.grantPrivilegeToRole(role.getName(), path, privilegeId));
     role = manager.getRole(roles[0].getName());
-    assertEquals(true, role.hasPrivilege(path, privilegeId));
+    assertTrue(role.hasPrivilege(path, privilegeId));
     caught = false;
     try {
       manager.grantPrivilegeToRole("not a role", path, privilegeId);
     } catch (AuthException e) {
       caught = true;
     }
-    assertEquals(true, caught);
+    assertTrue(caught);
     caught = false;
     try {
       manager.grantPrivilegeToRole(role.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
-    assertEquals(true, caught);
+    assertTrue(caught);
 
     // revoke privilege
     role = manager.getRole(roles[0].getName());
-    assertEquals(true, manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
-    assertEquals(false, manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
+    assertTrue(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
+    assertFalse(manager.revokePrivilegeFromRole(role.getName(), path, privilegeId));
     caught = false;
     try {
       manager.revokePrivilegeFromRole("not a role", path, privilegeId);
     } catch (AuthException e) {
       caught = true;
     }
-    assertEquals(true, caught);
+    assertTrue(caught);
     caught = false;
     try {
       manager.revokePrivilegeFromRole(role.getName(), path, -1);
     } catch (AuthException e) {
       caught = true;
     }
-    assertEquals(true, caught);
+    assertTrue(caught);
 
     // list roles
     List<String> rolenames = manager.listAllRoles();
