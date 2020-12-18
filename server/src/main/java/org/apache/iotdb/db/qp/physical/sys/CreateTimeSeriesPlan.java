@@ -231,10 +231,10 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       return false;
     }
     CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
-    return Objects.equals(path, that.path) &&
-        dataType == that.dataType &&
-        encoding == that.encoding &&
-        compressor == that.compressor;
+    return Objects.equals(path, that.path) && dataType == that.dataType && encoding == that.encoding
+        && compressor == that.compressor && Objects.equals(props, that.props)
+        && Objects.equals(tags, that.tags) && Objects.equals(attributes, that.attributes)
+        && Objects.equals(alias, that.alias);
   }
 
   @Override
