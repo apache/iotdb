@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth;
+package org.apache.iotdb.db.auth.role;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -74,12 +77,12 @@ public class LocalFileRoleAccessorTest {
       Role loadedRole = accessor.loadRole(role.getName());
       assertEquals(role, loadedRole);
     }
-    assertEquals(null, accessor.loadRole("not a role"));
+    assertNull(accessor.loadRole("not a role"));
 
     // delete
-    assertEquals(true, accessor.deleteRole(roles[roles.length - 1].getName()));
-    assertEquals(false, accessor.deleteRole(roles[roles.length - 1].getName()));
-    assertEquals(null, accessor.loadRole(roles[roles.length - 1].getName()));
+    assertTrue(accessor.deleteRole(roles[roles.length - 1].getName()));
+    assertFalse(accessor.deleteRole(roles[roles.length - 1].getName()));
+    assertNull(accessor.loadRole(roles[roles.length - 1].getName()));
 
     // list
     List<String> roleNames = accessor.listAllRoles();
