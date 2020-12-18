@@ -44,7 +44,6 @@ public class TracingManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
   private TracingManager tracingManager;
-  private BufferedReader bufferedReader;
   private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
@@ -53,16 +52,11 @@ public class TracingManagerTest {
   @Before
   public void setUp() throws Exception {
     tracingManager = TracingManager.getInstance();
-    File tracingFile = SystemFileFactory.INSTANCE
-        .getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    bufferedReader = new BufferedReader(new FileReader(tracingFile));
     prepareTsFileResources();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    tracingManager.close();
-    bufferedReader.close();
     FileUtils.deleteDirectory(new File(tracingDir));
     EnvironmentUtils.cleanAllDir();
   }
@@ -89,12 +83,17 @@ public class TracingManagerTest {
     tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
+    tracingManager.close();
 
+    File tracingFile = SystemFileFactory.INSTANCE
+        .getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
+    BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
     String str;
     int cnt = 0;
     while ((str = bufferedReader.readLine()) != null) {
       Assert.assertTrue(str.contains(ans[cnt++]));
     }
+    bufferedReader.close();
   }
 
   void prepareTsFileResources() throws IOException {
