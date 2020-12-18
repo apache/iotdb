@@ -90,9 +90,6 @@ public class AuthorityCheckerTest {
         OperatorType.QUERY, user.getName()));
 
     Assert.assertTrue(AuthorityChecker.check(user.getName(), Collections.singletonList(new PartialPath(nodeName)),
-        OperatorType.UPDATE, user.getName()));
-
-    Assert.assertTrue(AuthorityChecker.check(user.getName(), Collections.singletonList(new PartialPath(nodeName)),
         OperatorType.DROP_INDEX, user.getName()));
 
     Assert.assertFalse(AuthorityChecker.check(user.getName(), Collections.singletonList(new PartialPath(nodeName)),
