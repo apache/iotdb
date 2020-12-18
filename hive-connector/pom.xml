@@ -194,6 +194,9 @@
     </build>
     <!-- org.pentaho:pentaho-aggdesigner-algorithm is in repo.spring.io and we have to claim
     to use https-->
+    <!-- Anonymous access using /libs-snapshot or /libs-milestone in the pom.xml, or with
+    these configured in a remote repository, should replace them with /snapshot and /milestone, 
+    respectively.-->
     <repositories>
         <repository>
             <id>for_pentaho</id>
