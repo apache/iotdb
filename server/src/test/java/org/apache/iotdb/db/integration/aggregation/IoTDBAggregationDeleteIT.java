@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -61,12 +61,11 @@ public class IoTDBAggregationDeleteIT {
   }
 
   @Test
-  public void countAfterDeleteTest() {
+  public void countAfterDeleteTest() throws SQLException {
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select count(*) from root");
+      boolean hasResultSet = statement.execute("select count(*) from root");
 
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -74,14 +73,10 @@ public class IoTDBAggregationDeleteIT {
           assertEquals("3", resultSet.getString(count("root.turbine.d1.s1")));
         }
       }
-
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail();
     }
   }
 
-  private void prepareData() {
+  private void prepareData() throws SQLException {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
@@ -90,9 +85,6 @@ public class IoTDBAggregationDeleteIT {
       for (String sql : dataSet) {
         statement.execute(sql);
       }
-
-    } catch (Exception e) {
-      e.printStackTrace();
     }
   }
 }

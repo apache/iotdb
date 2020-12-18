@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,11 +51,11 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
-  private QueryContext context;
+  private final QueryContext context;
 
   public boolean hasLimit;
 
-  private static Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
+  private static final Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
       new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
       new PartialPath(COLUMN_STORAGE_GROUP, false),
       new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
@@ -64,7 +63,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
       new PartialPath(COLUMN_TAGS, false),
       new PartialPath(COLUMN_ATTRIBUTES, false)};
-  private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
   public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context)

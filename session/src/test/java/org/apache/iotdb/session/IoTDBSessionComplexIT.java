@@ -153,7 +153,7 @@ public class IoTDBSessionComplexIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
+      Assert.assertEquals("root.sg1.d1,'11',0,'11',", sb.toString());
     }
     Assert.assertEquals(100, count);
     sessionDataSet.closeOperationHandle();

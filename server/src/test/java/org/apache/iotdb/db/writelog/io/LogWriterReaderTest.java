@@ -26,6 +26,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -65,7 +67,7 @@ public class LogWriterReaderTest {
 
   @Test
   public void testWriteAndRead() throws IOException {
-    LogWriter writer = new LogWriter(filePath);
+    LogWriter writer = new LogWriter(filePath, IoTDBDescriptor.getInstance().getConfig().getForceWalPeriodInMs() == 0);
     writer.write(logsBuffer);
     try {
       writer.force();

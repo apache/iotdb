@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.aggregation;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
@@ -135,30 +135,23 @@ public class IoTDBAggregationLargeDataIT {
   public void test() throws ClassNotFoundException, SQLException {
     insertSQL();
 
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root")) {
-      lastValueAggreWithSingleFilterTest();
-      avgAggreWithSingleFilterTest();
-      sumAggreWithSingleFilterTest();
-      firstAggreWithSingleFilterTest();
-      countAggreWithSingleFilterTest();
-      minMaxTimeAggreWithSingleFilterTest();
-      minValueAggreWithSingleFilterTest();
-      maxValueAggreWithSingleFilterTest();
+    lastValueAggreWithSingleFilterTest();
+    avgAggreWithSingleFilterTest();
+    sumAggreWithSingleFilterTest();
+    firstAggreWithSingleFilterTest();
+    countAggreWithSingleFilterTest();
+    minTimeAggreWithSingleFilterTest();
+    minValueAggreWithSingleFilterTest();
+    maxValueAggreWithSingleFilterTest();
 
-      lastValueAggreWithMultiFilterTest();
-      countAggreWithMultiFilterTest();
-      minTimeAggreWithMultiFilterTest();
-      maxTimeAggreWithMultiFilterTest();
-      minValueAggreWithMultiFilterTest();
-      maxValueAggreWithMultiFilterTest();
-      avgAggreWithMultiFilterTest();
-      sumAggreWithMultiFilterTest();
-      firstAggreWithMultiFilterTest();
-    }
+    countAggreWithMultiFilterTest();
+    maxTimeAggreWithMultiFilterTest();
+    avgAggreWithMultiFilterTest();
+    sumAggreWithMultiFilterTest();
+    firstAggreWithMultiFilterTest();
   }
 
-  private void lastValueAggreWithMultiFilterTest() throws SQLException {
+  private void lastValueAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
         "0,9,39,63.0,E,true"
     };
@@ -179,53 +172,25 @@ public class IoTDBAggregationLargeDataIT {
               + "," + resultSet.getString(last_value(d0s2)) + "," +
               resultSet.getString(last_value(d0s3)) + "," + resultSet
               .getString(last_value(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private void lastValueAggreWithSingleFilterTest() throws SQLException {
-    String[] retArray = new String[]{
-        "0,9,39,63.0"
-    };
-
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement
-          .execute("select last_value(s0),last_value(s1),last_value(s2)" +
-              " from root.vehicle.d0 where s1 >= 0");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(last_value(d0s0)) + ","
-              + resultSet.getString(last_value(d0s1)) + "," +
-              resultSet.getString(last_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement
-          .execute("select last_value(s0),last_value(s1),last_value(s2)" +
+      hasResultSet = statement.execute(
+          "select last_value(s0),last_value(s1),last_value(s2),last_value(s3),last_value(s4)" +
               " from root.vehicle.d0 where s1 >= 0 order by time desc");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(last_value(d0s0)) + ","
-              + resultSet.getString(last_value(d0s1)) + "," +
-              resultSet.getString(last_value(d0s2));
+              resultSet.getString(last_value(d0s0)) + "," + resultSet
+              .getString(last_value(d0s1))
+              + "," + resultSet.getString(last_value(d0s2)) + "," +
+              resultSet.getString(last_value(d0s3)) + "," + resultSet
+              .getString(last_value(d0s4));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -381,7 +346,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void countAggreWithSingleFilterTest() throws SQLException {
+  private void countAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
         "0,733,740,734"
     };
@@ -405,7 +370,7 @@ public class IoTDBAggregationLargeDataIT {
       }
 
       hasResultSet = statement.execute(
-          "select count(s0),count(s1),count(s2) from root.vehicle.d0 where s1 >= 0 order by time desc ");
+          "select count(s0),count(s1),count(s2) from root.vehicle.d0 where s1 >= 0 order by time desc");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -423,13 +388,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minMaxTimeAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+  private void minTimeAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
-        "0,104,1,2,101,100",
-        "0,3999,3999,3999,3599,100"
+        "0,104,1,2,101,100"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -454,24 +417,6 @@ public class IoTDBAggregationLargeDataIT {
         Assert.assertEquals(1, cnt);
       }
 
-      hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),"
-          + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
-          "where s1 < 50000 and s1 != 100");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
-                  + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet
-                  .getString(max_time(d0s2))
-                  + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet
-                  .getString(max_time(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
-          cnt++;
-        }
-        Assert.assertEquals(2, cnt);
-      }
-
       // keep the correctness of `order by time desc`
       hasResultSet = statement.execute(
           "select min_time(s0),min_time(s1),min_time(s2),min_time(s3),min_time(s4)" +
@@ -491,36 +436,17 @@ public class IoTDBAggregationLargeDataIT {
         }
         Assert.assertEquals(1, cnt);
       }
-
-      hasResultSet = statement.execute("select max_time(s0),max_time(s1),max_time(s2),"
-          + "max_time(s3),max_time(s4) from root.vehicle.d0 " +
-          "where s1 < 50000 and s1 != 100 order by time desc");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time(d0s0))
-                  + "," + resultSet.getString(max_time(d0s1)) + "," + resultSet
-                  .getString(max_time(d0s2))
-                  + "," + resultSet.getString(max_time(d0s3)) + "," + resultSet
-                  .getString(max_time(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
-          cnt++;
-        }
-        Assert.assertEquals(2, cnt);
-      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
   }
 
-  private void minValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+  private void minValueAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
         "0,0,0,0.0,B,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -571,12 +497,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void maxValueAggreWithSingleFilterTest() throws ClassNotFoundException, SQLException {
+  private void maxValueAggreWithSingleFilterTest() {
     String[] retArray = new String[]{
         "0,99,40000,122.0,fffff,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -628,12 +553,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void avgAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void avgAggreWithMultiFilterTest() {
     String[] retArray = new String[]{
         "0,55061.0,733,75,212,28"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -662,12 +586,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void sumAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void sumAggreWithMultiFilterTest() {
     String[] retArray = new String[]{
         "0,55061.0,156752.0,20262"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -707,12 +630,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void firstAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void firstAggreWithMultiFilterTest() {
     String[] retArray = new String[]{
         "0,90,1101,2.22,ddddd,true"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -761,12 +683,11 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void countAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
+  private void countAggreWithMultiFilterTest() {
     String[] retArray = new String[]{
         "0,733,740,736,482,1"
     };
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -781,39 +702,6 @@ public class IoTDBAggregationLargeDataIT {
               + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
               + "," + resultSet.getString(count(d0s3)) + "," + resultSet.getString(count(d0s4));
           Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private void minTimeAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
-    String[] retArray = new String[]{
-        "0,104,1,2,101,100"
-    };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet = statement.execute("select min_time(s0),min_time(s1),min_time(s2),"
-          + "min_time(s3),min_time(s4) from root.vehicle.d0 where s1 >= 0");
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans = resultSet.getString(TIMESTAMP_STR) + "," +
-              resultSet.getString(min_time(d0s0)) + "," +
-              resultSet.getString(min_time(d0s1)) + "," +
-              resultSet.getString(min_time(d0s2)) + "," +
-              resultSet.getString(min_time(d0s3)) + "," +
-              resultSet.getString(min_time(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -877,76 +765,9 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minValueAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
-    String[] retArray = new String[]{
-        "0,0,0,0.0,B,true"
-    };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet = statement.execute("select min_value(s0),min_value(s1),min_value(s2),"
-          + "min_value(s3),min_value(s4) from root.vehicle.d0 " +
-          "where s1 < 50000 and s1 != 100");
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(min_value(d0s0))
-                  + "," + resultSet.getString(min_value(d0s1)) + "," + resultSet
-                  .getString(min_value(d0s2))
-                  + "," + resultSet.getString(min_value(d0s3)) + "," + resultSet
-                  .getString(min_value(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  private void maxValueAggreWithMultiFilterTest() throws ClassNotFoundException, SQLException {
-    String[] retArray = new String[]{
-        "0,99,40000,122.0,fffff,true"
-    };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet = statement.execute("select max_value(s0),max_value(s1),max_value(s2),"
-          + "max_value(s3),max_value(s4) from root.vehicle.d0 where s1 < 50000 and s1 != 100");
-      Assert.assertTrue(hasResultSet);
-      int cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_value(d0s0))
-                  + "," + resultSet.getString(max_value(d0s1)) + "," + resultSet
-                  .getString(max_value(d0s2))
-                  + "," + resultSet.getString(max_value(d0s3)) + "," + resultSet
-                  .getString(max_value(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
   private static String[] stringValue = new String[]{"A", "B", "C", "D", "E"};
 
-  public static void insertSQL() throws ClassNotFoundException, SQLException {
+  public static void insertSQL() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     double d0s0sum = 0.0, d0s1sum = 0.0, d0s2sum = 0.0;
     int cnt = 0;
