@@ -313,6 +313,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       Pair<Long, Long> timeInterval = parseDeleteTimeInterval(deleteDataOp);
       deleteDataOp.setStartTime(timeInterval.left);
       deleteDataOp.setEndTime(timeInterval.right);
+    } else {
+      deleteDataOp.setStartTime(Long.MIN_VALUE);
+      deleteDataOp.setEndTime(Long.MAX_VALUE);
     }
     return deleteDataOp;
   }
@@ -1291,7 +1294,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
+      if (typeClause.ALL() != null) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
           long preRange;

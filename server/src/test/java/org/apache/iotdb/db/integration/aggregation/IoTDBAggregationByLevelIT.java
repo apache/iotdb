@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.aggregation;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -31,7 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class IoTDBAggregationByLevelIT {
-  private Planner processor = new Planner();
+
+  private Planner planner = new Planner();
   private static final String[] dataSet = new String[]{
       "SET STORAGE GROUP TO root.sg1",
       "SET STORAGE GROUP TO root.sg2",
@@ -293,13 +294,13 @@ public class IoTDBAggregationByLevelIT {
       }
 
       try {
-        processor.parseSQLToPhysicalPlan("select avg(status) from root.sg2.* GROUP BY level=1");
+        planner.parseSQLToPhysicalPlan("select avg(status) from root.sg2.* GROUP BY level=1");
       } catch (Exception e) {
         Assert.assertEquals("Aggregate among unmatched data types", e.getMessage());
       }
 
       try {
-        processor.parseSQLToPhysicalPlan("select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
+        planner.parseSQLToPhysicalPlan("select avg(status), sum(temperature) from root.sg2.* GROUP BY level=1");
       } catch (Exception e) {
         Assert.assertEquals("Aggregation function is restricted to one if group by level clause exists", e.getMessage());
       }
