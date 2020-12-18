@@ -136,8 +136,6 @@ public class AuthorityChecker {
       case LOADDATA:
       case CREATE_INDEX:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
-      case UPDATE:
-        return PrivilegeType.UPDATE_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:

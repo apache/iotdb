@@ -176,7 +176,6 @@ public class Planner {
       case CREATE_SCHEMA_SNAPSHOT:
         return operator;
       case QUERY:
-      case UPDATE:
       case DELETE:
       case CREATE_INDEX:
       case DROP_INDEX:

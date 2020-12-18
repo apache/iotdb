@@ -52,7 +52,6 @@ import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.qp.logical.crud.UpdateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -178,7 +177,6 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.RootOrIdContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SequenceClauseContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetColContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
@@ -204,7 +202,6 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOffContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UnsetTTLStatementContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.UpdateStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.WhereClauseContext;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -280,21 +277,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
     parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp);
     return insertOp;
-  }
-
-  @Override
-  public Operator visitUpdateStatement(UpdateStatementContext ctx) {
-    UpdateOperator updateOp = new UpdateOperator(SQLConstant.TOK_UPDATE);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    fromOp.addPrefixTablePath(parsePrefixPath(ctx.prefixPath()));
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_QUERY);
-    for (SetColContext colContext : ctx.setClause().setCol()) {
-      parseSetCol(colContext, selectOp, updateOp);
-    }
-    FilterOperator whereOp = (FilterOperator) visit(ctx.whereClause());
-    updateOp.setFilterOperator(whereOp.getChildren().get(0));
-    updateOp.setSelectOperator(selectOp);
-    return updateOp;
   }
 
   @Override
@@ -1684,11 +1666,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       throw new SQLParserException("Interval must more than 0.");
     }
     return total;
-  }
-
-  private void parseSetCol(SetColContext ctx, SelectOperator selectOp, UpdateOperator updateOp) {
-    selectOp.addSelectPath(parseSuffixPath(ctx.suffixPath()));
-    updateOp.setValue(ctx.constant().getText());
   }
 
   private PartialPath parseSuffixPath(SuffixPathContext ctx) {
