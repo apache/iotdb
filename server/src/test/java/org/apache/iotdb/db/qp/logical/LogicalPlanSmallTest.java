@@ -351,8 +351,4 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
   }
 
-  @Test
-  public void updateTest() {
-
-  }
 }
