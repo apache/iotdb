@@ -103,9 +103,8 @@ public class IoTDBLastIT {
   @Test
   public void lastWithEmptySeriesTest() throws Exception {
     String[] retArray = new String[]{
-            "root.ln.wf02.temperature,null",
-            "root.ln.wf02.status,true"
-        };
+            "root.ln.wf02.status,true",
+    };
 
     try (Connection connection =
              DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -127,6 +126,14 @@ public class IoTDBLastIT {
         Assert.assertEquals(retArray[cnt], ans);
         cnt++;
       }
+
+      // Last query resultSet is empty after deletion
+      statement.execute("INSERT INTO root.ln.wf02(timestamp, temperature) values(300, 100.0)");
+      statement.execute("delete from root.ln.wf02.status where time > 0");
+      statement.execute("select last status from root.ln.wf02");
+
+      resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
     }
   }
 
