@@ -310,9 +310,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     }
     CreateMultiTimeSeriesPlan that = (CreateMultiTimeSeriesPlan) o;
     return Objects.equals(paths, that.paths) && Objects.equals(dataTypes, that.dataTypes) && Objects
-        .equals(encodings, that.encodings) && Objects.equals(compressors, that.compressors)
-        && Objects.equals(props, that.props) && Objects.equals(tags, that.tags) && Objects
-        .equals(attributes, that.attributes) && Objects.equals(alias, that.alias);
+        .equals(encodings, that.encodings) && Objects.equals(compressors, that.compressors);
   }
 
   @Override
