@@ -55,7 +55,7 @@ public class DataHeartbeatThread extends HeartbeatThread {
   void startElection() {
     // skip first few elections to let the header have a larger chance to become the leader, so
     // possibly each node will only be one leader at the same time
-    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getHeader()) &&
+    if (!dataGroupMember.getThisNode().equals(dataGroupMember.getMetaGroupMember().getAllNodes().iterator().next()) &&
         skippedElectionNumber < MAX_ELECTIONS_TO_SKIP &&
         !hasHadLeader) {
       skippedElectionNumber++;

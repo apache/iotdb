@@ -282,7 +282,7 @@ public class ClusterMain {
     // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
       SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
-      int k = 3;
+      int k = 2;
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
@@ -305,10 +305,11 @@ public class ClusterMain {
       }
 
       private int extractSerialNumInSGName(String storageGroupName) {
-        String[] s = storageGroupName.split("_");
+        String[] s = storageGroupName.split("\\.");
         if (s.length != 2) {
           return -1;
         }
+        s[1] = s[1].substring(4);
         try {
           return Integer.parseInt(s[1]);
         } catch (NumberFormatException e) {
