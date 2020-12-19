@@ -125,6 +125,9 @@ public class IoTDBAsIT {
     }
   }
 
+  /**
+   * Test some time series use alias while others stay unchanged.
+   */
   @Test
   public void selectWithAsMixedTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
@@ -166,6 +169,10 @@ public class IoTDBAsIT {
     }
   }
 
+  /**
+   * When one alias is used but wildcard is corresponding to multi time series,
+   * it should throw one exception.
+   */
   @Test
   public void selectWithAsFailTest() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -181,6 +188,9 @@ public class IoTDBAsIT {
     }
   }
 
+  /**
+   * When wild is exactly corresponding to one time series, the result will be correct.
+   */
   @Test
   public void selectWithAsSingleTest() throws ClassNotFoundException {
     String[] retArray = new String[]{

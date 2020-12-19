@@ -312,7 +312,7 @@ public class SlotPartitionTable implements PartitionTable {
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        SerializeUtils.serialize(entry.getValue(), dataOutputStream);
+        SerializeUtils.serializeIntList(entry.getValue(), dataOutputStream);
       }
 
       dataOutputStream.writeInt(previousNodeMap.size());
@@ -345,7 +345,7 @@ public class SlotPartitionTable implements PartitionTable {
       Node node = new Node();
       List<Integer> slots = new ArrayList<>();
       SerializeUtils.deserialize(node, buffer);
-      SerializeUtils.deserialize(slots, buffer);
+      SerializeUtils.deserializeIntList(slots, buffer);
       nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer slot : slots) {

@@ -207,6 +207,12 @@ public class IoTDBDescriptor {
         conf.setWalBufferSize(walBufferSize);
       }
 
+      int mlogBufferSize = Integer.parseInt(properties.getProperty("mlog_buffer_size",
+        Integer.toString(conf.getMlogBufferSize())));
+      if (mlogBufferSize > 0) {
+        conf.setMlogBufferSize(mlogBufferSize);
+      }
+
       conf.setMultiDirStrategyClassName(properties.getProperty("multi_dir_strategy",
           conf.getMultiDirStrategyClassName()));
 

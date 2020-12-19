@@ -91,6 +91,8 @@ public class TsFileIOWriter {
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
+  // the two longs marks the index range of operations in current MemTable
+  // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
   private long minPlanIndex;
   private long maxPlanIndex;
 
@@ -160,7 +162,7 @@ public class TsFileIOWriter {
     }
     long dataSize = out.getPosition() - currentChunkGroupStartOffset;
     ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupDeviceId, dataSize,
-        chunkMetadataList.size(), minPlanIndex, maxPlanIndex);
+        chunkMetadataList.size());
     chunkGroupFooter.serializeTo(out.wrapAsStream());
     chunkGroupMetadataList
         .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
@@ -426,6 +428,12 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.VERSION, out.wrapAsStream());
     ReadWriteIOUtils.write(version, out.wrapAsStream());
     versionInfo.add(new Pair<>(getPos(), version));
+  }
+
+  public void writePlanIndices() throws IOException {
+    ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
+    ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
+    ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
   }
 
   public void setDefaultVersionPair() {

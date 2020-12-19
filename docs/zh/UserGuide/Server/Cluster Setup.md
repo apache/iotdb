@@ -133,7 +133,7 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 |名字|seed\_nodes|
 |:---:|:---|
-|描述|集群中节点的地址，`{IP/DOMAIN}:internal\_meta\_port:internal\_data\_port:cluster\_rpc\_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
+|描述|集群中节点的地址，`{IP/DOMAIN}:internal_meta_port:internal_data_port:cluster_rpc_port`格式，用逗号分割；对于伪分布式模式，可以都填写`localhost`，或是`127.0.0.1` 或是混合填写，但是不能够出现真实的ip地址；对于分布式模式，支持填写real ip 或是hostname，但是不能够出现`localhost`或是`127.0.0.1`。当使用`start-node.sh(.bat)`启动节点时，此配置意味着形成初始群集的节点，每个节点的`seed_nodes`应该一致，否则群集将初始化失败；当使用`add-node.sh(.bat)`添加节点到集群中时，此配置项可以是集群中已经存在的任何节点，不需要是用`start-node.sh(bat)`构建初始集群的节点。|
 |类型|String|
 |默认值|127.0.0.1:9003:40010:6667,127.0.0.1:9005:40012:6668,127.0.0.1:9007:40014:6669|
 |改后生效方式|重启服务器生效|
