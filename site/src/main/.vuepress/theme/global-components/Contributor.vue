@@ -309,6 +309,13 @@
           id: 'neuyilan',
           date: '2020/12/18'
         },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Xinyu Tan',
+          role: 'Committer',
+          id: 'LebronAl',
+          date: '2020/12/21'
+        },
         ]
       }
     },
