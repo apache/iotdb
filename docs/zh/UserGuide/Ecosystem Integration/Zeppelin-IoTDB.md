@@ -46,9 +46,9 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 
 | IoTDB 版本 |   Java 版本   | Zeppelin 版本 |
 | :--------: | :-----------: | :-----------: |
-| >=`0.11.0` | >=`1.8.0_271` |   `>=0.9.0`   |
+| >=`0.12.0-SNAPSHOT` | >=`1.8.0_271` |   `>=0.9.0`   |
 
-> 用户需要首先安装IoTDB：[IoTDB Quick Start](http://iotdb.apache.org/UserGuide/V0.10.x/Get%20Started/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
+> 用户需要首先安装IoTDB：[IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
 >
 > 用户可以下载 [Zeppelin](https://zeppelin.apache.org/download.html#) 并解压二进制文件，或 [从源码构建Zeppelin](https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html). 假设 Zeppelin 安装在 `$Zeppelin_HOME`.
 
@@ -92,7 +92,7 @@ cp $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-
 > ./bin/zeppelin-daemon.sh start
 
 # Windows
-> ./bin/zeppelin.cmd
+> .\bin\zeppelin.cmd
 ```
 
 

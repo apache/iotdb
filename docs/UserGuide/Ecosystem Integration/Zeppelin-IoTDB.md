@@ -47,7 +47,7 @@ Zeppelin is a web-based notebook that enables interactive data analytics. You ca
 
 | IoTDB Version | Java Version  | Zeppelin Version |
 | :-----------: | :-----------: | :--------------: |
-|  >=`0.11.0`   | >=`1.8.0_271` |    `>=0.9.0`     |
+|  >=`0.12.0-SNAPSHOT`   | >=`1.8.0_271` |    `>=0.9.0`     |
 
 You can install IoTDB according to [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
 
