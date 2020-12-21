@@ -117,7 +117,6 @@
 
 ## 配置文件
 1. iotdb-cluster.properties
-2. cluster-env.sh
 
 ## 状态相关文件
 > 在basedir目录下

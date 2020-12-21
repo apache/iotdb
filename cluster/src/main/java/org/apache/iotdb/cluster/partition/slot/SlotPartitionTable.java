@@ -332,7 +332,7 @@ public class SlotPartitionTable implements PartitionTable {
       for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey().getNode(), dataOutputStream);
         dataOutputStream.writeInt(entry.getKey().getRaftId());
-        SerializeUtils.serialize(entry.getValue(), dataOutputStream);
+//        SerializeUtils.serialize(entry.getValue(), dataOutputStream);
       }
 
 //      dataOutputStream.writeInt(previousNodeMap.size());
@@ -357,23 +357,23 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public void deserialize(ByteBuffer buffer) {
 
-    logger.info("Initializing the partition table from buffer");
-    totalSlotNumbers = buffer.getInt();
-    int size = buffer.getInt();
-    Map<Integer, Node> idNodeMap = new HashMap<>();
-    for (int i = 0; i < size; i++) {
-      Node node = new Node();
-      List<Integer> slots = new ArrayList<>();
-      SerializeUtils.deserialize(node, buffer);
-      int id = buffer.getInt();
-      SerializeUtils.deserialize(slots, buffer);
-      RaftNode raftNode = new RaftNode(node, id);
-      nodeSlotMap.put(raftNode, slots);
-      idNodeMap.put(node.getNodeIdentifier(), node);
-      for (Integer slot : slots) {
-        slotNodes[slot] = raftNode;
-      }
-    }
+//    logger.info("Initializing the partition table from buffer");
+//    totalSlotNumbers = buffer.getInt();
+//    int size = buffer.getInt();
+//    Map<Integer, Node> idNodeMap = new HashMap<>();
+//    for (int i = 0; i < size; i++) {
+//      Node node = new Node();
+//      List<Integer> slots = new ArrayList<>();
+//      SerializeUtils.deserialize(node, buffer);
+//      int id = buffer.getInt();
+//      SerializeUtils.deserialize(slots, buffer);
+//      RaftNode raftNode = new RaftNode(node, id);
+//      nodeSlotMap.put(raftNode, slots);
+//      idNodeMap.put(node.getNodeIdentifier(), node);
+//      for (Integer slot : slots) {
+//        slotNodes[slot] = raftNode;
+//      }
+//    }
 
 //    int prevNodeMapSize = buffer.getInt();
 //    previousNodeMap = new HashMap<>();

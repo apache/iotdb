@@ -36,6 +36,8 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  private boolean isIntervalByMonth = false;
+  private boolean isSlidingStepByMonth = false;
   // if it is left close and right open interval
   private boolean leftCRightO;
 
@@ -216,6 +218,22 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByTime(boolean groupByTime) {
     isGroupByTime = groupByTime;
+  }
+
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
+  }
+
+  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean isIntervalByMonth) {
+    this.isIntervalByMonth = isIntervalByMonth;
   }
 
   public String getColumn() {

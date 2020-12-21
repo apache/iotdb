@@ -302,13 +302,13 @@ TsFile data dir num:1
 Windows:
 
 ```
-.\print-tsfile-sketch.bat <TsFileResource文件夹路径>
+.\print-tsfile-resource-files.bat <TsFileResource文件夹路径>
 ```
 
 Linux or MacOs:
 
 ```
-./print-tsfile-sketch.sh <TsFileResource文件夹路径>
+./print-tsfile-resource-files.sh <TsFileResource文件夹路径>
 ```
 
 在Windows系统中的示例:

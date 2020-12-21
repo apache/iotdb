@@ -19,7 +19,53 @@
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum CompressionType {
-  UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4;
+  /**
+   * Do not comprocess
+   */
+  UNCOMPRESSED("", 0),
+
+  /**
+   * SNAPPY
+   */
+  SNAPPY(".snappy", 1),
+
+  /**
+   * GZIP
+   */
+  GZIP(".gzip", 2),
+
+  /**
+   * LZO
+   */
+  LZO(".lzo", 3),
+
+  /**
+   * SDT
+   */
+  SDT(".sdt", 4),
+
+  /**
+   * PAA
+   */
+  PAA(".paa", 5),
+
+  /**
+   * PLA
+   */
+  PLA(".pla", 6),
+
+  /**
+   * LZ4
+   */
+  LZ4(".lz4", 7);
+
+  private final String extensionName;
+  private final int index;
+
+  CompressionType(String extensionName, int index) {
+    this.extensionName = extensionName;
+    this.index = index;
+  }
 
   /**
    * deserialize short number.
@@ -32,35 +78,20 @@ public enum CompressionType {
   }
 
   public static byte deserializeToByte(short compressor) {
-    if (compressor >= 8 || compressor < 0) {
-      throw new IllegalArgumentException("Invalid input: " + compressor);
-    }
+    //check compressor is valid
+    getCompressionType(compressor);
     return (byte) compressor;
   }
 
 
   private static CompressionType getCompressionType(short compressor) {
-    if (compressor >= 8 || compressor < 0) {
-      throw new IllegalArgumentException("Invalid input: " + compressor);
+    for (CompressionType compressionType : CompressionType.values()) {
+      if (compressor == compressionType.index) {
+        return compressionType;
+      }
     }
-    switch (compressor) {
-      case 1:
-        return SNAPPY;
-      case 2:
-        return GZIP;
-      case 3:
-        return LZO;
-      case 4:
-        return SDT;
-      case 5:
-        return PAA;
-      case 6:
-        return PLA;
-      case 7:
-        return LZ4;
-      default:
-        return UNCOMPRESSED;
-    }
+
+    throw new IllegalArgumentException("Invalid input: " + compressor);
   }
 
   /**
@@ -90,50 +121,15 @@ public enum CompressionType {
    * @return byte number
    */
   public byte enumToByte() {
-    switch (this) {
-      case SNAPPY:
-        return 1;
-      case GZIP:
-        return 2;
-      case LZO:
-        return 3;
-      case SDT:
-        return 4;
-      case PAA:
-        return 5;
-      case PLA:
-        return 6;
-      case LZ4:
-        return 7;
-      default:
-        return 0;
-    }
+    return (byte) index;
   }
-
   /**
    * get extension.
    *
    * @return extension (string type), for example: .snappy, .gz, .lzo
    */
   public String getExtension() {
-    switch (this) {
-      case SNAPPY:
-        return ".snappy";
-      case GZIP:
-        return ".gz";
-      case LZO:
-        return ".lzo";
-      case SDT:
-        return ".sdt";
-      case PAA:
-        return ".paa";
-      case PLA:
-        return ".pla";
-      case LZ4:
-        return ".lz4";
-      default:
-        return "";
-    }
+    return extensionName;
   }
 
 }

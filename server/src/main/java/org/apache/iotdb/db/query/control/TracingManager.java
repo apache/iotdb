@@ -131,7 +131,7 @@ public class TracingManager {
           .append("[").append(tsFileResource.getStartTime(device))
           .append(", ").append(tsFileResource.getEndTime(device)).append("]");
       if (deviceIter.hasNext()) {
-        builder.append(", ");
+        builder.append(",");
       }
     }
   }
