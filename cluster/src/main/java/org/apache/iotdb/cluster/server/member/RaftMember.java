@@ -225,7 +225,7 @@ public abstract class RaftMember {
    */
   private Object syncLock = new Object();
   /**
-   * when this node is send logs to the followers, the sends are performed parallel in this pool, so
+   * when this node sends logs to the followers, the send is performed in parallel in this pool, so
    * that a slow or unavailable node will not block other nodes.
    */
   private ExecutorService appendLogThreadPool;

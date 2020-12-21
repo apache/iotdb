@@ -204,11 +204,17 @@ public class IoTDBConfig {
 
   /**
    * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   * is larger than this parameter, then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
   private int estimatedSeriesSize = 300;
+
+  /**
+   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
+   * is larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   */
+  private int mlogBufferSize = 1024 * 1024;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -2107,5 +2113,13 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  }
+
+  public int getMlogBufferSize() {
+    return mlogBufferSize;
+  }
+
+  public void setMlogBufferSize(int mlogBufferSize) {
+    this.mlogBufferSize = mlogBufferSize;
   }
 }

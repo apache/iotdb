@@ -92,7 +92,7 @@ public class LastQueryExecutor {
             selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i).right != null) {
+      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -108,12 +108,8 @@ public class LastQueryExecutor {
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
-        if (lastTimeValuePair.getValue() != null) {
-          valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
-          resultRecord.addField(valueField);
-        } else {
-          resultRecord.addField(null);
-        }
+        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+        resultRecord.addField(valueField);
 
         dataSet.putRecord(resultRecord);
       }
@@ -167,10 +163,12 @@ public class LastQueryExecutor {
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
       if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
-        resultContainer.get(i).left = true;
         resultContainer.get(i).right = readerList.get(index++).readLastPoint();
-        if (CACHE_ENABLED) {
-          cacheAccessors.get(i).write(resultContainer.get(i).right);
+        if (resultContainer.get(i).right.getValue() != null) {
+          resultContainer.get(i).left = true;
+          if (CACHE_ENABLED) {
+            cacheAccessors.get(i).write(resultContainer.get(i).right);
+          }
         }
       }
     }
