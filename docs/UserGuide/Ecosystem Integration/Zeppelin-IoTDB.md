@@ -37,7 +37,7 @@
 
 Zeppelin is a web-based notebook that enables interactive data analytics. You can connect to data sources and perform interactive operations with SQL, Scala, etc. The operations can be saved as documents, just like Jupyter. Zeppelin has already supported many data sources, including Spark, ElasticSearch, Cassandra, and InfluxDB. Now, we have enabled Zeppelin to operate IoTDB via SQL. 
 
-![image-iotdb-note-snapshot](../../img/UserGuide/EcosystemIntegration/iotdb-note-snapshot.png)
+![iotdb-note-snapshot](https://user-images.githubusercontent.com/5548915/102752947-520a3e80-43a5-11eb-8fb1-8fac471c8c7e.png)
 
 
 
@@ -122,7 +122,7 @@ In the interpreter page:
 
 Now you are ready to use your interpreter.
 
-![image-iotdb-create-note](../../img/UserGuide/EcosystemIntegration/iotdb-create-note.png)
+![iotdb-create-note](https://user-images.githubusercontent.com/5548915/102752945-5171a800-43a5-11eb-8614-53b3276a3ce2.png)
 
 We provide some simple SQL to show the use of Zeppelin-IoTDB interpreter:
 
@@ -156,7 +156,7 @@ We provide some simple SQL to show the use of Zeppelin-IoTDB interpreter:
 
 The screenshot is as follows:
 
-![image-iotdb-note-snapshot2](../../img/UserGuide/EcosystemIntegration/iotdb-note-snapshot2.png)
+![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
 You can also design more fantasy documents referring to [[1\]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) and others.
 
@@ -168,7 +168,7 @@ The above demo notebook can be found at  `$IoTDB_HOME/zeppelin-interpreter/Zeppe
 
 You can configure the connection parameters in http://127.0.0.1:8080/#/interpreter :
 
-![image-iotdb-configuration](../../img/UserGuide/EcosystemIntegration/iotdb-configuration.png)
+![iotdb-configuration](https://user-images.githubusercontent.com/5548915/102752940-50407b00-43a5-11eb-94fb-3e3be222183c.png)
 
 The parameters you can configure are as follows:
 
