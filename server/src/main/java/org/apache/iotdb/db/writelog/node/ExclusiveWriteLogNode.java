@@ -58,7 +58,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private WalWriteProcessor flushingWalWriteProcessor;
   private WalWriteProcessor workingWalWriteProcessor = new WalWriteProcessor(false);
 
-  private final Object switchBufferCondition = new Object();
   private ReentrantLock lock = new ReentrantLock();
   private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
       Executors.newCachedThreadPool(
@@ -127,11 +126,11 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.lock();
     try {
       WalWriteProcessor walWriteProcessor = getWalWriteProcessor(toPrevious);
-      synchronized (switchBufferCondition) {
+      synchronized (walWriteProcessor.getSwitchBufferCondition()) {
         while (walWriteProcessor.getLogBufferFlushing() != null && !deleted) {
-          switchBufferCondition.wait();
+          walWriteProcessor.getSwitchBufferCondition().wait();
         }
-        switchBufferCondition.notifyAll();
+        walWriteProcessor.getSwitchBufferCondition().notifyAll();
       }
 
       if (walWriteProcessor.getFileWriter() != null) {
@@ -161,16 +160,28 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void flushWindowChange() throws IOException {
-    getFileWriter(false);
-    flushingWalWriteProcessor = workingWalWriteProcessor;
-    flushingWalWriteProcessor.setPrevious(true);
-    workingWalWriteProcessor = new WalWriteProcessor(false);
+    lock.lock();
+    try {
+      if (flushingWalWriteProcessor != null){
+        close(true);
+      }
+      getFileWriter(false);
+      flushingWalWriteProcessor = workingWalWriteProcessor;
+      flushingWalWriteProcessor.setPrevious(true);
+      workingWalWriteProcessor = new WalWriteProcessor(false);
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
   public void flushWindowEnd() {
-    close(true);
-    notifyEndFlush();
+    lock.lock();
+    try {
+      notifyEndFlush();
+    } finally {
+      lock.unlock();
+    }
   }
 
 
@@ -297,38 +308,38 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private void switchBufferWorkingToFlushing(boolean toPrevious) throws InterruptedException {
     WalWriteProcessor walWriteProcessor = getWalWriteProcessor(toPrevious);
-    synchronized (switchBufferCondition) {
+    synchronized (walWriteProcessor.getSwitchBufferCondition()) {
       while (walWriteProcessor.getLogBufferFlushing() != null && !deleted) {
-        switchBufferCondition.wait();
+        walWriteProcessor.getSwitchBufferCondition().wait();
       }
       walWriteProcessor.setLogBufferFlushing(walWriteProcessor.getLogBufferWorking());
       walWriteProcessor.setLogBufferWorking(null);
-      switchBufferCondition.notifyAll();
+      walWriteProcessor.getSwitchBufferCondition().notifyAll();
     }
   }
 
   private void switchBufferIdleToWorking(boolean toPrevious) throws InterruptedException {
     WalWriteProcessor walWriteProcessor = getWalWriteProcessor(toPrevious);
-    synchronized (switchBufferCondition) {
+    synchronized (walWriteProcessor.getSwitchBufferCondition()) {
       while (walWriteProcessor.getLogBufferIdle() == null && !deleted) {
-        switchBufferCondition.wait();
+        walWriteProcessor.getSwitchBufferCondition().wait();
       }
       walWriteProcessor.setLogBufferWorking(walWriteProcessor.getLogBufferIdle());
       walWriteProcessor.setLogBufferIdle(null);
-      switchBufferCondition.notifyAll();
+      walWriteProcessor.getSwitchBufferCondition().notifyAll();
     }
   }
 
   private void switchBufferFlushingToIdle(boolean toPrevious) throws InterruptedException {
     WalWriteProcessor walWriteProcessor = getWalWriteProcessor(toPrevious);
-    synchronized (switchBufferCondition) {
+    synchronized (walWriteProcessor.getSwitchBufferCondition()) {
       while (walWriteProcessor.getLogBufferIdle() != null && !deleted) {
-        switchBufferCondition.wait();
+        walWriteProcessor.getSwitchBufferCondition().wait();
       }
       walWriteProcessor.setLogBufferIdle(walWriteProcessor.getLogBufferFlushing());
       walWriteProcessor.getLogBufferIdle().clear();
       walWriteProcessor.setLogBufferFlushing(null);
-      switchBufferCondition.notifyAll();
+      walWriteProcessor.getSwitchBufferCondition().notifyAll();
     }
   }
 

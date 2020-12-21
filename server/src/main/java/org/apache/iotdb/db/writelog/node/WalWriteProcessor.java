@@ -35,6 +35,8 @@ public class WalWriteProcessor {
 
   private ByteBuffer logBufferFlushing;
 
+  private final Object switchBufferCondition = new Object();
+
   private int bufferedLogNum = 0;
 
   public WalWriteProcessor(boolean isPrevious) {
@@ -75,6 +77,10 @@ public class WalWriteProcessor {
 
   public void incrementLogCnt(){
     bufferedLogNum++;
+  }
+
+  public Object getSwitchBufferCondition() {
+    return switchBufferCondition;
   }
 
   public int getBufferedLogNum(){

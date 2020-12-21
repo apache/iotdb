@@ -1690,7 +1690,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private boolean unsequenceFlushCallback(TsFileProcessor processor, boolean updateLatest) {
+  private boolean unsequenceFlushCallback(TsFileProcessor processor,
+      boolean isUpdatePartitionLatestFlushedTime) {
     return true;
   }
 
