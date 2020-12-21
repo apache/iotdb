@@ -38,5 +38,5 @@ public class ClusterConstant {
     // constant class
   }
 
-  static final String CLUSTER_CONF = "CLUSTER_CONF";
+  public static final String CLUSTER_CONF = "CLUSTER_CONF";
 }

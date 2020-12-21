@@ -76,24 +76,26 @@ public class ClusterMain {
 
   public static void main(String[] args) {
     if (args.length < 1) {
-      logger.error("Usage: <-s|-a|-r> [-{} <internal meta port>] "
-        + "[-{} <internal data port>] "
-        + "[-{} <cluster rpc port>] "
-        + "[-{} <cluster RPC address>]\n"
-        + "[-{} <node1:meta_port:data_port:cluster_rpc_port,"
-        + "node2:meta_port:data_port:cluster_rpc_port,"
-        + "...,noden:meta_port:data_port:cluster_rpc_port,>] "
-        + "[-{} <debug rpc port>]"
-        + "-s: start the node as a seed\n"
-        + "-a: start the node as a new node\n"
-        + "-r: remove the node out of the cluster\n"
-        + "",
-        OPTION_INTERVAL_META_PORT,
-        OPTION_INTERVAL_DATA_PORT,
-        OPTION_CLUSTER_RPC_PORT,
-        OPTION_CLUSTER_RPC_IP,
-        OPTION_SEED_NODES,
-        OPTION_DEBUG_RPC_PORT
+      logger.error("Usage: <-s|-a|-r> "
+              + "[-{} <internal meta port>] "
+              + "[-{} <internal data port>] "
+              + "[-{} <cluster rpc port>] "
+              + "[-{} <cluster RPC address>]\n"
+              + "[-{} <node1:meta_port:data_port:cluster_rpc_port,"
+              + "node2:meta_port:data_port:cluster_rpc_port,"
+              + "...,noden:meta_port:data_port:cluster_rpc_port,>] "
+              + "[-{} <debug rpc port>]"
+              + "-s: start the node as a seed\n"
+              + "-a: start the node as a new node\n"
+              + "-r: remove the node out of the cluster\n"
+              + "or: set CLUSTER_CONF and IOTDB_CONF environment variable",
+          OPTION_INTERVAL_META_PORT,
+          OPTION_INTERVAL_DATA_PORT,
+          OPTION_CLUSTER_RPC_PORT,
+          OPTION_CLUSTER_RPC_IP,
+          OPTION_SEED_NODES,
+          //debug rpc is for starting another rpc port for the singleton IoTDB server.
+          OPTION_DEBUG_RPC_PORT
       );
       return;
     }
@@ -103,13 +105,16 @@ public class ClusterMain {
       replaceDefaultProps(params);
     }
 
+    // init server's configuration first, because the cluster configuration may read settings from
+    // the server's configuration.
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+
     // params check
     if (!checkConfig()) {
       return;
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     logger.info("Running mode {}", mode);
     if (MODE_START.equals(mode)) {
       try {

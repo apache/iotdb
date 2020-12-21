@@ -88,12 +88,12 @@ public class SerializeUtilsTest {
 
   @Test
   public void serdesNodeTest() {
-    Node node = new Node("127.0.0.1", 6667, 1, 6535, 4678);
+    Node node = new Node("127.0.0.1", 6667, 1, 6535).setClientPort(4678);
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     DataOutputStream outputStream = new DataOutputStream(baos);
     SerializeUtils.serialize(node, outputStream);
     ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
-    Node anotherNode = new Node("127.0.0.1", 6667, 1, 6535, 4678);
+    Node anotherNode = new Node("127.0.0.1", 6667, 1, 6535).setClientPort(4678);
     SerializeUtils.deserialize(anotherNode, buffer);
     Assert.assertEquals(node, anotherNode);
   }
