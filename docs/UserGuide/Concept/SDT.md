@@ -47,6 +47,7 @@ stored point's time distance is greater than or equal to compMax, current point 
 The specified syntax for SDT is detailed in [Create Timeseries Statement](../Operation%20Manual/SQL%20Reference.md).
 
 Supported datatypes:
+
 * INT32 (Integer)
 * INT64 (Long Integer)
 * FLOAT (Single Precision Floating Point)
