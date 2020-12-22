@@ -113,7 +113,7 @@ public class IoTDBConfig {
   /**
    * whether to use Snappy compression before sending data through the network
    */
-  private boolean rpcAdvancedCompressionEnable = false;
+  private boolean rpcAdvancedCompressionEnable = true;
 
   /**
    * Port which the JDBC server listens to.

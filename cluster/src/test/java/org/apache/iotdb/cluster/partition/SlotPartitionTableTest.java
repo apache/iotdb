@@ -515,16 +515,16 @@ public class SlotPartitionTableTest {
     List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0), raftId);
     NodeRemovalResult nodeRemovalResult = localTable.removeNode(getNode(0));
     assertFalse(localTable.getAllNodes().contains(getNode(0)));
-    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup();
+    PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup(0);
     for (int i = 0; i < 5; i++) {
       assertTrue(removedGroup.contains(getNode(i)));
     }
-    PartitionGroup newGroup = nodeRemovalResult.getNewGroup();
+    PartitionGroup newGroup = nodeRemovalResult.getNewGroup(0);
     for (int i : new int[]{18, 19, 1, 2, 3}) {
       assertTrue(newGroup.contains(getNode(i)));
     }
     // the slots owned by the removed one should be redistributed to other nodes
-    Map<Node, List<Integer>> newSlotOwners = ((SlotNodeRemovalResult) nodeRemovalResult)
+    Map<RaftNode, List<Integer>> newSlotOwners = ((SlotNodeRemovalResult) nodeRemovalResult)
         .getNewSlotOwners();
     for (List<Integer> slots : newSlotOwners.values()) {
       assertTrue(nodeSlots.containsAll(slots));

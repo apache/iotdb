@@ -4,7 +4,6 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -14,6 +13,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -227,56 +228,58 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public NodeAdditionResult addNode(Node node) {
-//    synchronized (nodeRing) {
-//      if (nodeRing.contains(node)) {
-//        return null;
-//      }
-//
-//      nodeRing.add(node);
-//      nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
-//
-//      List<PartitionGroup> retiredGroups = new ArrayList<>();
-//      for (int i = 0; i < localGroups.size(); i++) {
-//        PartitionGroup oldGroup = localGroups.get(i);
-//        Node header = oldGroup.getHeader();
-//        PartitionGroup newGrp = getHeaderGroup(header);
-//        if (newGrp.contains(node) && newGrp.contains(thisNode)) {
-//          // this group changes but still contains the local node
-//          localGroups.set(i, newGrp);
-//        } else if (newGrp.contains(node) && !newGrp.contains(thisNode)) {
-//          // the local node retires from the group
-//          retiredGroups.add(newGrp);
-//        }
-//      }
-//
-//      // remove retired groups
-//      Iterator<PartitionGroup> groupIterator = localGroups.iterator();
-//      while (groupIterator.hasNext()) {
-//        PartitionGroup partitionGroup = groupIterator.next();
-//        for (PartitionGroup retiredGroup : retiredGroups) {
-//          if (retiredGroup.getHeader().equals(partitionGroup.getHeader())) {
-//            groupIterator.remove();
-//            break;
-//          }
-//        }
-//      }
-//    }
-//
-//    SlotNodeAdditionResult result = new SlotNodeAdditionResult();
-//    PartitionGroup newGroup = getHeaderGroup(node);
-//    if (newGroup.contains(thisNode)) {
-//      localGroups.add(newGroup);
-//    }
-//    result.setNewGroup(newGroup);
-//
-//    calculateGlobalGroups();
-//
-//    // the slots movement is only done logically, the new node itself will pull data from the
-//    // old node
-//    result.setLostSlots(moveSlotsToNew(node));
-//
-//    return result;
-    return null;
+    synchronized (nodeRing) {
+      if (nodeRing.contains(node)) {
+        return null;
+      }
+
+      nodeRing.add(node);
+      nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+
+      List<PartitionGroup> retiredGroups = new ArrayList<>();
+      for (int i = 0; i < localGroups.size(); i++) {
+        PartitionGroup oldGroup = localGroups.get(i);
+        Node header = oldGroup.getHeader();
+        PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, oldGroup.getId()));
+        if (newGrp.contains(node) && newGrp.contains(thisNode)) {
+          // this group changes but still contains the local node
+          localGroups.set(i, newGrp);
+        } else if (newGrp.contains(node) && !newGrp.contains(thisNode)) {
+          // the local node retires from the group
+          retiredGroups.add(newGrp);
+        }
+      }
+
+      // remove retired groups
+      Iterator<PartitionGroup> groupIterator = localGroups.iterator();
+      while (groupIterator.hasNext()) {
+        PartitionGroup partitionGroup = groupIterator.next();
+        for (PartitionGroup retiredGroup : retiredGroups) {
+          if (retiredGroup.getHeader().equals(partitionGroup.getHeader())
+              && retiredGroup.getId() == partitionGroup.getId()) {
+            groupIterator.remove();
+            break;
+          }
+        }
+      }
+    }
+
+    SlotNodeAdditionResult result = new SlotNodeAdditionResult();
+    for (int raftId = 0 ;raftId < multiRaftFactor; raftId++) {
+      PartitionGroup newGroup = getHeaderGroup(new RaftNode(node, raftId));
+      if (newGroup.contains(thisNode)) {
+        localGroups.add(newGroup);
+      }
+      result.addNewGroup(newGroup);
+    }
+
+    calculateGlobalGroups();
+
+    // the slots movement is only done logically, the new node itself will pull data from the
+    // old node
+    result.setLostSlots(moveSlotsToNew(node));
+
+    return result;
   }
 
 
@@ -287,32 +290,49 @@ public class SlotPartitionTable implements PartitionTable {
    * @param newNode
    * @return a map recording what slots each group lost.
    */
-  private Map<Node, Set<Integer>> moveSlotsToNew(Node newNode) {
-//    Map<Node, Set<Integer>> result = new HashMap<>();
-//    // as a node is added, the average slots for each node decrease
-//    // move the slots to the new node if any previous node have more slots than the new average
-//    List<Integer> newSlots = new ArrayList<>();
-//    Map<Integer, Node> previousHolders = new HashMap<>();
-//    int newAvg = totalSlotNumbers / nodeRing.size();
-//    for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
-//      List<Integer> slots = entry.getValue();
-//      int transferNum = slots.size() - newAvg;
-//      if (transferNum > 0) {
-//        List<Integer> slotsToMove = slots.subList(slots.size() - transferNum, slots.size());
-//        newSlots.addAll(slotsToMove);
-//        for (Integer slot : slotsToMove) {
-//          // record what node previously hold the integer
-//          previousHolders.put(slot, entry.getKey());
-//          slotNodes[slot] = newNode;
-//        }
-//        result.computeIfAbsent(entry.getKey(), n -> new HashSet<>()).addAll(slotsToMove);
-//        slotsToMove.clear();
-//      }
-//    }
-//    nodeSlotMap.put(newNode, newSlots);
-//    previousNodeMap.put(newNode, previousHolders);
-//    return result;
-    return null;
+  private Map<RaftNode, Set<Integer>> moveSlotsToNew(Node newNode) {
+    Map<RaftNode, Set<Integer>> result = new HashMap<>();
+    // as a node is added, the average slots for each node decrease
+    // move the slots to the new node if any previous node have more slots than the new average
+    int newAvg = totalSlotNumbers / nodeRing.size() / multiRaftFactor;
+    int raftId = 0;
+    for(int i = 0 ; i < multiRaftFactor; i++) {
+      RaftNode raftNode = new RaftNode(newNode, i);
+      nodeSlotMap.putIfAbsent(raftNode, new ArrayList<>());
+      previousNodeMap.putIfAbsent(raftNode, new HashMap<>());
+    }
+    for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
+      List<Integer> slots = entry.getValue();
+      int transferNum = slots.size() - newAvg;
+      if (transferNum > 0) {
+        RaftNode curNode = new RaftNode(newNode, raftId);
+        int numToMove = transferNum;
+        if(raftId != multiRaftFactor - 1) {
+          numToMove = Math.min(numToMove, newAvg - nodeSlotMap.get(curNode).size());
+        }
+        List<Integer> slotsToMove = slots.subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
+        nodeSlotMap.get(curNode).addAll(slotsToMove);
+        for (Integer slot : slotsToMove) {
+          // record what node previously hold the integer
+          previousNodeMap.get(curNode).put(slot, entry.getKey());
+          slotNodes[slot] = curNode;
+        }
+        result.computeIfAbsent(entry.getKey(), n -> new HashSet<>()).addAll(slotsToMove);
+        transferNum -= numToMove;
+        if (transferNum > 0) {
+          curNode = new RaftNode(newNode, ++raftId);
+          slotsToMove = slots.subList(slots.size() - transferNum, slots.size());
+          nodeSlotMap.get(curNode).addAll(slotsToMove);
+          for (Integer slot : slotsToMove) {
+            // record what node previously hold the integer
+            previousNodeMap.get(curNode).put(slot, entry.getKey());
+            slotNodes[slot] = curNode;
+          }
+          result.get(entry.getKey()).addAll(slotsToMove);
+        }
+      }
+    }
+    return result;
   }
 
   @Override
@@ -332,20 +352,21 @@ public class SlotPartitionTable implements PartitionTable {
       for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey().getNode(), dataOutputStream);
         dataOutputStream.writeInt(entry.getKey().getRaftId());
-//        SerializeUtils.serialize(entry.getValue(), dataOutputStream);
+        SerializeUtils.serializeIntList(entry.getValue(), dataOutputStream);
       }
 
-//      dataOutputStream.writeInt(previousNodeMap.size());
-//      for (Entry<Node, Map<Integer, Node>> nodeMapEntry : previousNodeMap.entrySet()) {
-//        dataOutputStream.writeInt(nodeMapEntry.getKey().getNodeIdentifier());
-//
-//        Map<Integer, Node> prevHolders = nodeMapEntry.getValue();
-//        dataOutputStream.writeInt(prevHolders.size());
-//        for (Entry<Integer, Node> integerNodeEntry : prevHolders.entrySet()) {
-//          dataOutputStream.writeInt(integerNodeEntry.getKey());
-//          dataOutputStream.writeInt(integerNodeEntry.getValue().getNodeIdentifier());
-//        }
-//      }
+      dataOutputStream.writeInt(previousNodeMap.size());
+      for (Entry<RaftNode, Map<Integer, RaftNode>> nodeMapEntry : previousNodeMap.entrySet()) {
+        dataOutputStream.writeInt(nodeMapEntry.getKey().getNode().getNodeIdentifier());
+        dataOutputStream.writeInt(nodeMapEntry.getKey().getRaftId());
+        Map<Integer, RaftNode> prevHolders = nodeMapEntry.getValue();
+        dataOutputStream.writeInt(prevHolders.size());
+        for (Entry<Integer, RaftNode> integerNodeEntry : prevHolders.entrySet()) {
+          dataOutputStream.writeInt(integerNodeEntry.getKey());
+          dataOutputStream.writeInt(integerNodeEntry.getValue().getNode().getNodeIdentifier());
+          dataOutputStream.writeInt(integerNodeEntry.getValue().getRaftId());
+        }
+      }
 
       dataOutputStream.writeLong(lastLogIndex);
     } catch (IOException ignored) {
@@ -357,39 +378,38 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public void deserialize(ByteBuffer buffer) {
 
-//    logger.info("Initializing the partition table from buffer");
-//    totalSlotNumbers = buffer.getInt();
-//    int size = buffer.getInt();
-//    Map<Integer, Node> idNodeMap = new HashMap<>();
-//    for (int i = 0; i < size; i++) {
-//      Node node = new Node();
-//      List<Integer> slots = new ArrayList<>();
-//      SerializeUtils.deserialize(node, buffer);
-//      int id = buffer.getInt();
-//      SerializeUtils.deserialize(slots, buffer);
-//      RaftNode raftNode = new RaftNode(node, id);
-//      nodeSlotMap.put(raftNode, slots);
-//      idNodeMap.put(node.getNodeIdentifier(), node);
-//      for (Integer slot : slots) {
-//        slotNodes[slot] = raftNode;
-//      }
-//    }
+    logger.info("Initializing the partition table from buffer");
+    totalSlotNumbers = buffer.getInt();
+    int size = buffer.getInt();
+    Map<Integer, Node> idNodeMap = new HashMap<>();
+    for (int i = 0; i < size; i++) {
+      Node node = new Node();
+      SerializeUtils.deserialize(node, buffer);
+      RaftNode raftNode = new RaftNode(node, buffer.getInt());
+      List<Integer> slots = new ArrayList<>();
+      SerializeUtils.deserializeIntList(slots, buffer);
+      nodeSlotMap.put(raftNode, slots);
+      idNodeMap.put(node.getNodeIdentifier(), node);
+      for (Integer slot : slots) {
+        slotNodes[slot] = raftNode;
+      }
+    }
 
-//    int prevNodeMapSize = buffer.getInt();
-//    previousNodeMap = new HashMap<>();
-//    for (int i = 0; i < prevNodeMapSize; i++) {
-//      int nodeId = buffer.getInt();
-//      Node node = idNodeMap.get(nodeId);
-//
-//      Map<Integer, Node> prevHolders = new HashMap<>();
-//      int holderNum = buffer.getInt();
-//      for (int i1 = 0; i1 < holderNum; i1++) {
-//        int slot = buffer.getInt();
-//        Node holder = idNodeMap.get(buffer.getInt());
-//        prevHolders.put(slot, holder);
-//      }
-//      previousNodeMap.put(node, prevHolders);
-//    }
+    int prevNodeMapSize = buffer.getInt();
+    previousNodeMap = new HashMap<>();
+    for (int i = 0; i < prevNodeMapSize; i++) {
+      int nodeId = buffer.getInt();
+      RaftNode node = new RaftNode(idNodeMap.get(nodeId), buffer.getInt());
+
+      Map<Integer, RaftNode> prevHolders = new HashMap<>();
+      int holderNum = buffer.getInt();
+      for (int i1 = 0; i1 < holderNum; i1++) {
+        int slot = buffer.getInt();
+        RaftNode holder = new RaftNode(idNodeMap.get(buffer.getInt()), buffer.getInt());
+        prevHolders.put(slot, holder);
+      }
+      previousNodeMap.put(node, prevHolders);
+    }
     lastLogIndex = buffer.getLong();
 
     for (RaftNode raftNode : nodeSlotMap.keySet()) {
@@ -451,63 +471,69 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public NodeRemovalResult removeNode(Node target) {
-//    synchronized (nodeRing) {
-//      if (!nodeRing.contains(target)) {
-//        return null;
-//      }
-//
-//      SlotNodeRemovalResult result = new SlotNodeRemovalResult();
-//      result.setRemovedGroup(getHeaderGroup(target));
-//      nodeRing.remove(target);
-//
-//      // if the node belongs to a group that headed by target, this group should be removed
-//      // and other groups containing target should be updated
-//      int removedGroupIdx = -1;
-//      for (int i = 0; i < localGroups.size(); i++) {
-//        PartitionGroup oldGroup = localGroups.get(i);
-//        Node header = oldGroup.getHeader();
-//        if (header.equals(target)) {
-//          removedGroupIdx = i;
-//        } else {
-//          PartitionGroup newGrp = getHeaderGroup(header);
-//          localGroups.set(i, newGrp);
-//        }
-//      }
-//      if (removedGroupIdx != -1) {
-//        localGroups.remove(removedGroupIdx);
-//        // each node exactly joins replicationNum groups, so when a group is removed, the node
-//        // should join a new one
-//        int thisNodeIdx = nodeRing.indexOf(thisNode);
-//        // this node must be the last node of the new group
-//        int headerNodeIdx = thisNodeIdx - (replicationNum - 1);
-//        headerNodeIdx = headerNodeIdx < 0 ? headerNodeIdx + nodeRing.size() : headerNodeIdx;
-//        Node header = nodeRing.get(headerNodeIdx);
-//        PartitionGroup newGrp = getHeaderGroup(header);
-//        localGroups.add(newGrp);
-//        result.setNewGroup(newGrp);
-//      }
-//
-//      calculateGlobalGroups();
-//
-//      // the slots movement is only done logically, the new node itself will pull data from the
-//      // old node
-//      Map<Node, List<Integer>> nodeListMap = retrieveSlots(target);
-//      result.setNewSlotOwners(nodeListMap);
-//      return result;
-//    }
-    return null;
+    synchronized (nodeRing) {
+      if (!nodeRing.contains(target)) {
+        return null;
+      }
+
+      SlotNodeRemovalResult result = new SlotNodeRemovalResult();
+      for(int raftId = 0; raftId < multiRaftFactor; raftId++) {
+        result.addRemovedGroup(getHeaderGroup(new RaftNode(target, raftId)));
+      }
+      nodeRing.remove(target);
+
+      // if the node belongs to a group that headed by target, this group should be removed
+      // and other groups containing target should be updated
+      List<Integer> removedGroupIdxs = new ArrayList<>();
+      for (int i = 0; i < localGroups.size(); i++) {
+        PartitionGroup oldGroup = localGroups.get(i);
+        Node header = oldGroup.getHeader();
+        if (header.equals(target)) {
+          removedGroupIdxs.add(i);
+        } else {
+          PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, oldGroup.getId()));
+          localGroups.set(i, newGrp);
+        }
+      }
+      for(int i = removedGroupIdxs.size() - 1; i >= 0 ; i--) {
+        int removedGroupIdx = removedGroupIdxs.get(i);
+        int raftId = localGroups.get(removedGroupIdx).getId();
+        localGroups.remove(removedGroupIdx);
+        // each node exactly joins replicationNum groups, so when a group is removed, the node
+        // should join a new one
+        int thisNodeIdx = nodeRing.indexOf(thisNode);
+        // this node must be the last node of the new group
+        int headerNodeIdx = thisNodeIdx - (replicationNum - 1);
+        headerNodeIdx = headerNodeIdx < 0 ? headerNodeIdx + nodeRing.size() : headerNodeIdx;
+        Node header = nodeRing.get(headerNodeIdx);
+        PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, raftId));
+        localGroups.add(newGrp);
+        result.addNewGroup(newGrp);
+      }
+
+      calculateGlobalGroups();
+
+      // the slots movement is only done logically, the new node itself will pull data from the
+      // old node
+      Map<RaftNode, List<Integer>> raftNodeListMap = retrieveSlots(target);
+      result.addNewSlotOwners(raftNodeListMap);
+      return result;
+    }
   }
 
-  private Map<Node, List<Integer>> retrieveSlots(Node target) {
-    Map<Node, List<Integer>> newHolderSlotMap = new HashMap<>();
-//    List<Integer> slots = nodeSlotMap.remove(target);
-//    for (int i = 0; i < slots.size(); i++) {
-//      int slot = slots.get(i);
-//      Node newHolder = nodeRing.get(i % nodeRing.size());
-//      slotNodes[slot] = newHolder;
-//      nodeSlotMap.get(newHolder).add(slot);
-//      newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
-//    }
+  private Map<RaftNode, List<Integer>> retrieveSlots(Node target) {
+    Map<RaftNode, List<Integer>> newHolderSlotMap = new HashMap<>();
+    for(int raftId = 0 ; raftId < multiRaftFactor; raftId++) {
+      RaftNode raftNode = new RaftNode(target, raftId);
+      List<Integer> slots = nodeSlotMap.remove(raftNode);
+      for (int i = 0; i < slots.size(); i++) {
+        int slot = slots.get(i);
+        RaftNode newHolder = new RaftNode(nodeRing.get(i % nodeRing.size()), raftId);
+        slotNodes[slot] = newHolder;
+        nodeSlotMap.get(newHolder).add(slot);
+        newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
+      }
+    }
     return newHolderSlotMap;
   }
 

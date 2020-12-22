@@ -34,7 +34,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -153,6 +152,6 @@ public class StoppedMemberManager {
 
   private void parseResumed(String[] split) {
     Node header = ClusterUtils.stringToNode(split[1]);
-    removedMemberMap.remove(header);
+    removedMemberMap.remove(new RaftNode(header,0));
   }
 }

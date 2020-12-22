@@ -27,7 +27,7 @@ import org.apache.thrift.transport.TTransportFactory;
 public class RpcTransportFactory extends TTransportFactory {
 
   // TODO: make it a config
-  public static boolean USE_SNAPPY = false;
+  public static boolean USE_SNAPPY = true;
   public static final RpcTransportFactory INSTANCE;
   static {
     INSTANCE = USE_SNAPPY ?

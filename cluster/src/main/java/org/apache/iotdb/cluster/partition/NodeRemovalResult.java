@@ -19,28 +19,45 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.util.List;
+
 /**
  * NodeRemovalResult stores the removed partition group.
  */
 public class NodeRemovalResult {
-  private PartitionGroup removedGroup;
+
+  private List<PartitionGroup> removedGroupList;
   // if the removed group contains the local node, the local node should join a new group to
   // preserve the replication number
-  private PartitionGroup newGroup;
+  private List<PartitionGroup> newGroupList;
 
-  public PartitionGroup getRemovedGroup() {
-    return removedGroup;
+  public PartitionGroup getRemovedGroup(int raftId) {
+    for (PartitionGroup group : removedGroupList) {
+      if (group.getId() == raftId) {
+        return group;
+      }
+    }
+    return null;
   }
 
-  public void setRemovedGroup(PartitionGroup group) {
-    this.removedGroup = group;
+  public void addRemovedGroup(PartitionGroup group) {
+    this.removedGroupList.add(group);
   }
 
-  public PartitionGroup getNewGroup() {
-    return newGroup;
+  public List<PartitionGroup> getNewGroupList() {
+    return newGroupList;
   }
 
-  public void setNewGroup(PartitionGroup newGroup) {
-    this.newGroup = newGroup;
+  public void addNewGroup(PartitionGroup newGroup) {
+    this.newGroupList.add(newGroup);
+  }
+
+  public PartitionGroup getNewGroup(int raftId) {
+    for (PartitionGroup group : newGroupList) {
+      if (group.getId() == raftId) {
+        return group;
+      }
+    }
+    return null;
   }
 }

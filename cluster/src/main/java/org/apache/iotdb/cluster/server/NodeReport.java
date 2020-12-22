@@ -149,15 +149,17 @@ public class NodeReport {
    */
   public static class DataMemberReport extends RaftMemberReport {
     Node header;
+    int raftId;
     long headerLatency;
 
     public DataMemberReport(NodeCharacter character, Node leader, long term, long lastLogTerm,
-        long lastLogIndex, long commitIndex, long commitTerm, Node header, boolean isReadOnly,
+        long lastLogIndex, long commitIndex, long commitTerm, Node header, int raftId, boolean isReadOnly,
         long headerLatency,
         long lastHeartbeatReceivedTime, long prevLastLogIndex, long maxAppliedLogIndex) {
       super(character, leader, term, lastLogTerm, lastLogIndex, commitIndex, commitTerm, isReadOnly,
           lastHeartbeatReceivedTime, prevLastLogIndex, maxAppliedLogIndex);
       this.header = header;
+      this.raftId = raftId;
       this.headerLatency = headerLatency;
     }
 
@@ -165,6 +167,7 @@ public class NodeReport {
     public String toString() {
       return "DataMemberReport{" +
           "header=" + header +
+          ", raftId=" + raftId +
           ", character=" + character +
           ", Leader=" + leader +
           ", term=" + term +

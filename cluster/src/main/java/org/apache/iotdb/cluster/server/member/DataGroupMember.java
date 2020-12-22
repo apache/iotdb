@@ -283,7 +283,7 @@ public class DataGroupMember extends RaftMember {
 
     // mark slots that do not belong to this group any more
     Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
-        .getOrDefault(getHeader(), Collections.emptySet());
+        .getOrDefault(new RaftNode(getHeader(), getRaftGroupId()), Collections.emptySet());
     for (Integer lostSlot : lostSlots) {
       slotManager.setToSending(lostSlot);
     }
@@ -748,11 +748,11 @@ public class DataGroupMember extends RaftMember {
         }
       }
       List<Integer> slotsToPull = ((SlotNodeRemovalResult) removalResult).getNewSlotOwners()
-          .get(getHeader());
+          .get(new RaftNode(getHeader(), getRaftGroupId()));
       if (slotsToPull != null) {
         // pull the slots that should be taken over
         PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
-            removalResult.getRemovedGroup(),
+            removalResult.getRemovedGroup(getRaftGroupId()),
             slotsToPull, true);
         pullFileSnapshot(taskDescriptor, null);
       }
@@ -770,7 +770,7 @@ public class DataGroupMember extends RaftMember {
     lastReportedLogIndex = logManager.getLastLogIndex();
     return new DataMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
-        logManager.getCommitLogTerm(), getHeader(), readOnly,
+        logManager.getCommitLogTerm(), getHeader(), getRaftGroupId(), readOnly,
         QueryCoordinator.getINSTANCE()
             .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());

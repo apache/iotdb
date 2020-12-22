@@ -22,8 +22,10 @@ package org.apache.iotdb.cluster.server;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -497,37 +499,38 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param result
    */
   public void addNode(Node node, NodeAdditionResult result) {
-//    Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
-//    synchronized (headerGroupMap) {
-//      while (entryIterator.hasNext()) {
-//        Entry<Node, DataGroupMember> entry = entryIterator.next();
-//        DataGroupMember dataGroupMember = entry.getValue();
-//        // the member may be extruded from the group, remove and stop it if so
-//        boolean shouldLeave = dataGroupMember.addNode(node, result);
-//        if (shouldLeave) {
-//          logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
-//          entryIterator.remove();
-//          removeMember(entry.getKey(), entry.getValue());
-//        }
-//      }
-//
-//      if (result.getNewGroup().contains(thisNode)) {
-//        logger.info("Adding this node into a new group {}", result.getNewGroup());
-//        DataGroupMember dataGroupMember = dataMemberFactory.create(result.getNewGroup(), thisNode);
-//        addDataGroupMember(dataGroupMember);
-//        dataGroupMember.start();
-//        dataGroupMember
-//            .pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node),
-//                node);
-//      }
-//    }
+    Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
+    synchronized (headerGroupMap) {
+      while (entryIterator.hasNext()) {
+        Entry<RaftNode, DataGroupMember> entry = entryIterator.next();
+        DataGroupMember dataGroupMember = entry.getValue();
+        // the member may be extruded from the group, remove and stop it if so
+        boolean shouldLeave = dataGroupMember.addNode(node, result);
+        if (shouldLeave) {
+          logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
+          entryIterator.remove();
+          removeMember(entry.getKey(), entry.getValue());
+        }
+      }
+
+      for (PartitionGroup newGroup: result.getNewGroupList()) {
+        if (newGroup.contains(thisNode)) {
+          logger.info("Adding this node into a new group {}", newGroup);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+          addDataGroupMember(dataGroupMember);
+          dataGroupMember.start();
+          dataGroupMember.pullNodeAdditionSnapshots(((SlotPartitionTable) partitionTable).getNodeSlots(node,
+              newGroup.getId()), node);
+        }
+      }
+    }
   }
 
-  private void removeMember(Node header, DataGroupMember dataGroupMember) {
-//    dataGroupMember.syncLeader();
-//    dataGroupMember.setReadOnly();
-//    dataGroupMember.stop();
-//    stoppedMemberManager.put(header, dataGroupMember);
+  private void removeMember(RaftNode header, DataGroupMember dataGroupMember) {
+    dataGroupMember.syncLeader();
+    dataGroupMember.setReadOnly();
+    dataGroupMember.stop();
+    stoppedMemberManager.put(header, dataGroupMember);
   }
 
   /**
@@ -552,7 +555,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      DataGroupMember prevMember = headerGroupMap.get(partitionGroup.getHeader());
+      DataGroupMember prevMember = headerGroupMap.get(new RaftNode(partitionGroup.getHeader(), partitionGroup.getId()));
       if (prevMember == null || !prevMember.getAllNodes().equals(partitionGroup)) {
         logger.info("Building member of data group: {}", partitionGroup);
         // no previous member or member changed
@@ -583,43 +586,45 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param removalResult cluster changes due to the node removal
    */
   public void removeNode(Node node, NodeRemovalResult removalResult) {
-//    Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
-//    synchronized (headerGroupMap) {
-//      while (entryIterator.hasNext()) {
-//        Entry<Node, DataGroupMember> entry = entryIterator.next();
-//        DataGroupMember dataGroupMember = entry.getValue();
-//        if (dataGroupMember.getHeader().equals(node)) {
-//          // the group is removed as the node is removed, so new writes should be rejected as
-//          // they belong to the new holder, but the member is kept alive for other nodes to pull
-//          // snapshots
-//          entryIterator.remove();
-//          removeMember(entry.getKey(), entry.getValue());
-//        } else {
-//          if (node.equals(thisNode)) {
-//            // this node is removed, it is no more replica of other groups
-//            List<Integer> nodeSlots =
-//                ((SlotPartitionTable) partitionTable).getNodeSlots(dataGroupMember.getHeader());
-//            dataGroupMember.removeLocalData(nodeSlots);
-//            entryIterator.remove();
-//            dataGroupMember.stop();
-//          } else {
-//            // the group should be updated and pull new slots from the removed node
-//            dataGroupMember.removeNode(node, removalResult);
-//          }
-//        }
-//      }
-//      PartitionGroup newGroup = removalResult.getNewGroup();
-//      if (newGroup != null) {
-//        logger.info("{} should join a new group {}", thisNode, newGroup);
-//        try {
-//          createNewMember(newGroup.getHeader());
-//        } catch (NotInSameGroupException e) {
-//          // ignored
-//        } catch (CheckConsistencyException ce) {
-//          logger.error("remove node failed, error={}", ce.getMessage());
-//        }
-//      }
-//    }
+    Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
+    synchronized (headerGroupMap) {
+      while (entryIterator.hasNext()) {
+        Entry<RaftNode, DataGroupMember> entry = entryIterator.next();
+        DataGroupMember dataGroupMember = entry.getValue();
+        if (dataGroupMember.getHeader().equals(node)) {
+          // the group is removed as the node is removed, so new writes should be rejected as
+          // they belong to the new holder, but the member is kept alive for other nodes to pull
+          // snapshots
+          entryIterator.remove();
+          removeMember(entry.getKey(), entry.getValue());
+        } else {
+          if (node.equals(thisNode)) {
+            // this node is removed, it is no more replica of other groups
+            List<Integer> nodeSlots =
+                ((SlotPartitionTable) partitionTable)
+                    .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+            dataGroupMember.removeLocalData(nodeSlots);
+            entryIterator.remove();
+            dataGroupMember.stop();
+          } else {
+            // the group should be updated and pull new slots from the removed node
+            dataGroupMember.removeNode(node, removalResult);
+          }
+        }
+      }
+      for (PartitionGroup newGroup : removalResult.getNewGroupList()) {
+        if (newGroup != null) {
+          logger.info("{} should join a new group {}", thisNode, newGroup);
+          try {
+            createNewMember(new RaftNode(newGroup.getHeader(), newGroup.getId()));
+          } catch (NotInSameGroupException e) {
+            // ignored
+          } catch (CheckConsistencyException ce) {
+            logger.error("remove node failed, error={}", ce.getMessage());
+          }
+        }
+      }
+    }
   }
 
   public void setPartitionTable(PartitionTable partitionTable) {

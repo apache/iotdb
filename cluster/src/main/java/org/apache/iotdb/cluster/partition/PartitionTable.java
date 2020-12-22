@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
