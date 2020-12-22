@@ -270,10 +270,11 @@ public class SyncServiceImpl implements SyncService.Iface {
   private void loadMetadata() {
     logger.info("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
-      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
+      try (MLogReader mLogReader = new MLogReader(currentFile.get())) {
         while (mLogReader.hasNext()) {
-          PhysicalPlan plan = mLogReader.next();
+          PhysicalPlan plan = null;
           try {
+            plan = mLogReader.next();
             if (plan == null) {
               continue;
             }
