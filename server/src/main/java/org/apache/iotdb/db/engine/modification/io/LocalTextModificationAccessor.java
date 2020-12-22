@@ -138,7 +138,8 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     int length = fields.length;
     String path = "";
     long versionNum;
-    long startTimestamp, endTimestamp;
+    long startTimestamp;
+    long endTimestamp;
 
     try {
       endTimestamp = Long.parseLong(fields[length - 1]);
