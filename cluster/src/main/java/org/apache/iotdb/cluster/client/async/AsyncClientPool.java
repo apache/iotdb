@@ -75,10 +75,12 @@ public class AsyncClientPool {
 
   /**
    * Get a client of the given node from the cache if one is available, or create a new one.
+   * <p>
+   * IMPORTANT!!! The caller should check whether the return value is null or not!
    *
-   * @param node
-   * @return
-   * @throws IOException
+   * @param node the node want to connect
+   * @return if the node can connect, return the client, otherwise null
+   * @throws IOException if the node can not be connected
    */
   public AsyncClient getClient(Node node) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
@@ -128,7 +130,8 @@ public class AsyncClientPool {
         this.wait(WAIT_CLIENT_TIMEOUT_MS);
         if (clientStack.isEmpty()
             && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
-          logger.warn("Cannot get an available client after {}ms, create a new one, factory {} now is {}",
+          logger.warn(
+              "Cannot get an available client after {}ms, create a new one, factory {} now is {}",
               WAIT_CLIENT_TIMEOUT_MS, asyncClientFactory, nodeClientNum);
           nodeClientNumMap.put(node, nodeClientNum + 1);
           return asyncClientFactory.getAsyncClient(node, this);
