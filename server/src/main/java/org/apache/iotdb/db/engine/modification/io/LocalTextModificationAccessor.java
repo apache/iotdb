@@ -23,6 +23,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -127,33 +128,35 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
         + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 
+  /**
+   * Decode a deletion record. E.g. "DELETION,root.ln.wf01.wt01.temperature,111,100,300"
+   * the index of field endTimestamp is length - 1, startTimestamp is length - 2,
+   * versionNum is length - 3. Fields in index range [1, length -3) could all belong
+   * to timeseries path in cases that the paths contain comma.
+   */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 5 && fields.length != 4) {
-      throw new IOException("Incorrect deletion fields number: " + fields.length);
-    }
-
-    String path = fields[1];
+    int length = fields.length;
+    String path = "";
     long versionNum;
-    long startTimestamp = Long.MIN_VALUE;
-    long endTimestamp;
+    long startTimestamp, endTimestamp;
+
     try {
-      versionNum = Long.parseLong(fields[2]);
+      endTimestamp = Long.parseLong(fields[length - 1]);
+      startTimestamp = Long.parseLong(fields[length - 2]);
+    } catch (NumberFormatException e) {
+      throw new IOException("Invalid timestamp: " + e.getMessage());
+    }
+    try {
+      versionNum = Long.parseLong(fields[length - 3]);
     } catch (NumberFormatException e) {
       throw new IOException("Invalid version number: " + fields[2]);
     }
-
     try {
-      if (fields.length == 4) {
-        endTimestamp = Long.parseLong(fields[3]);
-
-      } else {
-        startTimestamp = Long.parseLong(fields[3]);
-        endTimestamp = Long.parseLong(fields[4]);
-      }
+      String[] pathArray = Arrays.copyOfRange(fields, 1, length - 3);
+      path = String.join(SEPARATOR, pathArray);
       return new Deletion(new PartialPath(path), versionNum, startTimestamp, endTimestamp);
-    } catch (NumberFormatException | IllegalPathException e) {
-      throw new IOException("Invalid timestamp: " + e.getMessage());
+    } catch (IllegalPathException e) {
+      throw new IOException("Invalid series path: " + path);
     }
-
   }
 }
