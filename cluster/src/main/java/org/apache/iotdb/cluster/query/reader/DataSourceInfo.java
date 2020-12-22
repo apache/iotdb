@@ -195,7 +195,7 @@ public class DataSourceInfo {
         : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
   }
 
-  SyncDataClient getCurSyncClient(int timeout) {
+  SyncDataClient getCurSyncClient(int timeout) throws TException {
     return isNoClient ? null :
         metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
   }

@@ -488,7 +488,7 @@ public class CMManager extends MManager {
   /**
    * Create timeseries automatically for an InsertPlan.
    *
-   * @param insertPlan, some of the timeseries in it are not created yet
+   * @param insertPlan some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
   public boolean createTimeseries(InsertPlan insertPlan)
@@ -1153,7 +1153,7 @@ public class CMManager extends MManager {
   /**
    * Get all paths after removing wildcards in the path
    *
-   * @param originalPaths, a list of paths, potentially with wildcard
+   * @param originalPaths a list of paths, potentially with wildcard
    * @return a pair of path lists, the first are the existing full paths, the second are invalid
    * original paths
    */
