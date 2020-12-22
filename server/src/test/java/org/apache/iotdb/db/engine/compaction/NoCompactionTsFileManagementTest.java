@@ -43,6 +43,7 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
 
   File tempSGDir;
 
+  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
@@ -50,6 +51,7 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
     tempSGDir.mkdirs();
   }
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();

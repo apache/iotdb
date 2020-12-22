@@ -89,6 +89,7 @@ public class KafkaConsumerThread implements Runnable {
     }
   }
 
+  @Override
   public void run() {
     for (MessageAndMetadata<String, String> consumerIterator : stream) {
       String uploadMessage = consumerIterator.message();

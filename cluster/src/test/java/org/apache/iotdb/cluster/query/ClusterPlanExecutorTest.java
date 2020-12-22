@@ -41,6 +41,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
 
   private ClusterPlanExecutor queryExecutor;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();

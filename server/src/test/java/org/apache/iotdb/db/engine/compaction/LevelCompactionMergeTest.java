@@ -48,6 +48,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   File tempSGDir;
   boolean compactionMergeWorking = false;
 
+  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
@@ -55,6 +56,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     tempSGDir.mkdirs();
   }
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();

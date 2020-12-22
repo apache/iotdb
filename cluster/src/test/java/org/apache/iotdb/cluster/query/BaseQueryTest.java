@@ -65,6 +65,7 @@ public class BaseQueryTest extends MemberTest {
     }
   }
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -79,6 +80,7 @@ public class BaseQueryTest extends MemberTest {
   }
 
 
+  @Override
   @After
   public void tearDown() throws Exception {
     super.tearDown();

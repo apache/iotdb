@@ -151,6 +151,7 @@ public class MetaGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevSeedNodes);
   }
 
+  @Override
   @Before
   public void setUp() throws Exception {
     prevSeedNodes = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -216,8 +217,9 @@ public class MetaGroupMemberTest extends MemberTest {
 
       AsyncClient getClient(Node node) {
         return new TestAsyncClient(node.nodeIdentifier) {
+          @Override
           public void startElection(ElectionRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
+                                    AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {
               long resp = dummyResponse.get();
               // MIN_VALUE means let the request time out
@@ -285,6 +287,7 @@ public class MetaGroupMemberTest extends MemberTest {
     return resp;
   }
 
+  @Override
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node) {
 

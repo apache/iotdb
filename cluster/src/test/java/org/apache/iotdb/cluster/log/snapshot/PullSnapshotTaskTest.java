@@ -75,6 +75,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private boolean hintRegistered;
   private int requiredRetries;
 
+  @Override
   @Before
   public void setUp() throws MetadataException, StartupException {
     super.setUp();

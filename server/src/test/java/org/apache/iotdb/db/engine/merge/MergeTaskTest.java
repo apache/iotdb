@@ -49,6 +49,7 @@ public class MergeTaskTest extends MergeTest {
 
   private File tempSGDir;
 
+  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, MetadataException {
     super.setUp();
@@ -56,6 +57,7 @@ public class MergeTaskTest extends MergeTest {
     tempSGDir.mkdirs();
   }
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
