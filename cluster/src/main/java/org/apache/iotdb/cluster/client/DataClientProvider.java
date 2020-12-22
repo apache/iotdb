@@ -27,9 +27,14 @@ import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataClientProvider {
+
+  private static final Logger logger = LoggerFactory.getLogger(DataClientProvider.class);
   /**
    * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
    * nodes
@@ -56,11 +61,14 @@ public class DataClientProvider {
   /**
    * Get a thrift client that will connect to "node" using the data port.
    *
-   * @param node the node to be connected
+   * @param node    the node to be connected
    * @param timeout timeout threshold of connection
    */
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
     AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+    if (client == null) {
+      throw new IOException("can not get client for node=" + node);
+    }
     client.setTimeout(timeout);
     return client;
   }
@@ -68,11 +76,14 @@ public class DataClientProvider {
   /**
    * Get a thrift client that will connect to "node" using the data port.
    *
-   * @param node the node to be connected
+   * @param node    the node to be connected
    * @param timeout timeout threshold of connection
    */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) {
+  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
     SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    if (client == null) {
+      throw new TException("can not get client for node=" + node);
+    }
     client.setTimeout(timeout);
     return client;
   }

@@ -973,7 +973,8 @@ public class StorageGroupProcessor {
     // we have to ensure only one thread can change workSequenceTsFileProcessors
     writeLock();
     try {
-      if (!tsFileProcessorTreeMap.containsKey(timeRangeId)) {
+      res = tsFileProcessorTreeMap.get(timeRangeId);
+      if (res == null) {
         // we have to remove oldest processor to control the num of the memtables
         // TODO: use a method to control the number of memtables
         if (tsFileProcessorTreeMap.size()
@@ -992,8 +993,6 @@ public class StorageGroupProcessor {
         tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
         tsFileManagement.add(newProcessor.getTsFileResource(), sequence);
         res = newProcessor;
-      } else {
-        res = tsFileProcessorTreeMap.get(timeRangeId);
       }
 
     } finally {

@@ -366,7 +366,7 @@ public class ClusterMain {
   @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
     // customize data distribution
-    // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
+    // The given example tries to divide storage groups like "root.sg_1", "root.sg_2"... into k
     // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
       SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
@@ -374,7 +374,7 @@ public class ClusterMain {
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
           return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -385,7 +385,7 @@ public class ClusterMain {
       public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
           return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
