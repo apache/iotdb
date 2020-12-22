@@ -184,7 +184,7 @@ public class MetaGroupMember extends RaftMember {
    * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
    * members in this node
    */
-  private static final int REPORT_INTERVAL_SEC = 10;
+  private static final int REPORT_INTERVAL_SEC = 100;
   /**
    * how many times is a data record replicated, also the number of nodes in a data group
    */
@@ -473,7 +473,7 @@ public class MetaGroupMember extends RaftMember {
     try {
       if (logger.isInfoEnabled()) {
         NodeReport report = genNodeReport();
-        logger.info(report.toString());
+        logger.debug(report.toString());
       }
     } catch (Exception e) {
       logger.error("{} exception occurred when generating node report", name, e);

@@ -99,20 +99,22 @@ public class ClusterMain {
       );
       return;
     }
-    String mode = args[0];
-    if (args.length > 1) {
-      String[] params = Arrays.copyOfRange(args, 1, args.length);
-      replaceDefaultProps(params);
-    }
 
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
+    IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
     // params check
     if (!checkConfig()) {
       return;
+    }
+
+    String mode = args[0];
+    if (args.length > 1) {
+      String[] params = Arrays.copyOfRange(args, 1, args.length);
+      replaceDefaultProps(params);
     }
 
     logger.info("Running mode {}", mode);
@@ -291,6 +293,7 @@ public class ClusterMain {
       if (commandLine.hasOption(OPTION_DEBUG_RPC_PORT)) {
         IoTDBDescriptor.getInstance().getConfig().setRpcPort(Integer.parseInt(commandLine.getOptionValue(
             OPTION_DEBUG_RPC_PORT)));
+        IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(true);
         logger.debug("replace local cluster (single node) rpc port with={}", commandLine.getOptionValue(
             OPTION_DEBUG_RPC_PORT));
       }

@@ -125,7 +125,7 @@ public class NodeReport {
                 ", writeBytes=" + writeBytes + "/" + writeCompressedBytes + "(" + writeCompressionRatio +
                 ")";
       }
-      return "MetaMemberReport{" +
+      return "MetaMemberReport {\n" +
           "character=" + character +
           ", Leader=" + leader +
           ", term=" + term +

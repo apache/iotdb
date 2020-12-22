@@ -794,6 +794,13 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * whether enable the rpc service. This parameter has no a corresponding field
+   * in the iotdb-engine.properties
+   */
+  private boolean enableRPCService = true;
+
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2121,5 +2128,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public boolean isEnableRPCService() {
+    return enableRPCService;
+  }
+
+  public void setEnableRPCService(boolean enableRPCService) {
+    this.enableRPCService = enableRPCService;
   }
 }

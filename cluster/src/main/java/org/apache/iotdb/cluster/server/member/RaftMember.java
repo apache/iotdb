@@ -1275,6 +1275,7 @@ public abstract class RaftMember {
     }
 
     AsyncClient client = null;
+    IOException lastException = null;
     for (int i = 0; i < MAX_RETRY_TIMES_FOR_GET_CLIENT; i++) {
       try {
         client = pool.getClient(node);
@@ -1287,8 +1288,11 @@ public abstract class RaftMember {
         Thread.currentThread().interrupt();
         return null;
       } catch (IOException e) {
-        logger.warn("{} cannot connect to node {}", name, node, e);
+        lastException = e;
       }
+    }
+    if (logger.isDebugEnabled() && client == null && lastException != null) {
+      logger.debug("{} cannot connect to node {}", name, node, lastException);
     }
     return client;
   }
