@@ -32,7 +32,7 @@ ELSE()
 ENDIF()
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
 
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
