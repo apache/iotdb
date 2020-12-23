@@ -135,6 +135,13 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
    * to a timeseries path in case when the path contains comma.
    */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
+    if (fields.length < 4) {
+      throw new IOException("Incorrect deletion fields number: " + fields.length);
+    }
+
+    String path = "";
+    long startTimestamp;
+    long endTimestamp;
     long versionNum;
     try {
       versionNum = Long.parseLong(fields[fields.length - 3]);
@@ -142,9 +149,6 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
       return decodePointDeletion(fields);
     }
 
-    String path = "";
-    long startTimestamp;
-    long endTimestamp;
     try {
       endTimestamp = Long.parseLong(fields[fields.length - 1]);
       startTimestamp = Long.parseLong(fields[fields.length - 2]);
