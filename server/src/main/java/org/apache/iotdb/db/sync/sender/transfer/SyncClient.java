@@ -96,7 +96,7 @@ public class SyncClient implements ISyncClient {
    * location is recorded once after each synchronization task for the next synchronization task to
    * use.
    */
-  private int schemaFilePos;
+  private long schemaFilePos;
 
   private TTransport transport;
 
@@ -367,7 +367,12 @@ public class SyncClient implements ISyncClient {
     // start to sync file data and get digest of this file.
     try (FileInputStream fis = new FileInputStream(getSchemaLogFile());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
-      fis.skip(schemaFilePos);
+      long skipNum = fis.skip(schemaFilePos);
+      if (skipNum != schemaFilePos) {
+        logger.warn(
+            "The schema file has been smaller when sync, please check whether the logic of schema persistence has changed!");
+        schemaFilePos = skipNum;
+      }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
       byte[] buffer = new byte[SyncConstant.DATA_CHUNK_SIZE];
       int dataLength;
@@ -430,7 +435,7 @@ public class SyncClient implements ISyncClient {
         syncSchemaLogFile.createNewFile();
       }
       try (BufferedWriter br = new BufferedWriter(new FileWriter(syncSchemaLogFile))) {
-        br.write(Integer.toString(schemaFilePos));
+        br.write(Long.toString(schemaFilePos));
       }
     } catch (IOException e) {
       logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
