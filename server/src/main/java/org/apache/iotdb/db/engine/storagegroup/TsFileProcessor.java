@@ -170,8 +170,9 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
+      workMemTable = getAvailableMemTable();
     }
+
     if (enableMemControl) {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
@@ -212,7 +213,7 @@ public class TsFileProcessor {
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
+      workMemTable = getAvailableMemTable();
     }
 
     try {
@@ -1007,5 +1008,28 @@ public class TsFileProcessor {
 
   public void addCloseFileListeners(Collection<CloseFileListener> listeners) {
     closeFileListeners.addAll(listeners);
+  }
+
+  private IMemTable getAvailableMemTable() {
+    synchronized (flushingMemTables) {
+      if (flushingMemTables.isEmpty()) {
+        return new PrimitiveMemTable(enableMemControl);
+      } else {
+        // wait until flushingMemTables is empty
+        int waitCount = 1;
+        while (true) {
+          if (flushingMemTables.isEmpty()) {
+            return new PrimitiveMemTable();
+          }
+          try {
+            flushingMemTables.wait(1000);
+          } catch (InterruptedException e) {
+            logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource.toString(), e);
+            Thread.currentThread().interrupt();
+          }
+          logger.info("{} has waited for a memtable for {}ms", tsFileResource.toString(), waitCount++ * 1000);
+        }
+      }
+    }
   }
 }
