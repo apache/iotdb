@@ -70,29 +70,21 @@ public class UDFRegistrationService implements IService {
       boolean writeToTemporaryLogFile) throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information != null) {
+      String errorMessage;
       if (information.getClassName().equals(className)) {
-        String errorMessage;
-        if (information.isTemporary() == isTemporary) {
-          errorMessage = String
-              .format("UDF %s(%s) has already been registered successfully.",
-                  functionName, className);
-        } else {
-          errorMessage = String.format(
-              "Failed to register %sTEMPORARY UDF %s(%s), because a %sTEMPORARY UDF %s(%s) with the same function name and the class name has already been registered.",
-              isTemporary ? "" : "non-", functionName, className,
-              information.isTemporary() ? "" : "non-", information.getFunctionName(),
-              information.getClassName());
-        }
-        logger.warn(errorMessage);
-        throw new UDFRegistrationException(errorMessage);
+        errorMessage = String.format(
+            "Failed to register %sTEMPORARY UDF %s(%s), because a %sTEMPORARY UDF %s(%s) with the same function name and the class name has already been registered.",
+            isTemporary ? "" : "non-", functionName, className,
+            information.isTemporary() ? "" : "non-", information.getFunctionName(),
+            information.getClassName());
       } else {
-        String errorMessage = String.format(
+        errorMessage = String.format(
             "Failed to register UDF %s(%s), because a UDF %s(%s) with the same function name but a different class name has already been registered.",
             functionName, className,
             information.getFunctionName(), information.getClassName());
-        logger.warn(errorMessage);
-        throw new UDFRegistrationException(errorMessage);
       }
+      logger.warn(errorMessage);
+      throw new UDFRegistrationException(errorMessage);
     }
 
     Class<?> functionClass;
