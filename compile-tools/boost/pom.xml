@@ -69,6 +69,10 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
+                        <configuration>
+                            <quietLogs>true</quietLogs>
+                            <useMavenLogger>true</useMavenLogger>
+                        </configuration>
                         <executions>
                             <execution>
                                 <id>bootstrap-boost</id>

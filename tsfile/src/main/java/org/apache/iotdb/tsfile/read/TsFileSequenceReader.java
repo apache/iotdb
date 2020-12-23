@@ -680,6 +680,21 @@ public class TsFileSequenceReader implements AutoCloseable {
     return buffer.getLong();
   }
 
+  public void readPlanIndex() throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    minPlanIndex = buffer.getLong();
+    buffer.clear();
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    maxPlanIndex = buffer.getLong();
+  }
+
   /**
    * read data from current position of the input, and deserialize it to a CHUNK_HEADER. <br> This
    * method is not threadsafe.
@@ -965,8 +980,6 @@ public class TsFileSequenceReader implements AutoCloseable {
             // if there is something wrong with the ChunkGroup Footer, we will drop this ChunkGroup
             // because we can not guarantee the correctness of the deviceId.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
-            minPlanIndex = Math.min(minPlanIndex, chunkGroupFooter.getMinPlanIndex());
-            maxPlanIndex = Math.max(maxPlanIndex, chunkGroupFooter.getMaxPlanIndex());
             deviceID = chunkGroupFooter.getDeviceID();
             if (newSchema != null) {
               for (MeasurementSchema tsSchema : measurementSchemaList) {
@@ -985,6 +998,9 @@ public class TsFileSequenceReader implements AutoCloseable {
             long version = readVersion();
             versionInfo.add(new Pair<>(position(), version));
             truncatedSize = this.position();
+            break;
+          case MetaMarker.OPERATION_INDEX_RANGE:
+            readPlanIndex();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous

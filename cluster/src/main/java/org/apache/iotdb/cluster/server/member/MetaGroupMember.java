@@ -398,7 +398,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}" Ignore bad-formatted seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
@@ -1468,7 +1468,7 @@ public class MetaGroupMember extends RaftMember {
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
           return processPartitionedPlan(plan);
-        } catch (MetadataException e) {
+        } catch (MetadataException | CheckConsistencyException e) {
           logger.error(
               String.format("Failed to set storage group or create timeseries, because %s", e));
         }
@@ -1551,7 +1551,7 @@ public class MetaGroupMember extends RaftMember {
     boolean hasCreate;
     try {
       hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-    } catch (IllegalPathException e) {
+    } catch (IllegalPathException | CheckConsistencyException e) {
       return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
     if (hasCreate) {
@@ -1802,9 +1802,15 @@ public class MetaGroupMember extends RaftMember {
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
-    Client client = getClientProvider().getSyncDataClient(receiver,
-        RaftServer.getWriteOperationTimeoutMS());
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
+      throws IOException {
+    Client client = null;
+    try {
+      client = getClientProvider().getSyncDataClient(receiver,
+          RaftServer.getWriteOperationTimeoutMS());
+    } catch (TException e) {
+      throw new IOException(e);
+    }
     return forwardPlanSync(plan, receiver, header, client);
   }
 

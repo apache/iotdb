@@ -58,20 +58,20 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
-    byte[] fullPathBytes = path.getFullPath().getBytes();
-    stream.writeInt(fullPathBytes.length);
-    stream.write(fullPathBytes);
-
+    putString(stream, path.getFullPath());
     stream.writeLong(index);
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    int length = buffer.getInt();
-    byte[] fullPathBytes = new byte[length];
-    buffer.get(fullPathBytes);
-    path = new PartialPath(new String(fullPathBytes));
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    putString(buffer, path.getFullPath());
+    buffer.putLong(index);
+  }
 
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    path = new PartialPath(readString(buffer));
     this.index = buffer.getLong();
   }
 

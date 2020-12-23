@@ -31,6 +31,9 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Unit tests of AggregateResult without desc aggregate result.
+ */
 public class AggregateResultTest {
 
   @Test
@@ -190,26 +193,26 @@ public class AggregateResultTest {
   @Test
   public void sumAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult sumAggrResult1 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE, true);
+        .getAggrResultByName(SQLConstant.SUM, TSDataType.INT32, true);
     AggregateResult sumAggrResult2 = AggregateResultFactory
-        .getAggrResultByName(SQLConstant.SUM, TSDataType.DOUBLE, true);
+        .getAggrResultByName(SQLConstant.SUM, TSDataType.INT32, true);
 
-    Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
-    Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
-    statistics1.update(1L, 1d);
-    statistics2.update(1L, 2d);
+    Statistics statistics1 = Statistics.getStatsByType(TSDataType.INT32);
+    Statistics statistics2 = Statistics.getStatsByType(TSDataType.INT32);
+    statistics1.update(1L, 1);
+    statistics2.update(1L, 2);
 
     sumAggrResult1.updateResultFromStatistics(statistics1);
     sumAggrResult2.updateResultFromStatistics(statistics2);
     sumAggrResult1.merge(sumAggrResult2);
 
-    Assert.assertEquals(3d, (double) sumAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(3.0, sumAggrResult1.getResult());
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     sumAggrResult1.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(3d, (double) result.getResult(), 0.01);
+    Assert.assertEquals(3.0, result.getResult());
   }
 
   @Test

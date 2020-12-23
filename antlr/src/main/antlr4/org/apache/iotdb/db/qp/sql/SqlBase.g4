@@ -188,10 +188,6 @@ attributeClauses
 compressor
     : UNCOMPRESSED
     | SNAPPY
-    | GZIP
-    | LZO
-    | PAA
-    | PLA
     | LZ4
     ;
 
@@ -323,9 +319,9 @@ groupByLevelClause
     ;
 
 typeClause
-    : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET previousClause RS_BRACKET
-    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -646,7 +642,7 @@ nodeNameWithoutStar
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
     ;
 
 dateFormat

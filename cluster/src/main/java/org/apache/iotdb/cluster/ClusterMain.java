@@ -201,14 +201,15 @@ public class ClusterMain {
     }
 
     // 1. check the cluster_rpc_ip and seed_nodes consistent or not
+    // when clusterRpcIp is 127.0.0.1, the entire cluster must be start locally
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    String clusterRpcIp = "127.0.0.1";
+    String localhostIp = "127.0.0.1";
     String configClusterRpcIp = config.getClusterRpcIp();
     List<String> seedNodes = config.getSeedNodeUrls();
-    boolean isClusterRpcIp = clusterRpcIp.equals(configClusterRpcIp);
+    boolean isLocalCluster = localhostIp.equals(configClusterRpcIp);
     for (String seedNodeIP : seedNodes) {
-      if ((isClusterRpcIp && !seedNodeIP.contains(clusterRpcIp)) ||
-          (!isClusterRpcIp && seedNodeIP.contains(clusterRpcIp))) {
+      if ((isLocalCluster && !seedNodeIP.contains(localhostIp)) ||
+          (!isLocalCluster && seedNodeIP.contains(localhostIp))) {
         logger.error(
             "cluster_rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
             configClusterRpcIp, seedNodes);
@@ -277,7 +278,7 @@ public class ClusterMain {
   @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
     // customize data distribution
-    // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
+    // The given example tries to divide storage groups like "root.sg_1", "root.sg_2"... into k
     // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
       SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
@@ -285,7 +286,7 @@ public class ClusterMain {
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
           return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -296,7 +297,7 @@ public class ClusterMain {
       public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
           return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
