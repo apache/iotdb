@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.query.udf.core.context;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -32,7 +34,6 @@ public class UDFContext {
 
   private final String name;
   private final Map<String, String> attributes;
-  private final List<String> attributeKeysInOriginalOrder;
 
   private List<PartialPath> paths;
   private List<TSDataType> dataTypes;
@@ -42,22 +43,18 @@ public class UDFContext {
 
   public UDFContext(String name) {
     this.name = name;
-    attributes = new HashMap<>();
-    attributeKeysInOriginalOrder = new ArrayList<>();
+    attributes = new LinkedHashMap<>();
     paths = new ArrayList<>();
   }
 
-  public UDFContext(String name, Map<String, String> attributes,
-      List<String> attributeKeysInOriginalOrder, List<PartialPath> paths) {
+  public UDFContext(String name, Map<String, String> attributes, List<PartialPath> paths) {
     this.name = name;
     this.attributes = attributes;
-    this.attributeKeysInOriginalOrder = attributeKeysInOriginalOrder;
     this.paths = paths;
   }
 
   public void addAttribute(String key, String value) {
     attributes.put(key, value);
-    attributeKeysInOriginalOrder.add(key);
   }
 
   public void addPath(PartialPath path) {
@@ -76,10 +73,6 @@ public class UDFContext {
     return attributes;
   }
 
-  public List<String> getAttributeKeysInOriginalOrder() {
-    return attributeKeysInOriginalOrder;
-  }
-
   public List<PartialPath> getPaths() {
     return paths;
   }
@@ -94,6 +87,9 @@ public class UDFContext {
     return dataTypes;
   }
 
+  /**
+   * Generates the column name of the udf query.
+   */
   public String getColumnName() {
     if (column == null) {
       column = name + "(" + getColumnNameParameterPart() + ")";
@@ -101,6 +97,13 @@ public class UDFContext {
     return column;
   }
 
+  /**
+   * Generates the parameter part of the udf column name.
+   * <p>
+   * Example:
+   * <br>Full column name   -> udf(root.sg.d.s1, root.sg.d.s1, 'key1'='value1', 'key2'='value2')
+   * <br>The parameter part -> root.sg.d.s1, root.sg.d.s1, 'key1'='value1', 'key2'='value2'
+   */
   private String getColumnNameParameterPart() {
     if (columnParameterPart == null) {
       StringBuilder builder = new StringBuilder();
@@ -110,16 +113,18 @@ public class UDFContext {
           builder.append(", ").append(paths.get(i).getFullPath());
         }
       }
-      if (!attributeKeysInOriginalOrder.isEmpty()) {
+      if (!attributes.isEmpty()) {
         if (!paths.isEmpty()) {
           builder.append(", ");
         }
-        String key = attributeKeysInOriginalOrder.get(0);
-        builder.append("\"").append(key).append("\"=\"").append(attributes.get(key)).append("\"");
-        for (int i = 1; i < attributeKeysInOriginalOrder.size(); ++i) {
-          key = attributeKeysInOriginalOrder.get(i);
-          builder.append(", ").append("\"").append(key).append("\"=\"").append(attributes.get(key))
-              .append("\"");
+        Iterator<Entry<String, String>> iterator = attributes.entrySet().iterator();
+        Entry<String, String> entry = iterator.next();
+        builder.append("\"").append(entry.getKey()).append("\"=\"").append(entry.getValue())
+            .append("\"");
+        while (iterator.hasNext()) {
+          entry = iterator.next();
+          builder.append(", ").append("\"").append(entry.getKey()).append("\"=\"")
+              .append(attributes.get(entry.getValue())).append("\"");
         }
       }
       columnParameterPart = builder.toString();

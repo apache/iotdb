@@ -212,8 +212,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           afterConcatPaths.add(null);
           extendListSafely(originAggregations, i, afterConcatAggregations);
 
-          afterConcatUdfList.add(new UDFContext(originUdf.getName(), originUdf.getAttributes(),
-              originUdf.getAttributeKeysInOriginalOrder(), afterConcatUdfPaths));
+          afterConcatUdfList.add(
+              new UDFContext(originUdf.getName(), originUdf.getAttributes(), afterConcatUdfPaths));
         }
       } else { // non-udf
         for (PartialPath fromPath : fromPaths) {
@@ -365,8 +365,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             newSuffixPathList.add(null);
             extendListSafely(afterConcatAggregations, i, newAggregations);
 
-            newUdfList.add(new UDFContext(originUdf.getName(), originUdf.getAttributes(),
-                originUdf.getAttributeKeysInOriginalOrder(), actualPath));
+            newUdfList
+                .add(new UDFContext(originUdf.getName(), originUdf.getAttributes(), actualPath));
           }
         } else { // non-udf
           Pair<List<PartialPath>, Integer> pair = removeWildcard(afterConcatPath, limit, offset);
