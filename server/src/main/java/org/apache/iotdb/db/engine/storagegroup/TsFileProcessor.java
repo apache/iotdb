@@ -1002,10 +1002,10 @@ public class TsFileProcessor {
           try {
             flushingMemTables.wait(1000);
           } catch (InterruptedException e) {
-            logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource.toString(), e);
+            logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
             Thread.currentThread().interrupt();
           }
-          logger.info("{} has waited for a memtable for {}ms", tsFileResource.toString(), waitCount++ * 1000);
+          logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 1000);
         }
       }
     }
