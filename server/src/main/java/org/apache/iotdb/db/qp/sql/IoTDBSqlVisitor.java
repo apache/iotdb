@@ -1715,11 +1715,41 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   private Long parseDuration(String durationStr) {
-    long time = DatetimeUtils.convertDurationStrToLong(durationStr);
-    if (time <= 0) {
+    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+    long total = 0;
+    long tmp = 0;
+    for (int i = 0; i < durationStr.length(); i++) {
+      char ch = durationStr.charAt(i);
+      if (Character.isDigit(ch)) {
+        tmp *= 10;
+        tmp += (ch - '0');
+      } else {
+        String unit = durationStr.charAt(i) + "";
+        // This is to identify units with two letters.
+        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
+          i++;
+          unit += durationStr.charAt(i);
+        }
+        if (unit.equalsIgnoreCase("mo")) {
+          //interval is by month, sliding step by default equals to interval
+          if (!isParsingSlidingStep) {
+            queryOp.setIntervalByMonth(true);
+          }
+          queryOp.setSlidingStepByMonth(true);
+        } else if (isParsingSlidingStep) {
+          //parsing sliding step value, and unit is not by month
+          queryOp.setSlidingStepByMonth(false);
+        }
+        total += DatetimeUtils
+            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
+        tmp = 0;
+      }
+    }
+    if (total <= 0) {
       throw new SQLParserException("Interval must more than 0.");
     }
-    return time;
+    return total;
   }
 
   private void parseSetCol(SetColContext ctx, SelectOperator selectOp, UpdateOperator updateOp) {
