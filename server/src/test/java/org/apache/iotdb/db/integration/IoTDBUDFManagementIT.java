@@ -194,7 +194,7 @@ public class IoTDBUDFManagementIT {
       fail();
     } catch (SQLException throwable) {
       throwable.printStackTrace();
-      assertTrue(throwable.getMessage().contains("Failed to register"));
+      assertTrue(throwable.getMessage().contains("expecting ID"));
     }
   }
 
@@ -208,7 +208,7 @@ public class IoTDBUDFManagementIT {
       fail();
     } catch (SQLException throwable) {
       throwable.printStackTrace();
-      assertTrue(throwable.getMessage().contains("Failed to register"));
+      assertTrue(throwable.getMessage().contains("expecting ID"));
     }
   }
 
