@@ -23,10 +23,13 @@ import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class DataClientProviderTest {
@@ -61,8 +64,13 @@ public class DataClientProviderTest {
       boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
       DataClientProvider provider = new DataClientProvider(new Factory());
-
-      assertNotNull(provider.getSyncDataClient(node, 100));
+      SyncDataClient client = null;
+      try {
+        client = provider.getSyncDataClient(node, 100);
+      } catch (TException e) {
+        Assert.fail(e.getMessage());
+      }
+      assertNotNull(client);
       ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(useAsyncServer);
     } finally {
       serverSocket.close();

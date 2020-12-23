@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth;
+package org.apache.iotdb.db.auth.user;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
@@ -84,7 +87,7 @@ public class LocalFileUserAccessorTest {
         fail(e.getMessage());
       }
     }
-    assertEquals(null, accessor.loadUser("not a user"));
+    assertNull(accessor.loadUser("not a user"));
 
     // list
     List<String> usernames = accessor.listAllUsers();
@@ -94,8 +97,8 @@ public class LocalFileUserAccessorTest {
     }
 
     // delete
-    assertEquals(false, accessor.deleteUser("not a user"));
-    assertEquals(true, accessor.deleteUser(users[users.length - 1].getName()));
+    assertFalse(accessor.deleteUser("not a user"));
+    assertTrue(accessor.deleteUser(users[users.length - 1].getName()));
     usernames = accessor.listAllUsers();
     assertEquals(users.length - 1, usernames.size());
     usernames.sort(null);
@@ -103,6 +106,6 @@ public class LocalFileUserAccessorTest {
       assertEquals(users[i].getName(), usernames.get(i));
     }
     User nullUser = accessor.loadUser(users[users.length - 1].getName());
-    assertEquals(null, nullUser);
+    assertNull(nullUser);
   }
 }

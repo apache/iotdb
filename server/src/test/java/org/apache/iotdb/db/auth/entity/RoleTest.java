@@ -16,25 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth;
+package org.apache.iotdb.db.auth.entity;
 
-/**
- * The exception for authority model.
- */
-public class AuthException extends Exception {
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import org.junit.Assert;
+import org.junit.Test;
 
-  private static final long serialVersionUID = 5091102941209301301L;
+public class RoleTest {
 
-  public AuthException(String message) {
-    super(message);
+  @Test
+  public void testRole() {
+    Role role = new Role("role");
+    PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
+    role.setPrivilegeList(Collections.singletonList(pathPrivilege));
+    role.setPrivileges("root.ln", Collections.singleton(1));
+    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}",
+        role.toString());
+    Role role1 = new Role("role1");
+    role1.deserialize(role.serialize());
+    Assert.assertEquals("Role{name='role', privilegeList=[root.ln : INSERT_TIMESERIES]}",
+        role1.toString());
   }
-
-  public AuthException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public AuthException(Throwable cause) {
-    super(cause);
-  }
-
 }

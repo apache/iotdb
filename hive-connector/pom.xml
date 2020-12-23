@@ -69,7 +69,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>21.0</version>
+            <version>[${guava.version},)</version>
         </dependency>
         <!-- force upgrade the dependency of hive-serde-->
         <dependency>
@@ -194,11 +194,15 @@
     </build>
     <!-- org.pentaho:pentaho-aggdesigner-algorithm is in repo.spring.io and we have to claim
     to use https-->
+    <!-- Please note the notice in https://spring.io/blog/2020/10/29/notice-of-permissions-changes-to-repo-spring-io-fall-and-winter-2020
+    Anonymous access using /libs-snapshot or /libs-milestone in the pom.xml, or with
+    these configured in a remote repository, should replace them with /snapshot and /milestone, 
+    respectively.-->
     <repositories>
         <repository>
             <id>for_pentaho</id>
             <name>spring.io</name>
-            <url>https://repo.spring.io/libs-milestone</url>
+            <url>https://repo.spring.io/milestone</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>
