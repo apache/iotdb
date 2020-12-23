@@ -65,7 +65,7 @@ public class UDFRegistrationService implements IService {
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
 
   private final ReentrantReadWriteLock lock;
-  private UDFLogWriter temporaryLogWriter;
+  private UDFLogWriter logWriter;
 
   private UDFClassLoader udfClassLoader;
 
@@ -164,7 +164,7 @@ public class UDFRegistrationService implements IService {
   private void appendRegistrationLog(String functionName, String className) throws IOException {
     lock.writeLock().lock();
     try {
-      temporaryLogWriter.register(functionName, className);
+      logWriter.register(functionName, className);
     } finally {
       lock.writeLock().unlock();
     }
@@ -173,7 +173,7 @@ public class UDFRegistrationService implements IService {
   private void appendDeregistrationLog(String functionName) throws IOException {
     lock.writeLock().lock();
     try {
-      temporaryLogWriter.deregister(functionName);
+      logWriter.deregister(functionName);
     } finally {
       lock.writeLock().unlock();
     }
@@ -210,7 +210,7 @@ public class UDFRegistrationService implements IService {
       udfClassLoader = new UDFClassLoader(parseLibRoot());
       makeDirIfNecessary();
       doRecovery();
-      temporaryLogWriter = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
+      logWriter = new UDFLogWriter(LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
     }
@@ -235,17 +235,19 @@ public class UDFRegistrationService implements IService {
   }
 
   private void doRecovery() throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
     File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
+    File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
 
     if (temporaryLogFile.exists()) {
       if (logFile.exists()) {
-        FileUtils.deleteQuietly(logFile);
+        recoveryFromLogFile(logFile);
+        FileUtils.deleteQuietly(temporaryLogFile);
+      } else {
+        recoveryFromLogFile(temporaryLogFile);
+        FSFactoryProducer.getFSFactory().moveFile(temporaryLogFile, logFile);
       }
-      recoveryFromLogFile(temporaryLogFile);
     } else if (logFile.exists()) {
       recoveryFromLogFile(logFile);
-      FSFactoryProducer.getFSFactory().moveFile(logFile, temporaryLogFile);
     }
   }
 
@@ -277,23 +279,28 @@ public class UDFRegistrationService implements IService {
   @Override
   public void stop() {
     try {
-      writeLogFile();
-      temporaryLogWriter.close();
-      temporaryLogWriter.deleteLogFile();
+      writeTemporaryLogFile();
+
+      logWriter.close();
+      logWriter.deleteLogFile();
+
+      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
+      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+      FSFactoryProducer.getFSFactory().moveFile(temporaryLogFile, logFile);
     } catch (IOException ignored) {
       // ignored
     }
   }
 
-  private void writeLogFile() throws IOException {
-    UDFLogWriter logWriter = new UDFLogWriter(LOG_FILE_NAME);
+  private void writeTemporaryLogFile() throws IOException {
+    UDFLogWriter temporaryLogFile = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
     for (UDFRegistrationInformation information : registrationInformation.values()) {
       if (information.isTemporary()) {
         continue;
       }
-      logWriter.register(information.getFunctionName(), information.getClassName());
+      temporaryLogFile.register(information.getFunctionName(), information.getClassName());
     }
-    logWriter.close();
+    temporaryLogFile.close();
   }
 
   @TestOnly
