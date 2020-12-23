@@ -133,6 +133,12 @@ public class TimeSeriesMetadataCache {
       cacheHitNum.incrementAndGet();
       printCacheLog(true);
     } else {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER.info(
+            "Cache miss: " + key.device + "." + key.measurement + " metadata in file: "
+                + key.filePath);
+        DEBUG_LOGGER.info("Device: " + key.device + " all sensors: " + allSensors);
+      }
       // allow for the parallelism of different devices
       synchronized (devices
           .computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
@@ -147,26 +153,29 @@ public class TimeSeriesMetadataCache {
           cacheHitNum.incrementAndGet();
           printCacheLog(true);
         } else {
-          printCacheLog(false);
+          Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           BloomFilter bloomFilter = reader.readBloomFilter();
-          if (bloomFilter != null && !bloomFilter
-              .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-
+          if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
             if (config.isDebugOn()) {
               DEBUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
             }
             return null;
           }
+          printCacheLog(false);
           List<TimeseriesMetadata> timeSeriesMetadataList = reader
-              .readTimeseriesMetadata(key.device, allSensors);
+              .readTimeseriesMetadata(path, allSensors);
           // put TimeSeriesMetadata of all sensors used in this query into cache
           lock.writeLock().lock();
           try {
-            timeSeriesMetadataList.forEach(metadata ->
-                lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
-                    metadata.getMeasurementId()), metadata));
+            timeSeriesMetadataList.forEach(metadata -> {
+              TimeSeriesMetadataCacheKey k = new TimeSeriesMetadataCacheKey(key.filePath,
+                  key.device, metadata.getMeasurementId());
+              if (!lruCache.containsKey(k)) {
+                lruCache.put(k, metadata);
+              }
+            });
             timeseriesMetadata = lruCache.get(key);
           } finally {
             lock.writeLock().unlock();
