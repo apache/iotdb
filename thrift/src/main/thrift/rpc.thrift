@@ -17,6 +17,7 @@
  * under the License.
  */
 namespace java org.apache.iotdb.service.rpc.thrift
+namespace py iotdb.thrift.rpc
 
 // The return status code and message in each response.
 struct TSStatus {

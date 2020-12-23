@@ -162,14 +162,14 @@ public class IoTDBConfig {
   private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
 
   /**
-   * When inserting rejected, waiting this time to check system again
+   * When inserting rejected, waiting period to check system again
    */
-  private int waitingTimeWhenInsertBlockedInMs = 0;
+  private int checkPeriodWhenInsertBlocked = 50;
 
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 0; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
   /**
    * Is the write ahead log enable.
    */
@@ -735,7 +735,7 @@ public class IoTDBConfig {
   private long startUpNanosecond = System.nanoTime();
 
   /**
-   * thrift max frame size, the default is 15MB, we change it to 64MB
+   * thrift max frame size, the default is 16384000 bytes, we change it to 64MB
    */
   private int thriftMaxFrameSize = 67108864;
 
@@ -2006,12 +2006,12 @@ public class IoTDBConfig {
     this.maxQueryDeduplicatedPathNum = maxQueryDeduplicatedPathNum;
   }
 
-  public int getWaitingTimeWhenInsertBlocked() {
-    return waitingTimeWhenInsertBlockedInMs;
+  public int getCheckPeriodWhenInsertBlocked() {
+    return checkPeriodWhenInsertBlocked;
   }
 
-  public void setWaitingTimeWhenInsertBlocked(int waitingTimeWhenInsertBlocked) {
-    this.waitingTimeWhenInsertBlockedInMs = waitingTimeWhenInsertBlocked;
+  public void setCheckPeriodWhenInsertBlocked(int checkPeriodWhenInsertBlocked) {
+    this.checkPeriodWhenInsertBlocked = checkPeriodWhenInsertBlocked;
   }
 
   public int getMaxWaitingTimeWhenInsertBlocked() {

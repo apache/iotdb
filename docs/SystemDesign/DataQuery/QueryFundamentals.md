@@ -90,7 +90,7 @@ Deletion interval: org.apache.iotdb.tsfile.read.common.TimeRange
 ### Modification File
 Data deletion in IoTDB is accomplished by writing Modification files for related TsFiles.
 
-In IoTDB version 0.11.0, the deletion format in Modification file has been changed. Now each line contains a start time and end time representing a delete range for a timeseries path. 
+In IoTDB version 0.11.1, the deletion format in Modification file has been changed. Now each line contains a start time and end time representing a delete range for a timeseries path. 
 For Modification files generated in past version of IoTDB with only a "deleteAt" timestamp, they could still be recognized, interpreting the "deleteAt" field as end time.
 
 ### TimeRange  

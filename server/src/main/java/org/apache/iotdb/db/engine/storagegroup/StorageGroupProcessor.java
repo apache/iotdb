@@ -68,6 +68,7 @@ import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -123,6 +124,8 @@ public class StorageGroupProcessor {
   private static final String FAIL_TO_UPGRADE_FOLDER = "Failed to move {} to upgrade folder";
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /**
    * All newly generated chunks after merge have version number 0, so we set merged Modification
    * file version to 1 to take effect
@@ -131,7 +134,6 @@ public class StorageGroupProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * indicating the file to be loaded already exists locally.
@@ -658,6 +660,9 @@ public class StorageGroupProcessor {
     if (!isAlive(insertRowPlan.getTime())) {
       throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
+    if (enableMemControl) {
+      StorageEngine.blockInsertionIfReject();
+    }
     writeLock();
     try {
       // init map
@@ -692,6 +697,15 @@ public class StorageGroupProcessor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
+    if (enableMemControl) {
+      try {
+        StorageEngine.blockInsertionIfReject();
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchInsertionException(results);
+      }
+    }
     writeLock();
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
@@ -821,6 +835,9 @@ public class StorageGroupProcessor {
 
     try {
       tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
+    } catch (WriteProcessRejectException e) {
+      logger.warn("insert to TsFileProcessor rejected ", e);
+      return false;
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return false;
@@ -875,7 +892,6 @@ public class StorageGroupProcessor {
       return;
     }
 
-    // insert TsFileProcessor
     tsFileProcessor.insert(insertRowPlan);
 
     // try to update the latest time of the device of this tsRecord
@@ -1024,7 +1040,7 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::updateLatestFlushTimeCallback, true);
+          this::updateLatestFlushTimeCallback, true, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -1036,7 +1052,7 @@ public class StorageGroupProcessor {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
-          this::unsequenceFlushCallback, false);
+          this::unsequenceFlushCallback, false, partitionMaxFileVersions.getOrDefault(timePartitionId, 0L));
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);

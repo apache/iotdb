@@ -837,6 +837,12 @@ Msg: 303: Check metadata error: For delete statement, where clause can only cont
 expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
 ```
 
+If no "where" clause specified in a delete statement, all the data in a timeseries will be deleted.
+
+```
+delete from root.ln.wf02.status
+```
+
 
 ### Delete Multiple Timeseries
 If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.md) can be used to delete the data. The SQL statement for this operation is:

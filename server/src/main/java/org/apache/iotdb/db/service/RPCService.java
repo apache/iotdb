@@ -54,9 +54,9 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-      impl = (TSServiceImpl) Class.forName(IoTDBDescriptor.getInstance().getConfig()
-          .getRpcImplClassName()).newInstance();
-      processor = new Processor<>(impl);
+    impl = (TSServiceImpl) Class.forName(IoTDBDescriptor.getInstance().getConfig()
+        .getRpcImplClassName()).newInstance();
+    processor = new Processor<>(impl);
   }
 
   @Override
@@ -69,7 +69,9 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           config.getRpcAddress(), config.getRpcPort(), config.getRpcMaxConcurrentClientNum(),
           config.getThriftServerAwaitTimeForStopService(),
           new RPCServiceThriftHandler(impl),
-          IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+          config.isRpcThriftCompressionEnable(),
+          config.getThriftInitBufferSize(),
+          config.getThriftMaxFrameSize());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

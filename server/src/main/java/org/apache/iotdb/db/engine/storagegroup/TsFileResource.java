@@ -265,7 +265,7 @@ public class TsFileResource {
     Arrays.fill(times, defaultTime);
   }
 
-  public void serialize() throws IOException {
+  public synchronized void serialize() throws IOException {
     try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(this.deviceToIndex.size(), outputStream);

@@ -18,6 +18,28 @@
     under the License.
 
 -->
+# Apache IoTDB 0.11.1
+
+## Bug Fixes
+* IOTDB-990 cli parameter maxPRC shouldn't to be set zero 
+* IOTDB-993 Fix tlog bug 
+* IOTDB-994 Fix can not get last_value while doing the aggregation query along with first_value 
+* IOTDB-1000 Fix read redundant data while select with value filter with unseq data 
+* IOTDB-1007 Fix session pool concurrency and leakage issue when pool.close is called 
+* IOTDB-1016 overlapped data should be consumed first 
+* IOTDB-1021 Fix NullPointerException when showing child paths of non-existent path
+* IOTDB-1028 add MAX\_POINT\_NUMBER format check
+* IOTDB-1034 Fix Show timeseries error in Chinese on Windows
+* IOTDB-1035 Fix bug in getDeviceTimeseriesMetadata when querying non-exist device
+* IOTDB-1038 Fix flink set storage group bug
+* ISSUE-2179 fix insert partial tablet with binary NullPointer bug
+* add reject status code
+* Update compaction level list delete
+* Fix query result is not correct
+* Fix import errors in Session.py and SessionExample.py
+* Fix modules can not be found when using pypi to pack client-py
+* Fix Count timeseries group by level bug
+* Fix desc batchdata count bug
 
 # Apache IoTDB 0.11.0
 

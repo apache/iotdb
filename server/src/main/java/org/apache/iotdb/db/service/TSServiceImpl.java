@@ -1253,9 +1253,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     List<TSStatus> statusList = new ArrayList<>();
-    InsertRowPlan plan = new InsertRowPlan();
+
     for (int i = 0; i < req.deviceIds.size(); i++) {
       try {
+        InsertRowPlan plan = new InsertRowPlan();
         plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
@@ -1751,10 +1752,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (BatchInsertionException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
-      logger.error("meet error while processing non-query. ", e);
+      logger.warn("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (Exception e) {
-      logger.error(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.warn(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 

@@ -29,6 +29,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -48,6 +49,8 @@ public class IoTDBMultiOverlappedPageIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     beforeMemtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
     // max_number_of_points_in_page = 10
@@ -64,6 +67,8 @@ public class IoTDBMultiOverlappedPageIT {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(beforeMaxNumberOfPointsInPage);
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(beforeMemtableSizeThreshold);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test

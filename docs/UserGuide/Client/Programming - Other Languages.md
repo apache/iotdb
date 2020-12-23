@@ -32,7 +32,7 @@ on Linux or Windows, we will introduce how to operate on the two systems separat
 
 python3.7 or later is preferred.
 
-You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official
+You have to install Thrift (0.11.1 or later) to compile our thrift file into python code. Below is the official
 tutorial of installation: 
 
 ```

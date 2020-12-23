@@ -240,7 +240,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 #### 1.3.1 IoTDB Data Directory Overview Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -259,7 +259,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.11.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-0.11.1-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ````````````````````````
 Starting Printing the IoTDB Data Directory Overview
 ​````````````````````````
@@ -291,7 +291,7 @@ TsFile data dir num:1
 
 #### 1.3.2 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -310,7 +310,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-0.11.1\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -322,7 +322,7 @@ analyzing the resource file finished.
 
 #### 1.3.3 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.10.0\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -345,7 +345,7 @@ For Linux or MacOs:
 An example on macOS:
 
 ```shell
-/iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+/iotdb/server/target/iotdb-server-0.11.1/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ````````````````````````
 Starting Printing the TsFile Sketch
 ````````````````````````
