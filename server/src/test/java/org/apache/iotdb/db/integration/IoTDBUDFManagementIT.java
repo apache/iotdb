@@ -186,6 +186,33 @@ public class IoTDBUDFManagementIT {
   }
 
   @Test
+  public void testCreateFunctionWithBuiltinFunctionName1() {
+    try (Connection connection = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create function aVg as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(throwable.getMessage().contains("Failed to register"));
+    }
+  }
+
+  @Test
+  public void testCreateFunctionWithBuiltinFunctionName2() {
+    try (Connection connection = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement
+          .execute("create function MAX_VALUE as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      fail();
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      assertTrue(throwable.getMessage().contains("Failed to register"));
+    }
+  }
+
+  @Test
   public void testCreateFunction1() throws SQLException { // create function twice
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -195,7 +222,7 @@ public class IoTDBUDFManagementIT {
         statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+        assertTrue(throwable.getMessage().contains("Failed to register"));
       }
     }
   }
@@ -212,7 +239,7 @@ public class IoTDBUDFManagementIT {
             "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
         fail();
       } catch (SQLException throwable) {
-        assertTrue(throwable.getMessage().contains("has already been registered successfully"));
+        assertTrue(throwable.getMessage().contains("Failed to register"));
       }
     }
   }

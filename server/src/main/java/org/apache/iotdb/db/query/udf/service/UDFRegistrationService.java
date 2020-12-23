@@ -24,8 +24,11 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -34,6 +37,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.udf.api.UDF;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IService;
@@ -53,6 +57,11 @@ public class UDFRegistrationService implements IService {
   private static final String LOG_FILE_NAME = ULOG_FILE_DIR + "ulog.txt";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
 
+  private static final Set<String> BUILTIN_FUNCTION_NAMES = new HashSet<>(Arrays.asList(
+      SQLConstant.MIN_TIME, SQLConstant.MAX_TIME, SQLConstant.MIN_VALUE, SQLConstant.MAX_VALUE,
+      SQLConstant.FIRST_VALUE, SQLConstant.LAST_VALUE, SQLConstant.COUNT, SQLConstant.SUM,
+      SQLConstant.AVG));
+
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
 
   private final ReentrantReadWriteLock lock;
@@ -68,6 +77,8 @@ public class UDFRegistrationService implements IService {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void register(String functionName, String className, boolean isTemporary,
       boolean writeToTemporaryLogFile) throws UDFRegistrationException {
+    validateFunctionName(functionName, className);
+
     UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information != null) {
       String errorMessage;
@@ -114,6 +125,17 @@ public class UDFRegistrationService implements IService {
         logger.error(errorMessage);
         throw new UDFRegistrationException(errorMessage, e);
       }
+    }
+  }
+
+  private static void validateFunctionName(String functionName, String className)
+      throws UDFRegistrationException {
+    if (BUILTIN_FUNCTION_NAMES.contains(functionName.toLowerCase())) {
+      String errorMessage = String.format(
+          "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
+          functionName, className);
+      logger.warn(errorMessage);
+      throw new UDFRegistrationException(errorMessage);
     }
   }
 

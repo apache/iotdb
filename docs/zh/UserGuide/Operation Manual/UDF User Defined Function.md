@@ -322,7 +322,7 @@ CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"
 
 由于IoTDB的UDF是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
 
-注意：请不要使用与内置函数同名的函数名。注册的与内置函数同名的函数会在调用时被内置函数覆盖。
+注意：请不要给UDF函数注册一个内置函数的名字。使用内置函数的名字给UDF注册会失败。
 
 注意：不同的JAR包中最好不要有全类名相同但实现功能逻辑不一样的类。例如 UDF(UDAF/UDTF)：`udf1`、`udf2`分别对应资源`udf1.jar`、`udf2.jar`。如果两个JAR包里都包含一个`org.apache.iotdb.udf.ExampleUDTF`类，当同一个SQL中同时使用到这两个UDF时，系统会随机加载其中一个类，导致UDF执行行为不一致。
 
