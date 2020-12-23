@@ -294,9 +294,6 @@ public class ElasticSerializableTVList implements PointCollector {
     }
 
     BatchData get(int targetIndex) throws IOException {
-      if (tvLists.size() <= targetIndex) {
-        throw new ArrayIndexOutOfBoundsException(targetIndex);
-      }
       if (!cache.removeFirstOccurrence(targetIndex)) {
         if (capacity <= cache.size()) {
           int lastIndex = cache.removeLast();

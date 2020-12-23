@@ -91,9 +91,6 @@ public class ElasticSerializableIntList implements IntList {
     }
 
     SerializableIntList get(int targetIndex) throws IOException {
-      if (intLists.size() <= targetIndex) {
-        throw new ArrayIndexOutOfBoundsException(targetIndex);
-      }
       if (!cache.removeFirstOccurrence(targetIndex)) {
         if (capacity <= cache.size()) {
           int lastIndex = cache.removeLast();

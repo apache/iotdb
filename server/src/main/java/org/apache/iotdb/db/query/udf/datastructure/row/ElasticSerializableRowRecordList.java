@@ -216,9 +216,6 @@ public class ElasticSerializableRowRecordList {
     }
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
-      if (rowRecordLists.size() <= targetIndex) {
-        throw new ArrayIndexOutOfBoundsException(targetIndex);
-      }
       if (!cache.removeFirstOccurrence(targetIndex)) {
         if (capacity <= cache.size()) {
           int lastIndex = cache.removeLast();

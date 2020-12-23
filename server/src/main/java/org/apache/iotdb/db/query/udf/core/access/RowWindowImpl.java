@@ -55,6 +55,10 @@ public class RowWindowImpl implements RowWindow {
 
   @Override
   public Row getRow(int rowIndex) throws IOException {
+    if (rowIndex < 0 || windowRowIndexes.size() <= rowIndex) {
+      throw new ArrayIndexOutOfBoundsException(String
+          .format("Array index(%d) out of range [%d, %d).", rowIndex, 0, windowRowIndexes.size()));
+    }
     return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(rowIndex)));
   }
 
