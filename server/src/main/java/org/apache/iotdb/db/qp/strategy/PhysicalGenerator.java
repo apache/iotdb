@@ -420,14 +420,11 @@ public class PhysicalGenerator {
       queryPlan = new LastQueryPlan();
     } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
+    } else if (queryOperator.hasUdf()) {
+      queryPlan = new UDTFPlan(queryOperator.getSelectOperator().getZoneId());
+      ((UDTFPlan) queryPlan).constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());
     } else {
-      queryPlan = queryOperator.hasUdf()
-          ? new UDTFPlan(queryOperator.getSelectOperator().getZoneId())
-          : new RawDataQueryPlan();
-      if (queryPlan instanceof UDTFPlan) {
-        ((UDTFPlan) queryPlan)
-            .constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());
-      }
+      queryPlan = new RawDataQueryPlan();
     }
 
     if (queryOperator.isAlignByDevice()) {
