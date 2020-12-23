@@ -124,7 +124,7 @@ public class UDFContext {
         while (iterator.hasNext()) {
           entry = iterator.next();
           builder.append(", ").append("\"").append(entry.getKey()).append("\"=\"")
-              .append(attributes.get(entry.getValue())).append("\"");
+              .append(entry.getValue()).append("\"");
         }
       }
       columnParameterPart = builder.toString();
