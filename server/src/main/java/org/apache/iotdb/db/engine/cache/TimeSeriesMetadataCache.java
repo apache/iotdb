@@ -165,9 +165,13 @@ public class TimeSeriesMetadataCache {
           // put TimeSeriesMetadata of all sensors used in this query into cache
           lock.writeLock().lock();
           try {
-            timeSeriesMetadataList.forEach(metadata ->
-                lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
-                    metadata.getMeasurementId()), metadata));
+            timeSeriesMetadataList.forEach(metadata -> {
+              TimeSeriesMetadataCacheKey k = new TimeSeriesMetadataCacheKey(key.filePath,
+                  key.device, metadata.getMeasurementId());
+              if (!lruCache.containsKey(k)) {
+                lruCache.put(k, metadata);
+              }
+            });
             timeseriesMetadata = lruCache.get(key);
           } finally {
             lock.writeLock().unlock();
