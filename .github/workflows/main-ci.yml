@@ -5,26 +5,26 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - 'rel/*'
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: 
+    branches:
       - master
       - 'rel/*'
       - cluster_new
     paths-ignore:
       - 'docs/**'
-        
+
 jobs:
   build:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [8, 11, 15]
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os}}
 
@@ -50,7 +50,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [8, 11, 15]
         os: [windows-latest]
     runs-on: ${{ matrix.os}}
 
