@@ -31,6 +31,12 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 public class UDFClassLoader extends URLClassLoader {
 
   private final String libRoot;
+
+  /**
+   * Please note that the file set only expands during its life cycle because currently we only
+   * maintain one udf class loader in our system. It's okay because the number of jar files in the
+   * lib root won't be huge.
+   */
   private final Set<File> fileSet;
 
   public UDFClassLoader(String libRoot) throws IOException {
