@@ -997,7 +997,7 @@ public class TsFileProcessor {
         int waitCount = 1;
         while (true) {
           if (flushingMemTables.isEmpty()) {
-            return new PrimitiveMemTable();
+            return new PrimitiveMemTable(enableMemControl);
           }
           try {
             flushingMemTables.wait(1000);
