@@ -66,7 +66,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void initializeUdfExecutor(long queryId, float collectorMemoryBudgetInMB)
+  public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
     Collection<UDTFExecutor> executors = columnName2Executor.values();
     collectorMemoryBudgetInMB /= executors.size();

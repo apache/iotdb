@@ -24,12 +24,19 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
+/**
+ * UDF execution plan.
+ * <p>
+ * The life cycle of an executor:
+ * <p>
+ * constructUdfExecutors -> initializeUdfExecutor -> finalizeUDFExecutors
+ */
 public interface UDFPlan {
 
   void constructUdfExecutors(List<UDFContext> udfContexts)
       throws QueryProcessException, MetadataException;
 
-  void initializeUdfExecutor(long queryId, float collectorMemoryBudgetInMb)
+  void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMb)
       throws QueryProcessException;
 
   void finalizeUDFExecutors();

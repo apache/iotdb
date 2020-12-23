@@ -68,7 +68,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     this.udtfPlan = udtfPlan;
     inputLayer = new InputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, deduplicatedPaths,
         deduplicatedDataTypes, timestampGenerator, readersOfSelectedSeries, cached);
-    udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+    udtfPlan.initializeUdfExecutors(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
 
@@ -84,7 +84,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     this.udtfPlan = udtfPlan;
     inputLayer = new InputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, deduplicatedPaths,
         deduplicatedDataTypes, readersOfSelectedSeries);
-    udtfPlan.initializeUdfExecutor(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
+    udtfPlan.initializeUdfExecutors(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }
 
