@@ -45,7 +45,8 @@ public class UDTFExecutor {
       udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
           configurations);
     } catch (Exception e) {
-      throw new QueryProcessException(e.toString());
+      throw new QueryProcessException(
+          "Error occurred during initialization of udf:\n" + e.toString());
     }
     configurations.check();
   }
@@ -61,7 +62,7 @@ public class UDTFExecutor {
     try {
       udtf.transform(row, collector);
     } catch (Exception e) {
-      throw new QueryProcessException(e.toString());
+      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
     }
   }
 
@@ -69,7 +70,7 @@ public class UDTFExecutor {
     try {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
-      throw new QueryProcessException(e.toString());
+      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
     }
   }
 
