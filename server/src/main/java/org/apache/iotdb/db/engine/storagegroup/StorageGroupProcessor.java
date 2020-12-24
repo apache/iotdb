@@ -328,7 +328,23 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-      tsFileManagement.recover();
+
+      if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
+        compactionMergeWorking = true;
+        logger.info("{} submit a compaction merge task", storageGroupName);
+        try {
+          CompactionMergeTaskPoolManager.getInstance()
+              .submitTask(
+                  tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
+        } catch (RejectedExecutionException e) {
+          this.closeCompactionMergeCallBack();
+          logger.error("{} compaction submit task failed", storageGroupName);
+        }
+      } else {
+        logger.info("{} compaction pool not started ,recover failed",
+            storageGroupName);
+      }
+
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
