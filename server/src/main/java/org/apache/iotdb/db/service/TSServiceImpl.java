@@ -1291,24 +1291,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     List<TSStatus> statusList = new ArrayList<>();
 
-    for (int i = 0; i < req.measurementsList.size(); i++) {
-      try {
-        InsertRowsOfOneDevicePlan plan = new InsertRowsOfOneDevicePlan(
-            new PartialPath(req.getDeviceId()),
-            req.getTimestamps().toArray(new Long[0]),
-            req.getMeasurementsList(),
-            req.getValuesList().toArray(new ByteBuffer[0])
-        );
-        TSStatus status = checkAuthority(plan, req.getSessionId());
-        if (status != null) {
-          statusList.add(status);
-        } else {
-          statusList.add(executeNonQueryPlan(plan));
-        }
-      } catch (Exception e) {
-        logger.error("meet error when insert in batch", e);
-        statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+    try {
+      InsertRowsOfOneDevicePlan plan = new InsertRowsOfOneDevicePlan(
+          new PartialPath(req.getDeviceId()),
+          req.getTimestamps().toArray(new Long[0]),
+          req.getMeasurementsList(),
+          req.getValuesList().toArray(new ByteBuffer[0])
+      );
+      TSStatus status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        statusList.add(status);
+      } else {
+        statusList.add(executeNonQueryPlan(plan));
       }
+    } catch (Exception e) {
+      logger.error("meet error when insert in batch", e);
+      statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
     }
 
     return RpcUtils.getStatus(statusList);

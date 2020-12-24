@@ -403,7 +403,7 @@ public class IoTDBSessionSimpleIT {
     List<TSDataType> tmpDataTypes = null;
     List<Object> tmpValues = null;
 
-    times.add(1L);
+    times.add(3L);
     tmpMeasurements = new ArrayList<>();
     tmpDataTypes = new ArrayList<>();
     tmpValues = new ArrayList<>();
@@ -432,7 +432,7 @@ public class IoTDBSessionSimpleIT {
     datatypes.add(tmpDataTypes);
     values.add(tmpValues);
 
-    times.add(3L);
+    times.add(1L);
     tmpMeasurements = new ArrayList<>();
     tmpDataTypes = new ArrayList<>();
     tmpValues = new ArrayList<>();
@@ -447,7 +447,49 @@ public class IoTDBSessionSimpleIT {
     values.add(tmpValues);
 
     session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
-    session.close();
 
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+    dataSet.getColumnNames();
+    Assert.assertArrayEquals(dataSet.getColumnNames().toArray(new String[0]), new String[] {"Time",
+        "root.sg.d1.s3", "root.sg.d1.s4", "root.sg.d1.s5", "root.sg.d1.s1", "root.sg.d1.s2"});
+    Assert.assertArrayEquals(dataSet.getColumnTypes().toArray(new TSDataType[0]), new TSDataType[] { TSDataType.INT64,
+        TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32
+    });
+    long time = 1L;
+    //
+    Assert.assertTrue (dataSet.hasNext());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {0, 3, 4});
+    Assert.assertEquals(5.0f,  record.getFields().get(1).getFloatV(), 0.01);
+    Assert.assertEquals(Boolean.TRUE,  record.getFields().get(2).getBoolV());
+
+
+    Assert.assertTrue (dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {1, 2, 3});
+    Assert.assertEquals(4L,  record.getFields().get(0).getLongV());
+    Assert.assertEquals(3,  record.getFields().get(4).getIntV());
+
+    Assert.assertTrue (dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {0, 1, 2});
+    Assert.assertEquals(1,  record.getFields().get(3).getIntV());
+    Assert.assertEquals(2,  record.getFields().get(4).getIntV());
+
+    Assert.assertFalse (dataSet.hasNext());
+    dataSet.closeOperationHandle();
+    session.close();
+  }
+
+  private void assertNulls(RowRecord record, int[] index) {
+    for (int i : index) {
+      Assert.assertNull(record.getFields().get(i).getDataType());
+    }
   }
 }

@@ -36,8 +36,8 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertOneDeviceRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -409,14 +409,14 @@ public class Session {
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertOneDeviceRecordsReq request = genTSInsertOneDeviceRecordsReq(deviceId, times, measurementsList,
+    TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times, measurementsList,
         typesList, valuesList, haveSorted);
     try {
-      RpcUtils.verifySuccess(client.insertOneDeviceRecords(request));
+      RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
     } catch (TException e) {
       if (reconnect()) {
         try {
-          RpcUtils.verifySuccess(client.insertOneDeviceRecords(request));
+          RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -427,7 +427,7 @@ public class Session {
     }
   }
 
-  private TSInsertOneDeviceRecordsReq genTSInsertOneDeviceRecordsReq(String deviceId, List<Long> times,
+  private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, boolean haveSorted) throws IoTDBConnectionException, BatchExecutionException {
     // check params size
@@ -445,7 +445,7 @@ public class Session {
       sortRecordsInOneDevice(times, measurementsList, typesList, valuesList);
     }
 
-    TSInsertOneDeviceRecordsReq request = new TSInsertOneDeviceRecordsReq();
+    TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamps(times);
