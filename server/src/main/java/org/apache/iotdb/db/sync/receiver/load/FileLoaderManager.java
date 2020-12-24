@@ -95,7 +95,7 @@ public class FileLoaderManager {
       throws SyncDeviceOwnerConflictException, IOException {
     String curOwner = tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile()
         .getName();
-    Set<String> deviceSet = tsFileResource.getDeviceToIndexMap().keySet();
+    Set<String> deviceSet = tsFileResource.getDevices();
     checkDeviceConflict(curOwner, deviceSet);
     updateDeviceOwner(curOwner, deviceSet);
   }

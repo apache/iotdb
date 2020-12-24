@@ -46,9 +46,9 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -144,7 +144,8 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("java:S107") // ignore number of arguments
-  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo, TsFileResource tsFileResource,
+  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo,
+      TsFileResource tsFileResource,
       VersionController versionController, CloseFileListener closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
@@ -204,9 +205,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -255,7 +256,7 @@ public class TsFileProcessor {
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) 
+  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -274,8 +275,7 @@ public class TsFileProcessor {
         chunkMetadataIncrement += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
             insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
-      }
-      else {
+      } else {
         // here currentChunkPointNum >= 1
         int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId,
             insertRowPlan.getMeasurements()[i]);
@@ -287,7 +287,7 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
-    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement,
         chunkMetadataIncrement, textDataIncrement);
   }
 
@@ -314,12 +314,12 @@ public class TsFileProcessor {
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
-    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement, 
+    updateMemoryInfo(memTableIncrement, unsealedResourceIncrement,
         chunkMetadataIncrement, textDataIncrement);
   }
 
   private void updateMemCost(TSDataType dataType, String measurement, String deviceId, int start,
-   int end, long[] memIncrements, Object column) {
+      int end, long[] memIncrements, Object column) {
     // memIncrements = [memTable, text, chunk metadata] respectively
 
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurement)) {
@@ -327,15 +327,13 @@ public class TsFileProcessor {
       memIncrements[2] += ChunkMetadata.calculateRamSize(measurement, dataType);
       memIncrements[0] += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
           * TVList.tvListArrayMemSize(dataType);
-    }
-    else {
+    } else {
       int currentChunkPointNum = workMemTable
           .getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
             * TVList.tvListArrayMemSize(dataType);
-      }
-      else {
+      } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
@@ -494,7 +492,8 @@ public class TsFileProcessor {
                   + "size: {}, plan index: [{}, {}]",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
               workMemTable.memSize(),
-              tsFileResource.getTsFileSize(), workMemTable.getMinPlanIndex(), workMemTable.getMaxPlanIndex());
+              tsFileResource.getTsFileSize(), workMemTable.getMinPlanIndex(),
+              workMemTable.getMaxPlanIndex());
         } else {
           logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
               storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
@@ -675,8 +674,8 @@ public class TsFileProcessor {
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
         if (logger.isDebugEnabled()) {
           logger.debug("[mem control] {}: {} flush finished, try to reset system memcost, "
-              + "flushing memtable list size: {}", storageGroupName,
-          tsFileResource.getTsFile().getName(), flushingMemTables.size());
+                  + "flushing memtable list size: {}", storageGroupName,
+              tsFileResource.getTsFile().getName(), flushingMemTables.size());
         }
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
@@ -709,7 +708,8 @@ public class TsFileProcessor {
     if (!memTableToFlush.isSignalMemTable()) {
       try {
         writer.mark();
-        MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+        MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
+            storageGroupName);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         if (writer == null) {
@@ -719,8 +719,9 @@ public class TsFileProcessor {
             flushingMemTables.notifyAll();
           }
         } else {
-          logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
-              storageGroupName, tsFileResource.getTsFile().getName(), e);
+          logger
+              .error("{}: {} meet error when flushing a memtable, change system mode to read-only",
+                  storageGroupName, tsFileResource.getTsFile().getName(), e);
           IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
           try {
             logger.error("{}: {} IOTask meets error, truncate the corrupted data", storageGroupName,
@@ -886,18 +887,19 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
+   * @param deviceId      device id
    * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
+   * @param dataType      data type
+   * @param encoding      encoding
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
-          tsFileResource.getTsFile().getName());
+      logger
+          .debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
+              tsFileResource.getTsFile().getName());
     }
     flushQueryLock.readLock().lock();
     try {
@@ -932,10 +934,8 @@ public class TsFileProcessor {
 
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-        tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getTsFile(),
-            tsFileResource.getDeviceToIndexMap(),
-            tsFileResource.getStartTimes(), tsFileResource.getEndTimes(), readOnlyMemChunks,
-            chunkMetadataList, tsFileResource));
+        tsfileResourcesForQuery
+            .add(new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,

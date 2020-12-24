@@ -94,8 +94,8 @@ public class DeviceStringTest {
 
     writer.flushAllChunkGroups();
     writer.getIOWriter().close();
-    resource.putStartTime(new String("root.sg.device99"), 2);
-    resource.putEndTime(new String("root.sg.device99"), 100);
+    resource.updateStartTime(new String("root.sg.device99"), 2);
+    resource.updateEndTime(new String("root.sg.device99"), 100);
     resource.close();
     resource.serialize();
   }
@@ -111,8 +111,8 @@ public class DeviceStringTest {
   public void testDeviceString() throws IOException, IllegalPathException {
     resource = new TsFileResource(tsF);
     resource.deserialize();
-    assertFalse(resource.getDeviceToIndexMap().keySet().isEmpty());
-    for (String device : resource.getDeviceToIndexMap().keySet()) {
+    assertFalse(resource.getDevices().isEmpty());
+    for (String device : resource.getDevices()) {
       assertSame(device, mManager.getDeviceId(new PartialPath(device)));
     }
   }

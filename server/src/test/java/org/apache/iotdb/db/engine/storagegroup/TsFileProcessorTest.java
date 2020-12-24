@@ -320,8 +320,8 @@ public class TsFileProcessorTest {
       throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
     synchronized (resource) {
-      for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
-        resource.putEndTime(entry.getKey(), resource.getStartTime(entry.getValue()));
+      for (String deviceId : resource.getDevices()) {
+        resource.updateEndTime(deviceId, resource.getStartTime(deviceId));
       }
       try {
         resource.close();
