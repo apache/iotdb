@@ -657,7 +657,8 @@ var config = {
 							['DataQuery/GroupByQuery','GroupByQuery'],
 							['DataQuery/LastQuery','LastQuery'],
 							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
-							['DataQuery/FillFunction','FillFunction']
+							['DataQuery/FillFunction','FillFunction'],
+							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
 						]
 					},
 					{
@@ -1274,6 +1275,7 @@ var config = {
 							['DataQuery/LastQuery','最近时间戳 Last 查询'],
 							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
 							['DataQuery/FillFunction','空值填充'],
+							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
 							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
 						]
 					},
