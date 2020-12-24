@@ -428,12 +428,12 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertOneDeviceRecords(deviceId, times, measurementsList, typesList, valuesList, false);
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertOneDeviceRecords failed", e);
+        logger.warn("insertRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -456,12 +456,12 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertOneDeviceRecords(deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, haveSorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertOneDeviceRecords failed", e);
+        logger.warn("insertRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);

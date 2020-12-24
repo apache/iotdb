@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -390,11 +389,11 @@ public class Session {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(String deviceId, List<Long> times,
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-     insertOneDeviceRecords(deviceId, times, measurementsList, typesList, valuesList, false);
+     insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
   }
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
@@ -406,7 +405,7 @@ public class Session {
    * @param haveSorted  whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
-  public void insertOneDeviceRecords(String deviceId, List<Long> times,
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {

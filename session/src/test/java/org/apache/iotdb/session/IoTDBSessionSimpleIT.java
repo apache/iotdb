@@ -446,7 +446,7 @@ public class IoTDBSessionSimpleIT {
     datatypes.add(tmpDataTypes);
     values.add(tmpValues);
 
-    session.insertOneDeviceRecords("root.sg.d1", times, measurements, datatypes, values);
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
     session.close();
 
   }

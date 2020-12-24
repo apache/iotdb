@@ -115,8 +115,8 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertOneDeviceRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -1278,7 +1278,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus insertOneDeviceRecords(TSInsertOneDeviceRecordsReq req) throws TException {
+  public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) throws TException {
     if (auditLogger.isDebugEnabled()) {
       auditLogger
           .debug("Session {} insertRecords, device {}, first time {}", currSessionId.get(),
@@ -1383,7 +1383,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus testInsertOneDeviceRecords(TSInsertOneDeviceRecordsReq req) throws TException {
+  public TSStatus testInsertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) throws TException {
     logger.debug("Test insert rows in batch request receive.");
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
