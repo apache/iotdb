@@ -442,7 +442,21 @@ public class Session {
         throw new BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
       }
     } else {
-      sortRecordsInOneDevice(times, measurementsList, typesList, valuesList);
+      //sort
+      Integer[] index = new Integer[times.size()];
+      Integer[] index2 = new Integer[times.size()];
+      for (int i = 0; i < times.size(); i++) {
+        index2[i] = index[i] = i;
+      }
+      Arrays.sort(index, Comparator.comparingLong(times::get));
+      Arrays.sort(index2, Comparator.comparingInt(x -> index[x]));
+      times.sort(Long::compareTo);
+      //sort measurementList
+      measurementsList = sortList(measurementsList, index2);
+      //sort typesList
+      typesList = sortList(typesList, index2);
+      //sort values
+      valuesList = sortList(valuesList, index2);
     }
 
     TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
@@ -455,27 +469,12 @@ public class Session {
     return request;
   }
 
-  private void sortRecordsInOneDevice(List<Long> times, List<List<String>> measurementsList, List<List<TSDataType>> typesList, List<List<Object>> valuesList) {
-    Integer[] index = new Integer[times.size()];
-    for (int i = 0; i < times.size(); i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(times::get));
-    times.sort(Long::compareTo);
-    //sort measurementList
-    sortList(measurementsList, index);
-    //sort typesList
-    sortList(typesList, index);
-    //sort values
-    sortList(valuesList, index);
-  }
-
-  private void sortList(List source, Integer[] index) {
-    List tmpLists = new ArrayList<>(source);
-
+  private List sortList(List source, Integer[] index) {
+    Object[] result = new Object[source.size()];
     for (int i = 0; i < index.length; i++) {
-      source.set(i, tmpLists.get(index[i]));
+      result[index[i]] = source.get(i);
     }
+    return Arrays.asList(result);
   }
 
   private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList, List<List<TSDataType>> typesList)
