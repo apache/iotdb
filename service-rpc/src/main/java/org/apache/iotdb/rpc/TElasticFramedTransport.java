@@ -28,17 +28,10 @@ import org.apache.thrift.transport.TTransportFactory;
 
 public class TElasticFramedTransport extends TTransport {
 
-  /**
-   * It is used to prevent the size of the parsing package from being too large and allocating the
-   * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-   * reading. The default value is 512MB
-   */
-  private static final int PROTECT_MAX_LENGTH = 536870912;
-
   public static class Factory extends TTransportFactory {
 
     protected final int initialCapacity;
-    protected final int maxLength;
+    protected final int maxSoftLength;
 
     public Factory() {
       this(DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
@@ -48,14 +41,14 @@ public class TElasticFramedTransport extends TTransport {
       this(initialCapacity, DEFAULT_MAX_LENGTH);
     }
 
-    public Factory(int initialCapacity, int maxLength) {
+    public Factory(int initialCapacity, int maxSoftLength) {
       this.initialCapacity = initialCapacity;
-      this.maxLength = maxLength;
+      this.maxSoftLength = maxSoftLength;
     }
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TElasticFramedTransport(trans, initialCapacity, maxLength);
+      return new TElasticFramedTransport(trans, initialCapacity, maxSoftLength);
     }
   }
 
@@ -63,14 +56,21 @@ public class TElasticFramedTransport extends TTransport {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
   }
 
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxLength) {
+  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxSoftLength) {
     this.underlying = underlying;
-    this.maxLength = maxLength;
+    this.maxSoftLength = maxSoftLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
     writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
   }
 
-  protected final int maxLength;
+  /**
+   * The capacity of the underlying buffer is allowed to exceed maxSoftLength, but if adjacent
+   * requests all have sizes smaller than maxSoftLength, the underlying buffer will be shrunk
+   * beneath maxSoftLength.
+   * The shrinking is limited at most once per minute to reduce overhead when maxSoftLength is
+   * set unreasonably or the workload naturally contains both ver large and very small requests.
+   */
+  protected final int maxSoftLength;
   protected final TTransport underlying;
   protected AutoScalingBufferReadTransport readBuffer;
   protected AutoScalingBufferWriteTransport writeBuffer;
@@ -113,14 +113,15 @@ public class TElasticFramedTransport extends TTransport {
           "Read a negative frame size (" + size + ")!");
     }
 
-    if (size > PROTECT_MAX_LENGTH) {
+    if (size > RpcUtils.FRAME_HARD_MAX_LENGTH) {
       close();
       throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Frame size (" + size + ") larger than protect max length (" + PROTECT_MAX_LENGTH + ")!");
+          "Frame size (" + size + ") larger than protect max length (" + RpcUtils.FRAME_HARD_MAX_LENGTH
+              + ")!");
     }
 
-    if (size < maxLength) {
-      readBuffer.resizeIfNecessary(maxLength);
+    if (size < maxSoftLength) {
+      readBuffer.resizeIfNecessary(maxSoftLength);
     }
     readBuffer.fill(underlying, size);
   }
@@ -132,8 +133,8 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuf().array(), 0, length);
     writeBuffer.reset();
-    if (length > maxLength) {
-      writeBuffer.resizeIfNecessary(maxLength);
+    if (length > maxSoftLength) {
+      writeBuffer.resizeIfNecessary(maxSoftLength);
     }
     underlying.flush();
   }
