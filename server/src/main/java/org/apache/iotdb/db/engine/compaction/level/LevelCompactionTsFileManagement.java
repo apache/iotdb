@@ -525,6 +525,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
                 storageGroupName, i, toMergeTsFiles.size());
             writeLock();
+            System.out.println("delete writeLock");
             try {
               if (sequence) {
                 sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
@@ -537,6 +538,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               }
             } finally {
               writeUnlock();
+              System.out.println("delete writeUnLock");
             }
             deleteLevelFilesInDisk(toMergeTsFiles);
             compactionLogger.close();
