@@ -388,4 +388,66 @@ public class IoTDBSessionSimpleIT {
     session.deleteStorageGroup(storageGroup);
     session.close();
   }
+
+  @Test
+  public void testInsertOneDeviceRecords()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    List<String> tmpMeasurements = null;
+    List<TSDataType> tmpDataTypes = null;
+    List<Object> tmpValues = null;
+
+    times.add(1L);
+    tmpMeasurements = new ArrayList<>();
+    tmpDataTypes = new ArrayList<>();
+    tmpValues = new ArrayList<>();
+    tmpMeasurements.add("s1");
+    tmpMeasurements.add("s2");
+    tmpDataTypes.add(TSDataType.INT32);
+    tmpDataTypes.add(TSDataType.INT32);
+    tmpValues.add(1);
+    tmpValues.add(2);
+    measurements.add(tmpMeasurements);
+    datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
+
+
+    times.add(2L);
+    tmpMeasurements = new ArrayList<>();
+    tmpDataTypes = new ArrayList<>();
+    tmpValues = new ArrayList<>();
+    tmpMeasurements.add("s2");
+    tmpMeasurements.add("s3");
+    tmpDataTypes.add(TSDataType.INT32);
+    tmpDataTypes.add(TSDataType.INT64);
+    tmpValues.add(3);
+    tmpValues.add(4L);
+    measurements.add(tmpMeasurements);
+    datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
+
+    times.add(3L);
+    tmpMeasurements = new ArrayList<>();
+    tmpDataTypes = new ArrayList<>();
+    tmpValues = new ArrayList<>();
+    tmpMeasurements.add("s4");
+    tmpMeasurements.add("s5");
+    tmpDataTypes.add(TSDataType.FLOAT);
+    tmpDataTypes.add(TSDataType.BOOLEAN);
+    tmpValues.add(5.0f);
+    tmpValues.add(Boolean.TRUE);
+    measurements.add(tmpMeasurements);
+    datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
+
+    session.insertOneDeviceRecords("root.sg.d1", times, measurements, datatypes, values);
+    session.close();
+
+  }
 }
