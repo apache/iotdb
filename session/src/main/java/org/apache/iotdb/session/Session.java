@@ -469,6 +469,7 @@ public class Session {
     return request;
   }
 
+  @SuppressWarnings("squid:S3740")
   private List sortList(List source, Integer[] index) {
     Object[] result = new Object[source.size()];
     for (int i = 0; i < index.length; i++) {

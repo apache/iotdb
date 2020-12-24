@@ -55,7 +55,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
     }
   }
 
-  //TODO do we need to rewrite hashCode?
+  //TODO I see InsertRowPlan rewrites the hashCode, but do we need to rewrite hashCode?
 
   @Override
   public List<PartialPath> getPaths() {
