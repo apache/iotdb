@@ -92,8 +92,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException,
+      QueryProcessException, MetadataException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -526,12 +526,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(), deletePlan.getIndex());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(),
+          deletePlan.getIndex());
     }
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException {
     try {
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {

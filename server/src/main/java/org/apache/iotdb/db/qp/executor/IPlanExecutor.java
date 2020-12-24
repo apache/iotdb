@@ -44,8 +44,7 @@ public interface IPlanExecutor {
    * @return QueryDataSet
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
 
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
@@ -77,12 +76,13 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path       : delete series seriesPath
+   * @param path      delete series seriesPath
    * @param startTime start time in delete command
-   * @param endTime end time in delete command
+   * @param endTime   end time in delete command
    * @param planIndex index of the deletion plan
    */
-  void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException;
+  void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.
@@ -94,7 +94,6 @@ public interface IPlanExecutor {
   /**
    * execute batch insert plan
    *
-   * @return result of each row
    * @throws BatchProcessException when some of the rows failed
    */
   void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;
