@@ -1284,14 +1284,6 @@ public class StorageGroupProcessor {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-        while (compactionMergeWorking) {
-          closeStorageGroupCondition.wait(100);
-          if (System.currentTimeMillis() - startTime > 60_000) {
-            logger
-                .warn("{} has spent {}s to wait for closing compaction.", this.storageGroupName,
-                    (System.currentTimeMillis() - startTime) / 1000);
-          }
-        }
       } catch (InterruptedException e) {
         logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
             + "group {}", storageGroupName, e);
@@ -1724,9 +1716,6 @@ public class StorageGroupProcessor {
    */
   private void closeCompactionMergeCallBack() {
     this.compactionMergeWorking = false;
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
-    }
   }
 
   /**
