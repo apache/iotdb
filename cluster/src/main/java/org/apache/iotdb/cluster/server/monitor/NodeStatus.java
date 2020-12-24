@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query.manage;
+package org.apache.iotdb.cluster.server.monitor;
 
 import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -28,6 +28,12 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 @SuppressWarnings("java:S1135")
 public class NodeStatus implements Comparable<NodeStatus> {
 
+  // if a node is deactivated lastly too long ago, it is also assumed activated because it may
+  // have restarted but there is no heartbeat between the two nodes, and the local node cannot
+  // know the fact that it is normal again. Notice that we cannot always rely on the start-up
+  // hello, because it only occurs once and may be lost.
+  private static final long DEACTIVATION_VALID_INTERVAL_MS = 600_000L;
+
   private TNodeStatus status;
   // when is the status last updated, millisecond timestamp, to judge whether we should update
   // the status or not
@@ -35,6 +41,19 @@ public class NodeStatus implements Comparable<NodeStatus> {
   // how long does it take to get the status in the last attempt, in nanoseconds, which partially
   // reflect the node's load or network condition
   private long lastResponseLatency;
+
+  // if a node is judged down by heartbeats or other attempts to connect, isActivated will be set
+  // to false, so further attempts to get clients of this node will fail without a timeout, but
+  // getting clients for heartbeat will not fail so the node can be activated as soon as it is up
+  // again. Clients of associated nodes should take the responsibility to activate or deactivate
+  // the node.
+  private volatile boolean isActivated = true;
+
+  // if there is no heartbeat between the local node and this node, when this node is marked
+  // deactivated, it cannot be reactivated in a normal way. So we also consider it reactivated if
+  // its lastDeactivatedTime is too old.
+  // TODO-Cluster: say hello to other nodes when a node is back online
+  private long lastDeactivatedTime;
 
   //TODO-Cluster: decide what should be contained in NodeStatus and how two compare two NodeStatus
   @Override
@@ -61,11 +80,11 @@ public class NodeStatus implements Comparable<NodeStatus> {
     return Objects.hash(status, lastUpdateTime, lastResponseLatency);
   }
 
-  long getLastUpdateTime() {
+  public long getLastUpdateTime() {
     return lastUpdateTime;
   }
 
-  long getLastResponseLatency() {
+  public long getLastResponseLatency() {
     return lastResponseLatency;
   }
 
@@ -77,11 +96,24 @@ public class NodeStatus implements Comparable<NodeStatus> {
     this.status = status;
   }
 
-  void setLastUpdateTime(long lastUpdateTime) {
+  public void setLastUpdateTime(long lastUpdateTime) {
     this.lastUpdateTime = lastUpdateTime;
   }
 
-  void setLastResponseLatency(long lastResponseLatency) {
+  public void setLastResponseLatency(long lastResponseLatency) {
     this.lastResponseLatency = lastResponseLatency;
+  }
+
+  public void activate() {
+    isActivated = true;
+  }
+
+  public void deactivate() {
+    isActivated = false;
+    lastDeactivatedTime = System.currentTimeMillis();
+  }
+
+  public boolean isActivated() {
+    return isActivated || (System.currentTimeMillis() - lastDeactivatedTime) > DEACTIVATION_VALID_INTERVAL_MS;
   }
 }

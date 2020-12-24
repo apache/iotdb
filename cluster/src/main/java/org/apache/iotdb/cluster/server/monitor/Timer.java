@@ -18,7 +18,7 @@
  */
 
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.monitor;
 
 import java.util.ArrayList;
 import java.util.List;

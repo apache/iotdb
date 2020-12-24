@@ -54,6 +54,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -138,7 +139,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
     testDataGroupMember.setCharacter(NodeCharacter.LEADER);
     testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
     testMetaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
@@ -206,7 +207,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
   }
 

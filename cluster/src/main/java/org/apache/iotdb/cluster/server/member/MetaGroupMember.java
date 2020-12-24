@@ -88,7 +88,6 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -105,17 +104,18 @@ import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.NodeReport;
-import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.server.monitor.NodeReport;
+import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -271,7 +271,7 @@ public class MetaGroupMember extends RaftMember {
   public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
     super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new ArrayList<>();
     initPeerMap();
@@ -335,7 +335,7 @@ public class MetaGroupMember extends RaftMember {
       return;
     }
     addSeedNodes();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(this);
     super.start();
   }
 
@@ -783,6 +783,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         getDataClusterServer().buildDataGroupMembers(partitionTable);
         initSubServers();
+        sendHandshake();
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();
@@ -790,6 +791,29 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     logger.info("Sub-servers started.");
+  }
+
+  /**
+   * When the node restarts, it sends handshakes to all other nodes so they may know it is back.
+   */
+  private void sendHandshake() {
+    for (Node node : allNodes) {
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
+          if (asyncClient != null) {
+            asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+          }
+        } else {
+          SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
+          if (syncClient != null) {
+            syncClient.handshake(thisNode);
+          }
+        }
+      } catch (TException e) {
+        // ignore handshake exceptions
+      }
+    }
   }
 
   /**
@@ -1022,7 +1046,7 @@ public class MetaGroupMember extends RaftMember {
 
   private CheckStatusResponse checkStatus(Node seedNode) {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
+      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode, false);
       if (client == null) {
         return null;
       }
@@ -1035,7 +1059,7 @@ public class MetaGroupMember extends RaftMember {
         logger.warn("Current thread is interrupted.");
       }
     } else {
-      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode);
+      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode, false);
       if (client == null) {
         return null;
       }
@@ -1804,7 +1828,7 @@ public class MetaGroupMember extends RaftMember {
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
       throws IOException {
-    Client client = null;
+    Client client;
     try {
       client = getClientProvider().getSyncDataClient(receiver,
           RaftServer.getWriteOperationTimeoutMS());
@@ -1903,7 +1927,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) throws TException {
+  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) {
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
@@ -2174,5 +2198,9 @@ public class MetaGroupMember extends RaftMember {
   @TestOnly
   public void setClientProvider(DataClientProvider dataClientProvider) {
     this.dataClientProvider = dataClientProvider;
+  }
+
+  public void handleHandshake(Node sender) {
+    NodeStatusManager.getINSTANCE().activate(sender);
   }
 }

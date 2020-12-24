@@ -90,6 +90,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -176,7 +177,7 @@ public class MetaGroupMemberTest extends MemberTest {
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
     System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
