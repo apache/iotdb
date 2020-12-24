@@ -188,7 +188,7 @@ public class FileGenerator {
     File errorFile = new File(errorOutputDataFile);
     Files.delete(file.toPath());
     Files.delete(errorFile.toPath());
-
+    file.createNewFile();
     innerWriter = new TsFileWriter(file, schema, config);
 
     // write
