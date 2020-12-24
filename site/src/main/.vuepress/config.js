@@ -460,8 +460,10 @@ var config = {
 					{
 						title: 'System Tools',
 						children: [
+							['System Tools/CSV Tool','CSV Tool'],
 							['System Tools/Sync Tool','Sync Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
+							['System Tools/MLogParser Tool','MLogParser Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
@@ -561,8 +563,10 @@ var config = {
 					{
 						title: 'System Tools',
 						children: [
+							['System Tools/CSV Tool','CSV Tool'],
 							['System Tools/Sync Tool','Sync Tool'],
 							['System Tools/JMX Tool','JMX Tool'],
+							['System Tools/MLogParser Tool','MLogParser Tool'],
 							['System Tools/Watermark Tool','Watermark Tool'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
@@ -1082,8 +1086,10 @@ var config = {
 					{
 						title: '系统工具',
 						children: [
+							['System Tools/CSV Tool','CSV导入导出工具'],
 							['System Tools/Sync Tool','同步工具'],
 							['System Tools/JMX Tool','JMX工具'],
+							['System Tools/MLogParser Tool','MLog解析工具'],
 							['System Tools/Watermark Tool','水印工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
@@ -1177,8 +1183,10 @@ var config = {
 					{
 						title: '系统工具',
 						children: [
+							['System Tools/CSV Tool','CSV导入导出工具'],
 							['System Tools/Sync Tool','同步工具'],
 							['System Tools/JMX Tool','JMX工具'],
+							['System Tools/MLogParser Tool','MLog解析工具'],
 							['System Tools/Watermark Tool','水印工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
