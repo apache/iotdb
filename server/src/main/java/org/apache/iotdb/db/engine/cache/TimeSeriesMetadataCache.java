@@ -64,7 +64,9 @@ public class TimeSeriesMetadataCache {
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private final Map<String, WeakReference<String>> devices = Collections.synchronizedMap(new WeakHashMap<>());
+  private final Map<String, WeakReference<String>> devices = Collections
+      .synchronizedMap(new WeakHashMap<>());
+  private static final String SEPARATOR = "$";
 
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
@@ -132,7 +134,8 @@ public class TimeSeriesMetadataCache {
       printCacheLog(true);
     } else {
       // allow for the parallelism of different devices
-      synchronized (devices.computeIfAbsent(key.device, WeakReference::new)) {
+      synchronized (devices
+          .computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
         // double check
         lock.readLock().lock();
         try {

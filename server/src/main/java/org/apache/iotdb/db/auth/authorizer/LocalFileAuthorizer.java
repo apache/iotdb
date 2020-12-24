@@ -28,7 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public LocalFileAuthorizer() throws AuthException {
     super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.dataset;
+package org.apache.iotdb.db.query.dataset.groupby;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

@@ -586,8 +586,7 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(
-          "select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
+      statement.execute("select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(
@@ -602,8 +601,7 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(
-          "select s0 from root.*.* align by device");
+      statement.execute("select s0 from root.*.* align by device");
       fail("No exception thrown.");
     } catch (Exception e) {
       // root.vehicle.d0.s0 INT32
@@ -615,6 +613,15 @@ public class IoTDBAlignByDeviceIT {
     }
   }
 
+  /**
+   * root.vehicle.d0.s0 INT32
+   * root.vehicle.d1.s0 INT32
+   * root.other.d1.s0 FLOAT
+   * but
+   * count(root.vehicle.d0.s0) INT64
+   * count(root.vehicle.d1.s0) INT64
+   * count(root.other.d1.s0) INT64
+   */
   @Test
   public void unusualCaseTest1() throws ClassNotFoundException {
     String[] retArray = new String[]{
@@ -627,13 +634,7 @@ public class IoTDBAlignByDeviceIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      // root.vehicle.d0.s0 INT32
-      // root.vehicle.d1.s0 INT32
-      // root.other.d1.s0 FLOAT
-      // but
-      // count(root.vehicle.d0.s0) INT64
-      // count(root.vehicle.d1.s0) INT64
-      // count(root.other.d1.s0) INT64
+
       boolean hasResultSet = statement.execute(
           "select count(s0) from root.*.* align by device");
       Assert.assertTrue(hasResultSet);
@@ -834,7 +835,7 @@ public class IoTDBAlignByDeviceIT {
 
 
   @Test
-  public void selectConstantTestUnorder() throws ClassNotFoundException {
+  public void selectUnorderedConstantTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d0,101,1101,'11',null,'22',null,null,",
         "2,root.vehicle.d0,10000,40000,'11',2.22,'22',null,null,",
@@ -893,7 +894,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
-  public void selectConstantAndNonExistTestUnorder() throws ClassNotFoundException {
+  public void selectUnorderedConstantAndNonExistTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d0,101,1101,'11',null,'22',null,null,null,",
         "2,root.vehicle.d0,10000,40000,'11',2.22,'22',null,null,null,",
@@ -955,7 +956,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
-  public void selectConstantAndNonExistTestWithUnorderedDevice() throws ClassNotFoundException {
+    public void selectConstantAndNonExistTestWithUnorderedDevice() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "1,root.vehicle.d1,null,999,null,'11',null,'11','22',null,null,999,",
         "1000,root.vehicle.d1,null,888,null,'11',null,'11','22',null,null,888,",
@@ -1036,7 +1037,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
-  public void selectWithStarTest() throws ClassNotFoundException {
+  public void selectWithRegularExpressionTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
             "1,root.vehicle.d0,101,1101,null,null,null,",
             "2,root.vehicle.d0,10000,40000,2.22,null,null,",
