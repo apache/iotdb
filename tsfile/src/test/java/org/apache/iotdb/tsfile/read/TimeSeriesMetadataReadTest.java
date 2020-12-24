@@ -19,9 +19,12 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.FileGenerator;
@@ -32,7 +35,8 @@ import org.junit.Test;
 
 public class TimeSeriesMetadataReadTest {
 
-  private static final String FILE_PATH = FileGenerator.outputDataFile;
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH
+      .concat("TimeSeriesMetadataReadTest.tsfile");
   private final TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
   private int maxDegreeOfIndexNode;
 
@@ -41,7 +45,7 @@ public class TimeSeriesMetadataReadTest {
     int rowCount = 100;
     maxDegreeOfIndexNode = conf.getMaxDegreeOfIndexNode();
     conf.setMaxDegreeOfIndexNode(3);
-    FileGenerator.generateFile(rowCount, 10000);
+    FileGenerator.generateFile(rowCount, 10000, FILE_PATH);
   }
 
   @After
