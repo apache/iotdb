@@ -51,12 +51,6 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
   <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
-<dependency>
-  <groupId>org.apache.iotdb</groupId>
-  <artifactId>tsfile</artifactId>
-  <version>0.12.0-SNAPSHOT</version>
-  <scope>provided</scope>
-</dependency>
 ```
 
 

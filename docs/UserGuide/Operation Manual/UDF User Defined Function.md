@@ -51,12 +51,6 @@ If you use [Maven](http://search.maven.org/), you can search for the development
   <version>0.12.0-SNAPSHOT</version>
   <scope>provided</scope>
 </dependency>
-<dependency>
-  <groupId>org.apache.iotdb</groupId>
-  <artifactId>tsfile</artifactId>
-  <version>0.12.0-SNAPSHOT</version>
-  <scope>provided</scope>
-</dependency>
 ```
 
 
