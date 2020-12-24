@@ -125,7 +125,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
           + " in GroupByWithoutValueFilterDataSet.");
