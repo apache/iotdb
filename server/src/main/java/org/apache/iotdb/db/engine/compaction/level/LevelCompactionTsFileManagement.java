@@ -98,8 +98,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private void deleteLevelFilesInList(long timePartitionId,
-      Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
+      Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) throws IOException {
     logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
+    for (TsFileResource tsFileResource : mergeTsFiles) {
+      ChunkMetadataCache.getInstance().remove(tsFileResource);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+    }
     if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > level) {
@@ -408,7 +412,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
+  private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) throws IOException {
     if (isSeq) {
       for (int level = 0; level < sequenceTsFileResources.get(timePartition).size();
           level++) {
