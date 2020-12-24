@@ -43,7 +43,7 @@ public class TSnappyElasticFramedTransport extends TCompressedElasticFramedTrans
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TSnappyElasticFramedTransport(trans, initialCapacity, maxSoftLength);
+      return new TSnappyElasticFramedTransport(trans, initialCapacity, softMaxLength);
     }
   }
 

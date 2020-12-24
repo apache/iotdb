@@ -31,7 +31,7 @@ public class TElasticFramedTransport extends TTransport {
   public static class Factory extends TTransportFactory {
 
     protected final int initialCapacity;
-    protected final int maxSoftLength;
+    protected final int softMaxLength;
 
     public Factory() {
       this(DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
@@ -41,14 +41,14 @@ public class TElasticFramedTransport extends TTransport {
       this(initialCapacity, DEFAULT_MAX_LENGTH);
     }
 
-    public Factory(int initialCapacity, int maxSoftLength) {
+    public Factory(int initialCapacity, int softMaxLength) {
       this.initialCapacity = initialCapacity;
-      this.maxSoftLength = maxSoftLength;
+      this.softMaxLength = softMaxLength;
     }
 
     @Override
     public TTransport getTransport(TTransport trans) {
-      return new TElasticFramedTransport(trans, initialCapacity, maxSoftLength);
+      return new TElasticFramedTransport(trans, initialCapacity, softMaxLength);
     }
   }
 
@@ -56,9 +56,9 @@ public class TElasticFramedTransport extends TTransport {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
   }
 
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int maxSoftLength) {
+  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int softMaxLength) {
     this.underlying = underlying;
-    this.maxSoftLength = maxSoftLength;
+    this.softMaxLength = softMaxLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
     writeBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
   }
@@ -70,7 +70,7 @@ public class TElasticFramedTransport extends TTransport {
    * The shrinking is limited at most once per minute to reduce overhead when maxSoftLength is
    * set unreasonably or the workload naturally contains both ver large and very small requests.
    */
-  protected final int maxSoftLength;
+  protected final int softMaxLength;
   protected final TTransport underlying;
   protected AutoScalingBufferReadTransport readBuffer;
   protected AutoScalingBufferWriteTransport writeBuffer;
@@ -120,8 +120,8 @@ public class TElasticFramedTransport extends TTransport {
               + ")!");
     }
 
-    if (size < maxSoftLength) {
-      readBuffer.resizeIfNecessary(maxSoftLength);
+    if (size < softMaxLength) {
+      readBuffer.resizeIfNecessary(softMaxLength);
     }
     readBuffer.fill(underlying, size);
   }
@@ -133,8 +133,8 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuf().array(), 0, length);
     writeBuffer.reset();
-    if (length > maxSoftLength) {
-      writeBuffer.resizeIfNecessary(maxSoftLength);
+    if (length > softMaxLength) {
+      writeBuffer.resizeIfNecessary(softMaxLength);
     }
     underlying.flush();
   }

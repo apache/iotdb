@@ -36,8 +36,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
 
   protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int maxSoftLength) {
-    super(underlying, initialBufferCapacity, maxSoftLength);
+      int softMaxLength) {
+    super(underlying, initialBufferCapacity, softMaxLength);
     writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
@@ -86,7 +86,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       int newCapacity = Math.max(growCapacity, size);
       byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCapacity));
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
-    } else if (currentCapacity > maxSoftLength && currentCapacity * loadFactor > size
+    } else if (currentCapacity > softMaxLength && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
         && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
       // do not shrink beneath the initial size and do not shrink too often
@@ -116,8 +116,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (maxSoftLength < length) {
-      writeBuffer.resizeIfNecessary(maxSoftLength);
+    if (softMaxLength < length) {
+      writeBuffer.resizeIfNecessary(softMaxLength);
     }
     underlying.flush();
   }
