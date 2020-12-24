@@ -186,12 +186,8 @@ public class FileGenerator {
   static public void write() throws IOException {
     File file = new File(outputDataFile);
     File errorFile = new File(errorOutputDataFile);
-    if (file.exists()) {
-      file.delete();
-    }
-    if (errorFile.exists()) {
-      errorFile.delete();
-    }
+    Files.delete(file.toPath());
+    Files.delete(errorFile.toPath());
 
     innerWriter = new TsFileWriter(file, schema, config);
 
