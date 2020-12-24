@@ -990,13 +990,13 @@ public class TsFileProcessor {
 
   private IMemTable getAvailableMemTable() {
     synchronized (flushingMemTables) {
-      if (flushingMemTables.isEmpty()) {
+      if (flushingMemTables.size() < 2) {
         return new PrimitiveMemTable(enableMemControl);
       } else {
-        // wait until flushingMemTables is empty
+        // wait until the size of flushingMemTables is less than 2
         int waitCount = 1;
         while (true) {
-          if (flushingMemTables.isEmpty()) {
+          if (flushingMemTables.size() < 2) {
             return new PrimitiveMemTable(enableMemControl);
           }
           try {
