@@ -399,55 +399,63 @@ public class IoTDBSessionSimpleIT {
     List<List<TSDataType>> datatypes = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
 
-    List<String> tmpMeasurements = null;
-    List<TSDataType> tmpDataTypes = null;
-    List<Object> tmpValues = null;
-
-    times.add(3L);
-    tmpMeasurements = new ArrayList<>();
-    tmpDataTypes = new ArrayList<>();
-    tmpValues = new ArrayList<>();
-    tmpMeasurements.add("s1");
-    tmpMeasurements.add("s2");
-    tmpDataTypes.add(TSDataType.INT32);
-    tmpDataTypes.add(TSDataType.INT32);
-    tmpValues.add(1);
-    tmpValues.add(2);
-    measurements.add(tmpMeasurements);
-    datatypes.add(tmpDataTypes);
-    values.add(tmpValues);
-
-
-    times.add(2L);
-    tmpMeasurements = new ArrayList<>();
-    tmpDataTypes = new ArrayList<>();
-    tmpValues = new ArrayList<>();
-    tmpMeasurements.add("s2");
-    tmpMeasurements.add("s3");
-    tmpDataTypes.add(TSDataType.INT32);
-    tmpDataTypes.add(TSDataType.INT64);
-    tmpValues.add(3);
-    tmpValues.add(4L);
-    measurements.add(tmpMeasurements);
-    datatypes.add(tmpDataTypes);
-    values.add(tmpValues);
-
-    times.add(1L);
-    tmpMeasurements = new ArrayList<>();
-    tmpDataTypes = new ArrayList<>();
-    tmpValues = new ArrayList<>();
-    tmpMeasurements.add("s4");
-    tmpMeasurements.add("s5");
-    tmpDataTypes.add(TSDataType.FLOAT);
-    tmpDataTypes.add(TSDataType.BOOLEAN);
-    tmpValues.add(5.0f);
-    tmpValues.add(Boolean.TRUE);
-    measurements.add(tmpMeasurements);
-    datatypes.add(tmpDataTypes);
-    values.add(tmpValues);
-
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
     session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
+    checkResult(session);
+    session.close();
+  }
 
+  @Test
+  public void testInsertOneDeviceRecordsWithOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
+    checkResult(session);
+    session.close();
+  }
+
+  @Test(expected = BatchExecutionException.class)
+  public void testInsertOneDeviceRecordsWithIncorrectOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
+
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
+    checkResult(session);
+    session.close();
+  }
+
+  private void checkResult(Session session)
+      throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
     dataSet.getColumnNames();
     Assert.assertArrayEquals(dataSet.getColumnNames().toArray(new String[0]), new String[] {"Time",
@@ -484,7 +492,25 @@ public class IoTDBSessionSimpleIT {
 
     Assert.assertFalse (dataSet.hasNext());
     dataSet.closeOperationHandle();
-    session.close();
+
+  }
+
+  private void addLine(List<Long> times, List<List<String>> measurements, List<List<TSDataType>> datatypes,
+      List<List<Object>> values, long time, String s1, String s2, TSDataType s1type, TSDataType s2type,
+      Object value1, Object value2) {
+    List<String>  tmpMeasurements = new ArrayList<>();
+    List<TSDataType> tmpDataTypes = new ArrayList<>();
+    List<Object> tmpValues = new ArrayList<>();
+    tmpMeasurements.add(s1);
+    tmpMeasurements.add(s2);
+    tmpDataTypes.add(s1type);
+    tmpDataTypes.add(s2type);
+    tmpValues.add(value1);
+    tmpValues.add(value2);
+    times.add(time);
+    measurements.add(tmpMeasurements);
+    datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
   }
 
   private void assertNulls(RowRecord record, int[] index) {
