@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
@@ -90,6 +91,8 @@ public class ClientServer extends TSServiceImpl {
    */
   private MetaGroupMember metaGroupMember;
 
+  private Coordinator coordinator;
+
   /**
    * The single thread pool that runs poolServer to unblock the main thread.
    */
@@ -112,11 +115,12 @@ public class ClientServer extends TSServiceImpl {
    */
   private Map<Long, RemoteQueryContext> queryContextMap = new ConcurrentHashMap<>();
 
-  public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
+  public ClientServer(MetaGroupMember metaGroupMember, Coordinator coordinator) throws QueryProcessException {
     super();
     this.metaGroupMember = metaGroupMember;
     this.processor = new ClusterPlanner();
     this.executor = new ClusterPlanExecutor(metaGroupMember);
+    this.coordinator = coordinator;
   }
 
   /**
@@ -203,7 +207,7 @@ public class ClientServer extends TSServiceImpl {
       logger.warn("Illegal plan detected： {}", plan);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return metaGroupMember.executeNonQueryPlan(plan);
+    return coordinator.executeNonQueryPlan(plan);
   }
 
 

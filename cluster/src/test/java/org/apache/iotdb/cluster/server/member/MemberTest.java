@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
@@ -80,7 +81,7 @@ public class MemberTest {
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
-  ExecutorService testThreadPool;
+  protected ExecutorService testThreadPool;
 
   private List<String> prevUrls;
   private long prevLeaderWait;
@@ -140,6 +141,8 @@ public class MemberTest {
       }
     }
     planExecutor = new PlanExecutor();
+
+    testMetaMember.setCoordinator(new Coordinator());
     testMetaMember.setPartitionTable(partitionTable);
     MetaPuller.getInstance().init(testMetaMember);
   }

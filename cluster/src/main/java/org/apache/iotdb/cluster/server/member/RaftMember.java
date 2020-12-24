@@ -1150,7 +1150,7 @@ public abstract class RaftMember {
    *               communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+  public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
     if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -1714,7 +1714,7 @@ public abstract class RaftMember {
   }
 
   @TestOnly
-  void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
+  public void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 
