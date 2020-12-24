@@ -1,0 +1,83 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.tsfile.file.metadata.utils;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+public class TestHelper {
+
+  public static TsFileMetadata createSimpleFileMetaData() {
+    TsFileMetadata metaData = new TsFileMetadata();
+    metaData.setMetadataIndex(generateMetaDataIndex());
+    metaData.setVersionInfo(generateVersionInfo());
+    return metaData;
+  }
+
+  private static MetadataIndexNode generateMetaDataIndex() {
+    MetadataIndexNode metaDataIndex = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+    for (int i = 0; i < 5; i++) {
+      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5));
+    }
+    return metaDataIndex;
+  }
+
+  private static List<Pair<Long, Long>> generateVersionInfo() {
+    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      versionInfo.add(new Pair<>((long) i * 5, 0L));
+    }
+    return versionInfo;
+  }
+
+  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
+  }
+
+  public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setMeasurementId(measurementuid);
+    timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(200);
+    timeseriesMetaData.setStatistics(statistics);
+    return timeseriesMetaData;
+  }
+
+  public static PageHeader createTestPageHeader() {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE,
+        statistics);
+  }
+}
