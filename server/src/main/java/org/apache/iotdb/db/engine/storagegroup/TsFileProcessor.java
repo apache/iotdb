@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -1011,24 +1012,22 @@ public class TsFileProcessor {
   }
 
   private IMemTable getAvailableMemTable() {
-    synchronized (flushingMemTables) {
-      if (flushingMemTables.size() < 2) {
-        return new PrimitiveMemTable(enableMemControl);
-      } else {
-        // wait until the size of flushingMemTables is less than 2
-        int waitCount = 1;
-        while (true) {
-          if (flushingMemTables.size() < 2) {
-            return new PrimitiveMemTable(enableMemControl);
-          }
-          try {
-            flushingMemTables.wait(1000);
-          } catch (InterruptedException e) {
-            logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
-            Thread.currentThread().interrupt();
-          }
-          logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 1000);
+    if (flushingMemTables.size() < 2) {
+      return new PrimitiveMemTable(enableMemControl);
+    } else {
+      // wait until the size of flushingMemTables is less than 2
+      int waitCount = 1;
+      while (true) {
+        if (flushingMemTables.size() < 2) {
+          return new PrimitiveMemTable(enableMemControl);
         }
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
+          Thread.currentThread().interrupt();
+        }
+        logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 1000);
       }
     }
   }
