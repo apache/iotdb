@@ -101,6 +101,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(flushCount, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -293,6 +294,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(mergeCount, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -356,6 +358,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(2, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -432,6 +435,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(5, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -502,6 +506,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(5, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -579,6 +584,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -649,6 +655,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -718,6 +725,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -786,6 +794,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -854,6 +863,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -922,6 +932,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(12, cnt);
     }
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
@@ -998,6 +1009,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(55, cnt);
 
       IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
@@ -1022,6 +1034,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(100, cnt);
     }
 
@@ -1093,6 +1106,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(2, cnt);
     }
 
@@ -1177,6 +1191,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(55, cnt);
 
       IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
@@ -1201,6 +1216,7 @@ public class IoTDBLevelCompactionIT {
           cnt++;
         }
       }
+      System.out.println(cnt);
       assertEquals(100, cnt);
     }
 
