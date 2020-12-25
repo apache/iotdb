@@ -165,7 +165,6 @@ class MergeFileTask {
           return;
         }
 
-        fileWriter.writeVersion(maxVersion + 1);
         fileWriter.endChunkGroup();
       }
     }

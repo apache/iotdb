@@ -106,8 +106,6 @@ public class TsFileProcessor {
   private volatile boolean shouldClose;
   private IMemTable workMemTable;
 
-  private final VersionController versionController;
-
   /**
    * this callback is called before the workMemtable is added into the flushingMemTables.
    */
@@ -125,7 +123,6 @@ public class TsFileProcessor {
 
   TsFileProcessor(String storageGroupName, File tsfile,
       StorageGroupInfo storageGroupInfo,
-      VersionController versionController,
       CloseFileListener closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
@@ -134,7 +131,6 @@ public class TsFileProcessor {
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
     }
-    this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -144,8 +140,8 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("java:S107") // ignore number of arguments
-  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo, TsFileResource tsFileResource,
-      VersionController versionController, CloseFileListener closeUnsealedTsFileProcessor,
+  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo,
+      TsFileResource tsFileResource, CloseFileListener closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
@@ -153,7 +149,6 @@ public class TsFileProcessor {
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
     }
-    this.versionController = versionController;
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -636,8 +631,6 @@ public class TsFileProcessor {
           storageGroupName, tsFileResource.getTsFile().getName(),
           tobeFlushed.isSignalMemTable(), flushingMemTables.size());
     }
-    long cur = versionController.nextVersion();
-    tobeFlushed.setVersion(cur);
 
     if (!tobeFlushed.isSignalMemTable()) {
       totalMemTableSize += tobeFlushed.memSize();

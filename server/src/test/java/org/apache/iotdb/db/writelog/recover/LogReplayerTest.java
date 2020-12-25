@@ -80,17 +80,6 @@ public class LogReplayerTest {
     File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
     ModificationFile modFile = new ModificationFile(modF.getPath());
-    VersionController versionController = new VersionController() {
-      @Override
-      public long nextVersion() {
-        return 5;
-      }
-
-      @Override
-      public long currVersion() {
-        return 5;
-      }
-    };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
@@ -106,7 +95,7 @@ public class LogReplayerTest {
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, memTable, false);
+          tsFileResource, memTable, false);
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
@@ -145,7 +134,7 @@ public class LogReplayerTest {
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
       assertEquals("root.sg.device0.sensor0", mods[0].getPathString());
-      assertEquals(5, mods[0].getVersionNum());
+      assertEquals(5, mods[0].getFileOffset());
       assertEquals(200, ((Deletion) mods[0]).getEndTime());
 
       assertEquals(2, tsFileResource.getStartTime("root.sg.device0"));

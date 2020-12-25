@@ -155,7 +155,6 @@ public class RestorableTsFileIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
-    writer.writeVersion(0);
     long pos = writer.getIOWriter().getPos();
     // let's delete one byte. the version is broken
     writer.getIOWriter().out.truncate(pos - 1);

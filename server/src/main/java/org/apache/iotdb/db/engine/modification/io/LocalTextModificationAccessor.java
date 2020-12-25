@@ -123,7 +123,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   private static String encodeDeletion(Deletion del) {
     return del.getType().toString() + SEPARATOR + del.getPathString()
-        + SEPARATOR + del.getVersionNum() + SEPARATOR
+        + SEPARATOR + del.getFileOffset() + SEPARATOR
         + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 

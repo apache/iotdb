@@ -65,7 +65,6 @@ public class TsFileIOWriterTest {
     writer.endCurrentChunk();
     writer.endChunkGroup();
 
-    writer.writeVersion(0L);
     writer.setMinPlanIndex(100);
     writer.setMaxPlanIndex(10000);
     writer.writePlanIndices();

@@ -126,10 +126,6 @@ public interface IMemTable {
 
   boolean isSignalMemTable();
 
-  long getVersion();
-
-  void setVersion(long version);
-
   void release();
 
   /**

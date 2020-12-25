@@ -453,7 +453,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
         chunkWriter.writeToFileWriter(tsFileIOWriter);
       }
       tsFileIOWriter.endChunkGroup();
-      tsFileIOWriter.writeVersion(versionOfChunkGroup);
     }
   }
 

@@ -49,9 +49,6 @@ public class TsFileMetadata {
   // List of <name, offset, childMetadataIndexType>
   private MetadataIndexNode metadataIndex;
 
-  // offset -> version
-  private List<Pair<Long, Long>> versionInfo;
-
   // offset of MetaMarker.SEPARATOR
   private long metaOffset;
 
@@ -69,15 +66,11 @@ public class TsFileMetadata {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
-    // versionInfo
-    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
     int versionSize = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < versionSize; i++) {
       long versionPos = ReadWriteIOUtils.readLong(buffer);
       long version = ReadWriteIOUtils.readLong(buffer);
-      versionInfo.add(new Pair<>(versionPos, version));
     }
-    fileMetaData.setVersionInfo(versionInfo);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
@@ -117,13 +110,6 @@ public class TsFileMetadata {
     // totalChunkNum, invalidChunkNum
     byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
     byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
-
-    // versionInfo
-    byteLen += ReadWriteIOUtils.write(versionInfo.size(), outputStream);
-    for (Pair<Long, Long> versionPair : versionInfo) {
-      byteLen += ReadWriteIOUtils.write(versionPair.left, outputStream);
-      byteLen += ReadWriteIOUtils.write(versionPair.right, outputStream);
-    }
 
     // metaOffset
     byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
@@ -196,13 +182,5 @@ public class TsFileMetadata {
 
   public void setMetadataIndex(MetadataIndexNode metadataIndex) {
     this.metadataIndex = metadataIndex;
-  }
-
-  public void setVersionInfo(List<Pair<Long, Long>> versionInfo) {
-    this.versionInfo = versionInfo;
-  }
-
-  public List<Pair<Long, Long>> getVersionInfo() {
-    return versionInfo;
   }
 }

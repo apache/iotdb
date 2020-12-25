@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +59,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -515,11 +513,6 @@ public class TsFileSequenceReader implements AutoCloseable {
           .add(chunkMetadata);
     }
 
-    // set version in ChunkMetadata
-    List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
-    for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
-      VersionUtils.applyVersion(entry.getValue(), versionInfo);
-    }
     return seriesMetadata;
   }
 
@@ -891,7 +884,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param newSchema              the schema on each time series in the file
    * @param chunkGroupMetadataList ChunkGroupMetadata List
-   * @param versionInfo            version pair List
    * @param fastFinish             if true and the file is complete, then newSchema and
    *                               chunkGroupMetadataList parameter will be not modified.
    * @return the position of the file that is fine. All data after the position in the file should
@@ -900,7 +892,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
       List<ChunkGroupMetadata> chunkGroupMetadataList,
-      List<Pair<Long, Long>> versionInfo,
       boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
@@ -996,7 +987,6 @@ public class TsFileSequenceReader implements AutoCloseable {
             break;
           case MetaMarker.VERSION:
             long version = readVersion();
-            versionInfo.add(new Pair<>(position(), version));
             truncatedSize = this.position();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -1047,7 +1037,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     readFileMetadata();
-    List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
     ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
@@ -1057,7 +1046,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
     }
 
-    VersionUtils.applyVersion(chunkMetadataList, versionInfo);
 
     // minimize the storage of an ArrayList instance.
     chunkMetadataList.trimToSize();

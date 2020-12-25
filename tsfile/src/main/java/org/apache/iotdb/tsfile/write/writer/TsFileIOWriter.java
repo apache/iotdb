@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,8 +85,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
-  protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-  
+
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
@@ -243,7 +241,6 @@ public class TsFileIOWriter {
     MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap);
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
     tsFileMetaData.setMetadataIndex(metadataIndex);
-    tsFileMetaData.setVersionInfo(versionInfo);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
     tsFileMetaData.setMetaOffset(metaOffset);
@@ -333,7 +330,6 @@ public class TsFileIOWriter {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      VersionUtils.applyVersion(chunkGroupMetadata.getChunkMetadataList(), versionInfo);
       deviceChunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), k -> new ArrayList<>())
           .addAll(chunkGroupMetadata.getChunkMetadataList());
     }
@@ -421,26 +417,10 @@ public class TsFileIOWriter {
     }
   }
 
-  /**
-   * write MetaMarker.VERSION with version Then, cache offset-version in versionInfo
-   */
-  public void writeVersion(long version) throws IOException {
-    ReadWriteIOUtils.write(MetaMarker.VERSION, out.wrapAsStream());
-    ReadWriteIOUtils.write(version, out.wrapAsStream());
-    versionInfo.add(new Pair<>(getPos(), version));
-  }
-
   public void writePlanIndices() throws IOException {
     ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
     ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
     ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
-  }
-
-  public void setDefaultVersionPair() {
-    // only happen when using tsfile module write api
-    if (versionInfo.isEmpty()) {
-      versionInfo.add(new Pair<>(Long.MAX_VALUE, 0L));
-    }
   }
 
   /**

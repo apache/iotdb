@@ -60,12 +60,7 @@ public class TsFileSketchTool {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-        List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-        reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
-        Map<Long, Long> versionMap = new HashMap<>();
-        for (Pair<Long, Long> versionPair : versionInfo) {
-          versionMap.put(versionPair.left - Long.BYTES - 1, versionPair.right);
-        }
+        reader.selfCheck(null, allChunkGroupMetadata, false);
 
         // begin print
         StringBuilder str1 = new StringBuilder();
@@ -115,8 +110,7 @@ public class TsFileSketchTool {
                   .getNumberOfChunks());
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
-          // versionInfo begins if there is a versionInfo
-          if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
+          /*if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
             printlnBoth(pw,
                     String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize())
                             + "|\t[Version Info]");
@@ -124,7 +118,7 @@ public class TsFileSketchTool {
             printlnBoth(pw,
                     String.format("%20s", "") + "|\t\t[version] "
                             + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
-          }
+          }*/
         }
 
         // metadata begins

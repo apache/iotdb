@@ -217,7 +217,6 @@ public class MergeMultiChunkTask {
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
         mergeFileWriter, currTsFile);
     if (dataWritten) {
-      mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.putStartTime(deviceId, currDeviceMinTime);

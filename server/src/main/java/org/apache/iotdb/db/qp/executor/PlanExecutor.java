@@ -782,11 +782,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
       Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
 
-      List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetadataList, versionInfo, false);
+        reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);

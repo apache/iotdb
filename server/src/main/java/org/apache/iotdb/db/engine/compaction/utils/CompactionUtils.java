@@ -260,7 +260,6 @@ public class CompactionUtils {
               targetResource, writer, modificationCache);
         }
         writer.endChunkGroup();
-        writer.writeVersion(maxVersion);
       } else {
         long maxVersion = Long.MIN_VALUE;
         for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry : measurementChunkMetadataMap
@@ -289,7 +288,6 @@ public class CompactionUtils {
           }
         }
         writer.endChunkGroup();
-        writer.writeVersion(maxVersion);
       }
       if (compactionLogger != null) {
         compactionLogger.logDevice(device, writer.getPos());

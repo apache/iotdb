@@ -50,7 +50,6 @@ public abstract class AbstractMemTable implements IMemTable {
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
   protected boolean disableMemControl = true;
-  private long version = Long.MAX_VALUE;
   private List<Modification> modifications = new ArrayList<>();
   private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
       .getAvgSeriesPointNumberThreshold();
@@ -251,8 +250,8 @@ public abstract class AbstractMemTable implements IMemTable {
     TVList chunkCopy = memChunk.getSortedTVListForQuery();
     int curSize = chunkCopy.size();
 
-    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion(),
-        curSize, deletionList);
+    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props,
+            curSize, deletionList);
   }
 
   private List<TimeRange> constructDeletionList(String deviceId, String measurement,
@@ -298,14 +297,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void delete(Deletion deletion) {
     this.modifications.add(deletion);
-  }
-
-  public long getVersion() {
-    return version;
-  }
-
-  public void setVersion(long version) {
-    this.version = version;
   }
 
   @Override
