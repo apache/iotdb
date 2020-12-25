@@ -92,6 +92,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -285,6 +286,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -349,6 +351,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -426,6 +429,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -497,6 +501,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -575,6 +580,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -646,6 +652,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -716,6 +723,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -785,6 +793,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -854,6 +863,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -923,6 +933,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -1000,6 +1011,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -1025,6 +1037,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s1 = resultSet.getLong("root.compactionTest.s1");
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
@@ -1099,6 +1112,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
           assertEquals(time + 2, s2);
@@ -1184,6 +1198,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
           assertEquals(time + 2, s2);
@@ -1209,6 +1224,7 @@ public class IoTDBLevelCompactionIT {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
+          System.out.println(time);
           long s2 = resultSet.getLong("root.compactionTest.s2");
           long s3 = resultSet.getLong("root.compactionTest.s3");
           assertEquals(time + 2, s2);
