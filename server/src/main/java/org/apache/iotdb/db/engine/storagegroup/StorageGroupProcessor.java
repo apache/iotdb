@@ -990,8 +990,6 @@ public class StorageGroupProcessor {
         // build new processor
         TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
         tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
-        System.out.println("add " + newProcessor.getTsFileResource().getTsFile().getPath()
-            + " to tsFileManagement");
         tsFileManagement.add(newProcessor.getTsFileResource(), sequence);
         res = newProcessor;
       }
@@ -2192,6 +2190,7 @@ public class StorageGroupProcessor {
           logger.error("The file {} has already been loaded in unsequence list", tsFileResource);
           return false;
         }
+        System.out.println("add " + tsFileResource.getTsFile().getPath() + " to tsFileManagement");
         tsFileManagement.add(tsFileResource, false);
         logger.info("Load tsfile in unsequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
@@ -2206,6 +2205,7 @@ public class StorageGroupProcessor {
           logger.error("The file {} has already been loaded in sequence list", tsFileResource);
           return false;
         }
+        System.out.println("add " + tsFileResource.getTsFile().getPath() + " to tsFileManagement");
         tsFileManagement.add(tsFileResource, true);
         logger.info("Load tsfile in sequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
