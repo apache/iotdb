@@ -1522,7 +1522,7 @@ public class StorageGroupProcessor {
         endTime = Long.MAX_VALUE;
       }
 
-      if (tsFileResource.containsDevice(deviceId) &&
+      if (tsFileResource.getDevices().contains(deviceId) &&
           (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
         return false;
       }
@@ -1901,7 +1901,7 @@ public class StorageGroupProcessor {
         return POS_ALREADY_EXIST;
       }
       long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-      if (i == sequenceList.size() - 1 && localFile.areEndTimesEmpty()
+      if (i == sequenceList.size() - 1 && localFile.endTimeEmpty()
           || newFilePartitionId > localPartitionId) {
         // skip files that are in the previous partition and the last empty file, as the all data
         // in those files must be older than the new file

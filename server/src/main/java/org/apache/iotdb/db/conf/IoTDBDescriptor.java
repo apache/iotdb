@@ -240,7 +240,7 @@ public class IoTDBDescriptor {
       }
 
       int mlogBufferSize = Integer.parseInt(properties.getProperty("mlog_buffer_size",
-        Integer.toString(conf.getMlogBufferSize())));
+          Integer.toString(conf.getMlogBufferSize())));
       if (mlogBufferSize > 0) {
         conf.setMlogBufferSize(mlogBufferSize);
       }
@@ -497,6 +497,9 @@ public class IoTDBDescriptor {
 //      conf.setConcurrentWritingTimePartition(
 //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
 //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
+
+      conf.setTimeIndexLevel(
+          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(

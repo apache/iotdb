@@ -33,11 +33,11 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -76,7 +76,7 @@ public class TsFileResource {
 
   private TsFileProcessor processor;
 
-  private DeviceTimeIndex fileIndex;
+  private ITimeIndex fileIndex;
 
   private ModificationFile modFile;
 
@@ -165,7 +165,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file) {
     this.file = file;
-    this.fileIndex = new DeviceTimeIndex();
+    this.fileIndex = config.getTimeIndexLevel().getTimeIndex();
   }
 
   /**
@@ -173,7 +173,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.fileIndex = new DeviceTimeIndex();
+    this.fileIndex = config.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
   }
 
@@ -253,7 +253,7 @@ public class TsFileResource {
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
-      fileIndex = DeviceTimeIndex.deserialize(inputStream);
+      fileIndex = config.getTimeIndexLevel().getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -268,17 +268,11 @@ public class TsFileResource {
   }
 
   public void updateStartTime(String device, long time) {
-    long startTime = getStartTime(device);
-    if (time < startTime) {
-      fileIndex.putStartTime(device, time);
-    }
+    fileIndex.updateStartTime(device, time);
   }
 
   public void updateEndTime(String device, long time) {
-    long endTime = getEndTime(device);
-    if (time > endTime) {
-      fileIndex.putEndTime(device, time);
-    }
+    fileIndex.updateEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -304,10 +298,6 @@ public class TsFileResource {
     this.file = file;
   }
 
-  boolean containsDevice(String deviceId) {
-    return fileIndex.containsDevice(deviceId);
-  }
-
   public File getTsFile() {
     return file;
   }
@@ -329,16 +319,11 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return fileIndex.getDeviceToIndex().keySet();
+    return fileIndex.getDevices();
   }
 
-  public boolean areEndTimesEmpty() {
-    for (long endTime : fileIndex.getEndTimes()) {
-      if (endTime != Long.MIN_VALUE) {
-        return false;
-      }
-    }
-    return true;
+  public boolean endTimeEmpty() {
+    return fileIndex.endTimeEmpty();
   }
 
   public boolean isClosed() {
@@ -353,7 +338,7 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
-    fileIndex.trimStartEndTimes();
+    fileIndex.close();
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -494,16 +479,7 @@ public class TsFileResource {
    * check if any of the device lives over the given time bound
    */
   public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
-      return true;
-    }
-    for (long endTime : fileIndex.getEndTimes()) {
-      // the file cannot be deleted if any device still lives
-      if (endTime >= timeLowerBound) {
-        return true;
-      }
-    }
-    return false;
+    return fileIndex.stillLives(timeLowerBound);
   }
 
   /**
@@ -511,7 +487,7 @@ public class TsFileResource {
    */
   public boolean isSatisfied(String deviceId,
       Filter timeFilter, boolean isSeq, long ttl) {
-    if (!containsDevice(deviceId)) {
+    if (!getDevices().contains(deviceId)) {
       if (config.isDebugOn()) {
         DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of no device!", deviceId,
             file);
@@ -585,7 +561,7 @@ public class TsFileResource {
    * make sure Either the deviceToIndex is not empty Or the path contains a partition folder
    */
   public long getTimePartition() {
-    return fileIndex.getTimePartition(this);
+    return fileIndex.getTimePartition(file.getAbsolutePath());
   }
 
   /**
@@ -595,31 +571,7 @@ public class TsFileResource {
    * @throws PartitionViolationException if the data of the file cross partitions or it is empty
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
-    long partitionId = -1;
-    for (Long startTime : fileIndex.getStartTimes()) {
-      long p = StorageEngine.getTimePartition(startTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(this);
-        }
-      }
-    }
-    for (Long endTime : fileIndex.getEndTimes()) {
-      long p = StorageEngine.getTimePartition(endTime);
-      if (partitionId == -1) {
-        partitionId = p;
-      } else {
-        if (partitionId != p) {
-          throw new PartitionViolationException(this);
-        }
-      }
-    }
-    if (partitionId == -1) {
-      throw new PartitionViolationException(this);
-    }
-    return partitionId;
+    return fileIndex.getTimePartitionWithCheck(file.toString());
   }
 
   /**

@@ -17,13 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception;
+package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+public enum TimeIndexLevel {
+  FILE_TIME_INDEX, DEVICE_TIME_INDEX;
 
-public class PartitionViolationException extends LoadFileException{
-
-  public PartitionViolationException(String file) {
-    super(String.format("The data of file %s cross partitions", file));
+  public ITimeIndex getTimeIndex() {
+    switch (this) {
+      case FILE_TIME_INDEX:
+        return new FileTimeIndex();
+      case DEVICE_TIME_INDEX:
+      default:
+        return new DeviceTimeIndex();
+    }
   }
 }
