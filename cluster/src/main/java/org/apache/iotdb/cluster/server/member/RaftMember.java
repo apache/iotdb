@@ -1191,7 +1191,7 @@ public abstract class RaftMember {
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
+  public TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {

@@ -26,15 +26,12 @@ import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -60,7 +57,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -556,7 +552,7 @@ public class Coordinator {
     throws IOException {
     RaftService.AsyncClient client = metaGroupMember.getClientProvider().getAsyncDataClient(receiver,
       RaftServer.getWriteOperationTimeoutMS());
-    return forwardPlanAsync(plan, receiver, header, client);
+    return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
@@ -569,24 +565,5 @@ public class Coordinator {
       throw new IOException(e);
     }
     return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
-  }
-
-  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, RaftService.AsyncClient client) {
-    try {
-      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
-      if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      }
-      return tsStatus;
-    } catch (IOException | TException e) {
-      logger
-        .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
-      return StatusUtils.TIME_OUT;
-    }
   }
 }
