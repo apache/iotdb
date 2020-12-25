@@ -265,7 +265,7 @@ public class SessionConnection {
         try {
           execReq.setSessionId(sessionId);
           execReq.setStatementId(statementId);
-          execResp = client.executeUpdateStatement(execReq);
+          execResp = client.executeQueryStatement(execReq);
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
