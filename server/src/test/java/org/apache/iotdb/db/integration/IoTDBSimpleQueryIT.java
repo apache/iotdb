@@ -943,7 +943,7 @@ public class IoTDBSimpleQueryIT {
             .execute("CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: encoding BOOLEAN does not support TS_2DIFF",
+            "303: encoding TS_2DIFF does not support BOOLEAN",
             e.getMessage());
       }
 
@@ -952,7 +952,7 @@ public class IoTDBSimpleQueryIT {
             .execute("CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: encoding DOUBLE does not support REGULAR",
+            "303: encoding REGULAR does not support DOUBLE",
             e.getMessage());
       }
 
@@ -960,7 +960,7 @@ public class IoTDBSimpleQueryIT {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
       } catch (Exception e) {
         Assert.assertEquals(
-            "303: encoding TEXT does not support TS_2DIFF",
+            "303: encoding TS_2DIFF does not support TEXT",
             e.getMessage());
       }
 

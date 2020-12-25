@@ -371,7 +371,7 @@ public class TTLTest {
   @Test
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
-      StorageEngineException, MetadataException {
+      StorageEngineException, MetadataException, InterruptedException {
     IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());
