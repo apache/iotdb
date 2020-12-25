@@ -861,9 +861,11 @@ public abstract class RaftMember {
         // wait for next heartbeat to catch up
         // the local node will not perform a commit here according to the leaderCommitId because
         // the node may have some inconsistent logs with the leader
-        waitedTime = System.currentTimeMillis() - startTime;
-        synchronized (syncLock) {
-          syncLock.wait(RaftServer.getHeartBeatIntervalMs());
+        if (logManager.getCommitLogIndex() < leaderCommitId) {
+          waitedTime = System.currentTimeMillis() - startTime;
+          synchronized (syncLock) {
+            syncLock.wait(RaftServer.getHeartBeatIntervalMs());
+          }
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
