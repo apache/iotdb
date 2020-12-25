@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-public class PartitionViolationException extends LoadFileException{
+public class PartitionViolationException extends LoadFileException {
 
   public PartitionViolationException(String file) {
     super(String.format("The data of file %s cross partitions", file));

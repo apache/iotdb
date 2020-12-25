@@ -27,7 +27,6 @@ import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class RemoteTsFileResource extends TsFileResource {

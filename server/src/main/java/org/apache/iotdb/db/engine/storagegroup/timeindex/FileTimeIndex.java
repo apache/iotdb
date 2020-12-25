@@ -25,15 +25,20 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class FileTimeIndex implements ITimeIndex {
+
+  public static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+      .getCachedPool();
 
   /**
    * start time
@@ -88,9 +93,8 @@ public class FileTimeIndex implements ITimeIndex {
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       deviceSet.add(cachedPath);
     }
-    long startTime = ReadWriteIOUtils.readLong(inputStream);
-    long endTime = ReadWriteIOUtils.readLong(inputStream);
-    return new FileTimeIndex(deviceSet, startTime, endTime);
+    return new FileTimeIndex(deviceSet, ReadWriteIOUtils.readLong(inputStream),
+        ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
@@ -105,9 +109,7 @@ public class FileTimeIndex implements ITimeIndex {
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       deviceSet.add(cachedPath);
     }
-    long startTime = buffer.getLong();
-    long endTime = buffer.getLong();
-    return new FileTimeIndex(deviceSet, startTime, endTime);
+    return new FileTimeIndex(deviceSet, buffer.getLong(), buffer.getLong());
   }
 
   @Override
@@ -169,18 +171,18 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public void updateStartTime(String deviceId, long startTime) {
+  public void updateStartTime(String deviceId, long time) {
     devices.add(deviceId);
-    if (this.startTime > startTime) {
-      this.startTime = startTime;
+    if (this.startTime > time) {
+      this.startTime = time;
     }
   }
 
   @Override
-  public void updateEndTime(String deviceId, long endTime) {
+  public void updateEndTime(String deviceId, long time) {
     devices.add(deviceId);
-    if (this.endTime < endTime) {
-      this.endTime = endTime;
+    if (this.endTime < time) {
+      this.endTime = time;
     }
   }
 

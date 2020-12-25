@@ -426,9 +426,9 @@ public class TsFileResource {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    File modFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
-    if (modFile.exists()) {
-      fsFactory.moveFile(modFile, fsFactory.getFile(targetDir,
+    File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+    if (originModFile.exists()) {
+      fsFactory.moveFile(originModFile, fsFactory.getFile(targetDir,
           file.getName() + ModificationFile.FILE_SUFFIX));
     }
   }

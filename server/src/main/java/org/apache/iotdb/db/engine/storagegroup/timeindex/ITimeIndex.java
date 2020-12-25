@@ -23,45 +23,121 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 public interface ITimeIndex {
 
-  Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
-      .getCachedPool();
-
+  /**
+   * init startTimes with Long.MAX_VALUE, endTimes with Long.MIN_VALUE
+   */
   void init();
 
+  /**
+   * serialize to outputStream
+   *
+   * @param outputStream outputStream
+   */
   void serialize(OutputStream outputStream) throws IOException;
 
+  /**
+   * deserialize from inputStream
+   *
+   * @param inputStream inputStream
+   * @return TimeIndex
+   */
   ITimeIndex deserialize(InputStream inputStream) throws IOException;
 
+  /**
+   * deserialize from byte buffer
+   *
+   * @param buffer byte buffer
+   * @return TimeIndex
+   */
   ITimeIndex deserialize(ByteBuffer buffer);
 
+  /**
+   * called by TsFileResource.close()
+   */
   void close();
 
+  /**
+   * get devices in TimeIndex
+   *
+   * @return device names
+   */
   Set<String> getDevices();
 
+  /**
+   * @return whether end time is empty (Long.MIN_VALUE)
+   */
   boolean endTimeEmpty();
 
+  /**
+   * @param timeLowerBound time lower bound
+   * @return whether any of the device lives over the given time bound
+   */
   boolean stillLives(long timeLowerBound);
 
+  /**
+   * @return initial resource map size
+   */
   long calculateRamSize();
 
+  /**
+   * Calculate the resource ram increment when insert data in TsFileProcessor
+   *
+   * @param deviceToBeChecked device to be checked
+   * @return ramIncrement
+   */
   long estimateRamIncrement(String deviceToBeChecked);
 
+  /**
+   * get time partition
+   *
+   * @param file file path
+   * @return partition
+   */
   long getTimePartition(String file);
 
+  /**
+   * get time partition with check. If data of file cross partitions, an exception will be thrown
+   *
+   * @param file file absolute path
+   * @return partition
+   * @throws PartitionViolationException data of file cross partitions
+   */
   long getTimePartitionWithCheck(String file) throws PartitionViolationException;
 
-  void updateStartTime(String deviceId, long startTime);
+  /**
+   * update start time
+   *
+   * @param deviceId device name
+   * @param time     start time
+   */
+  void updateStartTime(String deviceId, long time);
 
-  void updateEndTime(String deviceId, long endTime);
+  /**
+   * update end time
+   *
+   * @param deviceId device name
+   * @param time     end time
+   */
+  void updateEndTime(String deviceId, long time);
 
+  /**
+   * get start time of device
+   *
+   * @param deviceId device name
+   * @return start time
+   */
   long getStartTime(String deviceId);
 
+  /**
+   * get end time of device
+   *
+   * @param deviceId device name
+   * @return end time
+   */
   long getEndTime(String deviceId);
 }

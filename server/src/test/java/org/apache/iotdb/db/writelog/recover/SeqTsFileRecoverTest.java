@@ -225,9 +225,11 @@ public class SeqTsFileRecoverTest {
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());
 
+    assertEquals(2, resource.getStartTime("root.sg.device99"));
     assertEquals(100, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
       assertEquals(0, resource.getStartTime("root.sg.device" + i));
+      assertEquals(19, resource.getEndTime("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));

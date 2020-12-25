@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
@@ -39,6 +40,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public class DeviceTimeIndex implements ITimeIndex {
 
   protected static final int INIT_ARRAY_SIZE = 64;
+
+  public static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+      .getCachedPool();
 
   /**
    * start times array.
