@@ -168,7 +168,7 @@ public class StorageGroupProcessor {
   /**
    * compactionMergeWorking is used to wait for last compaction to be done.
    */
-  private volatile boolean compactionMergeWorking = false;
+  private volatile Boolean compactionMergeWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -1686,24 +1686,25 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
-    if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
-        .isTerminated()) {
-      compactionMergeWorking = true;
-      logger.info("{} submit a compaction merge task", storageGroupName);
-      try {
-        // fork and filter current tsfile, then commit then to compaction merge
-        tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
-        CompactionMergeTaskPoolManager.getInstance()
-            .submitTask(
-                tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
-                    tsFileProcessor.getTimeRangeId()));
-      } catch (IOException | RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
-        logger.error("{} compaction submit task failed", storageGroupName);
+    synchronized (compactionMergeWorking) {
+      if (!compactionMergeWorking) {
+        compactionMergeWorking = true;
+        logger.info("{} submit a compaction merge task", storageGroupName);
+        try {
+          // fork and filter current tsfile, then commit then to compaction merge
+          tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
+          CompactionMergeTaskPoolManager.getInstance()
+              .submitTask(
+                  tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
+                      tsFileProcessor.getTimeRangeId()));
+        } catch (IOException | RejectedExecutionException e) {
+          this.closeCompactionMergeCallBack();
+          logger.error("{} compaction submit task failed", storageGroupName);
+        }
+      } else {
+        logger.info("{} last compaction merge task is working, skip current merge",
+            storageGroupName);
       }
-    } else {
-      logger.info("{} last compaction merge task is working, skip current merge",
-          storageGroupName);
     }
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();

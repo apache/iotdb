@@ -32,8 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction
- * tasks.
+ * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks.
  */
 public class CompactionMergeTaskPoolManager implements IService {
 
@@ -114,12 +113,14 @@ public class CompactionMergeTaskPoolManager implements IService {
 
   public void submitTask(CompactionMergeTask compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
+    if (!isTerminated()) {
       pool.submit(compactionMergeTask);
+    } else {
+      throw new RejectedExecutionException();
     }
   }
 
-  public boolean isTerminated() {
+  private boolean isTerminated() {
     return pool == null || pool.isTerminated();
   }
 
