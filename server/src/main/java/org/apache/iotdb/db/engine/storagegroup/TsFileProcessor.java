@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -56,6 +55,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -173,11 +173,11 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
       }
       else {
-        workMemTable = getAvailableMemTable();
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
       }
-      SystemInfo.getInstance().addMemtableNumber();
     }
 
     if (enableMemControl) {
@@ -224,9 +224,9 @@ public class TsFileProcessor {
         workMemTable = new PrimitiveMemTable(enableMemControl);
       }
       else {
-        workMemTable = getAvailableMemTable();
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
       }
-      SystemInfo.getInstance().addMemtableNumber();
+      MemTableManager.getInstance().addMemtableNumber();
     }
 
     try {
@@ -684,7 +684,7 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
-      SystemInfo.getInstance().resetMemtableNumber();
+      MemTableManager.getInstance().resetMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
@@ -1022,29 +1022,5 @@ public class TsFileProcessor {
 
   public void addCloseFileListeners(Collection<CloseFileListener> listeners) {
     closeFileListeners.addAll(listeners);
-  }
-
-  /**
-   * Called when memory control is disabled
-   */
-  private IMemTable getAvailableMemTable() {
-    if (!SystemInfo.getInstance().reachMaxMemtableNumber()) {
-      return new PrimitiveMemTable(enableMemControl);
-    } else {
-      // wait until the size of flushingMemTables is less than 2
-      int waitCount = 1;
-      while (true) {
-        if (!SystemInfo.getInstance().reachMaxMemtableNumber()) {
-          return new PrimitiveMemTable(enableMemControl);
-        }
-        try {
-          TimeUnit.MILLISECONDS.sleep(100);
-        } catch (InterruptedException e) {
-          logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
-          Thread.currentThread().interrupt();
-        }
-        logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 100);
-      }
-    }
   }
 }

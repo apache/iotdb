@@ -80,6 +80,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
@@ -576,7 +577,7 @@ public class MManager {
     try {
       mtree.setStorageGroup(storageGroup);
       if (!config.isEnableMemControl()) {
-        SystemInfo.getInstance().addOrDeleteStorageGroup(1);
+        MemTableManager.getInstance().addOrDeleteStorageGroup(1);
       }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
@@ -612,7 +613,7 @@ public class MManager {
         }
 
         if (!config.isEnableMemControl()) {
-          SystemInfo.getInstance().addOrDeleteStorageGroup(-1);
+          MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
         }
 
         // if success
