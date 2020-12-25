@@ -195,14 +195,14 @@ public class SystemInfo {
     currentMemtableNumber--;
   }
 
-  public int getCurrentMemtableNumber() {
+  public synchronized int getCurrentMemtableNumber() {
     return currentMemtableNumber;
   }
 
   /**
    * Called when memory control is disabled
    */
-  public boolean reachMaxMemtableNumber() {
+  public synchronized boolean reachMaxMemtableNumber() {
     return currentMemtableNumber >= config.getMaxMemtableNumber();
   }
 
@@ -211,7 +211,8 @@ public class SystemInfo {
    */
   public synchronized void addOrDeleteStorageGroup(int diff) {
     int maxMemTableNum = config.getMaxMemtableNumber();
-    maxMemTableNum += MEMTABLE_NUM_FOR_EACH_PARTITION * config.getConcurrentWritingTimePartition() * diff;
+    maxMemTableNum += MEMTABLE_NUM_FOR_EACH_PARTITION 
+        * config.getConcurrentWritingTimePartition() * diff;
     config.setMaxMemtableNumber(maxMemTableNum);
   }
 
