@@ -78,6 +78,7 @@ public class MemberTest {
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
+  protected Coordinator coordinator;
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
@@ -113,6 +114,9 @@ public class MemberTest {
     metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
 
+    coordinator = new Coordinator(testMetaMember);
+    testMetaMember.setCoordinator(coordinator);
+
     for (Node node : allNodes) {
       // pre-create data members
       getDataGroupMember(node);
@@ -120,6 +124,7 @@ public class MemberTest {
 
     IoTDB.setMetaManager(CMManager.getInstance());
     CMManager.getInstance().setMetaGroupMember(testMetaMember);
+    CMManager.getInstance().setCoordinator(coordinator);
 
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -142,7 +147,6 @@ public class MemberTest {
     }
     planExecutor = new PlanExecutor();
 
-    testMetaMember.setCoordinator(new Coordinator());
     testMetaMember.setPartitionTable(partitionTable);
     MetaPuller.getInstance().init(testMetaMember);
   }
@@ -263,6 +267,7 @@ public class MemberTest {
       }
     };
     ret.setThisNode(node);
+    ret.setCoordinator(new Coordinator());
     ret.setPartitionTable(partitionTable);
     ret.setAllNodes(allNodes);
     ret.setLogManager(metaLogManager);

@@ -93,6 +93,10 @@ public class ClientServer extends TSServiceImpl {
 
   private Coordinator coordinator;
 
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
+  }
+
   /**
    * The single thread pool that runs poolServer to unblock the main thread.
    */
@@ -115,12 +119,11 @@ public class ClientServer extends TSServiceImpl {
    */
   private Map<Long, RemoteQueryContext> queryContextMap = new ConcurrentHashMap<>();
 
-  public ClientServer(MetaGroupMember metaGroupMember, Coordinator coordinator) throws QueryProcessException {
+  public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
     this.metaGroupMember = metaGroupMember;
     this.processor = new ClusterPlanner();
     this.executor = new ClusterPlanExecutor(metaGroupMember);
-    this.coordinator = coordinator;
   }
 
   /**

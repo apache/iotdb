@@ -307,7 +307,7 @@ public class MetaGroupMember extends RaftMember {
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
     dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
-    clientServer = new ClientServer(this, this.coordinator);
+    clientServer = new ClientServer(this);
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
@@ -408,6 +408,7 @@ public class MetaGroupMember extends RaftMember {
   protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
+    clientServer.setCoordinator(this.coordinator);
     clientServer.start();
   }
 

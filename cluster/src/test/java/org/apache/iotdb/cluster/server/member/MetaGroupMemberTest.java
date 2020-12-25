@@ -143,8 +143,6 @@ public class MetaGroupMemberTest extends MemberTest {
   private int prevReplicaNum;
   private List<String> prevSeedNodes;
 
-  protected Coordinator coordinator;
-
   @Override
   @After
   public void tearDown() throws Exception {
@@ -167,9 +165,6 @@ public class MetaGroupMemberTest extends MemberTest {
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
     testMetaMember.setAllNodes(allNodes);
-    coordinator = new Coordinator(testMetaMember);
-    testMetaMember.setCoordinator(coordinator);
-    coordinator.setRouter(testMetaMember.getRouter());
 
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
         new DataGroupMember.Factory(null, testMetaMember) {
@@ -472,6 +467,7 @@ public class MetaGroupMemberTest extends MemberTest {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     });
+    metaGroupMember.setCoordinator(new Coordinator());
     return metaGroupMember;
   }
 
@@ -590,6 +586,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testJoinCluster() throws QueryProcessException {
     System.out.println("Start testJoinCluster()");
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
+    newMember.setCoordinator(new Coordinator());
     newMember.start();
     try {
       newMember.joinCluster();
@@ -598,7 +595,7 @@ public class MetaGroupMemberTest extends MemberTest {
         // wait until character changes
       }
     } catch (Exception e) {
-      fail("The expected exception is not thrown");
+      fail("The expected exception is not thrown" + e);
     } finally {
       newMember.stop();
     }
@@ -739,7 +736,7 @@ public class MetaGroupMemberTest extends MemberTest {
         new PartialPath(schema.getFullPath()), schema.getType(),
         schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
         Collections.emptyMap(), Collections.emptyMap(), null);
-      status = testMetaMember.executeNonQueryPlan(createTimeSeriesPlan);
+      status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
       if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
@@ -871,6 +868,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatReq()");
     MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
+    testMetaMember.setCoordinator(new Coordinator());
     try {
       HeartBeatRequest request = new HeartBeatRequest();
       request.setRequireIdentifier(true);
