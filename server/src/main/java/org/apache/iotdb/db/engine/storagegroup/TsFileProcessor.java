@@ -130,6 +130,7 @@ public class TsFileProcessor {
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
+    System.out.println("create Tsfile " + tsfile.getPath());
     this.tsFileResource = new TsFileResource(tsfile, this);
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
