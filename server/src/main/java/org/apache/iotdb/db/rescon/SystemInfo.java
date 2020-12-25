@@ -48,8 +48,6 @@ public class SystemInfo {
   private static final double REJECT_THERSHOLD = 
       config.getAllocateMemoryForWrite() * config.getRejectProportion();
 
-  private int currentMemtableNumber = 0;
-  public static final int MEMTABLE_NUM_FOR_EACH_PARTITION = 4;
 
   /**
    * Report current mem cost of storage group to system. Called when the memory of
@@ -187,39 +185,9 @@ public class SystemInfo {
     return rejected;
   }
 
-  public synchronized void addMemtableNumber() {
-    currentMemtableNumber++;
-  }
-
-  public synchronized void resetMemtableNumber() {
-    currentMemtableNumber--;
-  }
-
-  public synchronized int getCurrentMemtableNumber() {
-    return currentMemtableNumber;
-  }
-
-  /**
-   * Called when memory control is disabled
-   */
-  public synchronized boolean reachMaxMemtableNumber() {
-    return currentMemtableNumber >= config.getMaxMemtableNumber();
-  }
-
-  /**
-   * Called when memory control is disabled
-   */
-  public synchronized void addOrDeleteStorageGroup(int diff) {
-    int maxMemTableNum = config.getMaxMemtableNumber();
-    maxMemTableNum += MEMTABLE_NUM_FOR_EACH_PARTITION 
-        * config.getConcurrentWritingTimePartition() * diff;
-    config.setMaxMemtableNumber(maxMemTableNum);
-  }
-
   public void close() {
     reportedSgMemCostMap.clear();
     totalSgMemCost = 0;
-    currentMemtableNumber = 0;
     rejected = false;
   }
 
