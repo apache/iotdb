@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class FileTimeIndex implements ITimeIndex {
 
-  public static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+  protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
       .getCachedPool();
 
   /**

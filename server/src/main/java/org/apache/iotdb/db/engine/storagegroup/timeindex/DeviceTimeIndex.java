@@ -41,7 +41,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   protected static final int INIT_ARRAY_SIZE = 64;
 
-  public static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
+  protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
       .getCachedPool();
 
   /**
