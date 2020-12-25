@@ -174,7 +174,13 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = getAvailableMemTable();
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+      }
+      else {
+        workMemTable = getAvailableMemTable();
+      }
+      SystemInfo.getInstance().addMemtableNumber();
     }
 
     if (enableMemControl) {
@@ -216,7 +222,13 @@ public class TsFileProcessor {
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = getAvailableMemTable();
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+      }
+      else {
+        workMemTable = getAvailableMemTable();
+      }
+      SystemInfo.getInstance().addMemtableNumber();
     }
 
     try {
@@ -661,6 +673,7 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
+      SystemInfo.getInstance().resetMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
@@ -989,14 +1002,17 @@ public class TsFileProcessor {
     closeFileListeners.addAll(listeners);
   }
 
+  /**
+   * Called when memory control is disabled
+   */
   private IMemTable getAvailableMemTable() {
-    if (flushingMemTables.size() < 2) {
+    if (!SystemInfo.getInstance().reachMaxMemtableNumber()) {
       return new PrimitiveMemTable(enableMemControl);
     } else {
       // wait until the size of flushingMemTables is less than 2
       int waitCount = 1;
       while (true) {
-        if (flushingMemTables.size() < 2) {
+        if (!SystemInfo.getInstance().reachMaxMemtableNumber()) {
           return new PrimitiveMemTable(enableMemControl);
         }
         try {

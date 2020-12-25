@@ -252,6 +252,11 @@ public class IoTDBConfig {
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
 
   /**
+   * Maximum MemTable number. Invalid when enableMemControl is true.
+   */
+  private int maxMemtableNumber = 20;
+
+  /**
    * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
@@ -1051,6 +1056,14 @@ public class IoTDBConfig {
 
   void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public int getMaxMemtableNumber() {
+    return maxMemtableNumber;
+  }
+
+  public void setMaxMemtableNumber(int maxMemtableNumber) {
+    this.maxMemtableNumber = maxMemtableNumber;
   }
 
   public int getConcurrentFlushThread() {
