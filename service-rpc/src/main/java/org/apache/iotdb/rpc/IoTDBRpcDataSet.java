@@ -475,5 +475,6 @@ public class IoTDBRpcDataSet {
 
   public void setTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
     this.tsQueryDataSet = tsQueryDataSet;
+    this.emptyResultSet = (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining());
   }
 }
