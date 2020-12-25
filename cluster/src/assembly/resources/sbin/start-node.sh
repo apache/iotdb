@@ -18,15 +18,6 @@
 # under the License.
 #
 
-# Set max number of open files
-Max_Num=$(ulimit -n)
-if [ $Max_Num -ne 65535 ]; then
-    ulimit -n 65535
-    if [ $? -ne 0 ]; then
-        echo "Warning: Failed to set max number of files to be 65535, please use 'ulimit -n 65535' to set it when you use iotdb in production environments."
-    fi
-fi
-
 echo ---------------------
 echo "Starting IoTDB (Cluster Mode)"
 echo ---------------------
