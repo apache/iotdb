@@ -66,6 +66,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Coordinator of client non-query request
+ */
 public class Coordinator {
 
   private static final Logger logger = LoggerFactory.getLogger(Coordinator.class);

@@ -171,8 +171,6 @@ public class MetaGroupMember extends RaftMember {
    * in case of data loss, some file changes would be made to a temporary file first
    */
   private static final String TEMP_SUFFIX = ".tmp";
-  private static final String MSG_MULTIPLE_ERROR = "The following errors occurred when executing "
-      + "the query, please retry or contact the DBA: ";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   /**
