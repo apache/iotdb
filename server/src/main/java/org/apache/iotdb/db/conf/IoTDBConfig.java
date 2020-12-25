@@ -254,7 +254,7 @@ public class IoTDBConfig {
   /**
    * Maximum MemTable number. Invalid when enableMemControl is true.
    */
-  private int maxMemtableNumber = 20;
+  private int maxMemtableNumber = 0;
 
   /**
    * The amount of data iterate each time in server
