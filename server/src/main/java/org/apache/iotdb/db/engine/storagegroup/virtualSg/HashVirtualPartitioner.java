@@ -25,7 +25,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 public class HashVirtualPartitioner implements VirtualPartitioner {
 
   public static int STORAGE_GROUP_NUM = IoTDBDescriptor.getInstance().getConfig()
-      .getVirtualPartitionNum();
+      .getVirtualStorageGroupNum();
 
 
   private HashVirtualPartitioner() {

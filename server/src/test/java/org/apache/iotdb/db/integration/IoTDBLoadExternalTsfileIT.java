@@ -129,11 +129,11 @@ public class IoTDBLoadExternalTsfileIT {
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualPartitionNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualPartitionNum();
+    virtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
   }
@@ -143,7 +143,7 @@ public class IoTDBLoadExternalTsfileIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setVirtualPartitionNum(virtualPartitionNum);
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(virtualPartitionNum);
     HashVirtualPartitioner.getInstance().setStorageGroupNum(virtualPartitionNum);
   }
 

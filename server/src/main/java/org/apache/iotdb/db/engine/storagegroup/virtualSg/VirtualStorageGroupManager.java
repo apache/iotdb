@@ -93,6 +93,8 @@ public class VirtualStorageGroupManager {
    * @param partialPath device path
    * @return virtual storage group processor
    */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public StorageGroupProcessor getProcessor(PartialPath partialPath, StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToStorageGroup(partialPath);

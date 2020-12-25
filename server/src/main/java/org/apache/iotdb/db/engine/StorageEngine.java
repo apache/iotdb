@@ -394,7 +394,14 @@ public class StorageEngine implements IService {
     }
   }
 
-  // get storage group processor by partial path
+  /**
+   * get storage group processor by path
+   * @param storageGroupPath path of the storage group
+   * @param storageGroupMNode mnode of the storage group
+   * @return found or new storage group processor
+   */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private StorageGroupProcessor getStorageGroupProcessorByPath(PartialPath storageGroupPath,
       StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {

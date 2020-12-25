@@ -47,7 +47,7 @@ public class IoTDBCompleteIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualPartitionNum());
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
   }
 
   @Test

@@ -45,8 +45,8 @@ import org.slf4j.LoggerFactory;
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
+  private IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -240,7 +240,7 @@ public class IoTDBDescriptor {
       }
 
       int mlogBufferSize = Integer.parseInt(properties.getProperty("mlog_buffer_size",
-        Integer.toString(conf.getMlogBufferSize())));
+          Integer.toString(conf.getMlogBufferSize())));
       if (mlogBufferSize > 0) {
         conf.setMlogBufferSize(mlogBufferSize);
       }
@@ -438,6 +438,7 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
 
+
       int maxConcurrentClientNum = Integer.parseInt(properties.
           getProperty("rpc_max_concurrent_client_num",
               Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
@@ -530,6 +531,9 @@ public class IoTDBDescriptor {
 
       conf.setDebugState(Boolean.parseBoolean(properties
           .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
+      conf.setVirtualStorageGroupNum(Integer.parseInt(properties
+          .getProperty("virtual_storage_group_num",
+              String.valueOf(conf.getVirtualStorageGroupNum()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

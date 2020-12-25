@@ -25,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -88,7 +87,7 @@ public class FileLoaderTest {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     HashVirtualPartitioner.getInstance()
-        .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualPartitionNum());
+        .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
   }
 
   @Test

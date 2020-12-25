@@ -817,9 +817,9 @@ public class IoTDBConfig {
   private boolean debugState = false;
 
   /**
-   * the number of virtual partition
+   * the number of virtual storage group
    */
-  private int virtualPartitionNum = 8;
+  private int virtualStorageGroupNum = 8;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2174,12 +2174,12 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
-  public int getVirtualPartitionNum() {
-    return virtualPartitionNum;
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
   }
 
-  public void setVirtualPartitionNum(int virtualPartitionNum) {
-    this.virtualPartitionNum = virtualPartitionNum;
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {
