@@ -43,7 +43,7 @@ public class IoTDBLevelCompactionIT {
     prevCompactionStrategy = IoTDBDescriptor.getInstance().getConfig()
         .getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }

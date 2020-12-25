@@ -1691,6 +1691,7 @@ public class StorageGroupProcessor {
         compactionMergeWorking = true;
         logger.info("{} submit a compaction merge task", storageGroupName);
         try {
+          writeLock();
           // fork and filter current tsfile, then commit then to compaction merge
           tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
           CompactionMergeTaskPoolManager.getInstance()
@@ -1700,6 +1701,8 @@ public class StorageGroupProcessor {
         } catch (IOException | RejectedExecutionException e) {
           this.closeCompactionMergeCallBack();
           logger.error("{} compaction submit task failed", storageGroupName);
+        } finally {
+          writeUnlock();
         }
       } else {
         logger.info("{} last compaction merge task is working, skip current merge",
