@@ -1219,7 +1219,7 @@ public abstract class RaftMember {
     return forwardPlanSync(plan, receiver, header, client);
   }
 
-  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
+  public TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));

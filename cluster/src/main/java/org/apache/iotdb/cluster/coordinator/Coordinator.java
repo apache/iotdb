@@ -568,7 +568,7 @@ public class Coordinator {
     } catch (TException e) {
       throw new IOException(e);
     }
-    return forwardPlanSync(plan, receiver, header, client);
+    return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
   }
 
   TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, RaftService.AsyncClient client) {
@@ -587,42 +587,6 @@ public class Coordinator {
       Thread.currentThread().interrupt();
       logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
       return StatusUtils.TIME_OUT;
-    }
-  }
-
-  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, RaftService.Client client) {
-    try {
-      ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
-      if (header != null) {
-        req.setHeader(header);
-      }
-
-      TSStatus tsStatus = client.executeNonQueryPlan(req);
-      if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      }
-      return tsStatus;
-    } catch (IOException e) {
-      logger
-        .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-      return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-    } catch (TException e) {
-      TSStatus status;
-      if (e.getCause() instanceof SocketTimeoutException) {
-        status = StatusUtils.TIME_OUT;
-        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      } else {
-        logger
-          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
-        status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-      }
-      // the connection may be broken, close it to avoid it being reused
-      client.getInputProtocol().getTransport().close();
-      return status;
-    } finally {
-      ClientUtils.putBackSyncClient(client);
     }
   }
 }
