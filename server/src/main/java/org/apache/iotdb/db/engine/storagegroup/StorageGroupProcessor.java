@@ -1685,6 +1685,10 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
+    synchronized (closeStorageGroupCondition) {
+      closeStorageGroupCondition.notifyAll();
+    }
+    logger.info("signal closing storage group condition in {}", storageGroupName);
 
     try {
       tsFileManagement.writeSelectorLock();
@@ -1714,11 +1718,6 @@ public class StorageGroupProcessor {
       tsFileManagement.writeSelectorUnlock();
       tsFileManagement.writeUnlock();
     }
-
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
-    }
-    logger.info("signal closing storage group condition in {}", storageGroupName);
   }
 
   /**
