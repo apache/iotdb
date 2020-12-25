@@ -209,6 +209,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   public void add(TsFileResource tsFileResource, boolean sequence) {
     long timePartitionId = tsFileResource.getTimePartition();
     int level = getMergeLevel(tsFileResource.getTsFile());
+    System.out.println("add " + tsFileResource.getTsFile().getPath() + " to tsFileManagement");
     if (sequence) {
       if (level <= seqLevelNum - 1) {
         // current file has too high level
