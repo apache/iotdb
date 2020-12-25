@@ -31,9 +31,9 @@ public class TElasticFramedTransport extends TTransport {
   /**
    * It is used to prevent the size of the parsing package from being too large and allocating the
    * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
-   * reading. The default value is 512MB
+   * reading. The default value is 256MB
    */
-  private static final int PROTECT_MAX_LENGTH = 536870912;
+  private static final int PROTECT_MAX_LENGTH = 268435456;
 
   public static class Factory extends TTransportFactory {
 
@@ -119,9 +119,6 @@ public class TElasticFramedTransport extends TTransport {
           "Frame size (" + size + ") larger than protect max length (" + PROTECT_MAX_LENGTH + ")!");
     }
 
-    if (size < maxLength) {
-      readBuffer.resizeIfNecessary(maxLength);
-    }
     readBuffer.fill(underlying, size);
   }
 
@@ -132,9 +129,7 @@ public class TElasticFramedTransport extends TTransport {
     underlying.write(i32buf, 0, 4);
     underlying.write(writeBuffer.getBuf().array(), 0, length);
     writeBuffer.reset();
-    if (length > maxLength) {
-      writeBuffer.resizeIfNecessary(maxLength);
-    }
+    writeBuffer.resizeIfNecessary(length);
     underlying.flush();
   }
 

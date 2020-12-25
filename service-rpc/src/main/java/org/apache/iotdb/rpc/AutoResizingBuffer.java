@@ -34,10 +34,12 @@ import org.slf4j.LoggerFactory;
  */
 class AutoResizingBuffer {
 
-  // if resizeIfNecessary is called continuously with a small size for more than
-  // MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space
+  /**
+   * if resizeIfNecessary is called continuously with a small size for more than
+   * MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space
+   */
   private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
-  private static final long MIN_SHRINK_INTERVAL = 60_000L;
+  private static final long MIN_SHRINK_INTERVAL_MS = 60_000L;
 
   private byte[] array;
   private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
@@ -54,7 +56,20 @@ class AutoResizingBuffer {
 
   public void resizeIfNecessary(int size) {
     final int currentCapacity = this.array.length;
-    final double loadFactor = 0.6;
+    if (currentCapacity < size) {
+      enlargeIfNecessary(size);
+    } else {
+      shrinkIfNecessary(size);
+    }
+  }
+
+  /**
+   * only called when the current capacity is smaller than the given size
+   *
+   * @param size the request size
+   */
+  private void enlargeIfNecessary(int size) {
+    final int currentCapacity = this.array.length;
     if (currentCapacity < size) {
       // Increase by a factor of 1.5x
       int growCapacity = currentCapacity + (currentCapacity >> 1);
@@ -63,14 +78,27 @@ class AutoResizingBuffer {
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
       logger
           .debug("{} expand from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
-    } else if (size > initialCapacity && currentCapacity * loadFactor > size
+    }
+  }
+
+  /**
+   * only called when the current capacity is larger than the given size
+   *
+   * @param size the request size
+   */
+  private void shrinkIfNecessary(int size) {
+    final int currentCapacity = this.array.length;
+    final double loadFactor = 0.6;
+    if (size > initialCapacity && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
-        && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
+        && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL_MS) {
       // do not resize if it is reading the request size and do not shrink too often
-      array = Arrays.copyOf(array, size + (currentCapacity - size) / 2);
+      int newCapacity = size + (currentCapacity - size) / 2;
+      this.array = Arrays.copyOf(array, newCapacity);
       bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
       lastShrinkTime = System.currentTimeMillis();
-      logger.debug("{} shrink from {} to {}", this, currentCapacity, size);
+      logger
+          .debug("{} shrink from {} to {}, request: {}", this, currentCapacity, newCapacity, size);
     }
   }
 

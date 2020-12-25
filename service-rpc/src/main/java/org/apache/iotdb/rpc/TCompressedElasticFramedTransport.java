@@ -95,9 +95,7 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (maxLength < length) {
-      writeBuffer.resizeIfNecessary(maxLength);
-    }
+    writeBuffer.resizeIfNecessary(length);
     underlying.flush();
   }
 
