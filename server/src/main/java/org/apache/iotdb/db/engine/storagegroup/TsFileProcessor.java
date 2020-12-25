@@ -1000,12 +1000,12 @@ public class TsFileProcessor {
           return new PrimitiveMemTable(enableMemControl);
         }
         try {
-          TimeUnit.MILLISECONDS.sleep(1000);
+          TimeUnit.MILLISECONDS.sleep(100);
         } catch (InterruptedException e) {
           logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
           Thread.currentThread().interrupt();
         }
-        logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 1000);
+        logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 100);
       }
     }
   }
