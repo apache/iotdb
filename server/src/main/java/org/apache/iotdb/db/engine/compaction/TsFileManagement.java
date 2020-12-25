@@ -60,6 +60,11 @@ public abstract class TsFileManagement {
    */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
+  /**
+   * Serialize compaction selectors
+   */
+  private final ReadWriteLock compactionSelectorLock = new ReentrantReadWriteLock();
+
   public volatile boolean isUnseqMerging = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
@@ -152,6 +157,14 @@ public abstract class TsFileManagement {
 
   public void writeUnlock() {
     compactionMergeLock.writeLock().unlock();
+  }
+
+  public void writeSelectorLock() {
+    compactionSelectorLock.writeLock().lock();
+  }
+
+  public void writeSelectorUnlock() {
+    compactionSelectorLock.writeLock().unlock();
   }
 
   public boolean tryWriteLock() {
