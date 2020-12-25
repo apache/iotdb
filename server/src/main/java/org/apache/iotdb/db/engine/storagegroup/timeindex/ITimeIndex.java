@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.exception.PartitionViolationException;
@@ -37,6 +38,8 @@ public interface ITimeIndex {
   void serialize(OutputStream outputStream) throws IOException;
 
   ITimeIndex deserialize(InputStream inputStream) throws IOException;
+
+  ITimeIndex deserialize(ByteBuffer buffer);
 
   void close();
 

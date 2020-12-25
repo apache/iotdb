@@ -23,11 +23,13 @@ import io.netty.util.internal.ConcurrentSet;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -88,6 +90,23 @@ public class FileTimeIndex implements ITimeIndex {
     }
     long startTime = ReadWriteIOUtils.readLong(inputStream);
     long endTime = ReadWriteIOUtils.readLong(inputStream);
+    return new FileTimeIndex(deviceSet, startTime, endTime);
+  }
+
+  @Override
+  public FileTimeIndex deserialize(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    Set<String> deviceSet = new HashSet<>(size);
+
+    for (int i = 0; i < size; i++) {
+      String path = SerializeUtils.deserializeString(buffer);
+      // To reduce the String number in memory,
+      // use the deviceId from memory instead of the deviceId read from disk
+      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
+      deviceSet.add(cachedPath);
+    }
+    long startTime = buffer.getLong();
+    long endTime = buffer.getLong();
     return new FileTimeIndex(deviceSet, startTime, endTime);
   }
 

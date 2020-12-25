@@ -76,7 +76,7 @@ public class TsFileResource {
 
   private TsFileProcessor processor;
 
-  private ITimeIndex fileIndex;
+  protected ITimeIndex timeIndex;
 
   private ModificationFile modFile;
 
@@ -146,7 +146,7 @@ public class TsFileResource {
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
     this.processor = other.processor;
-    this.fileIndex = other.fileIndex;
+    this.timeIndex = other.timeIndex;
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
@@ -165,7 +165,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file) {
     this.file = file;
-    this.fileIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
   }
 
   /**
@@ -173,7 +173,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.fileIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.processor = processor;
   }
 
@@ -184,7 +184,7 @@ public class TsFileResource {
       List<ChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
       throws IOException {
     this.file = originTsFileResource.file;
-    this.fileIndex = originTsFileResource.fileIndex;
+    this.timeIndex = originTsFileResource.timeIndex;
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
@@ -195,7 +195,7 @@ public class TsFileResource {
   public TsFileResource(File file, Map<String, Integer> deviceToIndex, long[] startTimes,
       long[] endTimes) {
     this.file = file;
-    this.fileIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
+    this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
@@ -234,7 +234,7 @@ public class TsFileResource {
   public synchronized void serialize() throws IOException {
     try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
-      fileIndex.serialize(outputStream);
+      timeIndex.serialize(outputStream);
 
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
       ReadWriteIOUtils.write(minPlanIndex, outputStream);
@@ -253,7 +253,7 @@ public class TsFileResource {
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
-      fileIndex = config.getTimeIndexLevel().getTimeIndex().deserialize(inputStream);
+      timeIndex = config.getTimeIndexLevel().getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -268,11 +268,11 @@ public class TsFileResource {
   }
 
   public void updateStartTime(String device, long time) {
-    fileIndex.updateStartTime(device, time);
+    timeIndex.updateStartTime(device, time);
   }
 
   public void updateEndTime(String device, long time) {
-    fileIndex.updateEndTime(device, time);
+    timeIndex.updateEndTime(device, time);
   }
 
   public boolean resourceFileExists() {
@@ -311,19 +311,19 @@ public class TsFileResource {
   }
 
   public long getStartTime(String deviceId) {
-    return fileIndex.getStartTime(deviceId);
+    return timeIndex.getStartTime(deviceId);
   }
 
   public long getEndTime(String deviceId) {
-    return fileIndex.getEndTime(deviceId);
+    return timeIndex.getEndTime(deviceId);
   }
 
   public Set<String> getDevices() {
-    return fileIndex.getDevices();
+    return timeIndex.getDevices();
   }
 
   public boolean endTimeEmpty() {
-    return fileIndex.endTimeEmpty();
+    return timeIndex.endTimeEmpty();
   }
 
   public boolean isClosed() {
@@ -338,7 +338,7 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
-    fileIndex.close();
+    timeIndex.close();
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -479,7 +479,7 @@ public class TsFileResource {
    * check if any of the device lives over the given time bound
    */
   public boolean stillLives(long timeLowerBound) {
-    return fileIndex.stillLives(timeLowerBound);
+    return timeIndex.stillLives(timeLowerBound);
   }
 
   /**
@@ -561,7 +561,7 @@ public class TsFileResource {
    * make sure Either the deviceToIndex is not empty Or the path contains a partition folder
    */
   public long getTimePartition() {
-    return fileIndex.getTimePartition(file.getAbsolutePath());
+    return timeIndex.getTimePartition(file.getAbsolutePath());
   }
 
   /**
@@ -571,7 +571,7 @@ public class TsFileResource {
    * @throws PartitionViolationException if the data of the file cross partitions or it is empty
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
-    return fileIndex.getTimePartitionWithCheck(file.toString());
+    return timeIndex.getTimePartitionWithCheck(file.toString());
   }
 
   /**
@@ -624,7 +624,7 @@ public class TsFileResource {
    * @return initial resource map size
    */
   public long calculateRamSize() {
-    return fileIndex.calculateRamSize();
+    return timeIndex.calculateRamSize();
   }
 
   /**
@@ -633,7 +633,7 @@ public class TsFileResource {
    * @return ramIncrement
    */
   public long estimateRamIncrement(String deviceToBeChecked) {
-    return fileIndex.estimateRamIncrement(deviceToBeChecked);
+    return timeIndex.estimateRamIncrement(deviceToBeChecked);
   }
 
   public void delete() throws IOException {

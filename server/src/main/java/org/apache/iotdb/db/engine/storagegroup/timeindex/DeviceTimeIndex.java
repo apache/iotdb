@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -99,6 +101,27 @@ public class DeviceTimeIndex implements ITimeIndex {
       startTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
       endTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
     }
+    return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+  }
+
+  @Override
+  public DeviceTimeIndex deserialize(ByteBuffer buffer) {
+    int size = buffer.getInt();
+    long[] startTimesArray = new long[size];
+    long[] endTimesArray = new long[size];
+    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(size);
+
+    for (int i = 0; i < size; i++) {
+      String path = SerializeUtils.deserializeString(buffer);
+      // To reduce the String number in memory,
+      // use the deviceId from memory instead of the deviceId read from disk
+      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
+      deviceMap.put(cachedPath, i);
+
+      startTimesArray[i] = buffer.getLong();
+      endTimesArray[i] = buffer.getLong();
+    }
+
     return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
   }
 
