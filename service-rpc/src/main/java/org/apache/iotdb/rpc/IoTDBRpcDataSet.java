@@ -159,6 +159,7 @@ public class IoTDBRpcDataSet {
       }
     }
     this.tsQueryDataSet = queryDataSet;
+    emptyResultSet = !queryDataSet.time.hasRemaining();
   }
 
   public void close() throws StatementExecutionException, TException {
