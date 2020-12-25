@@ -459,6 +459,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (forkedLevelTsFileResources.size() > currFileNumInEachLevel) {
             break;
           }
+        } else {
+          break;
         }
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
