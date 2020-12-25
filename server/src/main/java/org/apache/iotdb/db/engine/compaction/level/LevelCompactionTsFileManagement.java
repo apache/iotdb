@@ -536,11 +536,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               if (mergeResources.size() > i + 1) {
                 mergeResources.get(i + 1).add(newResource);
               }
+              deleteLevelFilesInDisk(toMergeTsFiles);
             } finally {
               writeUnlock();
               System.out.println("delete writeUnLock");
             }
-            deleteLevelFilesInDisk(toMergeTsFiles);
             compactionLogger.close();
             File logFile = FSFactoryProducer.getFSFactory()
                 .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
