@@ -1088,6 +1088,7 @@ public class StorageGroupProcessor {
             .error("syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
                 + "group {}", storageGroupName, e);
       }
+      System.out.println("end flush");
     }
   }
 
