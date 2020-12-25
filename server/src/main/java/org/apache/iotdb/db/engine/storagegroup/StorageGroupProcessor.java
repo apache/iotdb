@@ -1687,6 +1687,7 @@ public class StorageGroupProcessor {
 
     try {
       tsFileManagement.writeSelectorLock();
+      tsFileManagement.writeLock();
       if (!compactionMergeWorking) {
         compactionMergeWorking = true;
         logger.info("{} submit a compaction merge task", storageGroupName);
@@ -1710,6 +1711,7 @@ public class StorageGroupProcessor {
       }
     } finally {
       tsFileManagement.writeSelectorUnlock();
+      tsFileManagement.writeUnlock();
     }
 
     synchronized (closeStorageGroupCondition) {
