@@ -79,7 +79,7 @@ public class MemTableManager {
     currentMemtableNumber++;
   }
 
-  public synchronized void resetMemtableNumber() {
+  public synchronized void decreaseMemtableNumber() {
     currentMemtableNumber--;
   }
 
