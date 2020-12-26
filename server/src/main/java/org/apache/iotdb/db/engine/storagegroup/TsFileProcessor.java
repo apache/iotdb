@@ -222,11 +222,11 @@ public class TsFileProcessor {
     if (workMemTable == null) {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
       }
       else {
         workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
       }
-      MemTableManager.getInstance().addMemtableNumber();
     }
 
     try {
@@ -684,7 +684,7 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
-      MemTableManager.getInstance().resetMemtableNumber();
+      MemTableManager.getInstance().decreaseMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
