@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.coordinator;
 
-import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
@@ -80,9 +79,6 @@ public class Coordinator {
 
   private static final String MSG_MULTIPLE_ERROR = "The following errors occurred when executing "
     + "the query, please retry or contact the DBA: ";
-  private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
-  private static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
-    + " {}";
 
   public Coordinator(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
