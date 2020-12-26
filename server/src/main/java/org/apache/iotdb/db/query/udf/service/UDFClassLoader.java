@@ -25,6 +25,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
@@ -33,32 +34,51 @@ public class UDFClassLoader extends URLClassLoader {
   private final String libRoot;
 
   /**
-   * Please note that the file set only expands during its life cycle because currently we only
-   * maintain one udf class loader in our system. It's okay because the number of jar files in the
-   * lib root won't be huge.
+   * If activeQueryIdSet is empty, it means that there is no query using this classloader. This
+   * classloader can only be closed when activeQueryIdSet is empty.
    */
-  private final Set<File> fileSet;
+  private final Set<Integer> activeQueryIdSet;
+
+  /**
+   * If this classloader is marked as deprecated, then this classloader can be closed after all
+   * queries that use this classloader are completed.
+   */
+  private volatile boolean deprecated;
 
   public UDFClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
-    fileSet = new HashSet<>();
-    refresh();
+    activeQueryIdSet = new ConcurrentSkipListSet<>();
+    deprecated = false;
+    addURLs();
   }
 
-  public void refresh() throws IOException {
-    URL[] urls = collectNewURLsFromLibRoot();
+  private void addURLs() throws IOException {
+    HashSet<File> fileSet = new HashSet<>(
+        FileUtils.listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true));
+    URL[] urls = FileUtils.toURLs(fileSet.toArray(new File[0]));
     for (URL url : urls) {
       super.addURL(url);
     }
   }
 
-  private synchronized URL[] collectNewURLsFromLibRoot() throws IOException {
-    HashSet<File> newFileSet = new HashSet<>(
-        FileUtils.listFiles(SystemFileFactory.INSTANCE.getFile(libRoot), null, true));
-    newFileSet.removeAll(fileSet);
-    URL[] urls = FileUtils.toURLs(newFileSet.toArray(new File[0]));
-    fileSet.addAll(newFileSet);
-    return urls;
+  public void acquire(int queryId) {
+    activeQueryIdSet.add(queryId);
+  }
+
+  public void release(int queryId) throws IOException {
+    activeQueryIdSet.remove(queryId);
+    closeIfPossible();
+  }
+
+  public void markAsDeprecated() throws IOException {
+    deprecated = true;
+    closeIfPossible();
+  }
+
+  public void closeIfPossible() throws IOException {
+    if (activeQueryIdSet.isEmpty() && deprecated) {
+      close();
+    }
   }
 }
