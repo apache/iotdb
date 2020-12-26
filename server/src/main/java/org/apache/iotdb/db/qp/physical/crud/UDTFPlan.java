@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -49,7 +51,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void constructUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException {
+  public void constructUdfExecutors(List<UDFContext> udfContexts) {
     for (int i = 0; i < udfContexts.size(); ++i) {
       UDFContext context = udfContexts.get(i);
       if (context == null) {
@@ -68,18 +70,22 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   @Override
   public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
+    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
+
     Collection<UDTFExecutor> executors = columnName2Executor.values();
     collectorMemoryBudgetInMB /= executors.size();
     for (UDTFExecutor executor : executors) {
-      executor.initCollector(queryId, collectorMemoryBudgetInMB);
+      executor.beforeStart(queryId, collectorMemoryBudgetInMB);
     }
   }
 
   @Override
-  public void finalizeUDFExecutors() {
+  public void finalizeUDFExecutors(long queryId) throws IOException {
     for (UDTFExecutor executor : columnName2Executor.values()) {
       executor.beforeDestroy();
     }
+
+    UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
   }
 
   public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {

@@ -24,8 +24,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
@@ -34,10 +33,10 @@ public class UDFClassLoader extends URLClassLoader {
   private final String libRoot;
 
   /**
-   * If activeQueryIdSet is empty, it means that there is no query using this classloader. This
-   * classloader can only be closed when activeQueryIdSet is empty.
+   * If activeQueriesCount is equals to 0, it means that there is no query using this classloader.
+   * This classloader can only be closed when activeQueriesCount is equals to 0.
    */
-  private final Set<Integer> activeQueryIdSet;
+  private final AtomicLong activeQueriesCount;
 
   /**
    * If this classloader is marked as deprecated, then this classloader can be closed after all
@@ -45,10 +44,10 @@ public class UDFClassLoader extends URLClassLoader {
    */
   private volatile boolean deprecated;
 
-  public UDFClassLoader(String libRoot) throws IOException {
+  UDFClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
-    activeQueryIdSet = new ConcurrentSkipListSet<>();
+    activeQueriesCount = new AtomicLong(0);
     deprecated = false;
     addURLs();
   }
@@ -62,12 +61,12 @@ public class UDFClassLoader extends URLClassLoader {
     }
   }
 
-  public void acquire(int queryId) {
-    activeQueryIdSet.add(queryId);
+  public void acquire() {
+    activeQueriesCount.incrementAndGet();
   }
 
-  public void release(int queryId) throws IOException {
-    activeQueryIdSet.remove(queryId);
+  public void release() throws IOException {
+    activeQueriesCount.decrementAndGet();
     closeIfPossible();
   }
 
@@ -77,7 +76,7 @@ public class UDFClassLoader extends URLClassLoader {
   }
 
   public void closeIfPossible() throws IOException {
-    if (activeQueryIdSet.isEmpty() && deprecated) {
+    if (deprecated && activeQueriesCount.get() == 0) {
       close();
     }
   }

@@ -67,8 +67,6 @@ public class UDFRegistrationService implements IService {
   private final ReentrantReadWriteLock lock;
   private UDFLogWriter logWriter;
 
-  private UDFClassLoader udfClassLoader;
-
   private UDFRegistrationService() {
     registrationInformation = new ConcurrentHashMap<>();
     lock = new ReentrantReadWriteLock();
@@ -100,8 +98,9 @@ public class UDFRegistrationService implements IService {
 
     Class<?> functionClass;
     try {
-      udfClassLoader.refresh();
-      functionClass = Class.forName(className, true, udfClassLoader);
+      UDFClassLoaderManager.getInstance().updateActiveClassLoader();
+      functionClass = Class.forName(className, true,
+          UDFClassLoaderManager.getInstance().getActiveClassLoader());
       functionClass.getDeclaredConstructor().newInstance();
     } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
       String errorMessage = String.format(
@@ -189,7 +188,8 @@ public class UDFRegistrationService implements IService {
       throw new QueryProcessException(errorMessage);
     }
 
-    Thread.currentThread().setContextClassLoader(udfClassLoader);
+    Thread.currentThread()
+        .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
     try {
       return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
@@ -207,23 +207,12 @@ public class UDFRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      udfClassLoader = new UDFClassLoader(parseLibRoot());
       makeDirIfNecessary();
       doRecovery();
       logWriter = new UDFLogWriter(LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
     }
-  }
-
-  private String parseLibRoot() {
-    String jarPath = (new File(
-        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
-        .getAbsolutePath();
-    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
-    String libPath = jarPath.substring(0, lastIndex + 1);
-    logger.info("System lib root: {}", libPath);
-    return libPath;
   }
 
   private void makeDirIfNecessary() throws IOException {

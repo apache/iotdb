@@ -291,7 +291,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (long queryId : queryIds) {
         try {
           releaseQueryResource(queryId);
-        } catch (StorageEngineException e) {
+        } catch (StorageEngineException | IOException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
           exceptions.add(e);
@@ -355,11 +355,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
     // remove the corresponding Physical Plan
     QueryDataSet dataSet = queryId2DataSet.remove(queryId);
     if (dataSet instanceof UDTFDataSet) {
-      ((UDTFDataSet) dataSet).finalizeUDFs();
+      ((UDTFDataSet) dataSet).finalizeUDFs(queryId);
     }
     QueryResourceManager.getInstance().endQuery(queryId);
   }
@@ -1020,7 +1020,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       try {
         releaseQueryResource(req.queryId);
-      } catch (StorageEngineException ex) {
+      } catch (StorageEngineException | IOException ex) {
         logger.warn("Error happened while releasing query resource: ", ex);
       }
       return RpcUtils.getTSFetchResultsResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
