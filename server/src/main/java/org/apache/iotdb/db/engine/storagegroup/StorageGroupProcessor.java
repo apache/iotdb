@@ -384,7 +384,7 @@ public class StorageGroupProcessor {
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
-      logger.info("{} compaction pool not started ,recover failed",
+      logger.error("{} compaction pool not started ,recover failed",
           storageGroupName);
     }
   }
