@@ -61,12 +61,14 @@ public class MemTableManager {
           return new PrimitiveMemTable();
         }
         try {
-          TimeUnit.MILLISECONDS.sleep(WAIT_TIME);
+          wait(WAIT_TIME);
         } catch (InterruptedException e) {
           logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
           Thread.currentThread().interrupt();
         }
-        logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount++ * 100);
+        if (waitCount++ % 500 == 0) {
+          logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount * 500);
+        }
       }
     }
   }
