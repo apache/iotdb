@@ -53,7 +53,7 @@ public class MemTableManager {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
     } else {
-      // wait until the size of flushingMemTables is less than 2
+      // wait until the total memtable number is less than the capacity of the system
       int waitCount = 1;
       while (true) {
         if (!reachMaxMemtableNumber()) {
