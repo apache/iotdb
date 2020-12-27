@@ -595,7 +595,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void handleConfigInconsistency(AddNodeResponse resp) throws ConfigInconsistentException {
-    if (logger.isInfoEnabled()) {
+    if (logger.isErrorEnabled()) {
       CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
       String parameters =
           (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")

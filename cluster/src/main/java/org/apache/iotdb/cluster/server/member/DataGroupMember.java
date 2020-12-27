@@ -389,7 +389,7 @@ public class DataGroupMember extends RaftMember {
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
-      logger.info("{} received a snapshot {}", name, snapshot);
+      logger.debug("{} received a snapshot {}", name, snapshot);
     }
     snapshot.getDefaultInstaller(this).install(snapshot, -1);
   }
