@@ -836,7 +836,7 @@ public class StorageGroupProcessor {
     try {
       tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
     } catch (WriteProcessRejectException e) {
-      logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
+      logger.warn("insert to TsFileProcessor rejected ", e);
       return false;
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
