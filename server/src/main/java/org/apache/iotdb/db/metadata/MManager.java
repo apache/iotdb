@@ -72,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -587,6 +588,9 @@ public class MManager {
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.setStorageGroup(storageGroup);
+      if (!config.isEnableMemControl()) {
+        MemTableManager.getInstance().addOrDeleteStorageGroup(1);
+      }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup.getFullPath());
       }
@@ -618,6 +622,10 @@ public class MManager {
           removeFromTagInvertedIndex(leafMNode);
           // update statistics in schemaDataTypeNumMap
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
+        }
+
+        if (!config.isEnableMemControl()) {
+          MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
         }
 
         // if success

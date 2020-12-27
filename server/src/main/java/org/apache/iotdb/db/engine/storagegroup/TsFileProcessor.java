@@ -57,6 +57,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
@@ -173,8 +174,15 @@ public class TsFileProcessor {
   public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
+      }
+      else {
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
+      }
     }
+
     if (enableMemControl) {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
@@ -214,7 +222,13 @@ public class TsFileProcessor {
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
-      workMemTable = new PrimitiveMemTable(enableMemControl);
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
+      }
+      else {
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
+      }
     }
 
     try {
@@ -659,6 +673,7 @@ public class TsFileProcessor {
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
+      MemTableManager.getInstance().decreaseMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
