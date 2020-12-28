@@ -148,12 +148,12 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String file) {
+  public long getTimePartition(String tsfilePath) {
     try {
       if (devices != null && !devices.isEmpty()) {
         return StorageEngine.getTimePartition(startTime);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(file);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;
@@ -161,11 +161,11 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String file) throws PartitionViolationException {
+  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
     long startPartitionId = StorageEngine.getTimePartition(startTime);
     long endPartitionId = StorageEngine.getTimePartition(endTime);
     if (startPartitionId != endPartitionId) {
-      throw new PartitionViolationException(file);
+      throw new PartitionViolationException(tsfilePath);
     }
     return startPartitionId;
   }

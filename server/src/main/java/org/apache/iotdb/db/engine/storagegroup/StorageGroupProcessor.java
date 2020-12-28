@@ -1519,7 +1519,7 @@ public class StorageGroupProcessor {
       String deviceId = device.getFullPath();
       long endTime = tsFileResource.getEndTime(deviceId);
       if (endTime == Long.MIN_VALUE) {
-        endTime = Long.MAX_VALUE;
+        continue;
       }
 
       if (tsFileResource.getDevices().contains(deviceId) &&

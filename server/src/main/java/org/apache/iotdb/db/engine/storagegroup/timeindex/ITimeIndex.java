@@ -57,7 +57,7 @@ public interface ITimeIndex {
   ITimeIndex deserialize(ByteBuffer buffer);
 
   /**
-   * called by TsFileResource.close()
+   * do something when TsFileResource is closing (may be empty method)
    */
   void close();
 
@@ -80,12 +80,12 @@ public interface ITimeIndex {
   boolean stillLives(long timeLowerBound);
 
   /**
-   * @return initial resource map size
+   * @return Calculate file index ram size
    */
   long calculateRamSize();
 
   /**
-   * Calculate the resource ram increment when insert data in TsFileProcessor
+   * Calculate file index ram increment when insert data in TsFileProcessor
    *
    * @param deviceToBeChecked device to be checked
    * @return ramIncrement
@@ -95,19 +95,19 @@ public interface ITimeIndex {
   /**
    * get time partition
    *
-   * @param file file path
+   * @param tsfilePath tsfile absolute path
    * @return partition
    */
-  long getTimePartition(String file);
+  long getTimePartition(String tsfilePath);
 
   /**
-   * get time partition with check. If data of file cross partitions, an exception will be thrown
+   * get time partition with check. If data of tsfile cross partitions, an exception will be thrown
    *
-   * @param file file absolute path
+   * @param tsfilePath tsfile path
    * @return partition
-   * @throws PartitionViolationException data of file cross partitions
+   * @throws PartitionViolationException data of tsfile cross partitions
    */
-  long getTimePartitionWithCheck(String file) throws PartitionViolationException;
+  long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException;
 
   /**
    * update start time

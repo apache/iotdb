@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -81,57 +80,72 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(deviceToIndex.size(), outputStream);
-    for (Entry<String, Integer> entry : deviceToIndex.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(startTimes[entry.getValue()], outputStream);
-      ReadWriteIOUtils.write(endTimes[entry.getValue()], outputStream);
+    int deviceNum = deviceToIndex.size();
+
+    ReadWriteIOUtils.write(deviceNum, outputStream);
+    for (int i = 0; i < deviceNum; i++) {
+      ReadWriteIOUtils.write(startTimes[i], outputStream);
+      ReadWriteIOUtils.write(endTimes[i], outputStream);
+    }
+
+    for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
+      String deviceName = stringIntegerEntry.getKey();
+      int index = stringIntegerEntry.getValue();
+      ReadWriteIOUtils.write(deviceName, outputStream);
+      ReadWriteIOUtils.write(index, outputStream);
     }
   }
 
   @Override
   public DeviceTimeIndex deserialize(InputStream inputStream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    Map<String, Integer> deviceMap = new HashMap<>();
-    long[] startTimesArray = new long[size];
-    long[] endTimesArray = new long[size];
-    for (int i = 0; i < size; i++) {
+    int deviceNum = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, Integer> deviceMap = new ConcurrentHashMap<>();
+    long[] startTimesArray = new long[deviceNum];
+    long[] endTimesArray = new long[deviceNum];
+
+    for (int i = 0; i < deviceNum; i++) {
+      startTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      endTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+    }
+
+    for (int i = 0; i < deviceNum; i++) {
       String path = ReadWriteIOUtils.readString(inputStream);
       // To reduce the String number in memory,
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
-      deviceMap.put(cachedPath, i);
-
-      startTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
-      endTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
+      int index = ReadWriteIOUtils.readInt(inputStream);
+      deviceToIndex.put(cachedPath, index);
     }
     return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
   }
 
   @Override
   public DeviceTimeIndex deserialize(ByteBuffer buffer) {
-    int size = buffer.getInt();
-    long[] startTimesArray = new long[size];
-    long[] endTimesArray = new long[size];
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(size);
+    int deviceNum = buffer.getInt();
+    long[] startTimesArray = new long[deviceNum];
+    long[] endTimesArray = new long[deviceNum];
+    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(deviceNum);
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < deviceNum; i++) {
+      startTimes[i] = buffer.getLong();
+      endTimes[i] = buffer.getLong();
+    }
+
+    for (int i = 0; i < deviceNum; i++) {
       String path = SerializeUtils.deserializeString(buffer);
       // To reduce the String number in memory,
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
-      deviceMap.put(cachedPath, i);
-
-      startTimesArray[i] = buffer.getLong();
-      endTimesArray[i] = buffer.getLong();
+      int index = buffer.getInt();
+      deviceToIndex.put(cachedPath, index);
     }
-
     return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
   }
 
   @Override
   public void close() {
-    trimStartEndTimes();
+    startTimes = Arrays.copyOfRange(startTimes, 0, deviceToIndex.size());
+    endTimes = Arrays.copyOfRange(endTimes, 0, deviceToIndex.size());
   }
 
   @Override
@@ -187,11 +201,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     return ramIncrement;
   }
 
-  private void trimStartEndTimes() {
-    startTimes = Arrays.copyOfRange(startTimes, 0, deviceToIndex.size());
-    endTimes = Arrays.copyOfRange(endTimes, 0, deviceToIndex.size());
-  }
-
   private int getDeviceIndex(String deviceId) {
     int index;
     if (deviceToIndex.containsKey(deviceId)) {
@@ -219,12 +228,12 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartition(String file) {
+  public long getTimePartition(String tsfilePath) {
     try {
       if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
         return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
       }
-      String[] filePathSplits = FilePathUtils.splitTsFilePath(file);
+      String[] filePathSplits = FilePathUtils.splitTsFilePath(tsfilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
       return 0;
@@ -232,7 +241,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public long getTimePartitionWithCheck(String file) throws PartitionViolationException {
+  public long getTimePartitionWithCheck(String tsfilePath) throws PartitionViolationException {
     long partitionId = -1;
     for (Long startTime : startTimes) {
       long p = StorageEngine.getTimePartition(startTime);
@@ -240,7 +249,7 @@ public class DeviceTimeIndex implements ITimeIndex {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(file);
+          throw new PartitionViolationException(tsfilePath);
         }
       }
     }
@@ -250,12 +259,12 @@ public class DeviceTimeIndex implements ITimeIndex {
         partitionId = p;
       } else {
         if (partitionId != p) {
-          throw new PartitionViolationException(file);
+          throw new PartitionViolationException(tsfilePath);
         }
       }
     }
     if (partitionId == -1) {
-      throw new PartitionViolationException(file);
+      throw new PartitionViolationException(tsfilePath);
     }
     return partitionId;
   }
