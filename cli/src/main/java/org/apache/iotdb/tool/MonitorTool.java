@@ -156,7 +156,7 @@ public class MonitorTool {
     while(dataSet.hasNext()) {
       record = dataSet.next();
       writer.write(record.getFields().get(0).getBinaryV().toString() + ": ");
-      writer.write(record.getFields().get(1).getBinaryV().toString());
+      writer.write(record.getFields().get(1).getBinaryV().toString() + "\n");
     }
   }
 }
