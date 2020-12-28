@@ -52,7 +52,6 @@ public class NodeStatus implements Comparable<NodeStatus> {
   // if there is no heartbeat between the local node and this node, when this node is marked
   // deactivated, it cannot be reactivated in a normal way. So we also consider it reactivated if
   // its lastDeactivatedTime is too old.
-  // TODO-Cluster: say hello to other nodes when a node is back online
   private long lastDeactivatedTime;
 
   //TODO-Cluster: decide what should be contained in NodeStatus and how two compare two NodeStatus
