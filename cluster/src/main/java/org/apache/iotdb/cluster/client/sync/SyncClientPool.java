@@ -71,7 +71,7 @@ public class SyncClientPool {
    */
   public Client getClient(Node node, boolean activatedOnly) {
     ClusterNode clusterNode = new ClusterNode(node);
-    if (activatedOnly && NodeStatusManager.getINSTANCE().isActivated(node)) {
+    if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
       return null;
     }
 

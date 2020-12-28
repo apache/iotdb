@@ -73,7 +73,7 @@ public class AsyncClientPool {
    */
   public AsyncClient getClient(Node node, boolean activatedOnly) throws IOException {
     ClusterNode clusterNode = new ClusterNode(node);
-    if (activatedOnly && NodeStatusManager.getINSTANCE().isActivated(node)) {
+    if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
       return null;
     }
 
