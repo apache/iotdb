@@ -20,37 +20,23 @@
 package main
 
 import (
+	"fmt"
+	"github.com/apache/iotdb-client-go/client"
 	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	"github.com/prometheus/prometheus/prompb"
-	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client"
-	"github.com/yanhongwangg/incubator-iotdb/client-go/src/main/client/utils"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"log"
+	"iotdb_prometheus/util"
 	"net/http"
 	"strconv"
 )
 
-type conf struct {
-	Host   string
-	Port   string
-	Sg     int32
-}
-
-var (
-	session        = client.NewSession("127.0.0.1", "6667")
-	deviceId       = "root.system_p.label_info"
-	metricTagOrder = make(map[string]map[string]int32)
-	timestamp      int64
-	c              conf
-)
 
 
-func transSchema(tagKeyValues map[string]string, metric string, sgName string) (dvId string, sensor string) {
+func transWriteSchema(tagKeyValues map[string]string, metric string, sgName string) (dvId string, sensor string) {
 	paths := make(map[int32]string)
-	tagOrderMap := metricTagOrder[metric]
+	tagOrderMap := util.MetricTagOrder[metric]
 	if tagOrderMap == nil {
 		// it is a new metric
 		tagOrderMap = make(map[string]int32)
@@ -61,56 +47,31 @@ func transSchema(tagKeyValues map[string]string, metric string, sgName string) (
 			// it is a new tag
 			tagOrderMap[k] = int32(len(tagOrderMap) + 1)
 			measurements := []string{"metric_name", "tag_name", "tag_order"}
-			dataTypes := []int32{utils.TEXT, utils.TEXT, utils.INT32}
+			dataTypes := []client.TSDataType{client.TEXT, client.TEXT, client.INT32}
 			values := []interface{}{metric, k, tagOrderMap[k]}
-			session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp)
+			util.Session.InsertRecord(util.DeviceId, measurements, dataTypes, values, util.Timestamp)
 
-			timestamp++
+			util.Timestamp++
 			paths[tagOrderMap[k]] = v
 		} else {
 			paths[tagOrder] = v
 		}
 	}
+	util.MetricTagOrder[metric] = tagOrderMap
+	dvId = "root."  + sgName + "." + metric
 
-	metricTagOrder[metric] = tagOrderMap
-	dvId = "root."  + sgName + "." + metric + "."
-
-	for i := 1; i < len(paths); i++ {
+	for i := 1; i <= len(paths)-1; i++ {
 		if paths[int32(i)] == "" {
 			paths[int32(i)] = "ph"
 		}
-		if i == len(paths)-1 {
-			dvId += paths[int32(i)]
-		} else {
-			dvId += paths[int32(i)] + "."
-		}
+		dvId += "." + paths[int32(i)]
 	}
 	sensor = paths[int32(len(paths))]
 	return dvId, sensor
 }
 
-func recoverMap() {
-	dataSet := session.ExecuteQueryStatement("select * from root.system_p.label_info")
-	for {
-		if dataSet.HasNext() {
-			timestamp++
-			record := dataSet.Next()
-			metricName := string(record.Fields[0].GetBinaryV())
-			tagName := string(record.Fields[1].GetBinaryV())
-			tagValue := record.Fields[2].GetIntV()
 
-			if metricTagOrder[metricName] == nil {
-				metricTagOrder[metricName] = make(map[string]int32)
-			}
-
-			metricTagOrder[metricName][tagName] = tagValue
-		} else {
-			break
-		}
-	}
-}
-
-func getData(host string, port string, sg int32) {
+func writeData(host string, port string, sgNum int32) {
 	server := http.Server{
 		Addr: host + ":" + port ,
 	}
@@ -136,36 +97,25 @@ func getData(host string, port string, sg int32) {
 					tagKeyValues[label.Name] = label.Value
 				}
 			}
-			sgNum := strconv.Itoa(int(xxhash.Sum64String(metricName)%(uint64(sg))))
+			fmt.Println("ts", ts)
+			sgNum := strconv.Itoa(int(xxhash.Sum64String(metricName)%(uint64(sgNum))))
 			sgName := "system_p_sg" + sgNum
-
-			dvId, sensor := transSchema(tagKeyValues, metricName, sgName)
+			dvId, sensor := transWriteSchema(tagKeyValues, metricName, sgName)
 			time := ts.Samples[0].Timestamp
 			value := ts.Samples[0].Value
-			session.InsertRecord(dvId, []string{sensor}, []int32{utils.DOUBLE}, []interface{}{value}, time)
+			fmt.Println("dvId", dvId)
+			fmt.Println("sensor", sensor)
+			util.Session.InsertRecord(dvId, []string{sensor}, []client.TSDataType{client.DOUBLE}, []interface{}{value}, time)
 		}
 	})
 	server.ListenAndServe()
 }
 
-func (c *conf) getConf() *conf {
-	yamlFile, err := ioutil.ReadFile("conf.yaml")
-	if err != nil {
-		log.Printf("yamlFile.Get err   #%v ", err)
-	}
-
-	err = yaml.Unmarshal(yamlFile, c)
-	if err != nil {
-		log.Fatalf("Unmarshal: %v", err)
-	}
-	return c
-}
-
 
 func main() {
-	session.Open(false, 0)
-	recoverMap()
-	c.getConf()
-	getData(c.Host,c.Port,c.Sg)
-	session.Close()
+	util.Session.Open(false, 0)
+	util.RecoverMap()
+	util.C.GetConf()
+	writeData(util.C.Host,util.C.Wport,util.C.Sg)
+	util.Session.Close()
 }

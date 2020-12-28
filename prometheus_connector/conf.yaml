@@ -1,3 +1,4 @@
 host: 127.0.0.1
-port: 8080
+wport: 12345
+rport: 12333
 sg: 10
