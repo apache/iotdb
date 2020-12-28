@@ -186,7 +186,8 @@ public class MemTableFlushTask {
             try {
               ioTaskQueue.put(task);
             } catch (InterruptedException e) {
-              logger.warn("Put task into ioTaskQueue Interrupted");
+              logger.error("Put task into ioTaskQueue Interrupted");
+              Thread.currentThread().interrupt();
             }
           } else {
             long starTime = System.currentTimeMillis();
@@ -196,7 +197,8 @@ public class MemTableFlushTask {
             try {
               ioTaskQueue.put(seriesWriter);
             } catch (InterruptedException e) {
-              logger.warn("Put task into ioTaskQueue Interrupted");
+              logger.error("Put task into ioTaskQueue Interrupted");
+              Thread.currentThread().interrupt();
             }
             memSerializeTime += System.currentTimeMillis() - starTime;
           }
