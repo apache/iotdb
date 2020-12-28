@@ -86,11 +86,9 @@ public class ClientServer extends TSServiceImpl {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientServer.class);
   /**
-   * The MetaGroupMember of the local node. Through this node ClientServer queries data and meta
+   * The Coordinator of the local node. Through this node ClientServer queries data and meta
    * from the cluster and performs data manipulations to the cluster.
    */
-  private MetaGroupMember metaGroupMember;
-
   private Coordinator coordinator;
 
   public void setCoordinator(Coordinator coordinator) {
@@ -121,7 +119,6 @@ public class ClientServer extends TSServiceImpl {
 
   public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
-    this.metaGroupMember = metaGroupMember;
     this.processor = new ClusterPlanner();
     this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
@@ -197,7 +194,7 @@ public class ClientServer extends TSServiceImpl {
 
 
   /**
-   * Redirect the plan to the local MetaGroupMember so that it will be processed cluster-wide.
+   * Redirect the plan to the local Coordinator so that it will be processed cluster-wide.
    *
    * @param plan
    * @return
@@ -309,15 +306,13 @@ public class ClientServer extends TSServiceImpl {
           GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-              AsyncDataClient client = metaGroupMember
-                  .getClientProvider().getAsyncDataClient(queriedNode,
+              AsyncDataClient client = coordinator.getAsyncDataClient(queriedNode,
                       RaftServer.getReadOperationTimeoutMS());
-              client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
+              client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
-              SyncDataClient syncDataClient = metaGroupMember
-                  .getClientProvider().getSyncDataClient(queriedNode,
+              SyncDataClient syncDataClient = coordinator.getSyncDataClient(queriedNode,
                       RaftServer.getReadOperationTimeoutMS());
-              syncDataClient.endQuery(header, metaGroupMember.getThisNode(), queryId);
+              syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);

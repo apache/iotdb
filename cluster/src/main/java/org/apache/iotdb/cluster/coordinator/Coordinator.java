@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.coordinator;
 
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
@@ -561,5 +563,29 @@ public class Coordinator {
       throw new IOException(e);
     }
     return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
+  }
+
+  /**
+   * Get a thrift client that will connect to "node" using the data port.
+   *
+   * @param node    the node to be connected
+   * @param timeout timeout threshold of connection
+   */
+  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+    return metaGroupMember.getClientProvider().getAsyncDataClient(node, timeout);
+  }
+
+  public Node getThisNode() {
+    return thisNode;
+  }
+
+  /**
+   * Get a thrift client that will connect to "node" using the data port.
+   *
+   * @param node    the node to be connected
+   * @param timeout timeout threshold of connection
+   */
+  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
+    return metaGroupMember.getClientProvider().getSyncDataClient(node, timeout);
   }
 }
