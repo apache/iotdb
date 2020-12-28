@@ -817,6 +817,11 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * the size of ioTaskQueue and encodingTaskQueue
+   */
+  private int queueSizeForFlushing = Integer.MAX_VALUE;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2185,5 +2190,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getQueueSizeForFlushing() {
+    return queueSizeForFlushing;
+  }
+
+  public void setQueueSizeForFlushing(int queueSizeForFlushing) {
+    this.queueSizeForFlushing = queueSizeForFlushing;
   }
 }

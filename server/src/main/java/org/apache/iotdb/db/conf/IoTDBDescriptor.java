@@ -286,6 +286,10 @@ public class IoTDBDescriptor {
           .getProperty("estimated_series_size",
               Integer.toString(conf.getEstimatedSeriesSize()))));
 
+      conf.setQueueSizeForFlushing(Integer.parseInt(properties
+          .getProperty("queue_size_for_flushing",
+              Integer.toString(conf.getQueueSizeForFlushing()))));
+
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
