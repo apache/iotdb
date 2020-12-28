@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,7 @@ public class MemTableManager {
   /**
    * Called when memory control is disabled
    */
-  public synchronized IMemTable getAvailableMemTable(TsFileResource tsFileResource) {
+  public synchronized IMemTable getAvailableMemTable(String storageGroup) {
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
@@ -61,11 +60,11 @@ public class MemTableManager {
         try {
           wait(WAIT_TIME);
         } catch (InterruptedException e) {
-          logger.error("{} fails to wait for memtables {}, continue to wait", tsFileResource, e);
+          logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
           Thread.currentThread().interrupt();
         }
-        if (waitCount++ % 500 == 0) {
-          logger.info("{} has waited for a memtable for {}ms", tsFileResource, waitCount * 500);
+        if (waitCount++ % 10 == 0) {
+          logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
         }
       }
     }
