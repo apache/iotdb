@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 public enum ServiceType {
   STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
-  METRICS_SERVICE("Metrics ServerService","MetricsService"),
+  METRICS_SERVICE("Metrics ServerService", "MetricsService"),
   RPC_SERVICE("RPC ServerService", "RPCService"),
   MQTT_SERVICE("MQTTService", ""),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
@@ -40,6 +40,8 @@ public enum ServiceType {
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
+  TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE("CACHE_HIT_RATIO_DISPLAY_SERVICE",
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
 

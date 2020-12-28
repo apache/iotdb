@@ -110,7 +110,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     long curSlidingStep = slidingStep;
     long curInterval = interval;
     // has cached
@@ -164,7 +164,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   }
 
   @Override
-  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+  public abstract RowRecord nextWithoutConstraint() throws IOException;
 
   public long getStartTime() {
     return startTime;

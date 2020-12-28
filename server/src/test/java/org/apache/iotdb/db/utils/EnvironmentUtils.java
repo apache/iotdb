@@ -44,6 +44,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
@@ -78,12 +79,16 @@ public class EnvironmentUtils {
       .parseBoolean(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    // deregister all UDFs
+    UDFRegistrationService.getInstance().deregisterAll();
+
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();
       daemon = null;
     }
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+
     // clear opened file streams
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
