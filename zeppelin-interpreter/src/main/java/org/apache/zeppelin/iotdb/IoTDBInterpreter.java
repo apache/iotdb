@@ -94,7 +94,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
       boolean enableRPCCompression = "true".equalsIgnoreCase(
           properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
               DEFAULT_ENABLE_RPC_COMPRESSION).trim());
-      session = new Session(host, port, userName, passWord, fetchSize, zoneId);
+      session = new Session(host, port, userName, passWord, fetchSize, zoneId, false);
       session.open(enableRPCCompression);
     } catch (IoTDBConnectionException e) {
       connectionException = e;
