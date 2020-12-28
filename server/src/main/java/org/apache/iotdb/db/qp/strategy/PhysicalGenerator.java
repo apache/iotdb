@@ -101,6 +101,7 @@ import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowConfigPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
@@ -269,6 +270,10 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(
                 ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_COUNT_CLIENT:
+            return new CountPlan(ShowContentType.COUNT_CLIENT, null);
+          case SQLConstant.TOK_CONFIG:
+            return new ShowConfigPlan(ShowContentType.CONFIG);
           default:
             throw new LogicalOperatorException(
                 String.format(

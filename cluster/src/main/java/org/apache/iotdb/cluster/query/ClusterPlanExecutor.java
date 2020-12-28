@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -93,7 +94,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException {
+      MetadataException, InvocationTargetException, IllegalAccessException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);

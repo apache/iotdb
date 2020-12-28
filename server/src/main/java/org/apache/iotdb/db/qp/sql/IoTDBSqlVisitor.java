@@ -78,6 +78,7 @@ import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowConfigOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
@@ -98,6 +99,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ClearcacheContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountClientsContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountStorageGroupContext;
@@ -183,6 +185,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildPathsContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowConfContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowMergeStatusContext;
@@ -694,6 +697,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitShowVersion(ShowVersionContext ctx) {
     return new ShowOperator(SQLConstant.TOK_VERSION);
+  }
+
+  @Override
+  public Operator visitShowConf(ShowConfContext ctx) {
+    return new ShowConfigOperator(SQLConstant.TOK_CONFIG);
+  }
+
+  @Override
+  public Operator visitCountClients(CountClientsContext ctx) {
+    return new CountOperator(SQLConstant.TOK_COUNT_CLIENT, null);
   }
 
   @Override

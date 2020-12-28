@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.beans.IntrospectionException;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -171,7 +173,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
 
   // The sessionId is unique in one IoTDB instance.
-  private AtomicLong sessionIdGenerator = new AtomicLong();
+  private final static AtomicLong sessionIdGenerator = new AtomicLong();
   // The statementId is unique in one IoTDB instance.
   private AtomicLong statementIdGenerator = new AtomicLong();
 
@@ -1087,7 +1089,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-      IOException, MetadataException, SQLException, TException, InterruptedException {
+      IOException, MetadataException, SQLException, TException, InterruptedException, IllegalAccessException, IntrospectionException, InvocationTargetException {
 
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
@@ -1828,5 +1830,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public static int getDefaultFetchSize() {
     return DEFAULT_FETCH_SIZE;
+  }
+
+  public static long getSessionIdGenerator() {
+    return sessionIdGenerator.get();
   }
 }

@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import java.beans.IntrospectionException;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.sql.SQLException;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -45,7 +47,7 @@ public interface IPlanExecutor {
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
+      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException, IllegalAccessException, IntrospectionException, InvocationTargetException;
 
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
