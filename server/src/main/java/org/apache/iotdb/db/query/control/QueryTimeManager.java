@@ -26,6 +26,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.exception.QueryTimeoutRuntimeException;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,10 @@ public class QueryTimeManager implements IService {
   }
 
   public void unRegisterQuery(long queryId) {
+    if (Thread.interrupted()) {
+      throw new QueryTimeoutRuntimeException(
+          "Current query is time out, please check your statement or modify timeout parameter.");
+    }
     queryInfoMap.remove(queryId);
     queryThreadMap.remove(queryId);
   }

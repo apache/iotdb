@@ -294,7 +294,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
         // check the interrupted status of main thread before take next batch
-        if (Thread.currentThread().isInterrupted()) {
+        if (Thread.interrupted()) {
           throw new QueryTimeoutRuntimeException(
               "Current query is time out, please check your statement or modify timeout parameter.");
         }

@@ -174,7 +174,7 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.interrupted()) {
       throw new QueryTimeoutRuntimeException(
           "Current query is time out, please check your statement or modify timeout parameter.");
     }
@@ -237,7 +237,7 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.interrupted()) {
       throw new QueryTimeoutRuntimeException(
           "Current query is time out, please check your statement or modify timeout parameter.");
     }
@@ -361,7 +361,7 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.interrupted()) {
       throw new QueryTimeoutRuntimeException(
           "Current query is time out, please check your statement or modify timeout parameter.");
     }

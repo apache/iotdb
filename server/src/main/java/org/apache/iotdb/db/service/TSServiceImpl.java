@@ -777,6 +777,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
       }
 
+      // remove query info in QueryTimeManager
+      QueryTimeManager.getInstance().unRegisterQuery(queryId);
       return resp;
     } catch (Exception e) {
       if (e instanceof NullPointerException) {

@@ -187,7 +187,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of main thread before taking next batch
-      if (Thread.currentThread().isInterrupted()) {
+      if (Thread.interrupted()) {
         throw new QueryTimeoutRuntimeException(
             "Current query is time out, please check your statement or modify timeout parameter.");
       }
@@ -297,7 +297,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           cachedBatchDataArray[seriesIndex].next();
 
           // check the interrupted status of main thread before taking next batch
-          if (Thread.currentThread().isInterrupted()) {
+          if (Thread.interrupted()) {
             throw new QueryTimeoutRuntimeException(
                 "Current query is time out, please check your statement or modify timeout parameter.");
           }
@@ -449,7 +449,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         cachedBatchDataArray[seriesIndex].next();
 
         // check the interrupted status of main thread before taking next batch
-        if (Thread.currentThread().isInterrupted()) {
+        if (Thread.interrupted()) {
           throw new QueryTimeoutRuntimeException(
               "Current query is time out, please check your statement or modify timeout parameter.");
         }
@@ -460,7 +460,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
             fillCache(seriesIndex);
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
-            Thread.currentThread().interrupt();
             throw new QueryTimeoutRuntimeException(
                 "Current query is time out, please check your statement or modify timeout parameter.");
           } catch (IOException e) {

@@ -70,7 +70,6 @@ public class RawDataQueryExecutor {
       return new RawQueryDataSetWithoutValueFilter(queryPlan.getDeduplicatedPaths(),
           queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
       throw new QueryTimeoutRuntimeException(
           "Current query is time out, please check your statement or modify timeout parameter.");
     } catch (IOException e) {

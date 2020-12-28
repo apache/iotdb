@@ -185,9 +185,6 @@ public class QueryResourceManager {
           config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG, e.getMessage());
     }
 
-    // remove query info in QueryTimeManager
-    QueryTimeManager.getInstance().unRegisterQuery(queryId);
-
     // close file stream of external sort files, and delete
     if (externalSortFileMap.get(queryId) != null) {
       for (IExternalSortFileDeserializer deserializer : externalSortFileMap.get(queryId)) {
