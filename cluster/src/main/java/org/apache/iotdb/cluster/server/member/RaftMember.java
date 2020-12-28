@@ -1504,6 +1504,11 @@ public abstract class RaftMember {
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
           retryTime++;
           if (retryTime > 5) {
             return false;
