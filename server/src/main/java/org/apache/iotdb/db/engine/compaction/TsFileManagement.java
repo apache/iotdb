@@ -74,11 +74,6 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list which has been completed hot compacted
-   */
-  public abstract List<TsFileResource> getStableTsFileList(boolean sequence);
-
-  /**
    * get the TsFile list in sequence
    */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
