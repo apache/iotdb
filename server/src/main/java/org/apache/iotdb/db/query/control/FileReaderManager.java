@@ -192,12 +192,16 @@ public class FileReaderManager implements IService {
    */
   void increaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     tsFile.readLock();
-    synchronized (this) {
-      if (!isClosed) {
-        unclosedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
-      } else {
-        closedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
+    try {
+      synchronized (this) {
+        if (!isClosed) {
+          unclosedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
+        } else {
+          closedReferenceMap.computeIfAbsent(tsFile.getTsFilePath(), k -> new AtomicInteger()).getAndIncrement();
+        }
       }
+    } finally {
+      tsFile.readUnlock();
     }
   }
 
@@ -206,14 +210,18 @@ public class FileReaderManager implements IService {
    * Only when the reference count of a reader equals zero, the reader can be closed and removed.
    */
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
-    synchronized (this) {
-      if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
-        unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
-      } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())){
-        closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+    tsFile.readLock();
+    try {
+      synchronized (this) {
+        if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
+          unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+        } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())) {
+          closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+        }
       }
+    } finally {
+      tsFile.readUnlock();
     }
-    tsFile.readUnlock();
   }
 
   /**
