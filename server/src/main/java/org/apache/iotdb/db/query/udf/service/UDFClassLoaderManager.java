@@ -23,6 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -50,19 +53,10 @@ public class UDFClassLoaderManager implements IService {
   private volatile UDFClassLoader activeClassLoader;
 
   UDFClassLoaderManager() {
-    libRoot = parseLibRoot();
+    libRoot = IoTDBDescriptor.getInstance().getConfig().getUdfDir();
+    logger.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
     activeClassLoader = null;
-  }
-
-  private String parseLibRoot() {
-    String jarPath = (new File(
-        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
-        .getAbsolutePath();
-    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
-    String libPath = jarPath.substring(0, lastIndex + 1);
-    logger.info("System lib root: {}", libPath);
-    return libPath;
   }
 
   public void initializeUDFQuery(long queryId) {
@@ -89,10 +83,19 @@ public class UDFClassLoaderManager implements IService {
   @Override
   public void start() throws StartupException {
     try {
+      makeDirIfNecessary();
       activeClassLoader = new UDFClassLoader(libRoot);
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
+  }
+
+  private void makeDirIfNecessary() throws IOException {
+    File file = SystemFileFactory.INSTANCE.getFile(libRoot);
+    if (file.exists() && file.isDirectory()) {
+      return;
+    }
+    FileUtils.forceMkdir(file);
   }
 
   @Override

@@ -299,7 +299,7 @@ public class Counter implements UDTF {
 
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
-3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/lib` （也可以是`iotdb-server-0.12.0-SNAPSHOT/lib`的子目录）下
+3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/udf`的子目录）下
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
 注册UDF的SQL语法如下：
@@ -417,7 +417,7 @@ SHOW FUNCTIONS
 A1: 假设UDF的名称为`example`，全类名为`org.apache.iotdb.udf.ExampleUDTF`，由`example.jar`引入
 
 1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
-2. 删除 `iotdb-server-0.12.0-SNAPSHOT/lib` 目录下的`example.jar`
+2. 删除 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` 目录下的`example.jar`
 3. 修改`org.apache.iotdb.udf.ExampleUDTF`中的逻辑，重新打包，JAR包的名字可以仍然为`example.jar`
-4. 将新的JAR包上传至 `iotdb-server-0.12.0-SNAPSHOT/lib` 目录下
+4. 将新的JAR包上传至 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` 目录下
 5. 装载新的UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`
