@@ -75,10 +75,11 @@ public class UDFClassLoaderManager implements IService {
     classLoader.release();
   }
 
-  public void updateActiveClassLoader() throws IOException {
+  public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
     UDFClassLoader deprecatedClassLoader = activeClassLoader;
     activeClassLoader = new UDFClassLoader(libRoot);
     deprecatedClassLoader.markAsDeprecated();
+    return activeClassLoader;
   }
 
   public UDFClassLoader getActiveClassLoader() {

@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -70,22 +71,30 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   @Override
   public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
-    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
-
     Collection<UDTFExecutor> executors = columnName2Executor.values();
     collectorMemoryBudgetInMB /= executors.size();
-    for (UDTFExecutor executor : executors) {
-      executor.beforeStart(queryId, collectorMemoryBudgetInMB);
+
+    UDFRegistrationService.getInstance().acquireRegistrationLock();
+    // This statement must be surrounded by the registration lock.
+    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
+    try {
+      for (UDTFExecutor executor : executors) {
+        executor.beforeStart(queryId, collectorMemoryBudgetInMB);
+      }
+    } finally {
+      UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
   }
 
   @Override
   public void finalizeUDFExecutors(long queryId) throws IOException {
-    for (UDTFExecutor executor : columnName2Executor.values()) {
-      executor.beforeDestroy();
+    try {
+      for (UDTFExecutor executor : columnName2Executor.values()) {
+        executor.beforeDestroy();
+      }
+    } finally {
+      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
     }
-
-    UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
   }
 
   public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {
