@@ -51,8 +51,8 @@ public class QueryTimeManager implements IService {
   private Map<Long, Pair<Long, String>> queryInfoMap;
   /**
    * the key of queryThreadMap is the query id and the value of queryThreadMap is the executing
-   * threads of this query.
-   * Only main thread is put in this map since the sub threads are maintain by the thread pool.
+   * thread of this query.
+   * Only main thread is put in this map since the sub threads are maintained by the thread pool.
    * The thread allocated for readTask will change every time, so we have to access this map
    * frequently, which will lead to big performance cost.
    */

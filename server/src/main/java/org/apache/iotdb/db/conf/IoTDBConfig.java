@@ -462,7 +462,7 @@ public class IoTDBConfig {
   /**
    * the max executing time of query.
    */
-  private int queryTimeThreshold = 600000;
+  private int queryTimeThreshold = 60000;
 
   /**
    * Replace implementation class of JDBC service

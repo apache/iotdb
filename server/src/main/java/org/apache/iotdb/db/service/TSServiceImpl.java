@@ -532,7 +532,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.fetchSize);
       if (physicalPlan.isQuery()) {
         return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
-            req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
+            req.fetchSize, req.timeout, sessionIdUsernameMap.get(req.getSessionId()));
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -582,7 +582,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
-          sessionIdUsernameMap.get(req.getSessionId()));
+          req.timeout, sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
       logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
@@ -626,7 +626,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       return internalExecuteQueryStatement("", req.statementId, physicalPlan, req.fetchSize,
-          sessionIdUsernameMap.get(req.getSessionId()));
+          config.getQueryTimeThreshold(), sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
       logger.warn(ERROR_PARSING_SQL, e.getMessage());
@@ -652,8 +652,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *             some AuthorPlan
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
-      long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
+  private TSExecuteStatementResp internalExecuteQueryStatement(String statement, long statementId,
+      PhysicalPlan plan, int fetchSize, long timeout, String username) {
     queryCount.incrementAndGet();
     auditLogger.debug("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
@@ -717,15 +717,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // register startTime to query time manager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
         QueryTimeManager.getInstance()
-            .registerQuery(queryId, startTime, statement, config.getQueryTimeThreshold(),
-                Thread.currentThread());
+            .registerQuery(queryId, startTime, statement, timeout, Thread.currentThread());
       }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+        TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
-          TracingManager.getInstance()
-              .writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
+          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
+          tracingManager.writeQueryInfo(queryId, statement, startTime);
         }
       }
 

@@ -1491,7 +1491,6 @@ public class PlanExecutor implements IPlanExecutor {
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
     for (Entry<Long, Pair<Long, String>> queryInfo : queryTimeManager.getQueryInfoMap()
         .entrySet()) {
-      // TODO: time format
       RowRecord record = new RowRecord(queryInfo.getValue().left);
       record.addField(queryInfo.getKey(), TSDataType.INT64);
       record.addField(new Binary(queryInfo.getValue().right), TSDataType.TEXT);
