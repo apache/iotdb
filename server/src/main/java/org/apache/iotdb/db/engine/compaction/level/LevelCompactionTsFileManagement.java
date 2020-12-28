@@ -102,13 +102,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > level) {
-          sequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          synchronized (sequenceTsFileResources) {
+            sequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          }
         }
       }
     } else {
       if (unSequenceTsFileResources.containsKey(timePartitionId)) {
         if (unSequenceTsFileResources.get(timePartitionId).size() > level) {
-          unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          synchronized (unSequenceTsFileResources) {
+            unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          }
         }
       }
     }
@@ -170,14 +174,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @Override
   public void remove(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
-      for (SortedSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources
-          .get(tsFileResource.getTimePartition())) {
-        sequenceTsFileResource.remove(tsFileResource);
+      synchronized (sequenceTsFileResources) {
+        for (SortedSet<TsFileResource> sequenceTsFileResource : sequenceTsFileResources
+            .get(tsFileResource.getTimePartition())) {
+          sequenceTsFileResource.remove(tsFileResource);
+        }
       }
     } else {
-      for (List<TsFileResource> unSequenceTsFileResource : unSequenceTsFileResources
-          .get(tsFileResource.getTimePartition())) {
-        unSequenceTsFileResource.remove(tsFileResource);
+      synchronized (unSequenceTsFileResources) {
+        for (List<TsFileResource> unSequenceTsFileResource : unSequenceTsFileResources
+            .get(tsFileResource.getTimePartition())) {
+          unSequenceTsFileResource.remove(tsFileResource);
+        }
       }
     }
   }
@@ -185,17 +193,21 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @Override
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     if (sequence) {
-      for (List<SortedSet<TsFileResource>> partitionSequenceTsFileResource : sequenceTsFileResources
-          .values()) {
-        for (SortedSet<TsFileResource> levelTsFileResource : partitionSequenceTsFileResource) {
-          levelTsFileResource.removeAll(tsFileResourceList);
+      synchronized (sequenceTsFileResources) {
+        for (List<SortedSet<TsFileResource>> partitionSequenceTsFileResource : sequenceTsFileResources
+            .values()) {
+          for (SortedSet<TsFileResource> levelTsFileResource : partitionSequenceTsFileResource) {
+            levelTsFileResource.removeAll(tsFileResourceList);
+          }
         }
       }
     } else {
-      for (List<List<TsFileResource>> partitionUnSequenceTsFileResource : unSequenceTsFileResources
-          .values()) {
-        for (List<TsFileResource> levelTsFileResource : partitionUnSequenceTsFileResource) {
-          levelTsFileResource.removeAll(tsFileResourceList);
+      synchronized (unSequenceTsFileResources) {
+        for (List<List<TsFileResource>> partitionUnSequenceTsFileResource : unSequenceTsFileResources
+            .values()) {
+          for (List<TsFileResource> levelTsFileResource : partitionUnSequenceTsFileResource) {
+            levelTsFileResource.removeAll(tsFileResourceList);
+          }
         }
       }
     }
@@ -206,28 +218,33 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     long timePartitionId = tsFileResource.getTimePartition();
     int level = getMergeLevel(tsFileResource.getTsFile());
     if (sequence) {
-      if (level <= seqLevelNum - 1) {
-        // current file has normal level
-        sequenceTsFileResources
-            .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
-            .add(tsFileResource);
-      } else {
-        // current file has too high level
-        sequenceTsFileResources
-            .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(seqLevelNum - 1)
-            .add(tsFileResource);
+      synchronized (sequenceTsFileResources) {
+        if (level <= seqLevelNum - 1) {
+          // current file has normal level
+          sequenceTsFileResources
+              .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
+              .add(tsFileResource);
+        } else {
+          // current file has too high level
+          sequenceTsFileResources
+              .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources)
+              .get(seqLevelNum - 1)
+              .add(tsFileResource);
+        }
       }
     } else {
-      if (level <= unseqLevelNum - 1) {
-        // current file has normal level
-        unSequenceTsFileResources
-            .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources).get(level)
-            .add(tsFileResource);
-      } else {
-        // current file has too high level
-        unSequenceTsFileResources
-            .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
-            .get(unseqLevelNum - 1).add(tsFileResource);
+      synchronized (unSequenceTsFileResources) {
+        if (level <= unseqLevelNum - 1) {
+          // current file has normal level
+          unSequenceTsFileResources
+              .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources).get(level)
+              .add(tsFileResource);
+        } else {
+          // current file has too high level
+          unSequenceTsFileResources
+              .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
+              .get(unseqLevelNum - 1).add(tsFileResource);
+        }
       }
     }
   }
@@ -569,7 +586,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private List<SortedSet<TsFileResource>> newSequenceTsFileResources(Long k) {
     List<SortedSet<TsFileResource>> newSequenceTsFileResources = new CopyOnWriteArrayList<>();
     for (int i = 0; i < seqLevelNum; i++) {
-      newSequenceTsFileResources.add(Collections.synchronizedSortedSet(new TreeSet<TsFileResource>(
+      newSequenceTsFileResources.add(Collections.synchronizedSortedSet(new TreeSet<>(
           (o1, o2) -> {
             try {
               int rangeCompare = Long
