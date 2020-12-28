@@ -55,9 +55,9 @@ public class ClusterConfig {
 
   private int connectionTimeoutInMS = 20 * 1000;
 
-  private int readOperationTimeoutMS = 30_1000;
+  private int readOperationTimeoutMS = 30_000;
 
-  private int writeOperationTimeoutMS = 30_1000;
+  private int writeOperationTimeoutMS = 30_000;
 
   private int catchUpTimeoutMS = 60_000;
 
