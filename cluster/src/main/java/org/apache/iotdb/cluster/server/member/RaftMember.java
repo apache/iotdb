@@ -295,7 +295,7 @@ public abstract class RaftMember {
             new ThreadFactoryBuilder().setNameFormat(getName() +
                 "-AppendLog%d").build());
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      serialToParallelPool = new ThreadPoolExecutor(allNodes.size(), Runtime.getRuntime().availableProcessors(),
+      serialToParallelPool = new ThreadPoolExecutor(allNodes.size(), Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
           1000L, TimeUnit.MILLISECONDS,
           new LinkedBlockingQueue<>(), new ThreadFactoryBuilder().setNameFormat(getName() +
           "-SerialToParallel%d").build());
