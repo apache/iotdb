@@ -29,7 +29,7 @@ public class ShowPlan extends PhysicalPlan {
 
   private ShowContentType showContentType;
 
-  public ShowPlan(ShowContentType showContentType){
+  public ShowPlan(ShowContentType showContentType) {
     super(true);
     this.showContentType = showContentType;
     setOperatorType(OperatorType.SHOW);
@@ -51,7 +51,7 @@ public class ShowPlan extends PhysicalPlan {
 
   public enum ShowContentType {
     FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
-    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, COUNT_DEVICES, COUNT_STORAGE_GROUP
+    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, FUNCTIONS, COUNT_DEVICES,
+    COUNT_STORAGE_GROUP
   }
-
 }
