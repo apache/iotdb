@@ -68,11 +68,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     @Override
     public void runMayThrow() {
       try {
-        // check the status of mainThread instead of time passed to keep the consistency
+        // check the status of mainThread before next reading
         if (mainThread.isInterrupted()) {
-          putExceptionBatchData(new QueryTimeoutRuntimeException(
-                  "Current query is time out, please check your statement and run again)"),
-              "Current query is time out");
           return;
         }
         synchronized (reader) {
@@ -189,6 +186,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
               Thread.currentThread()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
+      // check the interrupted status of main thread before taking next batch
+      if (Thread.currentThread().isInterrupted()) {
+        throw new QueryTimeoutRuntimeException(
+            "Current query is time out, please check your statement or modify timeout parameter.");
+      }
       fillCache(i);
       // try to put the next timestamp into the heap
       if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
@@ -294,10 +296,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           // move next
           cachedBatchDataArray[seriesIndex].next();
 
-          // check the interrupted status of main thread before take next batch
+          // check the interrupted status of main thread before taking next batch
           if (Thread.currentThread().isInterrupted()) {
             throw new QueryTimeoutRuntimeException(
-                "Current query is time out, please check your statement and run again");
+                "Current query is time out, please check your statement or modify timeout parameter.");
           }
           // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
@@ -446,6 +448,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         // move next
         cachedBatchDataArray[seriesIndex].next();
 
+        // check the interrupted status of main thread before taking next batch
+        if (Thread.currentThread().isInterrupted()) {
+          throw new QueryTimeoutRuntimeException(
+              "Current query is time out, please check your statement or modify timeout parameter.");
+        }
         // get next batch if current batch is empty and still have remaining batch data in queue
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()
             && !noMoreDataInQueueArray[seriesIndex]) {
@@ -454,6 +461,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
             Thread.currentThread().interrupt();
+            throw new QueryTimeoutRuntimeException(
+                "Current query is time out, please check your statement or modify timeout parameter.");
           } catch (IOException e) {
             LOGGER.error("Got IOException", e);
             throw e;

@@ -176,7 +176,7 @@ public class SeriesReader {
   boolean hasNextFile() throws IOException {
     if (Thread.currentThread().isInterrupted()) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement and run again");
+          "Current query is time out, please check your statement or modify timeout parameter.");
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -239,7 +239,7 @@ public class SeriesReader {
   boolean hasNextChunk() throws IOException {
     if (Thread.currentThread().isInterrupted()) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement and run again");
+          "Current query is time out, please check your statement or modify timeout parameter.");
     }
 
     if (!unSeqPageReaders.isEmpty()
@@ -363,7 +363,7 @@ public class SeriesReader {
   boolean hasNextPage() throws IOException {
     if (Thread.currentThread().isInterrupted()) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement and run again");
+          "Current query is time out, please check your statement or modify timeout parameter.");
     }
 
     /*

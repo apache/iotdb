@@ -59,6 +59,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
@@ -1048,9 +1049,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, InterruptedException, IOException, QueryProcessException {
+      throws TException, AuthException, IOException, QueryProcessException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
-    return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+    try {
+      return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+    } catch (InterruptedException e) {
+      throw new QueryTimeoutRuntimeException(
+          "Current query is time out, please check your statement or modify timeout parameter.");
+    }
   }
 
   private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
