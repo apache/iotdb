@@ -1421,6 +1421,7 @@ public abstract class RaftMember {
 
   AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
+    request.setRaftId(getRaftGroupId());
     request.setTerm(term.get());
     if (serializeNow) {
       request.setEntry(log.serialize());

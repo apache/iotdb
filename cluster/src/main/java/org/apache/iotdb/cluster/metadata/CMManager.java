@@ -938,8 +938,8 @@ public class CMManager extends MManager {
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(), partitionGroup.getId(), pathsToQuery,
-            withAlias);
+        List<PartialPath> paths = getMatchedPaths(node, partitionGroup.getHeader(),
+            partitionGroup.getId(), pathsToQuery, withAlias);
         if (logger.isDebugEnabled()) {
           logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
               metaGroupMember.getName(), pathsToQuery.get(0), pathsToQuery.size() - 1, node,

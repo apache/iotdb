@@ -66,7 +66,7 @@ public class PartitionGroup extends ArrayList<Node> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, getHeader());
+    return Objects.hash(id, super.hashCode());
   }
 
   public Node getHeader() {

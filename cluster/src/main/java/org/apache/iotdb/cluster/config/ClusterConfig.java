@@ -56,7 +56,7 @@ public class ClusterConfig {
 
   private boolean useAsyncApplier = true;
 
-  private int connectionTimeoutInMS = 20 * 1000;
+  private int connectionTimeoutInMS = 20_1000;
 
   private int readOperationTimeoutMS = 30_1000;
 

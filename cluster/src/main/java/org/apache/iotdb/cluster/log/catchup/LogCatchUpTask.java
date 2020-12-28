@@ -86,6 +86,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   void doLogCatchUp() throws TException, InterruptedException, LeaderUnknownException {
     AppendEntryRequest request = new AppendEntryRequest();
+    request.setRaftId(raftId);
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
@@ -170,6 +171,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
   private AppendEntriesRequest prepareRequest(List<ByteBuffer> logList, int startPos) {
     AppendEntriesRequest request = new AppendEntriesRequest();
+    request.setRaftId(raftId);
 
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());

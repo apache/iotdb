@@ -339,6 +339,7 @@ public class ClusterReaderFactory {
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
       QueryContext context, boolean ascending) {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    request.setRaftId(partitionGroup.getId());
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     }
@@ -434,6 +435,7 @@ public class ClusterReaderFactory {
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
       QueryContext context, boolean ascending) throws StorageEngineException {
     GroupByRequest request = new GroupByRequest();
+    request.setRaftId(partitionGroup.getId());
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     }

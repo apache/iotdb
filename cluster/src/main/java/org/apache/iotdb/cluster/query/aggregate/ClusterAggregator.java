@@ -158,6 +158,7 @@ public class ClusterAggregator {
       QueryContext context, boolean ascending) throws StorageEngineException {
 
     GetAggrResultRequest request = new GetAggrResultRequest();
+    request.setRaftId(partitionGroup.getId());
     request.setPath(path.getFullPath());
     request.setAggregations(aggregations);
     request.setDataTypeOrdinal(dataType.ordinal());

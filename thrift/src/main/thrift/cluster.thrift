@@ -41,7 +41,7 @@ struct HeartBeatRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   8: optional Node header
-  9: optional int raftId
+  9: required int raftId
 }
 
 // follower -> leader
@@ -57,7 +57,6 @@ struct HeartBeatResponse {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
-  8: optional int raftId
 }
 
 // node -> node
@@ -70,7 +69,7 @@ struct ElectionRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   5: optional Node header
-  6: optional int raftId
+  6: required int raftId
   7: optional long dataLogLastIndex
   8: optional long dataLogLastTerm
 }
@@ -87,7 +86,7 @@ struct AppendEntryRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
-  8: optional int raftId
+  8: required int raftId
 }
 
 // leader -> follower
@@ -102,7 +101,7 @@ struct AppendEntriesRequest {
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
   7: optional Node header
-  8: optional int raftId
+  8: required int raftId
 }
 
 struct AddNodeResponse {
@@ -148,14 +147,14 @@ struct SendSnapshotRequest {
   1: required binary snapshotBytes
   // for data group
   2: optional Node header
-  3: optional int raftId
+  3: required int raftId
 }
 
 struct PullSnapshotRequest {
   1: required list<int> requiredSlots
   // for data group
   2: optional Node header
-  3: optional int raftId
+  3: required int raftId
   // set to true if the previous holder has been removed from the cluster.
   // This will make the previous holder read-only so that different new
   // replicas can pull the same snapshot.
@@ -169,13 +168,13 @@ struct PullSnapshotResp {
 struct ExecutNonQueryReq {
   1: required binary planBytes
   2: optional Node header
-  3: optional int raftId
+  3: required int raftId
 }
 
 struct PullSchemaRequest {
   1: required list<string> prefixPaths
   2: optional Node header
-  3: optional int raftId
+  3: required int raftId
 }
 
 struct PullSchemaResp {
