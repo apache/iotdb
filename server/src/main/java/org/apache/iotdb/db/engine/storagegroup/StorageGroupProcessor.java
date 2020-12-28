@@ -969,35 +969,35 @@ public class StorageGroupProcessor {
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
 
-    TsFileProcessor res;
-    // we have to ensure only one thread can change workSequenceTsFileProcessors
-    writeLock();
-    try {
-      res = tsFileProcessorTreeMap.get(timeRangeId);
-      if (res == null) {
-        // we have to remove oldest processor to control the num of the memtables
-        // TODO: use a method to control the number of memtables
-        if (tsFileProcessorTreeMap.size()
-            >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
-          Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-          logger.info(
-              "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
-              sequence, tsFileProcessorTreeMap.size(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
-              storageGroupName);
-          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
+    TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
+
+    //Use double-check to shorten the lock range
+    if (null == res) {
+      writeLock();
+      try {
+        res = tsFileProcessorTreeMap.get(timeRangeId);
+        if (null == res) {
+          // we have to remove oldest processor to control the num of the memtables
+          // TODO: use a method to control the number of memtables
+          if (tsFileProcessorTreeMap.size()
+              >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
+            Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
+            logger.info(
+                "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
+                sequence, tsFileProcessorTreeMap.size(),
+                IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
+                storageGroupName);
+            asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
+          }
+
+          // build new processor
+          res = createTsFileProcessor(sequence, timeRangeId);
+          tsFileProcessorTreeMap.put(timeRangeId, res);
+          tsFileManagement.add(res.getTsFileResource(), sequence);
         }
-
-        // build new processor
-        TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
-        tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
-        tsFileManagement.add(newProcessor.getTsFileResource(), sequence);
-        res = newProcessor;
+      } finally {
+        writeUnlock();
       }
-
-    } finally {
-      // unlock in finally
-      writeUnlock();
     }
 
     return res;
@@ -1006,12 +1006,10 @@ public class StorageGroupProcessor {
 
   private TsFileProcessor createTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-    String baseDir;
-    if (sequence) {
-      baseDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
-    } else {
-      baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
-    }
+    DirectoryManager directoryManager = DirectoryManager.getInstance();
+    String baseDir = sequence ? directoryManager.getNextFolderForSequenceFile()
+        : directoryManager.getNextFolderForUnSequenceFile();
+
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
 
     String filePath =
@@ -1019,37 +1017,38 @@ public class StorageGroupProcessor {
             + File.separator
             + getNewTsFileName(timePartitionId);
 
-    TsFileProcessor tsFileProcessor;
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
+    TsFileProcessor tsFileProcessor = getTsFileProcessor(sequence, filePath, versionController);
+    tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
+    tsFileProcessor.addFlushListeners(customFlushListeners);
+
+    tsFileProcessor.setTimeRangeId(timePartitionId);
+    return tsFileProcessor;
+  }
+
+  private TsFileProcessor getTsFileProcessor(boolean sequence, String filePath,
+                                             VersionController versionController) throws IOException {
+    TsFileProcessor tsFileProcessor;
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
-            .getTsFileResource().calculateRamSize());
-      }
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
-            .getTsFileResource().calculateRamSize());
-      }
     }
-    tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
-    tsFileProcessor.addFlushListeners(customFlushListeners);
 
-    tsFileProcessor.setTimeRangeId(timePartitionId);
+    if (enableMemControl) {
+      TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+      tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+      this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+      tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+          .getTsFileResource().calculateRamSize());
+    }
+
     return tsFileProcessor;
   }
 
