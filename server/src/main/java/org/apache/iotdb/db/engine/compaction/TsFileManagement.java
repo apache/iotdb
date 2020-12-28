@@ -178,6 +178,21 @@ public abstract class TsFileManagement {
     }
   }
 
+  public class CompactionRecoverTask implements Runnable {
+
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
+
+    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
+    }
+
+    @Override
+    public void run() {
+      recover();
+      closeCompactionMergeCallBack.call();
+    }
+  }
+
   public void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList, long dataTTL) {
     if (isUnseqMerging) {
