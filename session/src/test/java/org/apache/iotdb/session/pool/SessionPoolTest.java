@@ -52,6 +52,15 @@ public class SessionPoolTest {
     EnvironmentUtils.cleanEnv();
   }
 
+  @Test
+  public void testNoReply() {
+    try{
+      SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+      pool.testNoReply();
+    } catch (IoTDBConnectionException e) {
+      fail("test no reply failed");
+    }
+  }
 
   @Test
   public void insert() {

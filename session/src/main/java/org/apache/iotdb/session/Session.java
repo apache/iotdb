@@ -298,6 +298,13 @@ public class Session {
   }
 
   /**
+   * execute no reply test
+   */
+  public void testNoReply() throws IoTDBConnectionException {
+    defaultSessionConnection.testNoReply();
+  }
+
+  /**
    * query eg. select * from paths where time >= startTime and time < endTime time interval include
    * startTime and exclude endTime
    *

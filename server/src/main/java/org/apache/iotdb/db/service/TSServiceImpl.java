@@ -131,6 +131,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSTestNoReplyReq;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1218,6 +1219,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.setTimestampPrecision(
         IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     return properties;
+  }
+
+  /**
+   * execute no reply request
+   */
+  @Override
+  public void testNoReply(TSTestNoReplyReq req){
+    logger.info("execute test no reply");
   }
 
   @Override

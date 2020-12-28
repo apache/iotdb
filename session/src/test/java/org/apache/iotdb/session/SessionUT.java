@@ -58,6 +58,15 @@ public class SessionUT {
   }
 
   @Test
+  public void testNoReply() {
+    try{
+      session.testNoReply();
+    } catch (IoTDBConnectionException e) {
+      fail("test no reply failed");
+    }
+  }
+
+  @Test
   public void testSortTablet() {
     /*
     To test sortTablet in Class Session

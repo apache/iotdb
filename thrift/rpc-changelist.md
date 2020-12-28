@@ -128,6 +128,8 @@ Last Updated on 2019-10-27 by Lei Rui.
 | Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
 | Add struct TSCreateMultiTimeseriesReq                        | qiaojialin |
 | Add method createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);       | qiaojialin |
+| Add struct TSTestNoReplyReq                                  | Kaifeng Xue | 
+| Add method testNoReply                                       | Kaifeng Xue | 
 
 
 ## 3. Update

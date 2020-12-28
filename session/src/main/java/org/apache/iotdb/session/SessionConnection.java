@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSTestNoReplyReq;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -599,6 +600,30 @@ public class SessionConnection {
         throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
       }
     }
+  }
+
+  /**
+   * execute no reply test
+   */
+  protected void testNoReply()
+      throws IoTDBConnectionException {
+    TSTestNoReplyReq request = new TSTestNoReplyReq();
+    request.setSessionId(sessionId);
+    try {
+      client.testNoReply(request);
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          client.testNoReply(request);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+    logger.info("test no reply successfully! ");
   }
 
   private boolean reconnect() {

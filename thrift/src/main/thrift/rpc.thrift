@@ -240,10 +240,14 @@ struct TSInsertStringRecordsReq {
 }
 
 struct TSDeleteDataReq {
+   1: required i64 sessionId
+   2: required list<string> paths
+   3: required i64 startTime
+   4: required i64 endTime
+ }
+
+struct TSTestNoReplyReq {
   1: required i64 sessionId
-  2: required list<string> paths
-  3: required i64 startTime
-  4: required i64 endTime
 }
 
 struct TSCreateTimeseriesReq {
@@ -333,6 +337,8 @@ service TSIService {
   TSStatus insertRecords(1:TSInsertRecordsReq req);
 
   TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
+
+  void testNoReply(1: TSTestNoReplyReq req);
 
   TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
