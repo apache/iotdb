@@ -76,10 +76,6 @@ public class Field {
     return dataType;
   }
 
-  public boolean isNull() {
-    return dataType == null;
-  }
-
   public boolean getBoolV() {
     if (dataType == null) {
       throw new NullFieldException();
