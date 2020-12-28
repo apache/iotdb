@@ -21,7 +21,7 @@
 
 
 
-# UDF（用户定义函数）
+# UDF (用户定义函数)
 
 UDF（User Defined Function）即用户自定义函数。IoTDB提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
@@ -299,7 +299,7 @@ public class Counter implements UDTF {
 
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
-3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/lib` 下
+3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/lib` （也可以是`iotdb-server-0.12.0-SNAPSHOT/lib`的子目录）下
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
 注册UDF的SQL语法如下：
@@ -408,3 +408,16 @@ SHOW FUNCTIONS
 
 在SQL语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
+
+
+## Q&A
+
+**Q1: 如何修改已经注册的UDF？**
+
+A1: 假设UDF的名称为`example`，全类名为`org.apache.iotdb.udf.ExampleUDTF`，由`example.jar`引入
+
+1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
+2. 删除 `iotdb-server-0.12.0-SNAPSHOT/lib` 目录下的`example.jar`
+3. 修改`org.apache.iotdb.udf.ExampleUDTF`中的逻辑，重新打包，JAR包的名字可以仍然为`example.jar`
+4. 将新的JAR包上传至 `iotdb-server-0.12.0-SNAPSHOT/lib` 目录下
+5. 装载新的UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`
