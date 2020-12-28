@@ -351,6 +351,11 @@ public class MetaGroupMemberTest extends MemberTest {
         return getClient(node);
       }
 
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getClient(node);
+      }
+
       AsyncClient getClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
