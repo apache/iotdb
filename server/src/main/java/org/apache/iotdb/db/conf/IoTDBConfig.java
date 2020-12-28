@@ -202,8 +202,9 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 100;
 
   /**
-   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is larger than this parameter, then the insert plan will be rejected by WAL.
+   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
+   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
+   * then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
