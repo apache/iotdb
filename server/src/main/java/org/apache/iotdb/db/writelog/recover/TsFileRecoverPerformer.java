@@ -23,12 +23,10 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -61,7 +59,6 @@ public class TsFileRecoverPerformer {
   private final VersionController versionController;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
-  private final boolean isLastFile;
 
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
@@ -73,7 +70,6 @@ public class TsFileRecoverPerformer {
     this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
-    this.isLastFile = isLastFile;
   }
 
   /**
@@ -148,10 +144,6 @@ public class TsFileRecoverPerformer {
         FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
-      long fileVersion =
-          Long.parseLong(
-              tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
-      tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
       tsFileResource.serialize();
     }
   }
@@ -200,9 +192,8 @@ public class TsFileRecoverPerformer {
         tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
-    long fileVersion = Long.parseLong(
-        tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
-    tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
+    tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMaxPlanIndex());
   }
 
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
@@ -219,14 +210,13 @@ public class TsFileRecoverPerformer {
             restorableTsFileIOWriter,
             tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
+        tsFileResource.updatePlanIndexes(recoverMemTable.getMinPlanIndex());
+        tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());
       }
 
-      if (!isLastFile || tsFileResource.isCloseFlagSet()) {
-        // end the file if it is not the last file or it is closed before crush
-        restorableTsFileIOWriter.endFile();
-        tsFileResource.cleanCloseFlag();
-        tsFileResource.serialize();
-      }
+      restorableTsFileIOWriter.endFile();
+      tsFileResource.serialize();
+
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
     } catch (IOException | ExecutionException e) {

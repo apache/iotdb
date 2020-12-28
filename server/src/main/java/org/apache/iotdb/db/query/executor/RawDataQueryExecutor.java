@@ -53,7 +53,7 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
  */
 public class RawDataQueryExecutor {
 
-  private RawDataQueryPlan queryPlan;
+  protected RawDataQueryPlan queryPlan;
 
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.queryPlan = queryPlan;
@@ -64,7 +64,6 @@ public class RawDataQueryExecutor {
    */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
       return new RawQueryDataSetWithoutValueFilter(queryPlan.getDeduplicatedPaths(),
@@ -77,12 +76,11 @@ public class RawDataQueryExecutor {
     }
   }
 
-  public QueryDataSet executeNonAlign(QueryContext context)
+  public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(),
-        queryPlan.getDeduplicatedDataTypes(),
-        readersOfSelectedSeries);
+        queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries);
   }
 
   protected List<ManagedSeriesReader> initManagedSeriesReader(QueryContext context)
@@ -121,14 +119,22 @@ public class RawDataQueryExecutor {
    * @return QueryDataSet object
    * @throws StorageEngineException StorageEngineException
    */
-  public QueryDataSet executeWithValueFilter(QueryContext context)
+  public final QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-
     TimeGenerator timestampGenerator = getTimeGenerator(
         queryPlan.getExpression(), context, queryPlan);
     List<Boolean> cached = markFilterdPaths(queryPlan.getExpression(),
         new ArrayList<>(queryPlan.getDeduplicatedPaths()), timestampGenerator.hasOrNode());
+    List<IReaderByTimestamp> readersOfSelectedSeries = initSeriesReaderByTimestamp(context,
+        queryPlan, cached);
+    return new RawQueryDataSetWithValueFilter(queryPlan.getDeduplicatedPaths(),
+        queryPlan.getDeduplicatedDataTypes(),
+        timestampGenerator, readersOfSelectedSeries, cached, queryPlan.isAscending());
+  }
 
+  protected List<IReaderByTimestamp> initSeriesReaderByTimestamp(QueryContext context,
+      RawDataQueryPlan queryPlan, List<Boolean> cached)
+      throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<StorageGroupProcessor> list = StorageEngine.getInstance()
         .mergeLock(queryPlan.getDeduplicatedPaths());
@@ -147,9 +153,7 @@ public class RawDataQueryExecutor {
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
-    return new RawQueryDataSetWithValueFilter(queryPlan.getDeduplicatedPaths(),
-        queryPlan.getDeduplicatedDataTypes(),
-        timestampGenerator, readersOfSelectedSeries, cached, queryPlan.isAscending());
+    return readersOfSelectedSeries;
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(PartialPath path, Set<String> allSensors,

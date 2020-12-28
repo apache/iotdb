@@ -22,9 +22,7 @@ package org.apache.iotdb.tsfile.file.footer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -50,20 +48,22 @@ public class ChunkGroupFooter {
    * @param dataSize       data size
    * @param numberOfChunks number of chunks
    */
-  public ChunkGroupFooter(String deviceID, long dataSize, int numberOfChunks) throws UnsupportedEncodingException {
+  public ChunkGroupFooter(String deviceID, long dataSize, int numberOfChunks) {
     this.deviceID = deviceID;
     this.dataSize = dataSize;
     this.numberOfChunks = numberOfChunks;
-    this.serializedSize = Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
-        + Long.BYTES + Integer.BYTES;
+    this.serializedSize =
+        Byte.BYTES + Integer.BYTES + deviceID.getBytes(TSFileConfig.STRING_CHARSET).length
+            + Long.BYTES + Integer.BYTES;
   }
 
   public static int getSerializedSize(String deviceID) {
-    return Byte.BYTES + Integer.BYTES + getSerializedSize(deviceID.length());
+    return Byte.BYTES + Integer.BYTES + getSerializedSize(deviceID.length()) + Long.BYTES
+        + Long.BYTES;
   }
 
   private static int getSerializedSize(int deviceIdLength) {
-    return deviceIdLength + Long.BYTES + Integer.BYTES;
+    return deviceIdLength + Long.BYTES + Integer.BYTES + Long.BYTES + Long.BYTES;
   }
 
   /**
@@ -71,7 +71,8 @@ public class ChunkGroupFooter {
    *
    * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
    */
-  public static ChunkGroupFooter deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
+  public static ChunkGroupFooter deserializeFrom(InputStream inputStream, boolean markerRead)
+      throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MARKER) {
@@ -148,7 +149,8 @@ public class ChunkGroupFooter {
 
   @Override
   public String toString() {
-    return "CHUNK_GROUP_FOOTER{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize + ", numberOfChunks="
-        + numberOfChunks + ", serializedSize=" + serializedSize + '}';
+    return "CHUNK_GROUP_FOOTER{" + "deviceID='" + deviceID + '\'' + ", dataSize=" + dataSize
+        + ", numberOfChunks="
+        + numberOfChunks + ", serializedSize=" + serializedSize;
   }
 }

@@ -113,6 +113,7 @@ public class MemTableFlushTask {
 
     try {
       writer.writeVersion(memTable.getVersion());
+      writer.writePlanIndices();
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
@@ -222,7 +223,7 @@ public class MemTableFlushTask {
           TimeUnit.MILLISECONDS.sleep(10);
         } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
           logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
-              , memTable.getVersion(), e);
+              , memTable.getVersion());
           // generally it is because the thread pool is shutdown so the task should be aborted
           break;
         }
@@ -235,6 +236,8 @@ public class MemTableFlushTask {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
             chunkWriter.writeToFileWriter(this.writer);
           } else {
+            this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
+            this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
             this.writer.endChunkGroup();
           }
         } catch (IOException e) {

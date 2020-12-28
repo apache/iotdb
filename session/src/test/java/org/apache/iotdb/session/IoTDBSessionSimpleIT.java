@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -255,7 +256,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testCreateMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException, MetadataException {
+      throws IoTDBConnectionException, StatementExecutionException, MetadataException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -316,9 +317,9 @@ public class IoTDBSessionSimpleIT {
     for (String path : devices) {
       for (int i = 0; i < 10; i++) {
         String[] ss = path.split("\\.");
-        String deviceId = storageGroup;
+        StringBuilder deviceId = new StringBuilder(storageGroup);
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
+          deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
@@ -328,7 +329,7 @@ public class IoTDBSessionSimpleIT {
         measurements.add(sensorId);
         types.add(TSDataType.INT64);
         values.add(100L);
-        session.insertRecord(deviceId, i, measurements, types, values);
+        session.insertRecord(deviceId.toString(), i, measurements, types, values);
       }
     }
 
@@ -388,4 +389,5 @@ public class IoTDBSessionSimpleIT {
     session.deleteStorageGroup(storageGroup);
     session.close();
   }
+
 }

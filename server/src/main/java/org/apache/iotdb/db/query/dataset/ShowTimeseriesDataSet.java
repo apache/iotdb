@@ -37,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,26 +45,25 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ShowTimeseriesDataSet extends QueryDataSet {
-
-  private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesDataSet.class);
 
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
-  private QueryContext context;
+  private final QueryContext context;
 
   public boolean hasLimit;
 
-  private static Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
-      new PartialPath(COLUMN_TIMESERIES_ALIAS, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
-      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false), new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
-      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false), new PartialPath(COLUMN_TAGS, false),
+  private static final Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
+      new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
+      new PartialPath(COLUMN_STORAGE_GROUP, false),
+      new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+      new PartialPath(COLUMN_TIMESERIES_ENCODING, false),
+      new PartialPath(COLUMN_TIMESERIES_COMPRESSION, false),
+      new PartialPath(COLUMN_TAGS, false),
       new PartialPath(COLUMN_ATTRIBUTES, false)};
-  private static TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
       TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT};
 
   public ShowTimeseriesDataSet(ShowTimeSeriesPlan showTimeSeriesPlan, QueryContext context)
@@ -115,7 +113,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
@@ -129,7 +127,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return result.get(index++);
   }
 

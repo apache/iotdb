@@ -18,7 +18,7 @@
  */
 
 #include "catch.hpp"
-#include "IOTDBSession.h"
+#include "Session.h"
 
 using namespace std;
 

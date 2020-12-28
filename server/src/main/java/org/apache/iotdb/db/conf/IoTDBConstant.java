@@ -89,6 +89,9 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
+  public static final String COLUMN_FUNCTION_NAME = "UDF name";
+  public static final String COLUMN_FUNCTION_CLASS = "class name";
+
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
 
@@ -113,4 +116,7 @@ public class IoTDBConstant {
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
+
+  // thrift
+  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
 }

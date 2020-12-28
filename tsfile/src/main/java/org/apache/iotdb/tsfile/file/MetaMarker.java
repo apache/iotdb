@@ -30,6 +30,10 @@ public class MetaMarker {
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
   public static final byte VERSION = 3;
+  // following this marker are two longs marking the minimum and maximum indices of operations
+  // involved in the last flushed MemTable, which are generally used to support checkpoint,
+  // snapshot, or backup.
+  public static final byte OPERATION_INDEX_RANGE = 4;
 
   private MetaMarker() {
   }

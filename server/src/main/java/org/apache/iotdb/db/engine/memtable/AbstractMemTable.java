@@ -116,11 +116,11 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertRowPlan.getIndex());
     for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
-      if (insertRowPlan.getValues()[i] == null) {
+      Object value = insertRowPlan.getValues()[i];
+      if (value == null) {
         continue;
       }
 
-      Object value = insertRowPlan.getValues()[i];
       memSize += MemUtils
           .getRecordSize(insertRowPlan.getMeasurementMNodes()[i].getSchema().getType(), value,
               disableMemControl);

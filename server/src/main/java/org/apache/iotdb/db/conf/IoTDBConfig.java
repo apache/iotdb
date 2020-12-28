@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -98,7 +99,6 @@ public class IoTDBConfig {
    */
   private int mqttMaxMessageSize = 1048576;
 
-
   /**
    * Rpc binding address.
    */
@@ -108,6 +108,11 @@ public class IoTDBConfig {
    * whether to use thrift compression.
    */
   private boolean rpcThriftCompressionEnable = false;
+
+  /**
+   * whether to use Snappy compression before sending data through the network
+   */
+  private boolean rpcAdvancedCompressionEnable = false;
 
   /**
    * Port which the JDBC server listens to.
@@ -197,12 +202,19 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 100;
 
   /**
-   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
+   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
+   * then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
   private int estimatedSeriesSize = 300;
+
+  /**
+   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
+   * is larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   */
+  private int mlogBufferSize = 1024 * 1024;
 
   /**
    * default base dir, stores all IoTDB runtime files
@@ -703,9 +715,10 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
-   * property is changed, previous created storage group which are not set TTL will also be
-   * affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * <p>
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -759,6 +772,28 @@ public class IoTDBConfig {
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  /**
+   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
+   * value to be slightly larger than the average length of all text records.
+   */
+  private int udfInitialByteArrayLengthForMemoryControl = 48;
+
+  /**
+   * How much memory may be used in ONE UDF query (in MB).
+   * <p>
+   * The upper limit is 20% of allocated memory for read.
+   * <p>
+   * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
+   * udfCollectorMemoryBudgetInMB
+   */
+  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+
+  private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfTransformerMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -789,6 +824,47 @@ public class IoTDBConfig {
 
   public IoTDBConfig() {
     // empty constructor
+  }
+
+  public float getUdfMemoryBudgetInMB() {
+    return udfMemoryBudgetInMB;
+  }
+
+  public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
+    this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getUdfReaderMemoryBudgetInMB() {
+    return udfReaderMemoryBudgetInMB;
+  }
+
+  public void setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
+    this.udfReaderMemoryBudgetInMB = udfReaderMemoryBudgetInMB;
+  }
+
+  public float getUdfTransformerMemoryBudgetInMB() {
+    return udfTransformerMemoryBudgetInMB;
+  }
+
+  public void setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
+    this.udfTransformerMemoryBudgetInMB = udfTransformerMemoryBudgetInMB;
+  }
+
+  public float getUdfCollectorMemoryBudgetInMB() {
+    return udfCollectorMemoryBudgetInMB;
+  }
+
+  public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
+    this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
+  }
+
+  public int getUdfInitialByteArrayLengthForMemoryControl() {
+    return udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public void setUdfInitialByteArrayLengthForMemoryControl(
+      int udfInitialByteArrayLengthForMemoryControl) {
+    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
   public int getConcurrentWritingTimePartition() {
@@ -1529,7 +1605,7 @@ public class IoTDBConfig {
     return rpcThriftCompressionEnable;
   }
 
-  void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
@@ -2105,5 +2181,22 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public boolean isRpcAdvancedCompressionEnable() {
+    return rpcAdvancedCompressionEnable;
+  }
+
+  public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
+    this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
+    RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  }
+
+  public int getMlogBufferSize() {
+    return mlogBufferSize;
+  }
+
+  public void setMlogBufferSize(int mlogBufferSize) {
+    this.mlogBufferSize = mlogBufferSize;
   }
 }

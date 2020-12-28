@@ -57,7 +57,7 @@ public class TracingManager {
     try {
       fileWriter = new FileWriter(logFile, true);
     } catch (IOException e) {
-      logger.error("Meeting error while creating TracingManager: {}", e);
+      logger.error("Meeting error while creating TracingManager: {}", e.getMessage());
     }
     writer = new BufferedWriter(fileWriter);
   }
@@ -131,7 +131,7 @@ public class TracingManager {
           .append("[").append(tsFileResource.getStartTime(device))
           .append(", ").append(tsFileResource.getEndTime(device)).append("]");
       if (deviceIter.hasNext()) {
-        builder.append(", ");
+        builder.append(",");
       }
     }
   }

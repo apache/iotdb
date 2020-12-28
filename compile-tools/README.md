@@ -18,16 +18,17 @@
     under the License.
 
 -->
+# Building compile tools
 
-To compile cpp client, add "mvn -Pclient-cpp" option when running maven command in IoTDB root directory.
 
-## Requirement
+## Requirements
 * Java 8+
 * Maven 3.5+
 * Flex
 * Bison 2.7+
 * OpenSSL 1.0+
 
+Make sure a complete C++ building environment is prepared on your machine.
 
 ### Mac
 
@@ -78,7 +79,6 @@ If Openssl header files can not be found when building Thrift, please add option
 
 #### Additional requrirements
 
-* gcc
 * g++
 
 To install all dependencies, run:
