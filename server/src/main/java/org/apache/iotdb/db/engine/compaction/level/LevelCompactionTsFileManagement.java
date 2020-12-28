@@ -100,13 +100,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (sequence) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > level) {
-          sequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          synchronized (sequenceTsFileResources) {
+            sequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          }
         }
       }
     } else {
       if (unSequenceTsFileResources.containsKey(timePartitionId)) {
         if (unSequenceTsFileResources.get(timePartitionId).size() > level) {
-          unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          synchronized (unSequenceTsFileResources) {
+            unSequenceTsFileResources.get(timePartitionId).get(level).removeAll(mergeTsFiles);
+          }
         }
       }
     }
@@ -205,24 +209,24 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     int level = getMergeLevel(tsFileResource.getTsFile());
     if (sequence) {
       if (level <= seqLevelNum - 1) {
-        // current file has too high level
+        // current file has normal level
         sequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
             .add(tsFileResource);
       } else {
-        // current file has normal level
+        // current file has too high level
         sequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(seqLevelNum - 1)
             .add(tsFileResource);
       }
     } else {
       if (level <= unseqLevelNum - 1) {
-        // current file has too high level
+        // current file has normal level
         unSequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources).get(level)
             .add(tsFileResource);
       } else {
-        // current file has normal level
+        // current file has too high level
         unSequenceTsFileResources
             .computeIfAbsent(timePartitionId, this::newUnSequenceTsFileResources)
             .get(unseqLevelNum - 1).add(tsFileResource);
