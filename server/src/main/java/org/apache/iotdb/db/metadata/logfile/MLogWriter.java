@@ -339,7 +339,7 @@ public class MLogWriter implements AutoCloseable {
 
   /**
    * upgrade from mlog.txt to mlog.bin
-   * @param cmd, the old meta operation
+   * @param cmd the old meta operation
    * @throws IOException
    * @throws MetadataException
    */

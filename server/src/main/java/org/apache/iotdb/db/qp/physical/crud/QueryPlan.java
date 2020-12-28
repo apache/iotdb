@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public abstract class QueryPlan extends PhysicalPlan {
 
   protected List<PartialPath> paths = null;
-  private List<TSDataType> dataTypes = null;
+  protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;

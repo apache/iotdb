@@ -121,7 +121,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
       return true;
     } else {
@@ -214,7 +214,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
   }
 
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     RowRecord originRowRecord = currentDataSet.next();
 
     RowRecord rowRecord = new RowRecord(originRowRecord.getTimestamp());

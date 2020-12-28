@@ -29,8 +29,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
 
   @Override
-  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset) throws MetadataException {
+  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
+      throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
-
 }

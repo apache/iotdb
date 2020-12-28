@@ -97,7 +97,7 @@ abstract class MergeTest {
     MergeManager.getINSTANCE().stop();
   }
 
-  private void prepareSeries() throws MetadataException, MetadataException {
+  private void prepareSeries() throws MetadataException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
