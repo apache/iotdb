@@ -104,8 +104,8 @@ public class DeviceTimeIndex implements ITimeIndex {
     long[] endTimesArray = new long[deviceNum];
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimes[i] = ReadWriteIOUtils.readLong(inputStream);
-      endTimes[i] = ReadWriteIOUtils.readLong(inputStream);
+      startTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
+      endTimesArray[i] = ReadWriteIOUtils.readLong(inputStream);
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -114,7 +114,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceToIndex.put(cachedPath, index);
+      deviceMap.put(cachedPath, index);
     }
     return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
   }
@@ -122,13 +122,13 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public DeviceTimeIndex deserialize(ByteBuffer buffer) {
     int deviceNum = buffer.getInt();
+    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(deviceNum);
     long[] startTimesArray = new long[deviceNum];
     long[] endTimesArray = new long[deviceNum];
-    Map<String, Integer> deviceMap = new ConcurrentHashMap<>(deviceNum);
 
     for (int i = 0; i < deviceNum; i++) {
-      startTimes[i] = buffer.getLong();
-      endTimes[i] = buffer.getLong();
+      startTimesArray[i] = buffer.getLong();
+      endTimesArray[i] = buffer.getLong();
     }
 
     for (int i = 0; i < deviceNum; i++) {
@@ -137,7 +137,7 @@ public class DeviceTimeIndex implements ITimeIndex {
       // use the deviceId from memory instead of the deviceId read from disk
       String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
       int index = buffer.getInt();
-      deviceToIndex.put(cachedPath, index);
+      deviceMap.put(cachedPath, index);
     }
     return new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
   }
