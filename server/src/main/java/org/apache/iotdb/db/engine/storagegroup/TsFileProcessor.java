@@ -179,7 +179,7 @@ public class TsFileProcessor {
         MemTableManager.getInstance().addMemtableNumber();
       }
       else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
 
@@ -227,7 +227,7 @@ public class TsFileProcessor {
         MemTableManager.getInstance().addMemtableNumber();
       }
       else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(tsFileResource);
+        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
 
