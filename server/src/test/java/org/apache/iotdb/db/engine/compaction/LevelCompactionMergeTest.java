@@ -118,7 +118,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
         context,
-        levelCompactionTsFileManagement.getStableTsFileList(true), new ArrayList<>(), null, null,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null,
         true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {

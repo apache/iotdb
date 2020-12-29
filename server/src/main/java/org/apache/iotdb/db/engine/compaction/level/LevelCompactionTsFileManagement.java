@@ -133,33 +133,23 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getStableTsFileList(boolean sequence) {
-    List<TsFileResource> result = new ArrayList<>();
-    if (sequence) {
-      for (List<SortedSet<TsFileResource>> sequenceTsFileList : sequenceTsFileResources.values()) {
-        result.addAll(sequenceTsFileList.get(seqLevelNum - 1));
-      }
-    } else {
-      for (List<List<TsFileResource>> unSequenceTsFileList : unSequenceTsFileResources.values()) {
-        result.addAll(unSequenceTsFileList.get(unseqLevelNum - 1));
-      }
-    }
-    return result;
-  }
-
-  @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
     List<TsFileResource> result = new ArrayList<>();
     if (sequence) {
-      for (List<SortedSet<TsFileResource>> sequenceTsFileList : sequenceTsFileResources.values()) {
-        for (int i = sequenceTsFileList.size() - 1; i >= 0; i--) {
-          result.addAll(sequenceTsFileList.get(i));
+      synchronized (sequenceTsFileResources) {
+        for (List<SortedSet<TsFileResource>> sequenceTsFileList : sequenceTsFileResources
+            .values()) {
+          for (int i = sequenceTsFileList.size() - 1; i >= 0; i--) {
+            result.addAll(sequenceTsFileList.get(i));
+          }
         }
       }
     } else {
-      for (List<List<TsFileResource>> unSequenceTsFileList : unSequenceTsFileResources.values()) {
-        for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
-          result.addAll(unSequenceTsFileList.get(i));
+      synchronized (unSequenceTsFileResources) {
+        for (List<List<TsFileResource>> unSequenceTsFileList : unSequenceTsFileResources.values()) {
+          for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
+            result.addAll(unSequenceTsFileList.get(i));
+          }
         }
       }
     }
