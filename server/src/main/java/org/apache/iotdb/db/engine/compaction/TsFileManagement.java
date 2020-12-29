@@ -193,7 +193,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  public void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
+  public synchronized void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList, long dataTTL) {
     if (isUnseqMerging) {
       if (logger.isInfoEnabled()) {
