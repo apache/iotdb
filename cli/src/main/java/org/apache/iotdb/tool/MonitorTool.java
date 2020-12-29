@@ -21,6 +21,7 @@ package org.apache.iotdb.tool;
 import com.sun.management.OperatingSystemMXBean;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -28,6 +29,8 @@ import java.net.NetworkInterface;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystems;
 import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -45,7 +48,8 @@ public class MonitorTool {
 
   private static String url;
 
-  public static void main(String[] args) throws ParseException, IoTDBConnectionException {
+  public static void main(String[] args)
+      throws ParseException, IoTDBConnectionException, IOException, StatementExecutionException {
     int port = 6667;
     String password = "root";
     Options options = new Options();
@@ -84,10 +88,12 @@ public class MonitorTool {
       url = System.getProperty("IOTDB_HOME", null);
 
       if(url == null) {
-        url = MonitorTool.class.getResource("/").toString();
+        url = System.getProperty("user.dir");
       }
     }
-
+    generateOsFile();
+    generateIoTDBRuntimeFile(port, password);
+    packageFilesToZip();
   }
 
   public static void generateOsFile() throws IOException {
@@ -109,7 +115,7 @@ public class MonitorTool {
 
     // underlying file stores size in mb
     for (FileStore store : FileSystems.getDefault().getFileStores()) {
-      writer.write("file store name: " + store.name());
+      writer.write("file store name: " + store.name() + "\n");
       long total = store.getTotalSpace() / (1024 * 1024);
       long used = (store.getTotalSpace() - store.getUnallocatedSpace()) / (1024 * 1024);
       long avail = store.getUsableSpace() / (1024 * 1024);
@@ -141,11 +147,11 @@ public class MonitorTool {
     long totalSystemMemory = osBean.getTotalPhysicalMemorySize() / (1024 * 1024);
     long usedSystemMemory = totalSystemMemory - freeSystemMemory / (1024 * 1024);
 
-    writer.write("free system memory: " + freeSystemMemory);
-    writer.write("total system memory: " + totalSystemMemory);
-    writer.write("used system memory: " + usedSystemMemory);
+    writer.write("free system memory: " + freeSystemMemory + "\n");
+    writer.write("total system memory: " + totalSystemMemory + "\n");
+    writer.write("used system memory: " + usedSystemMemory + "\n");
 
-    writer.write("Thread info: ");
+    writer.write("Thread info: " + "\n");
     for(Thread thread : Thread.getAllStackTraces().keySet()) {
       writer.write("---- " + thread.getName());
     }
@@ -176,5 +182,27 @@ public class MonitorTool {
       writer.write(record.getFields().get(0).getBinaryV().toString() + ": ");
       writer.write(record.getFields().get(1).getBinaryV().toString() + "\n");
     }
+    session.close();
+    writer.close();
+  }
+
+  public static void packageFilesToZip() throws IOException {
+    File f = new File(url + "/monitor.zip");
+    ZipOutputStream out = new ZipOutputStream(new FileOutputStream(f));
+    ZipEntry os = new ZipEntry(url + "/os.txt");
+    ZipEntry iotdb = new ZipEntry(url + "/iotdb.txt");
+    out.putNextEntry(os);
+    out.putNextEntry(iotdb);
+    File f1 = new File(url + "/conf");
+    if(f1.isDirectory() && f1.exists()) {
+      ZipEntry properties = new ZipEntry(url + "/conf/iotdb-engine.properties");
+      out.putNextEntry(properties);
+      ZipEntry env = new ZipEntry(url + "/conf/iotdb-env.sh");
+      ZipEntry env1 = new ZipEntry(url + "/conf/iotdb-env.bat");
+      out.putNextEntry(env);
+      out.putNextEntry(env1);
+    }
+    out.closeEntry();
+    out.close();
   }
 }
