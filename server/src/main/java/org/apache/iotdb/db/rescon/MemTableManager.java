@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +45,10 @@ public class MemTableManager {
 
   /**
    * Called when memory control is disabled
+   * @throws WriteProcessException 
    */
-  public synchronized IMemTable getAvailableMemTable(String storageGroup) {
+  public synchronized IMemTable getAvailableMemTable(String storageGroup) 
+      throws WriteProcessException {
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
@@ -62,11 +65,13 @@ public class MemTableManager {
         } catch (InterruptedException e) {
           logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
           Thread.currentThread().interrupt();
+          throw new WriteProcessException(e);
         }
         if (waitCount++ % 10 == 0) {
           logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
         }
       }
+      
     }
   }
 
@@ -80,6 +85,7 @@ public class MemTableManager {
 
   public synchronized void decreaseMemtableNumber() {
     currentMemtableNumber--;
+    notifyAll();
   }
 
   /**
@@ -97,6 +103,7 @@ public class MemTableManager {
     maxMemTableNum += MEMTABLE_NUM_FOR_EACH_PARTITION 
         * CONFIG.getConcurrentWritingTimePartition() * diff;
     CONFIG.setMaxMemtableNumber(maxMemTableNum);
+    notifyAll();
   }
 
   private static class InstanceHolder {
