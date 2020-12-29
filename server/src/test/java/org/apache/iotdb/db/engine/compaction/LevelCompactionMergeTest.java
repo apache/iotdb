@@ -128,7 +128,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
       }
     }
-    assertEquals(200, count);
+    assertEquals(500, count);
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
