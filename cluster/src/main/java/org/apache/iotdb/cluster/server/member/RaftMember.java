@@ -607,7 +607,7 @@ public abstract class RaftMember {
         return client;
       }
     }
-    return client;
+    return null;
   }
 
   public NodeCharacter getCharacter() {
@@ -709,7 +709,7 @@ public abstract class RaftMember {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-          logger.error("Catup task exits with unexpected exception", e);
+          logger.error("{}: Catch up task exits with unexpected exception", name, e);
         }
       });
     }
