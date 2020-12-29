@@ -446,16 +446,20 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList(long timePartition) {
-    forkTsFileList(
-        forkedSequenceTsFileResources,
-        sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-        seqLevelNum, seqFileNumInEachLevel);
+    synchronized (sequenceTsFileResources) {
+      forkTsFileList(
+          forkedSequenceTsFileResources,
+          sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
+          seqLevelNum, seqFileNumInEachLevel);
+    }
     // we have to copy all unseq file
-    forkTsFileList(
-        forkedUnSequenceTsFileResources,
-        unSequenceTsFileResources
-            .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
-        unseqLevelNum + 1, unseqFileNumInEachLevel);
+    synchronized (unSequenceTsFileResources) {
+      forkTsFileList(
+          forkedUnSequenceTsFileResources,
+          unSequenceTsFileResources
+              .computeIfAbsent(timePartition, this::newUnSequenceTsFileResources),
+          unseqLevelNum + 1, unseqFileNumInEachLevel);
+    }
   }
 
   private void forkTsFileList(
