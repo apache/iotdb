@@ -202,8 +202,9 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 100;
 
   /**
-   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is larger than this parameter, then the insert plan will be rejected by WAL.
+   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
+   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
+   * then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
@@ -246,6 +247,17 @@ public class IoTDBConfig {
    * Query directory, stores temporary files of query
    */
   private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+
+  /**
+   * External lib directory, stores user-uploaded JAR files
+   */
+  private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
+
+  /**
+   * External lib directory for UDF, stores user-uploaded JAR files
+   */
+  private String udfDir = IoTDBConstant.EXT_FOLDER_NAME + File.separator
+      + IoTDBConstant.UDF_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -932,6 +944,8 @@ public class IoTDBConfig {
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
     indexRootFolder = addHomeDir(indexRootFolder);
+    extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1136,6 +1150,22 @@ public class IoTDBConfig {
     this.walDir = walDir;
   }
 
+  public String getExtDir() {
+    return extDir;
+  }
+
+  public void setExtDir(String extDir) {
+    this.extDir = extDir;
+  }
+
+  public String getUdfDir() {
+    return udfDir;
+  }
+
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1287,7 +1317,7 @@ public class IoTDBConfig {
   public void setEstimatedSeriesSize(int estimatedSeriesSize) {
     this.estimatedSeriesSize = estimatedSeriesSize;
   }
-  
+
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }

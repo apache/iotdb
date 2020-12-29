@@ -91,6 +91,14 @@ Here is a list of Status Code and related message:
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+|700|PARTITION_NOT_READY|Partition table not ready|
+|701|TIME_OUT|Operation timeout|
+|702|NO_LEADER|No leader|
+|703|UNSUPPORTED_OPERATION|Unsupported operation|
+|704|NODE_READ_ONLY|Node read only|
+|705|CONSISTENCY_FAILURE|Consistency check failure|
+|706|NO_CONNECTION|Can not get connection error|
+|707|NEED_REDIRECTION|Need direction|
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.
