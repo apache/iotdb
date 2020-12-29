@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -62,16 +63,24 @@ public class UDFRegistrationService implements IService {
       SQLConstant.FIRST_VALUE, SQLConstant.LAST_VALUE, SQLConstant.COUNT, SQLConstant.SUM,
       SQLConstant.AVG));
 
+  private final ReentrantLock registrationLock;
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
 
-  private final ReentrantReadWriteLock lock;
+  private final ReentrantReadWriteLock logWriterLock;
   private UDFLogWriter logWriter;
 
-  private UDFClassLoader udfClassLoader;
-
   private UDFRegistrationService() {
+    registrationLock = new ReentrantLock();
     registrationInformation = new ConcurrentHashMap<>();
-    lock = new ReentrantReadWriteLock();
+    logWriterLock = new ReentrantReadWriteLock();
+  }
+
+  public void acquireRegistrationLock() {
+    registrationLock.lock();
+  }
+
+  public void releaseRegistrationLock() {
+    registrationLock.unlock();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -98,21 +107,25 @@ public class UDFRegistrationService implements IService {
       throw new UDFRegistrationException(errorMessage);
     }
 
-    Class<?> functionClass;
+    acquireRegistrationLock();
     try {
-      udfClassLoader.refresh();
-      functionClass = Class.forName(className, true, udfClassLoader);
+      UDFClassLoader currentActiveClassLoader = UDFClassLoaderManager.getInstance()
+          .updateAndGetActiveClassLoader();
+      updateAllRegisteredClasses(currentActiveClassLoader);
+
+      Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
+      registrationInformation.put(functionName,
+          new UDFRegistrationInformation(functionName, className, isTemporary, functionClass));
     } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
       String errorMessage = String.format(
           "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
           functionName, className, e.toString());
       logger.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
+    } finally {
+      releaseRegistrationLock();
     }
-
-    registrationInformation.put(functionName,
-        new UDFRegistrationInformation(functionName, className, functionClass, isTemporary));
 
     if (writeToTemporaryLogFile && !isTemporary) {
       try {
@@ -139,6 +152,13 @@ public class UDFRegistrationService implements IService {
     }
   }
 
+  private void updateAllRegisteredClasses(UDFClassLoader activeClassLoader)
+      throws ClassNotFoundException {
+    for (UDFRegistrationInformation information : getRegistrationInformation()) {
+      information.updateFunctionClass(activeClassLoader);
+    }
+  }
+
   public void deregister(String functionName) throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.remove(functionName);
     if (information == null) {
@@ -162,20 +182,20 @@ public class UDFRegistrationService implements IService {
   }
 
   private void appendRegistrationLog(String functionName, String className) throws IOException {
-    lock.writeLock().lock();
+    logWriterLock.writeLock().lock();
     try {
       logWriter.register(functionName, className);
     } finally {
-      lock.writeLock().unlock();
+      logWriterLock.writeLock().unlock();
     }
   }
 
   private void appendDeregistrationLog(String functionName) throws IOException {
-    lock.writeLock().lock();
+    logWriterLock.writeLock().lock();
     try {
       logWriter.deregister(functionName);
     } finally {
-      lock.writeLock().unlock();
+      logWriterLock.writeLock().unlock();
     }
   }
 
@@ -189,7 +209,8 @@ public class UDFRegistrationService implements IService {
       throw new QueryProcessException(errorMessage);
     }
 
-    Thread.currentThread().setContextClassLoader(udfClassLoader);
+    Thread.currentThread()
+        .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
     try {
       return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
@@ -207,23 +228,12 @@ public class UDFRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      udfClassLoader = new UDFClassLoader(parseLibRoot());
       makeDirIfNecessary();
       doRecovery();
       logWriter = new UDFLogWriter(LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
     }
-  }
-
-  private String parseLibRoot() {
-    String jarPath = (new File(
-        getClass().getProtectionDomain().getCodeSource().getLocation().getPath()))
-        .getAbsolutePath();
-    int lastIndex = jarPath.lastIndexOf(File.separatorChar);
-    String libPath = jarPath.substring(0, lastIndex + 1);
-    logger.info("System lib root: {}", libPath);
-    return libPath;
   }
 
   private void makeDirIfNecessary() throws IOException {
