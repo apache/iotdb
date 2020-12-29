@@ -37,7 +37,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -112,8 +111,6 @@ public class ClusterPlanRouter {
       throws UnsupportedPlanException, MetadataException {
     if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
-    } else if (plan instanceof UpdatePlan) {
-      return splitAndRoutePlan((UpdatePlan) plan);
     } else if (plan instanceof CountPlan) {
       return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
@@ -249,12 +246,6 @@ public class ClusterPlanRouter {
       }
     }
     return values;
-  }
-
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(UpdatePlan plan)
-      throws UnsupportedPlanException {
-    logger.error("UpdatePlan is not implemented");
-    throw new UnsupportedPlanException(plan);
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
