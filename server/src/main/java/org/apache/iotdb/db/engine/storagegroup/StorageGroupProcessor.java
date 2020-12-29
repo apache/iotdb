@@ -1317,14 +1317,6 @@ public class StorageGroupProcessor {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-        while (compactionMergeWorking) {
-          closeStorageGroupCondition.wait(100);
-          if (System.currentTimeMillis() - startTime > 60_000) {
-            logger
-                .warn("{} has spent {}s to wait for closing compaction.", this.storageGroupName,
-                    (System.currentTimeMillis() - startTime) / 1000);
-          }
-        }
       } catch (InterruptedException e) {
         logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
             + "group {}", storageGroupName, e);
@@ -1726,6 +1718,10 @@ public class StorageGroupProcessor {
     } else {
       closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
     }
+    synchronized (closeStorageGroupCondition) {
+      closeStorageGroupCondition.notifyAll();
+    }
+    logger.info("signal closing storage group condition in {}", storageGroupName);
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
         .isTerminated()) {
       compactionMergeWorking = true;
@@ -1745,10 +1741,6 @@ public class StorageGroupProcessor {
       logger.info("{} last compaction merge task is working, skip current merge",
           storageGroupName);
     }
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
-    }
-    logger.info("signal closing storage group condition in {}", storageGroupName);
   }
 
   /**
@@ -1756,9 +1748,6 @@ public class StorageGroupProcessor {
    */
   private void closeCompactionMergeCallBack() {
     this.compactionMergeWorking = false;
-    synchronized (closeStorageGroupCondition) {
-      closeStorageGroupCondition.notifyAll();
-    }
   }
 
   /**

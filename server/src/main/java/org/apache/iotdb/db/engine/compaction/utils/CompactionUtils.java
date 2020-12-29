@@ -149,7 +149,9 @@ public class CompactionUtils {
       chunkWriter = new ChunkWriterImpl(
           IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()));
     } catch (MetadataException e) {
-      throw new IOException(e);
+      // this may caused in IT by restart
+      logger.error("{} get schema {} error,skip this sensor", device, entry.getKey());
+      return maxVersion;
     }
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
       writeTVPair(timeValuePair, chunkWriter);
