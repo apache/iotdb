@@ -44,8 +44,8 @@ public class UDFClassLoader extends URLClassLoader {
    */
   private volatile boolean deprecated;
 
-  UDFClassLoader(String libRoot) throws IOException {
-    super(new URL[0], null);
+  UDFClassLoader(String libRoot, boolean testMode) throws IOException {
+    super(new URL[0], testMode ? getSystemClassLoader() : null);
     this.libRoot = libRoot;
     activeQueriesCount = new AtomicLong(0);
     deprecated = false;
