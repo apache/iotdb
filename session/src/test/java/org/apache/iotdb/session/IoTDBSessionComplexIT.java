@@ -779,4 +779,5 @@ public class IoTDBSessionComplexIT {
       Assert.assertEquals(700, count);
     }
   }
+
 }

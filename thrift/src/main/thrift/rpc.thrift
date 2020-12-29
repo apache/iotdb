@@ -225,6 +225,14 @@ struct TSInsertRecordsReq {
     5: required list<i64> timestamps
 }
 
+struct TSInsertRecordsOfOneDeviceReq {
+    1: required i64 sessionId
+    2: required string deviceId
+    3: required list<list<string>> measurementsList
+    4: required list<binary> valuesList
+    5: required list<i64> timestamps
+}
+
 struct TSInsertStringRecordsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
@@ -326,6 +334,8 @@ service TSIService {
 
 	TSStatus insertRecords(1:TSInsertRecordsReq req);
 
+	TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
+
 	TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
 	TSStatus testInsertTablet(1:TSInsertTabletReq req);
@@ -337,6 +347,8 @@ service TSIService {
   TSStatus testInsertStringRecord(1:TSInsertStringRecordReq req);
 
   TSStatus testInsertRecords(1:TSInsertRecordsReq req);
+
+  TSStatus testInsertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
   TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 

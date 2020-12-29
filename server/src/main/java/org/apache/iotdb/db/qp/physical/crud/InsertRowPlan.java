@@ -90,6 +90,20 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = true;
   }
 
+
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
+      ByteBuffer  values) throws QueryProcessException {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurementList.length];
+    this.values = new Object[measurementList.length];
+    this.fillValues(values);
+    isNeedInferType = false;
+  }
+
+
   @TestOnly
   public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurements,
       TSDataType[] dataTypes, String[] insertValues) {
@@ -257,6 +271,10 @@ public class InsertRowPlan extends InsertPlan {
 
     putString(stream, deviceId.getFullPath());
 
+    serializeMeasurementsAndValues(stream);
+  }
+
+  void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -277,6 +295,7 @@ public class InsertRowPlan extends InsertPlan {
 
     stream.writeLong(index);
   }
+
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
@@ -397,6 +416,10 @@ public class InsertRowPlan extends InsertPlan {
 
     putString(buffer, deviceId.getFullPath());
 
+    serializeMeasurementsAndValues(buffer);
+  }
+
+  void serializeMeasurementsAndValues(ByteBuffer buffer) {
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -422,6 +445,10 @@ public class InsertRowPlan extends InsertPlan {
     this.time = buffer.getLong();
     this.deviceId = new PartialPath(readString(buffer));
 
+    deserializeMeasurementsAndValues(buffer);
+  }
+
+  void deserializeMeasurementsAndValues(ByteBuffer buffer) {
     int measurementSize = buffer.getInt();
 
     this.measurements = new String[measurementSize];
@@ -463,5 +490,9 @@ public class InsertRowPlan extends InsertPlan {
     values = failedValues.toArray(new Object[0]);
     failedValues = null;
     return this;
+  }
+
+  boolean hasFailedValues() {
+    return failedValues != null && !failedValues.isEmpty();
   }
 }

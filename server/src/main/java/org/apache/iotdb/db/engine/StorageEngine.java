@@ -70,6 +70,7 @@ import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -119,6 +120,8 @@ public class StorageEngine implements IService {
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
   private ExecutorService recoverAllSgThreadPool;
+
+
 
   static class InstanceHolder {
 
@@ -380,6 +383,21 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(e);
     }
   }
+
+  public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+
+    // TODO monitor: update statistics
+    try {
+      storageGroupProcessor.insert(insertRowsOfOneDevicePlan);
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
+    }
+
+
+  }
+
 
   /**
    * insert a InsertTabletPlan to a storage group
