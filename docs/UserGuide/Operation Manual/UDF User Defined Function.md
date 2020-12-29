@@ -301,7 +301,7 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/lib` .
+3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
 The following shows the SQL syntax of how to register a UDF.
@@ -408,3 +408,16 @@ SHOW FUNCTIONS
 
 When querying by a UDF, IoTDB may prompt that there is insufficient memory. You can resolve the issue by configuring `udf_initial_byte_array_length_for_memory_control`, `udf_memory_budget_in_mb` and `udf_reader_transformer_collector_memory_proportion` in `iotdb-engine.properties` and restarting the server.
 
+
+
+## Q&A
+
+Q1: **How to modify the registered UDF? **
+
+A1: Assume that the name of the UDF is `example` and the full class name is `org.apache.iotdb.udf.ExampleUDTF`, which is introduced by `example.jar`.
+
+1. Unload the registered function by executing `DROP FUNCTION example`.
+2. Delete `example.jar` under `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+3. Modify the logic in `org.apache.iotdb.udf.ExampleUDTF` and repackage it. The name of the JAR package can still be `example.jar`.
+4. Upload the new JAR package to `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+5. Load the new UDF by executing `CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`.

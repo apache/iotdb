@@ -288,7 +288,7 @@ public class ClientServer extends TSServiceImpl {
    * @throws StorageEngineException
    */
   @Override
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
     // release resources locally
     super.releaseQueryResource(queryId);
     // release resources remotely

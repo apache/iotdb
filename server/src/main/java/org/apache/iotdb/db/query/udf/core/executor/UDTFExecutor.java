@@ -33,13 +33,17 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 public class UDTFExecutor {
 
   protected final UDFContext context;
-  protected UDTFConfigurations configurations;
+  protected final UDTFConfigurations configurations;
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
 
-  public UDTFExecutor(UDFContext context, ZoneId zoneId) throws QueryProcessException {
+  public UDTFExecutor(UDFContext context, ZoneId zoneId) {
     this.context = context;
     configurations = new UDTFConfigurations(zoneId);
+  }
+
+  public void beforeStart(long queryId, float collectorMemoryBudgetInMB)
+      throws QueryProcessException {
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
     try {
       udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
@@ -49,10 +53,6 @@ public class UDTFExecutor {
           "Error occurred during initialization of udf:\n" + e.toString());
     }
     configurations.check();
-  }
-
-  public void initCollector(long queryId, float collectorMemoryBudgetInMB)
-      throws QueryProcessException {
     collector = ElasticSerializableTVList
         .newElasticSerializableTVList(configurations.getOutputDataType(), queryId,
             collectorMemoryBudgetInMB, 1);
