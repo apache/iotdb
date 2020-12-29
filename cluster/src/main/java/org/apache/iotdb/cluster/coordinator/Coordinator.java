@@ -110,21 +110,25 @@ public class Coordinator {
    */
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
+    long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) {
+      // run locally
       result = executeNonQueryLocally(plan);
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
+    } else if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      //forward the plan to all meta group nodes
       result = metaGroupMember.processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
+    } else if (PartitionUtils.isGlobalDataPlan(plan)) {
+      //forward the plan to all data group nodes
       result = processNonPartitionedDataPlan(plan);
-    } else { //split the plan and forward them to some PartitionGroups
+    } else {
+      //split the plan and forward them to some PartitionGroups
       try {
         result = processPartitionedPlan(plan);
       } catch (UnsupportedPlanException e) {
         return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     }
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
+    Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
 
@@ -209,7 +213,8 @@ public class Coordinator {
 
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan
+      if ((plan instanceof InsertPlan
+        || plan instanceof CreateTimeSeriesPlan
         || plan instanceof CreateMultiTimeSeriesPlan)
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
@@ -232,7 +237,8 @@ public class Coordinator {
    * Forward a plan to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
    * returned. The error messages from each group (if any) will be compacted into one string.
    *
-   * @para plan
+   * @param partitionGroups
+   * @param plan
    */
   private TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
@@ -491,7 +497,8 @@ public class Coordinator {
   }
 
   private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
-                                       boolean isBatchFailure, TSStatus[] subStatus, List<String> errorCodePartitionGroups) {
+                                       boolean isBatchFailure, TSStatus[] subStatus,
+                                       List<String> errorCodePartitionGroups) {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;

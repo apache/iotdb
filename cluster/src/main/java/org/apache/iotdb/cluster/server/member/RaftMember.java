@@ -732,11 +732,14 @@ public abstract class RaftMember {
 
   /**
    * Execute a non-query plan.
+   * Subclass may have their individual implements.
    *
    * @param plan a non-query plan.
    * @return A TSStatus indicating the execution result.
    */
-  abstract TSStatus executeNonQueryPlan(PhysicalPlan plan);
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    return StatusUtils.OK;
+  }
 
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and

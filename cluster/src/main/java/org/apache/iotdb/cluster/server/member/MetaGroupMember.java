@@ -1318,30 +1318,6 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Execute a non-query plan. According to the type of the plan, the plan will be executed on all
-   * nodes (like timeseries deletion) or the nodes that belong to certain groups (like data
-   * ingestion).
-   *
-   * @param plan a non-query plan.
-   */
-  @Override
-  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    TSStatus result = new TSStatus();
-    long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
-      // do nothing
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
-      result = processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
-      // do nothing
-    } else { //split the plan and forward them to some PartitionGroups
-      // do nothing
-    }
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
-    return result;
-  }
-
-  /**
    * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
    * so the MetaLeader should take the responsible to make sure that every node receives the plan.
    * Thus the plan will be processed locally only by the MetaLeader and forwarded by non-leader

@@ -25,11 +25,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class Timer {
 
   public static final boolean ENABLE_INSTRUMENTING = true;
 
+  private static final String COORDINATOR = "Coordinator";
   private static final String META_GROUP_MEMBER = "Meta group member";
   private static final String DATA_GROUP_MEMBER = "Data group member";
   private static final String RAFT_MEMBER_SENDER = " Raft member(sender)";
@@ -43,9 +45,14 @@ public class Timer {
     // A dummy root for the convenience of prints
     ROOT(
         "ClassName", "BlockName", TIME_SCALE, true, null),
+    // coordinator
+    COORDINATOR_EXECUTE_NON_QUERY(
+      COORDINATOR, "execute non query", TIME_SCALE, true, ROOT),
+
     // meta group member
     META_GROUP_MEMBER_EXECUTE_NON_QUERY(
-        META_GROUP_MEMBER, "execute non query", TIME_SCALE, true, ROOT),
+        META_GROUP_MEMBER, "execute non query", TIME_SCALE, true,
+      COORDINATOR_EXECUTE_NON_QUERY),
     META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP(
         META_GROUP_MEMBER, "execute in local group", TIME_SCALE, true,
         META_GROUP_MEMBER_EXECUTE_NON_QUERY),
