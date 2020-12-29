@@ -20,12 +20,12 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class Timer {
 
