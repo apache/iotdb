@@ -76,6 +76,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -729,13 +730,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
+      } else if (plan instanceof UDFPlan) {
+        resp = getQueryColumnHeaders(plan, username);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
