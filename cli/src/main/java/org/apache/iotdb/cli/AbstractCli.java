@@ -496,6 +496,13 @@ public abstract class AbstractCli {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
+
+    int j = 0;
+    if (cursorBeforeFirst) {
+      isReachEnd = !resultSet.next();
+      cursorBeforeFirst = false;
+    }
+
     List<List<String>> lists = new ArrayList<>(columnCount);
     if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
@@ -504,24 +511,7 @@ public abstract class AbstractCli {
         lists.add(list);
         maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
       }
-    } else {
-      for (int i = 1; i <= columnCount; i += 2) {
-        List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
-        timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
-        lists.add(timeList);
-        List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
-        valueList.add(resultSetMetaData.getColumnLabel(i + 1));
-        lists.add(valueList);
-        maxSizeList.add(TIMESTAMP_STR.length());
-        maxSizeList.add(resultSetMetaData.getColumnLabel(i + 1).length());
-      }
-    }
-    int j = 0;
-    if (cursorBeforeFirst) {
-      isReachEnd = !resultSet.next();
-      cursorBeforeFirst = false;
-    }
-    if (resultSet instanceof IoTDBJDBCResultSet) {
+
       boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
@@ -544,27 +534,39 @@ public abstract class AbstractCli {
         isReachEnd = !resultSet.next();
       }
       return lists;
-    } else {
-      while (j < maxPrintRowCount && !isReachEnd) {
-        for (int i = 1; i <= columnCount; i++) {
-          String tmp = resultSet.getString(i);
-          if (tmp == null) {
-            tmp = NULL;
-          }
-          if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
-                Long.parseLong(tmp), zoneId);
-          }
-          lists.get(i - 1).add(tmp);
-          if (maxSizeList.get(i - 1) < tmp.length()) {
-            maxSizeList.set(i - 1, tmp.length());
-          }
-        }
-        j++;
-        isReachEnd = !resultSet.next();
-      }
-      return lists;
     }
+
+    for (int i = 1; i <= columnCount; i += 2) {
+      List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
+      timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
+      lists.add(timeList);
+      List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
+      valueList.add(resultSetMetaData.getColumnLabel(i + 1));
+      lists.add(valueList);
+      maxSizeList.add(TIMESTAMP_STR.length());
+      maxSizeList.add(resultSetMetaData.getColumnLabel(i + 1).length());
+    }
+
+    while (j < maxPrintRowCount && !isReachEnd) {
+      for (int i = 1; i <= columnCount; i++) {
+        String tmp = resultSet.getString(i);
+        if (tmp == null) {
+          tmp = NULL;
+        }
+        if (i % 2 != 0 && !tmp.equals(NULL)) {
+          tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+              Long.parseLong(tmp), zoneId);
+        }
+        lists.get(i - 1).add(tmp);
+        if (maxSizeList.get(i - 1) < tmp.length()) {
+          maxSizeList.set(i - 1, tmp.length());
+        }
+      }
+      j++;
+      isReachEnd = !resultSet.next();
+    }
+    return lists;
+
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
