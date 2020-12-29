@@ -401,7 +401,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
         }
       }
-    } catch (IOException e) {
+    } catch (IOException | IllegalPathException e) {
       logger.error("recover level tsfile management error ", e);
     } finally {
       if (logFile.exists()) {
@@ -418,16 +418,16 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (isSeq) {
       for (int level = 0; level < sequenceTsFileResources.get(timePartition).size();
           level++) {
-        SortedSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
-            .get(timePartition).get(level);
+        SortedSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources.get(timePartition)
+            .get(level);
         deleteLevelFilesInDisk(currLevelMergeFile);
         deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
       }
     } else {
       for (int level = 0; level < unSequenceTsFileResources.get(timePartition).size();
           level++) {
-        SortedSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources
-            .get(timePartition).get(level);
+        SortedSet<TsFileResource> currLevelMergeFile = sequenceTsFileResources.get(timePartition)
+            .get(level);
         deleteLevelFilesInDisk(currLevelMergeFile);
         deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
       }
