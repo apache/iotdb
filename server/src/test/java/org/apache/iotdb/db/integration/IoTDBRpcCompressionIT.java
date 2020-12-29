@@ -127,7 +127,6 @@ public class IoTDBRpcCompressionIT {
       statement.execute("flush");
       statement.execute("insert into root.demo.d1(time,s3) values(1,1)");
       statement.execute("flush");
-      Thread.sleep(1000);
       try (ResultSet set = statement.executeQuery("SELECT * FROM root")) {
         int cnt = 0;
         while (set.next()) {
@@ -136,7 +135,6 @@ public class IoTDBRpcCompressionIT {
         }
         assertEquals(1, cnt);
       }
-      statement.execute("merge");
       Thread.sleep(1000);
       // before merge completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root")) {
