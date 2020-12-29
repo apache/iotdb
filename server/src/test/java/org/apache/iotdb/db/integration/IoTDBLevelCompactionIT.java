@@ -54,13 +54,6 @@ public class IoTDBLevelCompactionIT {
 
   @After
   public void tearDown() throws Exception {
-    while (FSFactoryProducer.getFSFactory()
-        .getFile(
-            FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
-                + "storage_groups/root.compactionTest", "root.compactionTest" + COMPACTION_LOG_NAME)
-        .exists()) {
-      // wait
-    }
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(prevCompactionStrategy);
   }
