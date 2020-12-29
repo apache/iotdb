@@ -729,15 +729,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan && !(plan instanceof UDTFPlan)) {
+      if (plan instanceof QueryPlan) {
         resp = getQueryColumnHeaders(plan, username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDTFPlan) {
-        resp = getQueryColumnHeaders(plan, username);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());

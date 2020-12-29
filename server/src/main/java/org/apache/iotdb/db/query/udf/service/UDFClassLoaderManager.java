@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,14 +52,11 @@ public class UDFClassLoaderManager implements IService {
   @SuppressWarnings("squid:S3077")
   private volatile UDFClassLoader activeClassLoader;
 
-  private boolean testMode;
-
   UDFClassLoaderManager() {
     libRoot = IoTDBDescriptor.getInstance().getConfig().getUdfDir();
     logger.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
     activeClassLoader = null;
-    testMode = false;
   }
 
   public void initializeUDFQuery(long queryId) {
@@ -75,7 +71,7 @@ public class UDFClassLoaderManager implements IService {
 
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {
     UDFClassLoader deprecatedClassLoader = activeClassLoader;
-    activeClassLoader = new UDFClassLoader(libRoot, testMode);
+    activeClassLoader = new UDFClassLoader(libRoot);
     deprecatedClassLoader.markAsDeprecated();
     return activeClassLoader;
   }
@@ -84,16 +80,11 @@ public class UDFClassLoaderManager implements IService {
     return activeClassLoader;
   }
 
-  @TestOnly
-  public void setTestMode(boolean testMode) {
-    this.testMode = testMode;
-  }
-
   @Override
   public void start() throws StartupException {
     try {
       makeDirIfNecessary();
-      activeClassLoader = new UDFClassLoader(libRoot, testMode);
+      activeClassLoader = new UDFClassLoader(libRoot);
     } catch (IOException e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
