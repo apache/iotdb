@@ -288,8 +288,8 @@ public class ClusterMain {
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum > 0) {
-          return maxSlotNum / k * sgSerialNum;
+        if (sgSerialNum >= 0) {
+          return (int)(maxSlotNum / k * (sgSerialNum + 0.5));
         } else {
           return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
         }
@@ -299,20 +299,20 @@ public class ClusterMain {
       public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum > 0) {
-          return maxSlotNum / k * sgSerialNum;
+        if (sgSerialNum >= 0) {
+          return (int)(maxSlotNum / k * (sgSerialNum + 0.5));
         } else {
           return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
         }
       }
 
       private int extractSerialNumInSGName(String storageGroupName) {
-//        String[] s = storageGroupName.split("\\.");
-        String[] s = storageGroupName.split("_");
+        String[] s = storageGroupName.split("\\.");
+//        String[] s = storageGroupName.split("_");
         if (s.length != 2) {
           return -1;
         }
-//        s[1] = s[1].substring(4);
+        s[1] = s[1].substring(4);
         try {
           return Integer.parseInt(s[1]);
         } catch (NumberFormatException e) {
