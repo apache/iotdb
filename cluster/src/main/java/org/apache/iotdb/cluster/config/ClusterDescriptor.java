@@ -212,7 +212,7 @@ public class ClusterDescriptor {
         "multi_raft_factor", String.valueOf(config.getMultiRaftFactor()))));
 
     config.setReplicationNum(Integer.parseInt(properties.getProperty(
-        "", String.valueOf(config.getReplicationNum()))));
+        "default_replica_num", String.valueOf(config.getReplicationNum()))));
 
     config.setClusterName(properties.getProperty("cluster_name", config.getClusterName()));
 
