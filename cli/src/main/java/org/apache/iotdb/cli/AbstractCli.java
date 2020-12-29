@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.cli.utils.IOTPrinter.*;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -36,7 +37,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -107,7 +107,6 @@ public abstract class AbstractCli {
 
   static ServerProperties properties = null;
 
-  private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
   private static boolean cursorBeforeFirst = true;
 
   static void init() {
@@ -120,16 +119,6 @@ public abstract class AbstractCli {
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
-  }
-
-
-
-  private static void printCount(int cnt) {
-    if (cnt == 0) {
-      println("Empty set.");
-    } else {
-      println("Total line number = " + cnt);
-    }
   }
 
   static Options createOptions() {
@@ -600,41 +589,8 @@ public abstract class AbstractCli {
     isReachEnd = false;
   }
 
-  private static void printBlockLine(List<Integer> maxSizeList) {
-    StringBuilder blockLine = new StringBuilder();
-    for (Integer integer : maxSizeList) {
-      blockLine.append("+").append(StringUtils.repeat("-", integer));
-    }
-    blockLine.append("+");
-    println(blockLine.toString());
-  }
-
-  private static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
-    printf("|");
-    for (int j = 0; j < maxSizeList.size(); j++) {
-      printf("%" + maxSizeList.get(j) + "s|", lists.get(j).get(i));
-    }
-    println();
-  }
-
   enum OperationResult {
     STOP_OPER, CONTINUE_OPER, NO_OPER
-  }
-
-  private static void printf(String format, Object... args) {
-    SCREEN_PRINTER.printf(format, args);
-  }
-
-  static void print(String msg) {
-    SCREEN_PRINTER.print(msg);
-  }
-
-  private static void println() {
-    SCREEN_PRINTER.println();
-  }
-
-  static void println(String msg) {
-    SCREEN_PRINTER.println(msg);
   }
 
   static boolean processCommand(String s, IoTDBConnection connection) {
