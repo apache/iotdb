@@ -36,6 +36,13 @@ public class UDFParameterValidator {
     this.parameters = parameters;
   }
 
+  /**
+   * Validates whether the attributes entered by the user contain an attribute whose key is
+   * attributeKey.
+   *
+   * @param attributeKey key of the attribute
+   * @throws UDFAttributeNotProvidedException if the attribute is not provided
+   */
   public UDFParameterValidator validateRequiredAttribute(String attributeKey)
       throws UDFAttributeNotProvidedException {
     if (!parameters.hasAttribute(attributeKey)) {
@@ -44,6 +51,18 @@ public class UDFParameterValidator {
     return this;
   }
 
+  /**
+   * Validates whether the data type of the input series at the specified column is as expected.
+   *
+   * @param index            index of the specified column
+   * @param expectedDataType the expected data type
+   * @throws UDFInputSeriesIndexNotValidException    if the index of the specified column is out of
+   *                                                 bound
+   * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
+   *                                                 specified column is not as expected
+   * @throws MetadataException                       if error occurs when getting the data type of
+   *                                                 the input series
+   */
   public UDFParameterValidator validateInputSeriesDataType(int index, TSDataType expectedDataType)
       throws UDFInputSeriesIndexNotValidException, UDFInputSeriesDataTypeNotValidException, MetadataException {
     validateInputSeriesIndex(index);
@@ -56,6 +75,18 @@ public class UDFParameterValidator {
     return this;
   }
 
+  /**
+   * Validates whether the data type of the input series at the specified column is as expected.
+   *
+   * @param index             index of the specified column
+   * @param expectedDataTypes the expected data types
+   * @throws UDFInputSeriesIndexNotValidException    if the index of the specified column is out of
+   *                                                 bound
+   * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
+   *                                                 specified column is not as expected
+   * @throws MetadataException                       if error occurs when getting the data type of
+   *                                                 the input series
+   */
   public UDFParameterValidator validateInputSeriesDataType(int index,
       TSDataType... expectedDataTypes)
       throws UDFInputSeriesIndexNotValidException, UDFInputSeriesDataTypeNotValidException, MetadataException {
@@ -72,6 +103,13 @@ public class UDFParameterValidator {
         expectedDataTypes);
   }
 
+  /**
+   * Validates whether the number of the input series is as expected.
+   *
+   * @param expectedSeriesNumber the expected number of the input series
+   * @throws UDFInputSeriesNumberNotValidException if the number of the input series is not as
+   *                                               expected
+   */
   public UDFParameterValidator validateInputSeriesNumber(int expectedSeriesNumber)
       throws UDFInputSeriesNumberNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
@@ -82,6 +120,16 @@ public class UDFParameterValidator {
     return this;
   }
 
+  /**
+   * Validates whether the number of the input series is as expected.
+   *
+   * @param expectedSeriesNumberLowerBound the number of the input series must be greater than or
+   *                                       equal to the expectedSeriesNumberLowerBound
+   * @param expectedSeriesNumberUpperBound the number of the input series must be less than or equal
+   *                                       to the expectedSeriesNumberUpperBound
+   * @throws UDFInputSeriesNumberNotValidException if the number of the input series is not as
+   *                                               expected
+   */
   public UDFParameterValidator validateInputSeriesNumber(int expectedSeriesNumberLowerBound,
       int expectedSeriesNumberUpperBound) throws UDFInputSeriesNumberNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
@@ -93,6 +141,15 @@ public class UDFParameterValidator {
     return this;
   }
 
+  /**
+   * Validates whether the index of the specified column is out of bound.
+   * </p>
+   * bound: [0, parameters.getPaths().size())
+   *
+   * @param index the index of the specified column
+   * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
+   *                                              bound
+   */
   public UDFParameterValidator validateInputSeriesIndex(int index)
       throws UDFInputSeriesIndexNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
