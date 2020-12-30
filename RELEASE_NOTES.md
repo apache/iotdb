@@ -18,6 +18,26 @@
     under the License.
 
 -->
+# Apache IoTDB 0.11.2
+
+## Bug Fixes
+* IOTDB-1049 Fix Nullpointer exception and a delete bug in Last query
+* IOTDB-1060 Support full deletion for delete statement without where clause
+* IOTDB-1068 Fix Time series metadata cache bug
+* IOTDB-1069 restrict the flushing memtable number to avoid OOM when mem_control is disabled
+* IOTDB-1077 add insertOneDeviceRecords API in java session
+* Github issue-2169 GetObject should not return String for all data types 
+* Github issue-2240 Fix sync failed bug
+* Github issue-2253 Remove unnecessary dependency
+* Add max frame size configuration
+* Fix hive-connector CI
+* Change parallelism in timeseries metadata cache
+* Fix incorrect last result after deleting all data
+* Save one rpc call
+* Compaction not block flush
+* Cherry pick compaction modification
+* print more insert error message in client
+
 # Apache IoTDB 0.11.1
 
 ## Bug Fixes
