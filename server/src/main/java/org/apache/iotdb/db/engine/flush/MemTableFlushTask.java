@@ -50,9 +50,9 @@ public class MemTableFlushTask {
   private RestorableTsFileIOWriter writer;
 
   private final LinkedBlockingQueue<Object> ioTaskQueue =
-      new LinkedBlockingQueue<>(config.getQueueSizeForFlushing());
+      new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing());
   private final LinkedBlockingQueue<Object> encodingTaskQueue = 
-      new LinkedBlockingQueue<>(config.getQueueSizeForFlushing());
+      new LinkedBlockingQueue<>(config.getEncodingTaskQueueSizeForFlushing());
   private String storageGroup;
 
   private IMemTable memTable;
