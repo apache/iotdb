@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cli;
 
-import static org.apache.iotdb.cli.utils.IOTPrinter.println;
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 
 import java.io.IOException;
 import java.sql.DriverManager;
