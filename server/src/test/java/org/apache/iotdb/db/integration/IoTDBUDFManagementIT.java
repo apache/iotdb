@@ -346,6 +346,8 @@ public class IoTDBUDFManagementIT {
       throwable.printStackTrace();
       assertTrue(throwable.getMessage()
           .contains("the given function name is the same as a built-in UDF function name"));
+    } finally {
+      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 
@@ -362,6 +364,8 @@ public class IoTDBUDFManagementIT {
       throwable.printStackTrace();
       assertTrue(
           throwable.getMessage().contains("Built-in function adder can not be deregistered"));
+    } finally {
+      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 
@@ -376,6 +380,8 @@ public class IoTDBUDFManagementIT {
     } catch (SQLException throwable) {
       throwable.printStackTrace();
       fail(throwable.getMessage());
+    } finally {
+      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 
@@ -425,6 +431,8 @@ public class IoTDBUDFManagementIT {
     } catch (SQLException throwable) {
       throwable.printStackTrace();
       fail(throwable.getMessage());
+    } finally {
+      UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
   }
 }

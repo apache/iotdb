@@ -374,6 +374,11 @@ public class UDFRegistrationService implements IService {
         new UDFRegistrationInformation(functionName, className, false, true, functionClass));
   }
 
+  @TestOnly
+  public void deregisterBuiltinFunction(String functionName) {
+    registrationInformation.remove(functionName);
+  }
+
   @Override
   public ServiceType getID() {
     return ServiceType.UDF_REGISTRATION_SERVICE;
