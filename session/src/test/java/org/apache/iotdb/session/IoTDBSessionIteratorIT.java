@@ -242,6 +242,9 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
+  /**
+   * Test executeQueryStatement with timeout, and the result is not timeout here.
+   */
   @Test
   public void queryWithTimeoutTest() {
     String[] retArray = new String[]{
