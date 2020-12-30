@@ -460,6 +460,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
             fillCache(seriesIndex);
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
+            Thread.currentThread().interrupt();
             throw new QueryTimeoutRuntimeException(
                 QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
           } catch (IOException e) {

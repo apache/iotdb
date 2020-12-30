@@ -115,14 +115,7 @@ public class QueryTimeManager implements IService {
     if (executorService == null || executorService.isShutdown()) {
       return;
     }
-
-    executorService.shutdown();
-    try {
-      executorService.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      logger.error("Query time monitor service could not be shutdown.", e);
-      Thread.currentThread().interrupt();
-    }
+    executorService.shutdownNow();
   }
 
   @Override

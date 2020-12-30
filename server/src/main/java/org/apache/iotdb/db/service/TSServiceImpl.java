@@ -783,7 +783,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       QueryTimeManager.getInstance().unRegisterQuery(queryId);
       return resp;
     } catch (Exception e) {
-      if (e instanceof NullPointerException) {
+      if (e instanceof QueryTimeoutRuntimeException && Thread.interrupted()) {
+        // do nothing, just recover the state of thread here
+        logger.error("Recover the state of the thread interrupted");
+      } else if (e instanceof NullPointerException) {
         logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       } else {
         logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
@@ -1058,6 +1061,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }

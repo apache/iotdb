@@ -88,14 +88,13 @@ public class IoTDBQueryTimeoutTest {
    */
   @Test
   public void queryWithTimeoutTest() {
-
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       ((IoTDBStatement) statement)
           .executeQuery("select count(*) from root group by ([1, 10000), 2ms)", 1);
-      fail("QueryTimeoutRuntimeException is not throw");
+      fail("QueryTimeoutRuntimeException is not thrown");
     } catch (IoTDBSQLException e) {
       Assert.assertTrue(e.getMessage().contains("Current query is time out"));
     } catch (Exception e) {
@@ -109,7 +108,6 @@ public class IoTDBQueryTimeoutTest {
    */
   @Test
   public void queryAfterTimeoutQueryTest() {
-
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -134,6 +132,41 @@ public class IoTDBQueryTimeoutTest {
     }
   }
 
+  /**
+   * Test killing query with specified query id which is not exist.
+   */
+  @Test
+  public void killQueryTest1() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("kill query 998");
+      fail("QueryIdNotExistException is not thrown");
+    } catch (IoTDBSQLException e) {
+      Assert.assertTrue(e.getMessage().contains("Query Id 998 is not exist"));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * Test killing query without explicit query id. It's supposed to run successfully.
+   */
+  @Test
+  public void killQueryTest2() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet = statement.execute("kill query");
+      Assert.assertEquals(false, hasResultSet);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
   private static void prepareData() {
     try (Connection connection = DriverManager
