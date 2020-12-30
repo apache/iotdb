@@ -26,14 +26,11 @@
 * IOTDB-1068 Fix Time series metadata cache bug
 * IOTDB-1069 restrict the flushing memtable number to avoid OOM when mem_control is disabled
 * IOTDB-1077 add insertOneDeviceRecords API in java session
-* Github issue-2169 GetObject should not return String for all data types 
-* Github issue-2240 Fix sync failed bug
-* Github issue-2253 Remove unnecessary dependency
-* Add max frame size configuration
-* Fix hive-connector CI
-* Change parallelism in timeseries metadata cache
+* Github issue-2169 GetObject returns String for all data types
+* Github issue-2240 fix Sync failed: Socket is closed by peer
+* add thrift_max_frame_size in iotdb-engine.properties
+* Fix the behavior of TimeseriesMetadataCache
 * Fix incorrect last result after deleting all data
-* Save one rpc call
 * Compaction not block flush
 * Cherry pick compaction modification
 * print more insert error message in client
