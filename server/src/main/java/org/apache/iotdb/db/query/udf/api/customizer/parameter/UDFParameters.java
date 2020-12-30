@@ -58,6 +58,10 @@ public class UDFParameters {
     return paths.get(index);
   }
 
+  public boolean hasAttribute(String attributeKey) {
+    return attributes.containsKey(attributeKey);
+  }
+
   public String getString(String key) {
     return attributes.get(key);
   }
