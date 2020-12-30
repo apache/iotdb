@@ -110,10 +110,10 @@ matrix:
         - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
         - java -version
         - mvn -version
-        - mvn -B apache-rat:check
+        - mvn -B apache-rat:check  -Denforcer.skip=true
         # Output something every 10 minutes or Travis kills the job
         - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        - mvn -B clean test integration-test -Dtest.port.closed=true
+        - mvn -B clean test integration-test -Dtest.port.closed=true  -Denforcer.skip=true
         # Killing background sleep loop
         - kill %1
     - os: linux
@@ -136,7 +136,7 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am  -Denforcer.skip=true
       after_success:
         - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
 #     - os: linux
@@ -182,10 +182,10 @@ script:
     - rm -rf /Users/travis/.m2/repository/org/apache/tomcat
     - java -version
     - mvn -version
-    - mvn -B apache-rat:check
+    - mvn -B apache-rat:check -Denforcer.skip=true
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test -Dtest.port.closed=true
+    - mvn -B clean test integration-test -Dtest.port.closed=true  -Denforcer.skip=true
     # Killing background sleep loop
     - kill %1
 

@@ -171,9 +171,9 @@ public class TsFileResource {
   /**
    * unsealed TsFile
    */
-  public TsFileResource(File file, TsFileProcessor processor) {
+  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
     this.file = file;
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
     this.processor = processor;
   }
 

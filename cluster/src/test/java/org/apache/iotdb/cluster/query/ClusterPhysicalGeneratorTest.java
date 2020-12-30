@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query;
 
 import static org.junit.Assert.assertEquals;
 
+import java.time.ZoneId;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,7 +34,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
+public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
 
   private ClusterPhysicalGenerator physicalGenerator;
 
@@ -47,15 +48,16 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest{
   public void test() throws QueryProcessException, IllegalPathException {
     QueryOperator operator = new QueryOperator(SQLConstant.TOK_QUERY);
 
-    SelectOperator selectOperator = new SelectOperator(SQLConstant.TOK_SELECT);
+    SelectOperator selectOperator = new SelectOperator(SQLConstant.TOK_SELECT,
+        ZoneId.systemDefault());
     selectOperator.setSuffixPathList(pathList);
     FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
     fromOperator.addPrefixTablePath(new PartialPath(TestUtils.getTestSg(0)));
 
     operator.setSelectOperator(selectOperator);
     operator.setFromOperator(fromOperator);
-    RawDataQueryPlan plan = (RawDataQueryPlan) physicalGenerator.transformToPhysicalPlan(operator
-        , 1024);
+    RawDataQueryPlan plan = (RawDataQueryPlan) physicalGenerator
+        .transformToPhysicalPlan(operator, 1024);
 
     assertEquals(pathList, plan.getDeduplicatedPaths());
     assertEquals(dataTypes, plan.getDeduplicatedDataTypes());

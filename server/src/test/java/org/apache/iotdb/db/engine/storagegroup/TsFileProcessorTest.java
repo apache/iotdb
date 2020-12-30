@@ -69,6 +69,8 @@ public class TsFileProcessorTest {
   private QueryContext context;
   private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
 
+  protected static final int INIT_ARRAY_SIZE = 64;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
@@ -87,7 +89,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
+        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -143,7 +145,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
+        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -226,7 +228,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
+        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
@@ -267,7 +269,7 @@ public class TsFileProcessorTest {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
-        (tsFileProcessor) -> true, true);
+        (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
     processor.setTsFileProcessorInfo(tsFileProcessorInfo);
