@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
+import org.apache.iotdb.cluster.log.applier.AsyncMetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
@@ -275,7 +276,8 @@ public class MetaGroupMember extends RaftMember {
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
-    logManager = new MetaSingleSnapshotLogManager(metaLogApplier, this);
+    LogApplier asyncMetaLogApplier = new AsyncMetaLogApplier(metaLogApplier, name);
+    logManager = new MetaSingleSnapshotLogManager(asyncMetaLogApplier, this);
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
 

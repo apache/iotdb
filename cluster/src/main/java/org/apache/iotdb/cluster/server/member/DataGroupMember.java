@@ -420,20 +420,6 @@ public class DataGroupMember extends RaftMember {
           requiredSlots.get(0), requiredSlots.get(requiredSlots.size() - 1));
     }
 
-    // If the logs between [currCommitLogIndex, currLastLogIndex] are committed after the
-    // snapshot is generated, they will be invisible to the new slot owner and thus lost forever
-    long currLastLogIndex = logManager.getLastLogIndex();
-    logger.info("{}: Waiting for logs to commit before snapshot, {}/{}", name,
-        logManager.getCommitLogIndex(), currLastLogIndex);
-    while (logManager.getCommitLogIndex() < currLastLogIndex) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("{}: Unexpected interruption when waiting for logs to commit", name, e);
-      }
-    }
-
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
@@ -622,7 +608,7 @@ public class DataGroupMember extends RaftMember {
         Node header = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
             partitionId * StorageEngine.getTimePartitionInterval());
         DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-        if (localDataMember.getHeader().equals(this.getHeader())) {
+        if (localDataMember != null && localDataMember.getHeader().equals(this.getHeader())) {
           localListPair.add(new Pair<>(partitionId, pair.right));
         }
       }
