@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
@@ -77,10 +78,11 @@ public class MemberTest {
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
+  protected Coordinator coordinator;
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
-  ExecutorService testThreadPool;
+  protected ExecutorService testThreadPool;
 
   private List<String> prevUrls;
   private long prevLeaderWait;
@@ -112,6 +114,9 @@ public class MemberTest {
     metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
 
+    coordinator = new Coordinator(testMetaMember);
+    testMetaMember.setCoordinator(coordinator);
+
     for (Node node : allNodes) {
       // pre-create data members
       getDataGroupMember(node);
@@ -119,6 +124,7 @@ public class MemberTest {
 
     IoTDB.setMetaManager(CMManager.getInstance());
     CMManager.getInstance().setMetaGroupMember(testMetaMember);
+    CMManager.getInstance().setCoordinator(coordinator);
 
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -140,6 +146,7 @@ public class MemberTest {
       }
     }
     planExecutor = new PlanExecutor();
+
     testMetaMember.setPartitionTable(partitionTable);
     MetaPuller.getInstance().init(testMetaMember);
   }
@@ -260,6 +267,7 @@ public class MemberTest {
       }
     };
     ret.setThisNode(node);
+    ret.setCoordinator(new Coordinator());
     ret.setPartitionTable(partitionTable);
     ret.setAllNodes(allNodes);
     ret.setLogManager(metaLogManager);

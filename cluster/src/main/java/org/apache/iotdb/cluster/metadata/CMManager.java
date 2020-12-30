@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -116,6 +117,7 @@ public class CMManager extends MManager {
   private RemoteMetaCache mRemoteMetaCache;
   private MetaPuller metaPuller;
   private MetaGroupMember metaGroupMember;
+  private Coordinator coordinator;
 
   private CMManager() {
     super();
@@ -542,7 +544,7 @@ public class CMManager extends MManager {
       // TODO-Cluster: add executeNonQueryBatch() to create the series in batch
       TSStatus result;
       try {
-        result = metaGroupMember.processPartitionedPlan(createTimeSeriesPlan);
+        result = coordinator.processPartitionedPlan(createTimeSeriesPlan);
       } catch (UnsupportedPlanException e) {
         logger.error("Failed to create timeseries {} automatically. Unsupported plan exception {} ",
             seriesPath, e.getMessage());
@@ -561,6 +563,10 @@ public class CMManager extends MManager {
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
   }
 
   /**

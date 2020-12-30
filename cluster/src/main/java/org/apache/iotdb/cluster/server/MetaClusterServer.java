@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -68,6 +69,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
+  private Coordinator coordinator;
   // the single-node IoTDB instance
   private IoTDB ioTDB;
   // to register the ClusterMonitor that helps monitoring the cluster
@@ -80,6 +82,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     super();
     metaHeartbeatServer = new MetaHeartbeatServer(thisNode, this);
     member = new MetaGroupMember(protocolFactory, thisNode);
+    coordinator = new Coordinator(member);
+    member.setCoordinator(coordinator);
     asyncService = new MetaAsyncService(member);
     syncService = new MetaSyncService(member);
     MetaPuller.getInstance().init(member);
@@ -99,6 +103,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     ioTDB = new IoTDB();
     IoTDB.setMetaManager(CMManager.getInstance());
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(member);
+    ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     ioTDB.active();
     member.start();
     registerManager.register(ClusterMonitor.INSTANCE);
