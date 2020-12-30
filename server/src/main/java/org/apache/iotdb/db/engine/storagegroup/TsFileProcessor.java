@@ -127,10 +127,11 @@ public class TsFileProcessor {
       StorageGroupInfo storageGroupInfo,
       VersionController versionController,
       CloseFileListener closeTsFileCallback,
-      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
+      UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
+      int deviceNumInLastClosedTsFile)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.tsFileResource = new TsFileResource(tsfile, this);
+    this.tsFileResource = new TsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
     if (enableMemControl) {
       this.storageGroupInfo = storageGroupInfo;
     }
@@ -861,7 +862,7 @@ public class TsFileProcessor {
 
   public void close() throws TsFileProcessorException {
     try {
-      //when closing resource file, its corresponding mod file is also closed.
+      // when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
           .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());

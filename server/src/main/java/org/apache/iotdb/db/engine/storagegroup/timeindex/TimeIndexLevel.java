@@ -31,4 +31,14 @@ public enum TimeIndexLevel {
         return new DeviceTimeIndex();
     }
   }
+
+  public ITimeIndex getTimeIndex(int deviceNumInLastClosedTsFile) {
+    switch (this) {
+      case FILE_TIME_INDEX:
+        return new FileTimeIndex();
+      case DEVICE_TIME_INDEX:
+      default:
+        return new DeviceTimeIndex(deviceNumInLastClosedTsFile);
+    }
+  }
 }

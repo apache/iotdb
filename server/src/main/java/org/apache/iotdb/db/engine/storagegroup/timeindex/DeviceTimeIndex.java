@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DeviceTimeIndex implements ITimeIndex {
 
-  protected static final int INIT_ARRAY_SIZE = 64;
+  public static final int INIT_ARRAY_SIZE = 64;
 
   protected static final Map<String, String> cachedDevicePool = CachedStringPool.getInstance()
       .getCachedPool();
@@ -60,22 +60,25 @@ public class DeviceTimeIndex implements ITimeIndex {
   protected Map<String, Integer> deviceToIndex;
 
   public DeviceTimeIndex() {
-    init();
+    this.deviceToIndex = new ConcurrentHashMap<>();
+    this.startTimes = new long[INIT_ARRAY_SIZE];
+    this.endTimes = new long[INIT_ARRAY_SIZE];
+    initTimes(startTimes, Long.MAX_VALUE);
+    initTimes(endTimes, Long.MIN_VALUE);
+  }
+
+  public DeviceTimeIndex(int deviceNumInLastClosedTsFile) {
+    this.deviceToIndex = new ConcurrentHashMap<>();
+    this.startTimes = new long[deviceNumInLastClosedTsFile];
+    this.endTimes = new long[deviceNumInLastClosedTsFile];
+    initTimes(startTimes, Long.MAX_VALUE);
+    initTimes(endTimes, Long.MIN_VALUE);
   }
 
   public DeviceTimeIndex(Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.deviceToIndex = deviceToIndex;
-  }
-
-  @Override
-  public void init() {
-    this.deviceToIndex = new ConcurrentHashMap<>();
-    this.startTimes = new long[INIT_ARRAY_SIZE];
-    this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes, Long.MAX_VALUE);
-    initTimes(endTimes, Long.MIN_VALUE);
   }
 
   @Override
@@ -221,7 +224,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   private long[] enLargeArray(long[] array, long defaultValue) {
-    long[] tmp = new long[(int) (array.length * 1.5)];
+    long[] tmp = new long[(int) (array.length * 2)];
     initTimes(tmp, defaultValue);
     System.arraycopy(array, 0, tmp, 0, array.length);
     return tmp;

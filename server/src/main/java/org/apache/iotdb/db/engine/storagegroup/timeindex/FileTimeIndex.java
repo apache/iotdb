@@ -56,20 +56,15 @@ public class FileTimeIndex implements ITimeIndex {
   protected Set<String> devices;
 
   public FileTimeIndex() {
-    init();
+    this.devices = new ConcurrentSet<>();
+    this.startTime = Long.MAX_VALUE;
+    this.endTime = Long.MIN_VALUE;
   }
 
   public FileTimeIndex(Set<String> devices, long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.devices = devices;
-  }
-
-  @Override
-  public void init() {
-    this.devices = new ConcurrentSet<>();
-    this.startTime = Long.MAX_VALUE;
-    this.endTime = Long.MIN_VALUE;
   }
 
   @Override

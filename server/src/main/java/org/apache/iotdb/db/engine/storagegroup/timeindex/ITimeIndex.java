@@ -29,11 +29,6 @@ import org.apache.iotdb.db.exception.PartitionViolationException;
 public interface ITimeIndex {
 
   /**
-   * init startTimes with Long.MAX_VALUE, endTimes with Long.MIN_VALUE
-   */
-  void init();
-
-  /**
    * serialize to outputStream
    *
    * @param outputStream outputStream
