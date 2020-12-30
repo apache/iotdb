@@ -25,7 +25,7 @@ public class IoTDBConnectionParams {
   private String jdbcUriString;
   private String seriesName = Config.DEFAULT_SERIES_NAME;
   private String username = Config.DEFAULT_USER;
-  private String password = Config.DEFALUT_PASSWORD;
+  private String password = Config.DEFAULT_PASSWORD;
 
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
