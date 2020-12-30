@@ -93,7 +93,7 @@ public class IoTDBQueryTimeoutTest {
         Statement statement = connection.createStatement()) {
 
       ((IoTDBStatement) statement)
-          .executeQuery("select count(*) from root group by ([1, 10000), 2ms)", 1);
+          .executeQuery("select count(*) from root group by ([1, 20000), 2ms)", 1);
       fail("QueryTimeoutRuntimeException is not thrown");
     } catch (IoTDBSQLException e) {
       Assert.assertTrue(e.getMessage().contains("Current query is time out"));
@@ -114,7 +114,7 @@ public class IoTDBQueryTimeoutTest {
 
       try {
         ((IoTDBStatement) statement)
-            .executeQuery("select count(*) from root group by ([1, 10000), 2ms)", 1);
+            .executeQuery("select count(*) from root group by ([1, 20000), 2ms)", 1);
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(e.getMessage().contains("Current query is time out"));
       }
@@ -123,45 +123,9 @@ public class IoTDBQueryTimeoutTest {
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        Assert.assertEquals(10000, resultSet.getLong("max_time(root.sg.d1.s1)"));
+        Assert.assertEquals(20000, resultSet.getLong("max_time(root.sg.d1.s1)"));
       }
 
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  /**
-   * Test killing query with specified query id which is not exist.
-   */
-  @Test
-  public void killQueryTest1() {
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      statement.execute("kill query 998");
-      fail("QueryIdNotExistException is not thrown");
-    } catch (IoTDBSQLException e) {
-      Assert.assertTrue(e.getMessage().contains("Query Id 998 is not exist"));
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  /**
-   * Test killing query without explicit query id. It's supposed to run successfully.
-   */
-  @Test
-  public void killQueryTest2() {
-    try (Connection connection = DriverManager.
-        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet = statement.execute("kill query");
-      Assert.assertEquals(false, hasResultSet);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -173,7 +137,7 @@ public class IoTDBQueryTimeoutTest {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      for (int i = 0; i <= 10000; i++) {
+      for (int i = 0; i <= 20000; i++) {
         statement.execute(String.format("insert into root.sg.d1(time,s1) values(%d,%d)", i, i));
       }
     } catch (Exception e) {
