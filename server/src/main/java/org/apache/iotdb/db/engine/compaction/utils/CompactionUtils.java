@@ -166,7 +166,9 @@ public class CompactionUtils {
       chunkWriter = new ChunkWriterImpl(
           IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
     } catch (MetadataException e) {
-      throw new IOException(e);
+      // this may caused in IT by restart
+      logger.error("{} get schema {} error,skip this sensor", device, entry.getKey());
+      return maxVersion;
     }
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
       writeTVPair(timeValuePair, chunkWriter);
@@ -197,11 +199,11 @@ public class CompactionUtils {
   }
 
   /**
-   * @param targetResource the target resource to be merged to
-   * @param tsFileResources the source resource to be merged
-   * @param storageGroup the storage group name
+   * @param targetResource   the target resource to be merged to
+   * @param tsFileResources  the source resource to be merged
+   * @param storageGroup     the storage group name
    * @param compactionLogger the logger
-   * @param devices the devices to be skipped(used by recover)
+   * @param devices          the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void merge(TsFileResource targetResource,
