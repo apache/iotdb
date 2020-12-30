@@ -87,7 +87,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 #### `UDFParameters`
 
-`UDFParameters`的作用是解析SQL语句中的UDF参数（SQL中UDF函数名称后括号中的部分）。参数包括路径参数和字符串key-value对形式输入的属性参数。
+`UDFParameters`的作用是解析SQL语句中的UDF参数（SQL中UDF函数名称后括号中的部分）。参数包括路径（及其序列类型）参数和字符串key-value对形式输入的属性参数。
 
 例子：
 
@@ -101,6 +101,7 @@ SELECT UDF(s1, s2, 'key1'='iotdb', 'key2'='123.45') FROM root.sg.d;
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
   // parameters
 	for (PartialPath path : parameters.getPaths()) {
+    TSDataType dataType = parameters.getDataType(path);
   	// do something
   }
   String stringValue = parameters.getString("key1"); // iotdb
@@ -197,6 +198,21 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 | `DOUBLE`                            | `double`                                                     |
 | `BOOLEAN`                           | `boolean`                                                    |
 | `TEXT`                              | `java.lang.String` 和 `org.apache.iotdb.tsfile.utils.Binary` |
+
+UDTF输出序列的类型是运行时决定的。您可以根据输入序列类型动态决定输出序列类型。
+
+下面是一个简单的例子：
+
+```java
+void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+  // do something
+  // ...
+  
+  configurations
+    .setAccessStrategy(new RowByRowAccessStrategy())
+    .setOutputDataType(parameters.getDataType(0));
+}
+```
 
 
 

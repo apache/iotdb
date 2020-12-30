@@ -830,7 +830,7 @@ public class CMManager extends MManager {
   private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(
       List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregations == null) {
