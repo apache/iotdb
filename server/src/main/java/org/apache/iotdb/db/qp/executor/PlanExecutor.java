@@ -27,6 +27,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
@@ -36,6 +37,11 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -83,6 +89,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -694,13 +701,25 @@ public class PlanExecutor implements IPlanExecutor {
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(
             new PartialPath(COLUMN_FUNCTION_NAME, false),
+            new PartialPath(COLUMN_FUNCTION_TYPE, false),
             new PartialPath(COLUMN_FUNCTION_CLASS, false)
         ),
         Arrays.asList(
             TSDataType.TEXT,
+            TSDataType.TEXT,
             TSDataType.TEXT
         )
     );
+
+    appendUDFs(listDataSet, showPlan);
+    appendNativeFunctions(listDataSet);
+
+    listDataSet.sort((r1, r2) -> String.CASE_INSENSITIVE_ORDER
+        .compare(r1.getFields().get(0).getStringValue(), r2.getFields().get(0).getStringValue()));
+    return listDataSet;
+  }
+
+  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
     for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
         .getRegistrationInformation()) {
       if (showPlan.showTemporary() && !info.isTemporary()) {
@@ -708,10 +727,36 @@ public class PlanExecutor implements IPlanExecutor {
       }
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
+      String functionType = "";
+      if (info.isBuiltin()) {
+        if (info.isUDTF()) {
+          functionType = FUNCTION_TYPE_BUILTIN_UDTF;
+        } else if (info.isUDAF()) {
+          functionType = FUNCTION_TYPE_BUILTIN_UDAF;
+        }
+      } else {
+        if (info.isUDTF()) {
+          functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
+        } else if (info.isUDAF()) {
+          functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
+        }
+      }
+      rowRecord.addField(Binary.valueOf(functionType), TSDataType.TEXT);
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
-    return listDataSet;
+  }
+
+  private void appendNativeFunctions(ListDataSet listDataSet) {
+    final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
+    final Binary className = Binary.valueOf("");
+    for (String functionName : SQLConstant.getNativeFunctionNames()) {
+      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+      rowRecord.addField(Binary.valueOf(functionName), TSDataType.TEXT);
+      rowRecord.addField(functionType, TSDataType.TEXT);
+      rowRecord.addField(className, TSDataType.TEXT);
+      listDataSet.putRecord(rowRecord);
+    }
   }
 
   private void addRowRecordForShowQuery(

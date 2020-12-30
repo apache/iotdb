@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
+import org.apache.iotdb.db.query.udf.api.UDTF;
+
 public class UDFRegistrationInformation {
 
   private final String functionName;
@@ -62,5 +64,13 @@ public class UDFRegistrationInformation {
 
   public void updateFunctionClass(UDFClassLoader udfClassLoader) throws ClassNotFoundException {
     functionClass = Class.forName(className, true, udfClassLoader);
+  }
+
+  public boolean isUDTF() {
+    return functionClass.isInstance(UDTF.class);
+  }
+
+  public boolean isUDAF() {
+    return false;
   }
 }

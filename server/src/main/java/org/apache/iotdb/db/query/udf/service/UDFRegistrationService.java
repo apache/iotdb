@@ -24,11 +24,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -58,11 +55,6 @@ public class UDFRegistrationService implements IService {
           + File.separator + "udf" + File.separator;
   private static final String LOG_FILE_NAME = ULOG_FILE_DIR + "ulog.txt";
   private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
-
-  private static final Set<String> BUILTIN_FUNCTION_NAMES = new HashSet<>(Arrays.asList(
-      SQLConstant.MIN_TIME, SQLConstant.MAX_TIME, SQLConstant.MIN_VALUE, SQLConstant.MAX_VALUE,
-      SQLConstant.FIRST_VALUE, SQLConstant.LAST_VALUE, SQLConstant.COUNT, SQLConstant.SUM,
-      SQLConstant.AVG));
 
   private final ReentrantLock registrationLock;
   private final ConcurrentHashMap<String, UDFRegistrationInformation> registrationInformation;
@@ -94,7 +86,7 @@ public class UDFRegistrationService implements IService {
 
   private static void validateFunctionName(String functionName, String className)
       throws UDFRegistrationException {
-    if (!BUILTIN_FUNCTION_NAMES.contains(functionName.toLowerCase())) {
+    if (!SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
       return;
     }
 
@@ -371,6 +363,15 @@ public class UDFRegistrationService implements IService {
         deregister(information.getFunctionName());
       }
     }
+  }
+
+  @TestOnly
+  public void registerBuiltinFunction(String functionName, String className)
+      throws ClassNotFoundException {
+    ClassLoader classLoader = getClass().getClassLoader();
+    Class<?> functionClass = Class.forName(className, true, classLoader);
+    registrationInformation.put(functionName,
+        new UDFRegistrationInformation(functionName, className, false, true, functionClass));
   }
 
   @Override
