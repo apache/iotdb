@@ -276,7 +276,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   public void updateStartTime(String deviceId, long time) {
     long startTime = getStartTime(deviceId);
     if (time < startTime) {
-      startTimes[getDeviceIndex(deviceId)] = time;
+      int index = getDeviceIndex(deviceId);
+      startTimes[index] = time;
     }
   }
 
@@ -284,7 +285,8 @@ public class DeviceTimeIndex implements ITimeIndex {
   public void updateEndTime(String deviceId, long time) {
     long endTime = getEndTime(deviceId);
     if (time > endTime) {
-      endTimes[getDeviceIndex(deviceId)] = time;
+      int index = getDeviceIndex(deviceId);
+      endTimes[index] = time;
     }
   }
 
