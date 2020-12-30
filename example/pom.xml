@@ -43,6 +43,7 @@
         <module>flink</module>
         <module>mqtt</module>
         <module>pulsar</module>
+        <module>udf</module>
     </modules>
     <build>
         <pluginManagement>

@@ -22,8 +22,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 public class ClusterConstant {
 
-  // a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
-  // interval, or a stale node may frequently issue elections and thus makes the leader step down
+  /**
+   * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
+   * interval, or a stale node may frequently issue elections and thus makes the leader step down
+   */
   public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
   public static final long ELECTION_RANDOM_TIME_OUT_MS = 3 * 1000L;
   public static final int SLOT_NUM = 10000;

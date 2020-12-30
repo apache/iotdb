@@ -97,6 +97,7 @@ public class ClusterMain {
           //debug rpc is for starting another rpc port for the singleton IoTDB server.
           OPTION_DEBUG_RPC_PORT
       );
+
       return;
     }
 

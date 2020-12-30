@@ -66,8 +66,8 @@ public class ClusterUtils {
   public static final int DATA_HEARTBEAT_PORT_OFFSET = 1;
 
   /**
-   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()}
-   * ()}, which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
+   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()},
+   * which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 

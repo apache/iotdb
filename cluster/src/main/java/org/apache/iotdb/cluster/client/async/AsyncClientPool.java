@@ -185,7 +185,6 @@ public class AsyncClientPool {
           ((AsyncMetaClient) client).close();
         }
       }
-      clientStack.clear();
       nodeClientNumMap.put(clusterNode, 0);
       this.notifyAll();
     }

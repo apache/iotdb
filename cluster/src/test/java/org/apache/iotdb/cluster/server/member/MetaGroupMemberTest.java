@@ -55,6 +55,7 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -137,7 +138,7 @@ import org.junit.Test;
 public class MetaGroupMemberTest extends MemberTest {
 
   private DataClusterServer dataClusterServer;
-  private boolean mockDataClusterServer;
+  protected boolean mockDataClusterServer;
   private Node exiledNode;
 
   private int prevReplicaNum;
@@ -191,7 +192,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+      public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
         try {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
@@ -201,7 +202,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+      public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
         return executeNonQueryPlan(plan);
       }
 
@@ -467,6 +468,7 @@ public class MetaGroupMemberTest extends MemberTest {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     });
+    metaGroupMember.setCoordinator(new Coordinator());
     return metaGroupMember;
   }
 
@@ -585,6 +587,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testJoinCluster() throws QueryProcessException {
     System.out.println("Start testJoinCluster()");
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
+    newMember.setCoordinator(new Coordinator());
     newMember.start();
     try {
       newMember.joinCluster();
@@ -593,7 +596,7 @@ public class MetaGroupMemberTest extends MemberTest {
         // wait until character changes
       }
     } catch (Exception e) {
-      fail("The expected exception is not thrown");
+      fail("The expected exception is not thrown" + e);
     } finally {
       newMember.stop();
     }
@@ -723,18 +726,18 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan
       SetStorageGroupPlan setStorageGroupPlan =
-          new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
-      TSStatus status = testMetaMember.executeNonQueryPlan(setStorageGroupPlan);
+        new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
+      TSStatus status = coordinator.executeNonQueryPlan(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
 
       // process a partitioned plan
       TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
-          new PartialPath(schema.getFullPath()), schema.getType(),
-          schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
-          Collections.emptyMap(), Collections.emptyMap(), null);
-      status = testMetaMember.executeNonQueryPlan(createTimeSeriesPlan);
+        new PartialPath(schema.getFullPath()), schema.getType(),
+        schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+        Collections.emptyMap(), Collections.emptyMap(), null);
+      status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
       if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
@@ -866,6 +869,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatReq()");
     MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
+    testMetaMember.setCoordinator(new Coordinator());
     try {
       HeartBeatRequest request = new HeartBeatRequest();
       request.setRequireIdentifier(true);
