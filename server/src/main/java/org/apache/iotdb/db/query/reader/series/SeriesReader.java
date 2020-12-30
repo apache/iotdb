@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.function.ToLongFunction;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -37,6 +27,9 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.utils.AscTimeOrderUtils;
+import org.apache.iotdb.db.query.reader.utils.DescTimeOrderUtils;
+import org.apache.iotdb.db.query.reader.utils.TimeOrderUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -51,6 +44,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class SeriesReader {
 
   // inner class of SeriesReader for order purpose
@@ -58,7 +58,7 @@ public class SeriesReader {
 
   private final PartialPath seriesPath;
 
-  // all the sensors in this device;
+  // all the sensors in this device
   private final Set<String> allSensors;
   private final TSDataType dataType;
   private final QueryContext context;
@@ -754,7 +754,7 @@ public class SeriesReader {
   private LinkedList<TsFileResource> sortUnSeqFileResources(List<TsFileResource> tsFileResources) {
     return tsFileResources.stream()
         .sorted(
-            orderUtils.comparingLong(tsFileResource -> orderUtils.getOrderTime(tsFileResource)))
+            orderUtils.comparingLong(tsFileResource -> orderUtils.getOrderTime(tsFileResource, seriesPath)))
         .collect(Collectors.toCollection(LinkedList::new));
   }
 
@@ -841,7 +841,7 @@ public class SeriesReader {
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endpointTime)
       throws IOException {
     while (!unseqFileResource.isEmpty()
-        && orderUtils.isOverlapped(endpointTime, unseqFileResource.get(0))) {
+        && orderUtils.isOverlapped(endpointTime, unseqFileResource.get(0), seriesPath)) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
@@ -853,7 +853,7 @@ public class SeriesReader {
     }
     while (!seqFileResource.isEmpty()
         && orderUtils.isOverlapped(endpointTime,
-        orderUtils.getNextSeqFileResource(seqFileResource, false))) {
+        orderUtils.getNextSeqFileResource(seqFileResource, false), seriesPath)) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               orderUtils.getNextSeqFileResource(seqFileResource, true), seriesPath, context,
@@ -908,195 +908,6 @@ public class SeriesReader {
 
     public boolean isSeq() {
       return isSeq;
-    }
-  }
-
-
-  public interface TimeOrderUtils {
-
-    long getOrderTime(Statistics<? extends Object> statistics);
-
-    long getOrderTime(TsFileResource fileResource);
-
-    long getOverlapCheckTime(Statistics<? extends Object> range);
-
-    boolean isOverlapped(Statistics<? extends Object> left, Statistics<? extends Object> right);
-
-    boolean isOverlapped(long time, Statistics<? extends Object> right);
-
-    boolean isOverlapped(long time, TsFileResource right);
-
-    TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources, boolean isDelete);
-
-    <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
-
-    long getCurrentEndPoint(long time, Statistics<? extends Object> statistics);
-
-    long getCurrentEndPoint(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics);
-
-    boolean isExcessEndpoint(long time, long endpointTime);
-
-    /**
-     * Return true if taking first page reader from seq readers
-     */
-    boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics);
-
-    boolean getAscending();
-  }
-
-
-  class DescTimeOrderUtils implements TimeOrderUtils {
-
-    @Override
-    public long getOrderTime(Statistics statistics) {
-      return statistics.getEndTime();
-    }
-
-    @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public long getOverlapCheckTime(Statistics range) {
-      return range.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
-      return left.getStartTime() <= right.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, Statistics right) {
-      return time <= right.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
-        boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(seqResources.size() - 1);
-      }
-      return seqResources.get(seqResources.size() - 1);
-    }
-
-    @Override
-    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
-      Objects.requireNonNull(keyExtractor);
-      return (Comparator<T> & Serializable)
-          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c2), keyExtractor.applyAsLong(c1));
-    }
-
-    @Override
-    public long getCurrentEndPoint(long time, Statistics<? extends Object> statistics) {
-      return Math.max(time, statistics.getStartTime());
-    }
-
-    @Override
-    public long getCurrentEndPoint(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics) {
-      return Math.max(seqStatistics.getStartTime(), unseqStatistics.getStartTime());
-    }
-
-    @Override
-    public boolean isExcessEndpoint(long time, long endpointTime) {
-      return time < endpointTime;
-    }
-
-    @Override
-    public boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics) {
-      return seqStatistics.getEndTime() > unseqStatistics.getEndTime();
-    }
-
-    @Override
-    public boolean getAscending() {
-      return false;
-    }
-  }
-
-
-  class AscTimeOrderUtils implements TimeOrderUtils {
-
-    @Override
-    public long getOrderTime(Statistics statistics) {
-      return statistics.getStartTime();
-    }
-
-    @Override
-    public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public long getOverlapCheckTime(Statistics range) {
-      return range.getEndTime();
-    }
-
-    @Override
-    public boolean isOverlapped(Statistics left, Statistics right) {
-      return left.getEndTime() >= right.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, Statistics right) {
-      return time >= right.getStartTime();
-    }
-
-    @Override
-    public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDevice());
-    }
-
-    @Override
-    public TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources,
-        boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(0);
-      }
-      return seqResources.get(0);
-    }
-
-    @Override
-    public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
-      Objects.requireNonNull(keyExtractor);
-      return (Comparator<T> & Serializable)
-          (c1, c2) -> Long.compare(keyExtractor.applyAsLong(c1), keyExtractor.applyAsLong(c2));
-    }
-
-    @Override
-    public long getCurrentEndPoint(long time, Statistics<? extends Object> statistics) {
-      return Math.min(time, statistics.getEndTime());
-    }
-
-    @Override
-    public long getCurrentEndPoint(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics) {
-      return Math.min(seqStatistics.getEndTime(), unseqStatistics.getEndTime());
-    }
-
-    @Override
-    public boolean isExcessEndpoint(long time, long endpointTime) {
-      return time > endpointTime;
-    }
-
-    @Override
-    public boolean isTakeSeqAsFirst(Statistics<? extends Object> seqStatistics,
-        Statistics<? extends Object> unseqStatistics) {
-      return seqStatistics.getStartTime() < unseqStatistics.getStartTime();
-    }
-
-    @Override
-    public boolean getAscending() {
-      return true;
     }
   }
 

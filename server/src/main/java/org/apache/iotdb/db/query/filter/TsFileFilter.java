@@ -27,5 +27,10 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
  */
 @FunctionalInterface
 public interface TsFileFilter {
+  /**
+   * filter the unwanted tsfile
+   * @param resource the memory index of tsfile
+   * @return
+   */
   boolean fileNotSatisfy(TsFileResource resource);
 }

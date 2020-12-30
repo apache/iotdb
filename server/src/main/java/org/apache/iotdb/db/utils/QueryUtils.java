@@ -78,7 +78,9 @@ public class QueryUtils {
     }
   }
 
-  // remove files that do not satisfy the filter
+  /**
+   * remove files that do not satisfy the filter
+   */
   public static void filterQueryDataSource(QueryDataSource queryDataSource,
       TsFileFilter fileFilter) {
     if (fileFilter == null) {
