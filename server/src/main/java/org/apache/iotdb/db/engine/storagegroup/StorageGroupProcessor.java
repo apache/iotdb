@@ -991,7 +991,7 @@ public class StorageGroupProcessor {
           }
 
           // build new processor
-          res = createTsFileProcessor(sequence, timeRangeId);
+          res = newTsFileProcessor(sequence, timeRangeId);
           tsFileProcessorTreeMap.put(timeRangeId, res);
           tsFileManagement.add(res.getTsFileResource(), sequence);
         }
@@ -1004,30 +1004,26 @@ public class StorageGroupProcessor {
   }
 
 
-  private TsFileProcessor createTsFileProcessor(boolean sequence, long timePartitionId)
+  private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
     DirectoryManager directoryManager = DirectoryManager.getInstance();
     String baseDir = sequence ? directoryManager.getNextFolderForSequenceFile()
         : directoryManager.getNextFolderForUnSequenceFile();
 
     fsFactory.getFile(baseDir, storageGroupName).mkdirs();
-
     String filePath =
         baseDir + File.separator + storageGroupName + File.separator + timePartitionId
             + File.separator
             + getNewTsFileName(timePartitionId);
 
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
-    TsFileProcessor tsFileProcessor = getTsFileProcessor(sequence, filePath, versionController);
-    tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
-    tsFileProcessor.addFlushListeners(customFlushListeners);
-
-    tsFileProcessor.setTimeRangeId(timePartitionId);
-    return tsFileProcessor;
+    return getTsFileProcessor(sequence, filePath, versionController, timePartitionId);
   }
 
-  private TsFileProcessor getTsFileProcessor(boolean sequence, String filePath,
-                                             VersionController versionController) throws IOException {
+  private TsFileProcessor getTsFileProcessor(boolean sequence,
+                                             String filePath,
+                                             VersionController versionController,
+                                             long timePartitionId) throws IOException {
     TsFileProcessor tsFileProcessor;
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
@@ -1048,6 +1044,10 @@ public class StorageGroupProcessor {
       tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
           .getTsFileResource().calculateRamSize());
     }
+
+    tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
+    tsFileProcessor.addFlushListeners(customFlushListeners);
+    tsFileProcessor.setTimeRangeId(timePartitionId);
 
     return tsFileProcessor;
   }
