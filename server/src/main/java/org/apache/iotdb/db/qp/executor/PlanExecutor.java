@@ -25,8 +25,9 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_KEY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -39,8 +40,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,7 +58,6 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -73,6 +71,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -102,15 +101,17 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
@@ -119,6 +120,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -131,8 +133,9 @@ import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -161,7 +164,7 @@ public class PlanExecutor implements IPlanExecutor {
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
-  private final IAuthorizer authorizer;
+  private IAuthorizer authorizer;
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
@@ -177,7 +180,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, MetadataException, IllegalAccessException, InvocationTargetException {
+      QueryProcessException, MetadataException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -195,12 +198,6 @@ public class PlanExecutor implements IPlanExecutor {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
-        return true;
-      case UPDATE:
-        UpdatePlan update = (UpdatePlan) plan;
-        for (Pair<Long, Long> timePair : update.getIntervals()) {
-          update(update.getPath(), timePair.left, timePair.right, update.getValue());
-        }
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);
@@ -278,6 +275,10 @@ public class PlanExecutor implements IPlanExecutor {
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
+      case CREATE_FUNCTION:
+        return operateCreateFunction((CreateFunctionPlan) plan);
+      case DROP_FUNCTION:
+        return operateDropFunction((DropFunctionPlan) plan);
       case CREATE_INDEX:
         throw new QueryProcessException("Create index hasn't been supported yet");
       case DROP_INDEX:
@@ -286,6 +287,17 @@ public class PlanExecutor implements IPlanExecutor {
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
+  }
+
+  private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
+    UDFRegistrationService.getInstance()
+        .register(plan.getUdfName(), plan.getClassName(), plan.isTemporary(), true);
+    return true;
+  }
+
+  private boolean operateDropFunction(DropFunctionPlan plan) throws UDFRegistrationException {
+    UDFRegistrationService.getInstance().deregister(plan.getUdfName());
+    return true;
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
@@ -360,7 +372,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      IOException {
+      IOException, InterruptedException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = getAlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
@@ -368,6 +380,9 @@ public class PlanExecutor implements IPlanExecutor {
       if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
+      } else if (queryPlan instanceof UDTFPlan) {
+        UDTFPlan udtfPlan = (UDTFPlan) queryPlan;
+        queryDataSet = queryRouter.udtfQuery(udtfPlan, context);
       } else if (queryPlan instanceof GroupByTimeFillPlan) {
         GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
         queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
@@ -399,7 +414,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected QueryDataSet processShowQuery(ShowPlan showPlan, QueryContext context)
-      throws QueryProcessException, MetadataException, InvocationTargetException, IllegalAccessException {
+      throws QueryProcessException, MetadataException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -413,8 +428,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowStorageGroup((ShowStorageGroupPlan) showPlan);
       case DEVICES:
         return processShowDevices((ShowDevicesPlan) showPlan);
-      case CONFIG:
-        return processShowConfig();
       case CHILD_PATH:
         return processShowChildPaths((ShowChildPathsPlan) showPlan);
       case COUNT_TIMESERIES:
@@ -429,52 +442,11 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodes((CountPlan) showPlan);
       case MERGE_STATUS:
         return processShowMergeStatus();
-      case COUNT_CLIENT:
-        return processCountClients();
+      case FUNCTIONS:
+        return processShowFunctions((ShowFunctionsPlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
-  }
-
-  private QueryDataSet processCountClients() {
-    return createSingleDataSet(COLUMN_COUNT, TSDataType.INT64,
-        TSServiceImpl.getSessionIdGenerator());
-  }
-
-  private QueryDataSet processShowConfig()
-      throws InvocationTargetException, IllegalAccessException {
-    ListDataSet listDataSet = new ListDataSet(
-        Arrays.asList(new PartialPath(COLUMN_KEY, false), new PartialPath(COLUMN_VALUE, false)),
-        Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    Method[] methods = IoTDBConfig.class.getMethods();
-    for (Method method : methods) {
-      boolean needInvoke = false;
-      String methodName = method.getName();
-      if (methodName.startsWith("is")) {
-        methodName = methodName.replace("is", "").toLowerCase();
-        needInvoke = true;
-      } else if (methodName.startsWith("get")) {
-        methodName = methodName.replace("get", "").toLowerCase();
-        needInvoke = true;
-      }
-      if (needInvoke) {
-        RowRecord record = new RowRecord(0);
-        Field field = new Field(TSDataType.TEXT);
-        field.setBinaryV(new Binary(methodName));
-        record.addField(field);
-        Object value = method.invoke(config);
-        field = new Field(TSDataType.TEXT);
-        if(value != null) {
-          field.setBinaryV(new Binary(value.toString()));
-        } else {
-          field.setBinaryV(new Binary("null"));
-        }
-        record.addField(field);
-        listDataSet.putRecord(record);
-      }
-    }
-    return listDataSet;
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
@@ -715,6 +687,30 @@ public class PlanExecutor implements IPlanExecutor {
         timestamp,
         "number of waiting flush tasks",
         Integer.toString(FlushTaskPoolManager.getInstance().getWaitingTasksNumber()));
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan) {
+    ListDataSet listDataSet = new ListDataSet(
+        Arrays.asList(
+            new PartialPath(COLUMN_FUNCTION_NAME, false),
+            new PartialPath(COLUMN_FUNCTION_CLASS, false)
+        ),
+        Arrays.asList(
+            TSDataType.TEXT,
+            TSDataType.TEXT
+        )
+    );
+    for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
+        .getRegistrationInformation()) {
+      if (showPlan.showTemporary() && !info.isTemporary()) {
+        continue;
+      }
+      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+      rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
+      listDataSet.putRecord(rowRecord);
+    }
     return listDataSet;
   }
 
@@ -1339,7 +1335,8 @@ public class PlanExecutor implements IPlanExecutor {
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null || AuthUtils
+            .pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field field = new Field(TSDataType.TEXT);
           field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -1385,7 +1382,8 @@ public class PlanExecutor implements IPlanExecutor {
         continue;
       }
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null || AuthUtils
+            .pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
           roleF.setBinaryV(new Binary(roleN));

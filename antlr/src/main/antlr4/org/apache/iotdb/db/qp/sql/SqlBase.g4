@@ -93,6 +93,9 @@ statement
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
+    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
+    | DROP FUNCTION udfName=ID #dropFunction
+    | SHOW TEMPORARY? FUNCTIONS #showFunctions
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -100,19 +103,37 @@ statement
     ;
 
 selectElements
-    : functionCall (COMMA functionCall)* #functionElement
-    | suffixPathOrConstant (COMMA suffixPathOrConstant)* #selectElement
+    : aggregationCall (COMMA aggregationCall)* #aggregationElement
+    | tableCall (COMMA tableCall)* #tableElement
     | lastClause #lastElement
     | asClause (COMMA asClause)* #asElement
     | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
-suffixPathOrConstant
+aggregationCall
+    : builtInFunctionCall
+    | udfCall
+    ;
+
+tableCall
     : suffixPath
+    | udfCall
     | SINGLE_QUOTE_STRING_LITERAL
     ;
 
-functionCall
+udfCall
+    : udfName=ID LR_BRACKET udfSuffixPaths udfAttribute* RR_BRACKET
+    ;
+
+udfSuffixPaths
+    : suffixPath (COMMA suffixPath)*
+    ;
+
+udfAttribute
+    : COMMA udfAttributeKey=stringLiteral OPERATOR_EQ udfAttributeValue=stringLiteral
+    ;
+
+builtInFunctionCall
     : functionName LR_BRACKET suffixPath RR_BRACKET
     ;
 
@@ -129,7 +150,7 @@ functionName
     ;
 
 functionAsClause
-    : functionCall (AS ID)?
+    : builtInFunctionCall (AS ID)?
     ;
 
 lastClause
@@ -236,7 +257,6 @@ specialLimit
 orderByTimeClause
     : ORDER BY TIME (DESC | ASC)?
     ;
-
 
 limitClause
     : LIMIT INT offsetClause?
@@ -1082,10 +1102,6 @@ COMPRESSION
     : C O M P R E S S I O N
     ;
 
-AS
-    : A S
-    ;
-
 TIME
     : T I M E
     ;
@@ -1173,6 +1189,22 @@ FOR
 
 SCHEMA
     : S C H E M A
+    ;
+
+TEMPORARY
+    : T E M P O R A R Y
+    ;
+
+FUNCTION
+    : F U N C T I O N
+    ;
+
+FUNCTIONS
+    : F U N C T I O N S
+    ;
+
+AS
+    : A S
     ;
 
 DESC

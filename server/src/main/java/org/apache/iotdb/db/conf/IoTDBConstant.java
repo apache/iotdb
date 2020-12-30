@@ -87,6 +87,9 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
+  public static final String COLUMN_FUNCTION_NAME = "UDF name";
+  public static final String COLUMN_FUNCTION_CLASS = "class name";
+
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
 
@@ -103,6 +106,8 @@ public class IoTDBConstant {
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
+  public static final String EXT_FOLDER_NAME = "ext";
+  public static final String UDF_FOLDER_NAME = "udf";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";

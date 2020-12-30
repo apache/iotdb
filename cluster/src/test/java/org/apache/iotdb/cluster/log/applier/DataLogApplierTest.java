@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -122,6 +123,7 @@ public class DataLogApplierTest extends IoTDBTest {
   public void setUp()
       throws org.apache.iotdb.db.exception.StartupException, QueryProcessException, IllegalPathException {
     IoTDB.setMetaManager(CMManager.getInstance());
+    testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
     MetaPuller.getInstance().init(testMetaGroupMember);
@@ -212,7 +214,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, InterruptedException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -265,7 +267,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new PartialPath(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
