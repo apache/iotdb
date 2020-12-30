@@ -889,6 +889,7 @@ public class PlanExecutor implements IPlanExecutor {
         List<String> failedPaths = insertRowPlan.getFailedMeasurements();
         List<Exception> exceptions = insertRowPlan.getFailedExceptions();
         boolean isPathNotExistException = true;
+        Exception exception = null;
         for (Exception e : exceptions) {
           Throwable curException = e;
           while (curException.getCause() != null) {
@@ -896,6 +897,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
           if (!(curException instanceof PathNotExistException)) {
             isPathNotExistException = false;
+            exception = e;
             break;
           }
         }
@@ -903,7 +905,8 @@ public class PlanExecutor implements IPlanExecutor {
           throw new PathNotExistException(failedPaths);
         } else {
           throw new StorageEngineException(
-              "failed to insert points " + insertRowPlan.getFailedMeasurements());
+              "failed to insert points " + insertRowPlan.getFailedMeasurements() +
+              ": " + exception.getMessage());
         }
       }
     } catch (StorageEngineException | MetadataException e) {
@@ -926,6 +929,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       List<String> notExistedPaths = null;
       List<String> failedMeasurements = null;
+      Exception exception = null;
        for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
         if (plan.getFailedMeasurements() != null) {
           if (notExistedPaths == null) {
@@ -943,6 +947,7 @@ public class PlanExecutor implements IPlanExecutor {
             }
             if (!(curException instanceof PathNotExistException)) {
               isPathNotExistException = false;
+              exception = e;
               break;
             }
           }
@@ -957,7 +962,8 @@ public class PlanExecutor implements IPlanExecutor {
         throw new PathNotExistException(notExistedPaths);
       } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
         throw new StorageEngineException(
-            "failed to insert points " + failedMeasurements);
+            "failed to insert points " + failedMeasurements +
+            ": " + exception.getMessage());
       }
 
     } catch (StorageEngineException | MetadataException e) {
