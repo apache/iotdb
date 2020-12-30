@@ -368,9 +368,10 @@ public class SyncClientAdaptor {
   }
 
   public static TSStatus executeNonQuery(AsyncClient client, PhysicalPlan plan, Node header,
-      Node receiver) throws IOException, TException, InterruptedException {
+      Node receiver, int raftId) throws IOException, TException, InterruptedException {
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
+    req.setRaftId(raftId);
     req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
     if (header != null) {
       req.setHeader(header);

@@ -303,7 +303,7 @@ public class SyncClientAdaptorTest {
     assertEquals(addNodeResponse, SyncClientAdaptor.addNode(metaClient, TestUtils.getNode(0),
         new StartUpStatus()));
     assertEquals(StatusUtils.OK, SyncClientAdaptor.executeNonQuery(metaClient, new FlushPlan(),
-        TestUtils.getNode(0), TestUtils.getNode(1)));
+        TestUtils.getNode(0), TestUtils.getNode(1), 0));
   }
 
 

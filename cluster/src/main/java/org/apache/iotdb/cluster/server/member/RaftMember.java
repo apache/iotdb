@@ -1196,7 +1196,7 @@ public abstract class RaftMember {
 
   TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
     try {
-      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
+      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver, getRaftGroupId());
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
@@ -1225,6 +1225,7 @@ public abstract class RaftMember {
   TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
+      req.setRaftId(getRaftGroupId());
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
       if (header != null) {
         req.setHeader(header);
