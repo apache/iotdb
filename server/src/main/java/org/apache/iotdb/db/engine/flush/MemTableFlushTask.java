@@ -193,6 +193,7 @@ public class MemTableFlushTask {
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
           writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
           seriesWriter.sealCurrentPage();
+          seriesWriter.clearPageWriter();
           try {
             ioTaskQueue.put(seriesWriter);
           } catch (InterruptedException e) {

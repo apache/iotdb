@@ -242,8 +242,11 @@ public class ChunkWriterImpl implements IChunkWriter {
   public void sealCurrentPage() {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
       writePageToPageBuffer();
-      pageWriter = null;
     }
+  }
+  
+  public void clearPageWriter() {
+    pageWriter = null;
   }
 
   @Override
