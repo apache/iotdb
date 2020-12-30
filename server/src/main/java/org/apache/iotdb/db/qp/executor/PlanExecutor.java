@@ -960,7 +960,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
       if (notExistedPaths != null && !notExistedPaths.isEmpty()) {
         throw new PathNotExistException(notExistedPaths);
-      } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
+      } else if (notExistedPaths != null && !failedMeasurements.isEmpty() && exception != null) {
         throw new StorageEngineException(
             "failed to insert points " + failedMeasurements +
             ": " + exception.getMessage());
