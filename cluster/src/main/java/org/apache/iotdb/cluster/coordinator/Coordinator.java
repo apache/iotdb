@@ -88,13 +88,14 @@ public class Coordinator {
     this.thisNode = metaGroupMember.getThisNode();
   }
 
-  @TestOnly
   public Coordinator() {
 
   }
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+    this.name = metaGroupMember.getName();
+    this.thisNode = metaGroupMember.getThisNode();
   }
 
   public void setRouter(ClusterPlanRouter router) {
