@@ -18,6 +18,25 @@
     under the License.
 
 -->
+# Apache IoTDB 0.11.2
+
+## Bug Fixes
+* IOTDB-1049 Fix Nullpointer exception and a delete bug in Last query
+* IOTDB-1060 Support full deletion for delete statement without where clause
+* IOTDB-1068 Fix Time series metadata cache bug
+* IOTDB-1069 restrict the flushing memtable number to avoid OOM when mem_control is disabled
+* IOTDB-1077 add insertOneDeviceRecords API in java session
+* IOTDB-1087 fix compaction block flush: flush do not return until compaction finished
+* Github issue-2137 fix grafana value-time position bug
+* Github issue-2169 GetObject returns String for all data types
+* Github issue-2240 fix Sync failed: Socket is closed by peer
+* Github issue-2387 The deleteData method exists in Session but not in SessionPool.
+* add thrift_max_frame_size in iotdb-engine.properties
+* Fix incorrect last result after deleting all data
+* Fix compaction recover block restart: IoTDB cannot restart until last compaction recover task finished
+* Fix compaction ignore modification file: delete does not work after compaction
+* print more insert error message in client
+
 # Apache IoTDB 0.11.1
 
 ## Bug Fixes
