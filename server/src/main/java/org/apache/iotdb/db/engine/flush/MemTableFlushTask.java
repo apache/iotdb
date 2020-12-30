@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -46,14 +46,13 @@ public class MemTableFlushTask {
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
-  private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
-  private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
+  private final LinkedBlockingQueue<Object> ioTaskQueue = new LinkedBlockingQueue<>();
+  private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
   private String storageGroup;
 
   private IMemTable memTable;
 
   private volatile boolean noMoreEncodingTask = false;
-  private volatile boolean noMoreIOTask = false;
 
   /**
    * @param memTable the memTable to flush
@@ -75,7 +74,7 @@ public class MemTableFlushTask {
    * the function for flushing memtable.
    */
   public void syncFlushMemTable()
-      throws ExecutionException, InterruptedException, IOException {
+      throws ExecutionException, InterruptedException {
     logger.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
         storageGroup,
         memTable.memSize(),
@@ -104,7 +103,6 @@ public class MemTableFlushTask {
       encodingTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       // avoid ioTask waiting forever
-      noMoreIOTask = true;
       ioTaskFuture.cancel(true);
       throw e;
     }
@@ -165,27 +163,25 @@ public class MemTableFlushTask {
     @Override
     public void run() {
       long memSerializeTime = 0;
-      boolean noMoreMessages = false;
       logger.debug("Storage group {} memtable {}, starts to encoding data.", storageGroup,
           memTable.getVersion());
+
+      Object task;
       while (true) {
-        if (noMoreEncodingTask) {
-          noMoreMessages = true;
+        try {
+          task = encodingTaskQueue.poll(10, TimeUnit.MILLISECONDS);
+        } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
+          logger.error("Storage group {} memtable {}, encoding task is interrupted.",
+              storageGroup, memTable.getVersion(), e);
+          // generally it is because the thread pool is shutdown so the task should be aborted
+          break;
         }
-        Object task = encodingTaskQueue.poll();
-        if (task == null) {
-          if (noMoreMessages) {
-            break;
-          }
-          try {
-            TimeUnit.MILLISECONDS.sleep(10);
-          } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-            logger.error("Storage group {} memtable {}, encoding task is interrupted.",
-                storageGroup, memTable.getVersion(), e);
-            // generally it is because the thread pool is shutdown so the task should be aborted
-            break;
-          }
-        } else {
+
+        if (null == task && noMoreEncodingTask) {
+          break;
+        }
+
+        if (null != task) {
           if (task instanceof StartFlushGroupIOTask || task instanceof EndChunkGroupIoTask) {
             ioTaskQueue.add(task);
           } else {
@@ -197,8 +193,8 @@ public class MemTableFlushTask {
             memSerializeTime += System.currentTimeMillis() - starTime;
           }
         }
+
       }
-      noMoreIOTask = true;
       logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
               + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
@@ -208,26 +204,24 @@ public class MemTableFlushTask {
   @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
     long ioTime = 0;
-    boolean returnWhenNoTask = false;
     logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+
+    Object ioMessage;
     while (true) {
-      if (noMoreIOTask) {
-        returnWhenNoTask = true;
+      try {
+        ioMessage = ioTaskQueue.poll(10, TimeUnit.SECONDS);
+      } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
+        logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
+            , memTable.getVersion());
+        // generally it is because the thread pool is shutdown so the task should be aborted
+        break;
       }
-      Object ioMessage = ioTaskQueue.poll();
-      if (ioMessage == null) {
-        if (returnWhenNoTask) {
-          break;
-        }
-        try {
-          TimeUnit.MILLISECONDS.sleep(10);
-        } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-          logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
-              , memTable.getVersion());
-          // generally it is because the thread pool is shutdown so the task should be aborted
-          break;
-        }
-      } else {
+
+      if (null == ioMessage && noMoreEncodingTask) {
+        break;
+      }
+
+      if (null != ioMessage) {
         long starTime = System.currentTimeMillis();
         try {
           if (ioMessage instanceof StartFlushGroupIOTask) {
