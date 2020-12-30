@@ -88,7 +88,6 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
     noCompactionTsFileManagement
         .remove(noCompactionTsFileManagement.getTsFileList(false).get(0), false);
     assertEquals(5, noCompactionTsFileManagement.getTsFileList(true).size());
-    assertEquals(5, noCompactionTsFileManagement.getStableTsFileList(false).size());
     noCompactionTsFileManagement
         .removeAll(noCompactionTsFileManagement.getTsFileList(false), false);
     assertEquals(0, noCompactionTsFileManagement.getTsFileList(false).size());

@@ -114,7 +114,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
+  public synchronized void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     try {
       putLog(createTimeSeriesPlan);
     } catch (BufferOverflowException e) {
@@ -123,7 +123,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
+  public synchronized void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     try {
       putLog(deleteTimeSeriesPlan);
     } catch (BufferOverflowException e) {
@@ -132,7 +132,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void setStorageGroup(PartialPath storageGroup) throws IOException {
+  public synchronized void setStorageGroup(PartialPath storageGroup) throws IOException {
     try {
       SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
       putLog(plan);
@@ -142,7 +142,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
+  public synchronized void deleteStorageGroup(PartialPath storageGroup) throws IOException {
     try {
       DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
       putLog(plan);
@@ -152,7 +152,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void setTTL(PartialPath storageGroup, long ttl) throws IOException {
+  public synchronized void setTTL(PartialPath storageGroup, long ttl) throws IOException {
     try {
       SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
       putLog(plan);
@@ -162,7 +162,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void changeOffset(PartialPath path, long offset) throws IOException {
+  public synchronized void changeOffset(PartialPath path, long offset) throws IOException {
     try {
       ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
       putLog(plan);
@@ -172,7 +172,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void changeAlias(PartialPath path, String alias) throws IOException {
+  public synchronized void changeAlias(PartialPath path, String alias) throws IOException {
     try {
       ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
       putLog(plan);
@@ -182,7 +182,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void serializeMNode(MNode node) throws IOException {
+  public synchronized void serializeMNode(MNode node) throws IOException {
     try {
       int childSize = 0;
       if (node.getChildren() != null) {
@@ -196,7 +196,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
+  public synchronized void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
     try {
       int childSize = 0;
       if (node.getChildren() != null) {
@@ -211,7 +211,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
+  public synchronized void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
     try {
       int childSize = 0;
       if (node.getChildren() != null) {
@@ -299,7 +299,7 @@ public class MLogWriter implements AutoCloseable {
     upgradeTxtToBin(schemaDir, MetadataConstant.MTREE_TXT_SNAPSHOT, MetadataConstant.MTREE_SNAPSHOT, true);
   }
 
-  public void clear() throws IOException {
+  public synchronized void clear() throws IOException {
     sync();
     logWriter.close();
     mlogBuffer.clear();
