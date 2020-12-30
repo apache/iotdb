@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.udf.api.UDF;
+import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -83,14 +84,41 @@ public class UDFRegistrationService implements IService {
     registrationLock.unlock();
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void register(String functionName, String className, boolean isTemporary,
       boolean writeToTemporaryLogFile) throws UDFRegistrationException {
     validateFunctionName(functionName, className);
+    checkIfRegistered(functionName, className, isTemporary);
+    doRegister(functionName, className, isTemporary);
+    tryAppendRegistrationLog(functionName, className, isTemporary, writeToTemporaryLogFile);
+  }
 
+  private static void validateFunctionName(String functionName, String className)
+      throws UDFRegistrationException {
+    if (!BUILTIN_FUNCTION_NAMES.contains(functionName.toLowerCase())) {
+      return;
+    }
+
+    String errorMessage = String.format(
+        "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
+        functionName, className);
+
+    logger.warn(errorMessage);
+    throw new UDFRegistrationException(errorMessage);
+  }
+
+  private void checkIfRegistered(String functionName, String className, boolean isTemporary)
+      throws UDFRegistrationException {
     UDFRegistrationInformation information = registrationInformation.get(functionName);
-    if (information != null) {
-      String errorMessage;
+    if (information == null) {
+      return;
+    }
+
+    String errorMessage;
+    if (information.isBuiltin()) {
+      errorMessage = String.format(
+          "Failed to register UDF %s(%s), because the given function name is the same as a built-in UDF function name.",
+          functionName, className);
+    } else {
       if (information.getClassName().equals(className)) {
         errorMessage = String.format(
             "Failed to register %sTEMPORARY UDF %s(%s), because a %sTEMPORARY UDF %s(%s) with the same function name and the class name has already been registered.",
@@ -103,10 +131,14 @@ public class UDFRegistrationService implements IService {
             functionName, className,
             information.getFunctionName(), information.getClassName());
       }
-      logger.warn(errorMessage);
-      throw new UDFRegistrationException(errorMessage);
     }
 
+    logger.warn(errorMessage);
+    throw new UDFRegistrationException(errorMessage);
+  }
+
+  private void doRegister(String functionName, String className, boolean isTemporary)
+      throws UDFRegistrationException {
     acquireRegistrationLock();
     try {
       UDFClassLoader currentActiveClassLoader = UDFClassLoaderManager.getInstance()
@@ -116,7 +148,8 @@ public class UDFRegistrationService implements IService {
       Class<?> functionClass = Class.forName(className, true, currentActiveClassLoader);
       functionClass.getDeclaredConstructor().newInstance();
       registrationInformation.put(functionName,
-          new UDFRegistrationInformation(functionName, className, isTemporary, functionClass));
+          new UDFRegistrationInformation(functionName, className, isTemporary, false,
+              functionClass));
     } catch (IOException | InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException e) {
       String errorMessage = String.format(
           "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
@@ -126,36 +159,32 @@ public class UDFRegistrationService implements IService {
     } finally {
       releaseRegistrationLock();
     }
-
-    if (writeToTemporaryLogFile && !isTemporary) {
-      try {
-        appendRegistrationLog(functionName, className);
-      } catch (IOException e) {
-        registrationInformation.remove(functionName);
-        String errorMessage = String
-            .format("Failed to append UDF log when registering UDF %s(%s), because %s",
-                functionName, className, e.toString());
-        logger.error(errorMessage);
-        throw new UDFRegistrationException(errorMessage, e);
-      }
-    }
   }
 
-  private static void validateFunctionName(String functionName, String className)
-      throws UDFRegistrationException {
-    if (BUILTIN_FUNCTION_NAMES.contains(functionName.toLowerCase())) {
-      String errorMessage = String.format(
-          "Failed to register UDF %s(%s), because the given function name conflicts with the built-in function name",
-          functionName, className);
-      logger.warn(errorMessage);
-      throw new UDFRegistrationException(errorMessage);
+  private void tryAppendRegistrationLog(String functionName, String className, boolean isTemporary,
+      boolean writeToTemporaryLogFile) throws UDFRegistrationException {
+    if (!writeToTemporaryLogFile || isTemporary) {
+      return;
+    }
+
+    try {
+      appendRegistrationLog(functionName, className);
+    } catch (IOException e) {
+      registrationInformation.remove(functionName);
+      String errorMessage = String
+          .format("Failed to append UDF log when registering UDF %s(%s), because %s",
+              functionName, className, e.toString());
+      logger.error(errorMessage);
+      throw new UDFRegistrationException(errorMessage, e);
     }
   }
 
   private void updateAllRegisteredClasses(UDFClassLoader activeClassLoader)
       throws ClassNotFoundException {
     for (UDFRegistrationInformation information : getRegistrationInformation()) {
-      information.updateFunctionClass(activeClassLoader);
+      if (!information.isBuiltin()) {
+        information.updateFunctionClass(activeClassLoader);
+      }
     }
   }
 
@@ -164,6 +193,13 @@ public class UDFRegistrationService implements IService {
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
       logger.warn(errorMessage);
+      throw new UDFRegistrationException(errorMessage);
+    }
+
+    if (information.isBuiltin()) {
+      String errorMessage = String
+          .format("Built-in function %s can not be deregistered.", functionName);
+      logger.error(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 
@@ -209,8 +245,11 @@ public class UDFRegistrationService implements IService {
       throw new QueryProcessException(errorMessage);
     }
 
-    Thread.currentThread()
-        .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
+    if (!information.isBuiltin()) {
+      Thread.currentThread()
+          .setContextClassLoader(UDFClassLoaderManager.getInstance().getActiveClassLoader());
+    }
+
     try {
       return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
@@ -228,11 +267,23 @@ public class UDFRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
+      registerBuiltinFunctions();
       makeDirIfNecessary();
       doRecovery();
       logWriter = new UDFLogWriter(LOG_FILE_NAME);
     } catch (Exception e) {
       throw new StartupException(e);
+    }
+  }
+
+  private void registerBuiltinFunctions() throws ClassNotFoundException {
+    ClassLoader classLoader = getClass().getClassLoader();
+    for (BuiltinFunction builtinFunction : BuiltinFunction.values()) {
+      String functionName = builtinFunction.getFunctionName();
+      String className = builtinFunction.getClassName();
+      Class<?> functionClass = Class.forName(className, true, classLoader);
+      registrationInformation.put(functionName,
+          new UDFRegistrationInformation(functionName, className, false, true, functionClass));
     }
   }
 
@@ -305,7 +356,7 @@ public class UDFRegistrationService implements IService {
   private void writeTemporaryLogFile() throws IOException {
     UDFLogWriter temporaryLogFile = new UDFLogWriter(TEMPORARY_LOG_FILE_NAME);
     for (UDFRegistrationInformation information : registrationInformation.values()) {
-      if (information.isTemporary()) {
+      if (information.isBuiltin() || information.isTemporary()) {
         continue;
       }
       temporaryLogFile.register(information.getFunctionName(), information.getClassName());
@@ -316,7 +367,9 @@ public class UDFRegistrationService implements IService {
   @TestOnly
   public void deregisterAll() throws UDFRegistrationException {
     for (UDFRegistrationInformation information : getRegistrationInformation()) {
-      deregister(information.getFunctionName());
+      if (!information.isBuiltin()) {
+        deregister(information.getFunctionName());
+      }
     }
   }
 
