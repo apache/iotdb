@@ -87,6 +87,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -550,6 +551,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           ((ShowTimeSeriesPlan) plan).setHasLimit(true);
         }
       }
+
+      if (plan instanceof ShowDevicesPlan) {
+        //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
+        if (((ShowDevicesPlan) plan).getLimit() == 0) {
+          ((ShowDevicesPlan) plan).setLimit(fetchSize);
+          ((ShowDevicesPlan) plan).setHasLimit(false);
+        } else {
+          ((ShowDevicesPlan) plan).setHasLimit(true);
+        }
+      }
+
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");

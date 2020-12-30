@@ -21,15 +21,49 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowDevicesPlan extends ShowPlan{
+
   private PartialPath path;
+  private int limit = 0;
+  private int offset = 0;
+  private boolean hasLimit;
 
   public ShowDevicesPlan(ShowContentType showContentType, PartialPath path) {
     super(showContentType);
     this.path = path;
   }
 
+  public ShowDevicesPlan(ShowContentType showContentType, PartialPath path, int limit, int offset) {
+    this(showContentType, path);
+    this.limit = limit;
+    this.offset = offset;
+  }
+
   public PartialPath getPath() {
     return this.path;
+  }
+
+  public boolean hasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
   }
 }
 

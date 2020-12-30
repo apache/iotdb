@@ -255,8 +255,10 @@ public class PhysicalGenerator {
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
+            ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
             return new ShowDevicesPlan(
-                ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+                ShowContentType.DEVICES, showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
+                  showDevicesOperator.getOffset());
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());

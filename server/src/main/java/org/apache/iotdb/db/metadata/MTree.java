@@ -65,6 +65,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -965,7 +966,7 @@ public class MTree implements Serializable {
 
   List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan, boolean removeCurrentOffset)
       throws MetadataException {
-    List<Pair<PartialPath, String[]>> res;
+    List<Pair<PartialPath, String[]>> res = new LinkedList<>();
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
@@ -975,10 +976,8 @@ public class MTree implements Serializable {
     curOffset.set(-1);
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
-      res = new LinkedList<>();
       findPath(root, nodes, 1, res, true, false, null);
     } else {
-      res = new LinkedList<>();
       findPath(root, nodes, 1, res, false, false, null);
     }
     // avoid memory leaks
@@ -1121,7 +1120,30 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
     Set<PartialPath> devices = new TreeSet<>();
-    findDevices(root, nodes, 1, devices);
+    findDevices(root, nodes, 1, devices, false);
+    return devices;
+  }
+
+  Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    String[] nodes = plan.getPath().getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(plan.getPath().getFullPath());
+    }
+    Set<PartialPath> devices = new TreeSet<>();
+    limit.set(plan.getLimit());
+    offset.set(plan.getOffset());
+    curOffset.set(-1);
+    count.set(0);
+    if (offset.get() != 0 || limit.get() != 0) {
+      findDevices(root, nodes, 1, devices, true);
+    } else {
+      findDevices(root, nodes, 1, devices, false);
+    }
+    // avoid memory leaks
+    limit.remove();
+    offset.remove();
+    curOffset.remove();
+    count.remove();
     return devices;
   }
 
@@ -1134,16 +1156,24 @@ public class MTree implements Serializable {
    * @param res   store all matched device names
    */
   @SuppressWarnings("squid:S3776")
-  private void findDevices(MNode node, String[] nodes, int idx, Set<PartialPath> res) {
+  private void findDevices(MNode node, String[] nodes, int idx, Set<PartialPath> res, boolean hasLimit) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
         if (next instanceof MeasurementMNode && idx >= nodes.length) {
+          if (hasLimit) {
+            curOffset.set(curOffset.get() + 1);
+            if (curOffset.get() < offset.get() || count.get().intValue() == limit.get()
+                .intValue()) {
+              return;
+            }
+            count.set(count.get() + 1);
+          }
           res.add(node.getPartialPath());
         } else {
-          findDevices(next, nodes, idx + 1, res);
+          findDevices(next, nodes, idx + 1, res, hasLimit);
         }
       }
     } else { // the node path contains '*'
@@ -1155,10 +1185,18 @@ public class MTree implements Serializable {
           continue;
         }
         if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
+          if (hasLimit) {
+            curOffset.set(curOffset.get() + 1);
+            if (curOffset.get() < offset.get() || count.get().intValue() == limit.get()
+                .intValue()) {
+              return;
+            }
+            count.set(count.get() + 1);
+          }
           res.add(node.getPartialPath());
           deviceAdded = true;
         }
-        findDevices(child, nodes, idx + 1, res);
+        findDevices(child, nodes, idx + 1, res, hasLimit);
       }
     }
   }
