@@ -115,6 +115,11 @@ public interface IChunkWriter {
    * seal the current page which may has not enough data points in force.
    */
   void sealCurrentPage();
+  
+  /**
+   * set the current pageWriter to null, friendly for gc
+   */
+  void clearPageWriter();
 
   int getNumOfPages();
 
