@@ -87,7 +87,7 @@ This method is mainly used to customize UDTF. In this method, the user can do th
 
 #### `UDFParameters`
 
-`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
+`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) and their data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
 
 
 Example：
@@ -102,6 +102,7 @@ Usage：
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
   // parameters
 	for (PartialPath path : parameters.getPaths()) {
+    TSDataType dataType = parameters.getDataType(path);
   	// do something
   }
   String stringValue = parameters.getString("key1"); // iotdb
@@ -198,6 +199,20 @@ Note that the type of output sequence you set here determines the type of data t
 | `DOUBLE`                                    | `double`                                                     |
 | `BOOLEAN`                                   | `boolean`                                                    |
 | `TEXT`                                      | `java.lang.String` and `org.apache.iotdb.tsfile.utils.Binary` |
+
+The type of output time series of a UDTF is determined at runtime, which means that a UDTF can dynamically determine the type of output time series according to the type of input time series.
+Here is a simple example:
+
+```java
+void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+  // do something
+  // ...
+  
+  configurations
+    .setAccessStrategy(new RowByRowAccessStrategy())
+    .setOutputDataType(parameters.getDataType(0));
+}
+```
 
 
 
