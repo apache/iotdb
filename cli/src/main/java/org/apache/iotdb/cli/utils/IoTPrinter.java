@@ -22,7 +22,7 @@ import java.io.PrintStream;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
-public class IOTPrinter {
+public class IoTPrinter {
   private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
 
   public static void printf(String format, Object... args) {
