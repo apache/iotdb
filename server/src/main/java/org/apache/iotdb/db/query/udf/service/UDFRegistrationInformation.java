@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.service;
 
+import java.lang.reflect.InvocationTargetException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 
 public class UDFRegistrationInformation {
@@ -66,8 +67,9 @@ public class UDFRegistrationInformation {
     functionClass = Class.forName(className, true, udfClassLoader);
   }
 
-  public boolean isUDTF() {
-    return functionClass.isInstance(UDTF.class);
+  public boolean isUDTF()
+      throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+    return functionClass.getDeclaredConstructor().newInstance() instanceof UDTF;
   }
 
   public boolean isUDAF() {

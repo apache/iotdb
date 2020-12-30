@@ -46,6 +46,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -697,7 +698,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan) {
+  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan)
+      throws QueryProcessException {
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(
             new PartialPath(COLUMN_FUNCTION_NAME, false),
@@ -712,34 +714,41 @@ public class PlanExecutor implements IPlanExecutor {
     );
 
     appendUDFs(listDataSet, showPlan);
-    appendNativeFunctions(listDataSet);
+    appendNativeFunctions(listDataSet, showPlan);
 
     listDataSet.sort((r1, r2) -> String.CASE_INSENSITIVE_ORDER
         .compare(r1.getFields().get(0).getStringValue(), r2.getFields().get(0).getStringValue()));
     return listDataSet;
   }
 
-  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
+  @SuppressWarnings("squid:S3776")
+  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan)
+      throws QueryProcessException {
     for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
         .getRegistrationInformation()) {
       if (showPlan.showTemporary() && !info.isTemporary()) {
         continue;
       }
+
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
       String functionType = "";
-      if (info.isBuiltin()) {
-        if (info.isUDTF()) {
-          functionType = FUNCTION_TYPE_BUILTIN_UDTF;
-        } else if (info.isUDAF()) {
-          functionType = FUNCTION_TYPE_BUILTIN_UDAF;
+      try {
+        if (info.isBuiltin()) {
+          if (info.isUDTF()) {
+            functionType = FUNCTION_TYPE_BUILTIN_UDTF;
+          } else if (info.isUDAF()) {
+            functionType = FUNCTION_TYPE_BUILTIN_UDAF;
+          }
+        } else {
+          if (info.isUDTF()) {
+            functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
+          } else if (info.isUDAF()) {
+            functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
+          }
         }
-      } else {
-        if (info.isUDTF()) {
-          functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
-        } else if (info.isUDAF()) {
-          functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
-        }
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+        throw new QueryProcessException(e.toString());
       }
       rowRecord.addField(Binary.valueOf(functionType), TSDataType.TEXT);
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
@@ -747,7 +756,11 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void appendNativeFunctions(ListDataSet listDataSet) {
+  private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
+    if (showPlan.showTemporary()) {
+      return;
+    }
+
     final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
     final Binary className = Binary.valueOf("");
     for (String functionName : SQLConstant.getNativeFunctionNames()) {
