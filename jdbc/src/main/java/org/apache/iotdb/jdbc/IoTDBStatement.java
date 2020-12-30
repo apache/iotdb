@@ -223,7 +223,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
-    execReq.setTimeout(queryTimeout * 1000);
+    execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -300,7 +300,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    return this.executeQuery(sql, this.queryTimeout * 1000);
+    return this.executeQuery(sql, (long) this.queryTimeout * 1000);
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {

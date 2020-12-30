@@ -48,7 +48,7 @@ public class LocalTsFileInput implements TsFileInput {
       return channel.size();
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -61,7 +61,7 @@ public class LocalTsFileInput implements TsFileInput {
       return channel.position();
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -75,7 +75,7 @@ public class LocalTsFileInput implements TsFileInput {
       return this;
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -88,7 +88,7 @@ public class LocalTsFileInput implements TsFileInput {
       return channel.read(dst);
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -101,7 +101,7 @@ public class LocalTsFileInput implements TsFileInput {
       return channel.read(dst, position);
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -134,7 +134,7 @@ public class LocalTsFileInput implements TsFileInput {
       channel.close();
     } catch (ClosedByInterruptException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;

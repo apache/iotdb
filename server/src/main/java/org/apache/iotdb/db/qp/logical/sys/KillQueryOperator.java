@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
 public class KillQueryOperator extends RootOperator {
-  int queryId = -1;
+  long queryId = -1;
 
   public KillQueryOperator(int tokenIntType) {
     this(tokenIntType, OperatorType.KILL);
@@ -32,11 +32,11 @@ public class KillQueryOperator extends RootOperator {
     this.operatorType = operatorType;
   }
 
-  public void setQueryId(int queryId) {
+  public void setQueryId(long queryId) {
     this.queryId = queryId;
   }
 
-  public int getQueryId() {
+  public long getQueryId() {
     return queryId;
   }
 }

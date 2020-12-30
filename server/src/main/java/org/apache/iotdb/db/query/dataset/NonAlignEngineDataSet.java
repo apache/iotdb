@@ -296,7 +296,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
         // check the interrupted status of main thread before take next batch
         if (Thread.interrupted()) {
           throw new QueryTimeoutRuntimeException(
-              "Current query is time out, please check your statement or modify timeout parameter.");
+              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
         }
         Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
             .take();

@@ -23,6 +23,9 @@ package org.apache.iotdb.tsfile.exception;
  */
 public class QueryTimeoutRuntimeException extends RuntimeException {
 
+  public static final String TIMEOUT_EXCEPTION_MESSAGE
+      = "Current query is time out, please check your statement or modify timeout parameter.";
+
   public QueryTimeoutRuntimeException(String message, Throwable cause) {
     super(message, cause);
   }

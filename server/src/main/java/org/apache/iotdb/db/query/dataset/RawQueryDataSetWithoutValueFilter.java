@@ -189,7 +189,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
       // check the interrupted status of main thread before taking next batch
       if (Thread.interrupted()) {
         throw new QueryTimeoutRuntimeException(
-            "Current query is time out, please check your statement or modify timeout parameter.");
+            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
       }
       fillCache(i);
       // try to put the next timestamp into the heap
@@ -299,7 +299,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           // check the interrupted status of main thread before taking next batch
           if (Thread.interrupted()) {
             throw new QueryTimeoutRuntimeException(
-                "Current query is time out, please check your statement or modify timeout parameter.");
+                QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
           }
           // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
@@ -451,7 +451,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         // check the interrupted status of main thread before taking next batch
         if (Thread.interrupted()) {
           throw new QueryTimeoutRuntimeException(
-              "Current query is time out, please check your statement or modify timeout parameter.");
+              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
         }
         // get next batch if current batch is empty and still have remaining batch data in queue
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()
@@ -461,7 +461,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
             throw new QueryTimeoutRuntimeException(
-                "Current query is time out, please check your statement or modify timeout parameter.");
+                QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
           } catch (IOException e) {
             LOGGER.error("Got IOException", e);
             throw e;

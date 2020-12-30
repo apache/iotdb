@@ -1059,7 +1059,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
     } catch (InterruptedException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
   }
 

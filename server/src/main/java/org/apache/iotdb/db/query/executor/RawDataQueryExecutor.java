@@ -71,7 +71,7 @@ public class RawDataQueryExecutor {
           queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
       throw new QueryTimeoutRuntimeException(
-          "Current query is time out, please check your statement or modify timeout parameter.");
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
