@@ -52,7 +52,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -79,6 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -295,7 +295,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (long queryId : queryIds) {
         try {
           releaseQueryResource(queryId);
-        } catch (StorageEngineException e) {
+        } catch (StorageEngineException | IOException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
           exceptions.add(e);
@@ -359,11 +359,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
     // remove the corresponding Physical Plan
     QueryDataSet dataSet = queryId2DataSet.remove(queryId);
     if (dataSet instanceof UDTFDataSet) {
-      ((UDTFDataSet) dataSet).finalizeUDFs();
+      ((UDTFDataSet) dataSet).finalizeUDFs(queryId);
     }
     QueryResourceManager.getInstance().endQuery(queryId);
   }
@@ -738,13 +738,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
+      } else if (plan instanceof UDFPlan) {
+        resp = getQueryColumnHeaders(plan, username);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
@@ -789,7 +791,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (queryId != -1) {
         try {
           releaseQueryResource(queryId);
-        } catch (StorageEngineException ex) {
+        } catch (StorageEngineException | IOException ex) {
           logger.warn("Error happened while releasing query resource: ", ex);
         }
       }
@@ -1033,7 +1035,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       try {
         releaseQueryResource(req.queryId);
-      } catch (StorageEngineException ex) {
+      } catch (StorageEngineException | IOException ex) {
         logger.warn("Error happened while releasing query resource: ", ex);
       }
       return RpcUtils.getTSFetchResultsResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

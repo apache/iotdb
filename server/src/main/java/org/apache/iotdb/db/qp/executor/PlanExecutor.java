@@ -107,7 +107,6 @@ import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -206,12 +205,6 @@ public class PlanExecutor implements IPlanExecutor {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
-        return true;
-      case UPDATE:
-        UpdatePlan update = (UpdatePlan) plan;
-        for (Pair<Long, Long> timePair : update.getIntervals()) {
-          update(update.getPath(), timePair.left, timePair.right, update.getValue());
-        }
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);

@@ -23,15 +23,16 @@ public class UDFRegistrationInformation {
 
   private final String functionName;
   private final String className;
-  private final Class<?> functionClass;
   private final boolean isTemporary;
 
-  public UDFRegistrationInformation(String functionName, String className, Class<?> functionClass,
-      boolean isTemporary) {
+  private Class<?> functionClass;
+
+  public UDFRegistrationInformation(String functionName, String className, boolean isTemporary,
+      Class<?> functionClass) {
     this.functionName = functionName;
     this.className = className;
-    this.functionClass = functionClass;
     this.isTemporary = isTemporary;
+    this.functionClass = functionClass;
   }
 
   public String getFunctionName() {
@@ -42,11 +43,15 @@ public class UDFRegistrationInformation {
     return className;
   }
 
+  public boolean isTemporary() {
+    return isTemporary;
+  }
+
   public Class<?> getFunctionClass() {
     return functionClass;
   }
 
-  public boolean isTemporary() {
-    return isTemporary;
+  public void updateFunctionClass(UDFClassLoader udfClassLoader) throws ClassNotFoundException {
+    functionClass = Class.forName(className, true, udfClassLoader);
   }
 }

@@ -21,7 +21,7 @@
 
 
 
-# UDF（用户定义函数）
+# UDF (用户定义函数)
 
 UDF（User Defined Function）即用户自定义函数。IoTDB提供多种内建函数来满足您的计算需求，同时您还可以通过创建自定义函数来满足更多的计算需求。
 
@@ -67,6 +67,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 | `void beforeDestroy() `                                      | UDTF的结束方法。此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后被调用。 | 否                 |
 | `void transform(Row row, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`RowByRowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`Row`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与下面的方法二选一 |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`SlidingSizeWindowAccessStrategy`或者`SlidingTimeWindowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`RowWindow`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与上面的方法二选一 |
+| `void terminate(PointCollector collector) throws Exception`  | 这个方法由框架调用。该方法会在所有的`transform`调用执行完成后，在`beforeDestory`方法执行前被调用。在一个UDF查询过程中，该方法会且只会调用一次。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 否                 |
 
 注意，框架每执行一次UDTF查询，都会构造一个全新的UDF类实例，查询结束时，对应的UDF类实例即被销毁，因此不同UDTF查询（即使是在同一个SQL语句中）UDF类实例内部的数据都是隔离的。您可以放心地在UDTF中维护一些状态数据，无需考虑并发对UDF类实例内部状态数据的影响。
 
@@ -287,6 +288,58 @@ public class Counter implements UDTF {
 
 
 
+### `void terminate(PointCollector collector) throws Exception`
+
+在一些场景下，UDF需要遍历完所有的原始数据后才能得到最后的输出结果。`terminate`接口为这类UDF提供了支持。
+
+该方法会在所有的`transform`调用执行完成后，在`beforeDestory`方法执行前被调用。您可以选择使用`transform`方法进行单纯的数据处理，最后使用`terminate`将处理结果输出。
+
+结果需要由`PointCollector`输出。您可以选择在一次`terminate`方法调用中输出任意数量的数据点。需要注意的是，输出数据点的类型必须与您在`beforeStart`方法中设置的一致，而输出数据点的时间戳必须是严格单调递增的。
+
+下面是一个实现了`void terminate(PointCollector collector) throws Exception`方法的完整UDF示例。它接收一个`INT32`类型的时间序列输入，作用是输出该序列的最大值点。
+
+```java
+import java.io.IOException;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+public class Max implements UDTF {
+
+  private Long time;
+  private int value;
+
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    configurations
+        .setOutputDataType(TSDataType.INT32)
+        .setAccessStrategy(new RowByRowAccessStrategy());
+  }
+
+  @Override
+  public void transform(Row row, PointCollector collector) {
+    int candidateValue = row.getInt(0);
+    if (time == null || value < candidateValue) {
+      time = row.getTime();
+      value = candidateValue;
+    }
+  }
+
+  @Override
+  public void terminate(PointCollector collector) throws IOException {
+    if (time != null) {
+      collector.putInt(time, value);
+    }
+  }
+}
+```
+
+
+
 ## 完整Maven项目示例
 
 如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目**udf-example**。您可以在[这里](https://github.com/apache/iotdb/tree/master/example/udf)找到它。
@@ -299,7 +352,7 @@ public class Counter implements UDTF {
 
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
-3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/lib` 下
+3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/udf`的子目录）下
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
 注册UDF的SQL语法如下：
@@ -408,3 +461,16 @@ SHOW FUNCTIONS
 
 在SQL语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
 
+
+
+## Q&A
+
+**Q1: 如何修改已经注册的UDF？**
+
+A1: 假设UDF的名称为`example`，全类名为`org.apache.iotdb.udf.ExampleUDTF`，由`example.jar`引入
+
+1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
+2. 删除 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` 目录下的`example.jar`
+3. 修改`org.apache.iotdb.udf.ExampleUDTF`中的逻辑，重新打包，JAR包的名字可以仍然为`example.jar`
+4. 将新的JAR包上传至 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` 目录下
+5. 装载新的UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`
