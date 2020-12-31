@@ -289,7 +289,8 @@ var config = {
 							['7-Ecosystem Integration/2-MapReduce TsFile','MapReduce TsFile'],
 							['7-Ecosystem Integration/3-Spark TsFile','Spark TsFile'],
 							['7-Ecosystem Integration/4-Spark IoTDB','Spark IoTDB'],
-							['7-Ecosystem Integration/5-Hive TsFile','Hive TsFile']
+							['7-Ecosystem Integration/5-Hive TsFile','Hive TsFile'],
+							['7-Ecosystem Integration/6-Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -383,7 +384,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -476,7 +478,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -581,7 +584,8 @@ var config = {
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -915,7 +919,8 @@ var config = {
 							['7-Ecosystem Integration/2-MapReduce TsFile','MapReduce TsFile'],
 							['7-Ecosystem Integration/3-Spark TsFile','Spark TsFile'],
 							['7-Ecosystem Integration/4-Spark IoTDB','Spark IoTDB'],
-							['7-Ecosystem Integration/5-Hive TsFile','Hive TsFile']
+							['7-Ecosystem Integration/5-Hive TsFile','Hive TsFile'],
+							['7-Ecosystem Integration/6-Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -1009,7 +1014,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -1102,7 +1108,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
@@ -1202,7 +1209,8 @@ var config = {
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
 							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
-							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/Prometheus IoTDB','Prometheus IoTDB']
 						]
 					},
 					{
