@@ -1042,7 +1042,7 @@ public class StorageGroupProcessor {
     TsFileProcessor tsFileProcessor;
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
-      tsFileProcessor = new TsFileProcessor(storageGroupName,
+      tsFileProcessor = new TsFileProcessor(logicalStorageGroupName + File.separator + storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
@@ -1054,7 +1054,7 @@ public class StorageGroupProcessor {
             .getTsFileResource().calculateRamSize());
       }
     } else {
-      tsFileProcessor = new TsFileProcessor(storageGroupName,
+      tsFileProcessor = new TsFileProcessor(logicalStorageGroupName + File.separator + storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
