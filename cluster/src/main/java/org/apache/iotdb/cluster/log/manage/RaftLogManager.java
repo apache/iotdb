@@ -718,6 +718,9 @@ public abstract class RaftLogManager {
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
+    for (int i = 0; i < logUpdateConditions.length; i++) {
+      logUpdateConditions[i] = new Object();
+    }
   }
 
   @TestOnly
@@ -817,7 +820,7 @@ public abstract class RaftLogManager {
   }
 
   private void innerDeleteLog(int sizeToReserve) {
-    long removeSize = committedEntryManager.getTotalSize() - sizeToReserve;
+    long removeSize = (long) committedEntryManager.getTotalSize() - sizeToReserve;
     if (removeSize <= 0) {
       return;
     }
