@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -128,6 +129,7 @@ public class DataLogApplierTest extends IoTDBTest {
   public void setUp()
       throws org.apache.iotdb.db.exception.StartupException, QueryProcessException, IllegalPathException {
     IoTDB.setMetaManager(CMManager.getInstance());
+    testMetaGroupMember.setCoordinator(new Coordinator());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
     MetaPuller.getInstance().init(testMetaGroupMember);

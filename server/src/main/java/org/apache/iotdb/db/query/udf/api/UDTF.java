@@ -98,4 +98,16 @@ public interface UDTF extends UDF {
   @SuppressWarnings("squid:S112")
   default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
   }
+
+  /**
+   * This method will be called once after all {@link UDTF#transform(Row, PointCollector) calls or
+   * {@link UDTF#transform(RowWindow, PointCollector) calls have been executed. In a single UDF
+   * query, this method will and will only be called once.
+   *
+   * @param collector used to collect output data points
+   * @throws Exception the user can throw errors if necessary
+   */
+  @SuppressWarnings("squid:S112")
+  default void terminate(PointCollector collector) throws Exception {
+  }
 }

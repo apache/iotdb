@@ -284,8 +284,8 @@ public abstract class RaftMember {
             new ThreadFactoryBuilder().setNameFormat(getName() +
                 "-AppendLog%d").build());
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      serialToParallelPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
-          0L, TimeUnit.MILLISECONDS,
+      serialToParallelPool = new ThreadPoolExecutor(allNodes.size(), Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
+          1000L, TimeUnit.MILLISECONDS,
           new LinkedBlockingQueue<>(), new ThreadFactoryBuilder().setNameFormat(getName() +
           "-SerialToParallel%d").build());
     }
@@ -682,7 +682,7 @@ public abstract class RaftMember {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-          logger.error("Catup task exits with unexpected exception", e);
+          logger.error("{}: Catch up task exits with unexpected exception", name, e);
         }
       });
     }
@@ -705,11 +705,14 @@ public abstract class RaftMember {
 
   /**
    * Execute a non-query plan.
+   * Subclass may have their individual implements.
    *
    * @param plan a non-query plan.
    * @return A TSStatus indicating the execution result.
    */
-  abstract TSStatus executeNonQueryPlan(PhysicalPlan plan);
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    return StatusUtils.OK;
+  }
 
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and
@@ -1123,7 +1126,7 @@ public abstract class RaftMember {
    *               communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+  public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
     if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -1164,7 +1167,7 @@ public abstract class RaftMember {
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
+  public TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -1192,7 +1195,7 @@ public abstract class RaftMember {
     return forwardPlanSync(plan, receiver, header, client);
   }
 
-  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
+  public TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
@@ -1689,7 +1692,7 @@ public abstract class RaftMember {
   }
 
   @TestOnly
-  void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
+  public void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
     this.appendLogThreadPool = appendLogThreadPool;
   }
 

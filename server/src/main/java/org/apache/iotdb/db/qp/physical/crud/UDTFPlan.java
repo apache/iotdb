@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +30,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -49,7 +52,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void constructUdfExecutors(List<UDFContext> udfContexts) throws QueryProcessException {
+  public void constructUdfExecutors(List<UDFContext> udfContexts) {
     for (int i = 0; i < udfContexts.size(); ++i) {
       UDFContext context = udfContexts.get(i);
       if (context == null) {
@@ -70,15 +73,27 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       throws QueryProcessException {
     Collection<UDTFExecutor> executors = columnName2Executor.values();
     collectorMemoryBudgetInMB /= executors.size();
-    for (UDTFExecutor executor : executors) {
-      executor.initCollector(queryId, collectorMemoryBudgetInMB);
+
+    UDFRegistrationService.getInstance().acquireRegistrationLock();
+    // This statement must be surrounded by the registration lock.
+    UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
+    try {
+      for (UDTFExecutor executor : executors) {
+        executor.beforeStart(queryId, collectorMemoryBudgetInMB);
+      }
+    } finally {
+      UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
   }
 
   @Override
-  public void finalizeUDFExecutors() {
-    for (UDTFExecutor executor : columnName2Executor.values()) {
-      executor.beforeDestroy();
+  public void finalizeUDFExecutors(long queryId) throws IOException {
+    try {
+      for (UDTFExecutor executor : columnName2Executor.values()) {
+        executor.beforeDestroy();
+      }
+    } finally {
+      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
     }
   }
 

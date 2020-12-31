@@ -49,11 +49,14 @@ Zeppelin is a web-based notebook that enables interactive data analytics. You ca
 | :-----------: | :-----------: | :--------------: |
 |  >=`0.12.0-SNAPSHOT`   | >=`1.8.0_271` |    `>=0.9.0`     |
 
-You can install IoTDB according to [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
+Install IoTDB: Reference to [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). Suppose IoTDB is placed at `$IoTDB_HOME`.
 
-You can download [Zeppelin](https://zeppelin.apache.org/download.html#) and unpack the binary package directly or [build Zeppelin from source](https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html). Suppose Zeppelin is placed at `$Zeppelin_HOME`.
+Install Zeppelin:
+> Method A. Download directly: You can download [Zeppelin](https://zeppelin.apache.org/download.html#) and unpack the binary package. [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) binary package is recommended since it's relatively small by excluding irrelevant interpreters.
+> 
+> Method B. Compile from source code: Reference to [build Zeppelin from source](https://zeppelin.apache.org/docs/latest/setup/basics/how_to_build.html). The command is `mvn clean package -pl zeppelin-web,zeppelin-server -am -DskipTests`.
 
-
+Suppose Zeppelin is placed at `$Zeppelin_HOME`.
 
 ## 3.2 Build Interpreter
 

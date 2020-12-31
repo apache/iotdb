@@ -657,7 +657,7 @@ public class DataGroupMember extends RaftMember {
    * @return
    */
   @Override
-  TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus status = executeNonQueryPlanWithKnownLeader(plan);
     if (!StatusUtils.NO_LEADER.equals(status)) {
       return status;
