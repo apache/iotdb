@@ -52,7 +52,7 @@ public class MonitorTool {
   public static void main(String[] args)
       throws ParseException, IoTDBConnectionException, IOException, StatementExecutionException {
     int port = 6667;
-    String password;
+    String password = null;
     Options options = new Options();
     Option optHelp = new Option("help", "help", false, "print help message");
     optHelp.setRequired(false);
