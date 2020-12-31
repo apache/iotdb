@@ -21,11 +21,11 @@ package org.apache.iotdb.db.query.udf.api.exception;
 
 public class UDFException extends Exception {
 
-  public UDFException(String functionName, String message) {
-    super(String.format("%s: %s", functionName, message));
+  public UDFException(String message) {
+    super(message);
   }
 
-  public UDFException(String functionName, String message, Throwable cause) {
-    super(String.format("%s: %s", functionName, message), cause);
+  public UDFException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

@@ -21,18 +21,18 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFAttributeNotProvidedException;
+import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesIndexNotValidException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesNumberNotValidException;
+import org.apache.iotdb.db.query.udf.api.exception.UDFParameterNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDFParameterValidator {
 
-  private final String functionName;
   private final UDFParameters parameters;
 
-  public UDFParameterValidator(String functionName, UDFParameters parameters) {
-    this.functionName = functionName;
+  public UDFParameterValidator(UDFParameters parameters) {
     this.parameters = parameters;
   }
 
@@ -46,7 +46,7 @@ public class UDFParameterValidator {
   public UDFParameterValidator validateRequiredAttribute(String attributeKey)
       throws UDFAttributeNotProvidedException {
     if (!parameters.hasAttribute(attributeKey)) {
-      throw new UDFAttributeNotProvidedException(functionName, attributeKey);
+      throw new UDFAttributeNotProvidedException(attributeKey);
     }
     return this;
   }
@@ -60,17 +60,20 @@ public class UDFParameterValidator {
    *                                                 bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
    *                                                 specified column is not as expected
-   * @throws MetadataException                       if error occurs when getting the data type of
-   *                                                 the input series
    */
   public UDFParameterValidator validateInputSeriesDataType(int index, TSDataType expectedDataType)
-      throws UDFInputSeriesIndexNotValidException, UDFInputSeriesDataTypeNotValidException, MetadataException {
+      throws UDFException {
     validateInputSeriesIndex(index);
 
-    TSDataType actualDataType = parameters.getDataType(index);
+    TSDataType actualDataType;
+    try {
+      actualDataType = parameters.getDataType(index);
+    } catch (MetadataException e) {
+      throw new UDFException("error occurred when getting the data type of the input series");
+    }
+
     if (!expectedDataType.equals(actualDataType)) {
-      throw new UDFInputSeriesDataTypeNotValidException(functionName, index, actualDataType,
-          expectedDataType);
+      throw new UDFInputSeriesDataTypeNotValidException(index, actualDataType, expectedDataType);
     }
     return this;
   }
@@ -84,23 +87,25 @@ public class UDFParameterValidator {
    *                                                 bound
    * @throws UDFInputSeriesDataTypeNotValidException if the data type of the input series at the
    *                                                 specified column is not as expected
-   * @throws MetadataException                       if error occurs when getting the data type of
-   *                                                 the input series
    */
   public UDFParameterValidator validateInputSeriesDataType(int index,
-      TSDataType... expectedDataTypes)
-      throws UDFInputSeriesIndexNotValidException, UDFInputSeriesDataTypeNotValidException, MetadataException {
+      TSDataType... expectedDataTypes) throws UDFException {
     validateInputSeriesIndex(index);
 
-    TSDataType actualDataType = parameters.getDataType(index);
+    TSDataType actualDataType;
+    try {
+      actualDataType = parameters.getDataType(index);
+    } catch (MetadataException e) {
+      throw new UDFException("error occurred when getting the data type of the input series");
+    }
+
     for (TSDataType expectedDataType : expectedDataTypes) {
       if (expectedDataType.equals(actualDataType)) {
         return this;
       }
     }
 
-    throw new UDFInputSeriesDataTypeNotValidException(functionName, index, actualDataType,
-        expectedDataTypes);
+    throw new UDFInputSeriesDataTypeNotValidException(index, actualDataType, expectedDataTypes);
   }
 
   /**
@@ -114,8 +119,7 @@ public class UDFParameterValidator {
       throws UDFInputSeriesNumberNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
     if (actualSeriesNumber != expectedSeriesNumber) {
-      throw new UDFInputSeriesNumberNotValidException(functionName, actualSeriesNumber,
-          expectedSeriesNumber);
+      throw new UDFInputSeriesNumberNotValidException(actualSeriesNumber, expectedSeriesNumber);
     }
     return this;
   }
@@ -135,7 +139,7 @@ public class UDFParameterValidator {
     int actualSeriesNumber = parameters.getPaths().size();
     if (actualSeriesNumber < expectedSeriesNumberLowerBound
         || expectedSeriesNumberUpperBound < actualSeriesNumber) {
-      throw new UDFInputSeriesNumberNotValidException(functionName, actualSeriesNumber,
+      throw new UDFInputSeriesNumberNotValidException(actualSeriesNumber,
           expectedSeriesNumberLowerBound, expectedSeriesNumberUpperBound);
     }
     return this;
@@ -154,8 +158,29 @@ public class UDFParameterValidator {
       throws UDFInputSeriesIndexNotValidException {
     int actualSeriesNumber = parameters.getPaths().size();
     if (index < 0 || actualSeriesNumber <= index) {
-      throw new UDFInputSeriesIndexNotValidException(functionName, index, actualSeriesNumber);
+      throw new UDFInputSeriesIndexNotValidException(index, actualSeriesNumber);
     }
     return this;
+  }
+
+  /**
+   * Validates the input parameters according to the validation rule given by the user.
+   *
+   * @param validationRule the validation rule, which can be a lambda expression
+   * @param messageToThrow the message to throw when the given args are not valid
+   * @param args           the given args
+   * @throws UDFParameterNotValidException if the given args are not valid
+   */
+  public UDFParameterValidator validate(ValidationRule validationRule, String messageToThrow,
+      Object... args) throws UDFParameterNotValidException {
+    if (!validationRule.validate(args)) {
+      throw new UDFParameterNotValidException(messageToThrow);
+    }
+    return this;
+  }
+
+  private interface ValidationRule {
+
+    boolean validate(Object... args);
   }
 }
