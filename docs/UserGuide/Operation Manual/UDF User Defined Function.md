@@ -74,7 +74,7 @@ In the life cycle of a UDTF instance, the calling sequence of each method is as 
 
 1. `void validate(UDFParameterValidator validator) throws Exception`
 2. `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception`
-3. `void transform(Row row, PointCollector collector) throws Exception`或者`void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
+3. `void transform(Row row, PointCollector collector) throws Exception` or `void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
 4. `void terminate(PointCollector collector) throws Exception`
 5. `void beforeDestroy() `
 
