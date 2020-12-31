@@ -32,12 +32,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -53,6 +55,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -558,6 +561,112 @@ public class Session {
     }
   }
 
+  /**
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
+   * your performance, please see insertTablet method
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+  }
+  /**
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
+   * your performance, please see insertTablet method
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @param haveSorted  whether the times have been sorted
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times, measurementsList,
+        typesList, valuesList, haveSorted);
+    try {
+      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted) throws IoTDBConnectionException, BatchExecutionException {
+    // check params size
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+
+    if (haveSorted) {
+      if (!checkSorted(times)) {
+        throw new BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
+      }
+    } else {
+      //sort
+      Integer[] index = new Integer[times.size()];
+      Integer[] index2 = new Integer[times.size()];
+      for (int i = 0; i < times.size(); i++) {
+        index2[i] = index[i] = i;
+      }
+      Arrays.sort(index, Comparator.comparingLong(times::get));
+      Arrays.sort(index2, Comparator.comparingInt(x -> index[x]));
+      times.sort(Long::compareTo);
+      //sort measurementList
+      measurementsList = sortList(measurementsList, index2);
+      //sort typesList
+      typesList = sortList(typesList, index2);
+      //sort values
+      valuesList = sortList(valuesList, index2);
+    }
+
+    TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
+    request.setDeviceId(deviceId);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    request.setValuesList(buffersList);
+    return request;
+  }
+
+  @SuppressWarnings("squid:S3740")
+  private List sortList(List source, Integer[] index) {
+    Object[] result = new Object[source.size()];
+    for (int i = 0; i < index.length; i++) {
+      result[index[i]] = source.get(i);
+    }
+    return Arrays.asList(result);
+  }
+
+  private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList, List<List<TSDataType>> typesList)
+      throws IoTDBConnectionException {
+    List<ByteBuffer> buffersList = new ArrayList<>();
+    for (int i = 0; i < valuesList.size(); i++) {
+      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
+      putValues(typesList.get(i), valuesList.get(i), buffer);
+      buffer.flip();
+      buffersList.add(buffer);
+    }
+    return buffersList;
+  }
+
+
   private void insertRecordsWithLeaderCache(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
@@ -593,12 +702,7 @@ public class Session {
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    List<ByteBuffer> buffersList = new ArrayList<>();
-    for (int i = 0; i < measurementsList.size(); i++) {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
-      putValues(typesList.get(i), valuesList.get(i), buffer);
-      buffersList.add(buffer);
-    }
+    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
     request.setValuesList(buffersList);
     return request;
   }
@@ -1013,6 +1117,15 @@ public class Session {
   private boolean checkSorted(Tablet tablet) {
     for (int i = 1; i < tablet.rowSize; i++) {
       if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean checkSorted(List<Long> times) {
+    for (int i = 1; i < times.size(); i++) {
+      if (times.get(i) < times.get(i - 1)) {
         return false;
       }
     }
