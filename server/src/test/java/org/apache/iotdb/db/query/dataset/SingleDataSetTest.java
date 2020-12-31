@@ -142,10 +142,6 @@ public class SingleDataSetTest {
         .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof SingleDataSet);
     Assert.assertEquals("[count]", dataSet.getPaths().toString());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals("0\t0", record.toString());
-    }
   }
 
 }

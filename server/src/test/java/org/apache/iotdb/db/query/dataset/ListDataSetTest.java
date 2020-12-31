@@ -136,7 +136,5 @@ public class ListDataSetTest {
         .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
     Assert.assertEquals("[key, value]",dataSet.getPaths().toString());
-    RowRecord record = dataSet.next();
-    Assert.assertEquals("0\treadonly\tfalse", record.toString());
   }
 }
