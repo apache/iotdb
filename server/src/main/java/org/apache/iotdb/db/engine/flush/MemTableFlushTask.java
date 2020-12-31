@@ -209,7 +209,7 @@ public class MemTableFlushTask {
     Object ioMessage;
     while (true) {
       try {
-        ioMessage = ioTaskQueue.poll(10, TimeUnit.SECONDS);
+        ioMessage = ioTaskQueue.poll(10, TimeUnit.MILLISECONDS);
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
         logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
             , memTable.getVersion());
