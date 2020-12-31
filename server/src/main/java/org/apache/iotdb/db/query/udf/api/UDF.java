@@ -26,11 +26,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 public interface UDF {
 
   /**
-   * This method is mainly used to validate UDFParameters and it is executed before {@link
+   * This method is mainly used to validate {@link UDFParameters} and it is executed before {@link
    * UDTF#beforeStart(UDFParameters, UDTFConfigurations)} is called.
    *
-   * @param validator the validator used to validate UDFParameters
-   * @throws Exception if any parameter is invalid
+   * @param validator the validator used to validate {@link UDFParameters}
+   * @throws Exception if any parameter is not valid
    */
   @SuppressWarnings("squid:S112")
   default void validate(UDFParameterValidator validator) throws Exception {
