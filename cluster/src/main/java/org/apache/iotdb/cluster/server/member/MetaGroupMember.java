@@ -263,7 +263,7 @@ public class MetaGroupMember extends RaftMember {
   public MetaGroupMember() {
   }
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
+  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) throws QueryProcessException {
     super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
@@ -291,6 +291,7 @@ public class MetaGroupMember extends RaftMember {
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
+    this.coordinator = coordinator;
     loadPartitionTable();
   }
 
