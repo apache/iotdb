@@ -122,7 +122,7 @@ public class SchemaUtils {
     IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
@@ -167,7 +167,7 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }
 

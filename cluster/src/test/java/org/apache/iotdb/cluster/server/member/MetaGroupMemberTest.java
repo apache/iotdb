@@ -287,7 +287,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
-    MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node) {
+    MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node, new Coordinator()) {
 
       @Override
       public DataClusterServer getDataClusterServer() {
@@ -467,7 +467,6 @@ public class MetaGroupMemberTest extends MemberTest {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     });
-    metaGroupMember.setCoordinator(new Coordinator());
     return metaGroupMember;
   }
 
