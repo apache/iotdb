@@ -148,7 +148,21 @@ public class ClusterMain {
       }
       seedNodes.add(node);
     }
-    // assert this node is in NodeList
+
+    // assert this node is in all nodes when restart
+    if (!metaServer.getMember().getAllNodes().isEmpty()) {
+      if (!metaServer.getMember().getAllNodes().contains(metaServer.getMember().getThisNode())) {
+        String message = String.format(
+            "All nodes in partitionTables must contains local node in start-server mode. "
+                + "LocalNode: %s, AllNodes: %s",
+            metaServer.getMember().getThisNode(), metaServer.getMember().getAllNodes());
+        throw new StartupException(metaServer.getMember().getName(), message);
+      } else {
+        return;
+      }
+    }
+
+    // assert this node is in seed nodes list
     Node localNode = new Node();
     localNode.setIp(config.getClusterRpcIp()).setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
@@ -273,7 +287,6 @@ public class ClusterMain {
 
   /**
    * Developers may perform pre-start customizations here for debugging or experiments.
-   *
    */
   @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
@@ -300,7 +313,8 @@ public class ClusterMain {
         if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
-          return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
+          return defaultStrategy
+              .calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
         }
       }
 
