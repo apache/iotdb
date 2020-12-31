@@ -241,11 +241,11 @@ public class TSFileConfig implements Serializable {
   }
 
   public int getMaxDegreeOfIndexNode() {
-    return 2;
+    return maxDegreeOfIndexNode;
   }
 
   public void setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
-    this.maxDegreeOfIndexNode = 2;
+    this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
   }
 
   public String getTimeSeriesDataType() {
