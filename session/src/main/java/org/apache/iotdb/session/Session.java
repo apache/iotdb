@@ -660,7 +660,7 @@ public class Session {
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
       putValues(typesList.get(i), valuesList.get(i), buffer);
-      buffer.flip();
+//      buffer.flip();
       buffersList.add(buffer);
     }
     return buffersList;

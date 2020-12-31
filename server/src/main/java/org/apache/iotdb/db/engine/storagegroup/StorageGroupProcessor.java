@@ -815,11 +815,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -978,9 +978,9 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param sequence whether is sequence or not
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1484,9 +1484,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param path the timeseries path of the to be deleted.
+   * @param path      the timeseries path of the to be deleted.
    * @param startTime the startTime of delete range.
-   * @param endTime the endTime of delete range.
+   * @param endTime   the endTime of delete range.
    */
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws IOException {
@@ -2110,9 +2110,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName origin tsfile name
+   * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
+   *                    1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2180,8 +2180,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
-   * @param tsFileResource tsfile resource to be loaded
+   * @param type            load type
+   * @param tsFileResource  tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
@@ -2504,8 +2504,12 @@ public class StorageGroupProcessor {
     return tsFileManagement;
   }
 
+
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws WriteProcessException {
+//    for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+//      insert(plan);
+//    }
 
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject();
@@ -2536,10 +2540,9 @@ public class StorageGroupProcessor {
             .isEnableDiscardOutOfOrderData()) {
           return;
         }
-
         latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
         // insert to sequence or unSequence file
-        insertToTsFileProcessor(plan, isSequence, plan.getTime());
+        insertToTsFileProcessor(plan, isSequence, timePartitionId);
       }
     } finally {
       writeUnlock();
