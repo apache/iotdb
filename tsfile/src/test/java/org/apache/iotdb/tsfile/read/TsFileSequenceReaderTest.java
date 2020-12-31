@@ -104,37 +104,6 @@ public class TsFileSequenceReaderTest {
   }
 
   @Test
-  public void readChunksInDevice() throws IOException {
-    TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-
-    for (String device : reader.getAllDevices()) {
-      Map<String, Set<Chunk>> expectedChunksInDevice = new HashMap<>();
-      for (Entry<String, List<ChunkMetadata>> entry : reader.readChunkMetadataInDevice(device)
-          .entrySet()) {
-        expectedChunksInDevice.putIfAbsent(entry.getKey(), new HashSet<>());
-        for (ChunkMetadata chunkMetadata : entry.getValue()) {
-          expectedChunksInDevice.get(entry.getKey()).add(reader.readMemChunk(chunkMetadata));
-        }
-      }
-
-      Map<String, List<Chunk>> actualChunksInDevice = reader.readChunksInDevice(device);
-
-      for (Entry<String, Set<Chunk>> entry : expectedChunksInDevice.entrySet()) {
-        Set<String> expectedChunkStrings = entry.getValue().stream()
-            .map(chunk -> chunk.getHeader().toString()).collect(Collectors.toSet());
-
-        Assert.assertTrue(actualChunksInDevice.containsKey(entry.getKey()));
-        Set<String> actualChunkStrings = actualChunksInDevice.get(entry.getKey()).stream()
-            .map(chunk -> chunk.getHeader().toString()).collect(Collectors.toSet());
-
-        Assert.assertEquals(expectedChunkStrings, actualChunkStrings);
-      }
-    }
-
-    reader.close();
-  }
-
-  @Test
   public void testReadChunkMetadataInDevice() throws IOException {
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
 

@@ -33,15 +33,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
 
-  private static final TSFileConfig config =
-      TSFileDescriptor.getInstance().getConfig();
-  private List<MetadataIndexEntry> children;
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  private final List<MetadataIndexEntry> children;
   private long endOffset;
 
   /**
    * type of the child node at offset
    */
-  private MetadataIndexNodeType nodeType;
+  private final MetadataIndexNodeType nodeType;
 
   public MetadataIndexNode(MetadataIndexNodeType nodeType) {
     children = new ArrayList<>();
