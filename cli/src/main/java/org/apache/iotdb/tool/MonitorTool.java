@@ -48,6 +48,7 @@ public class MonitorTool {
 
   private static String url;
   private static final String LINE = "---- ";
+  private static final String DEFAULT_PASSWORD = "root";
 
   public static void main(String[] args)
       throws ParseException, IoTDBConnectionException, IOException, StatementExecutionException {
@@ -83,7 +84,7 @@ public class MonitorTool {
       if(commandLine.hasOption("pw")) {
         password = commandLine.getOptionValue("pw");
       } else {
-        password = "root";
+        password = DEFAULT_PASSWORD;
       }
       Session session = new Session("127.0.0.1", port, "root", password);
       session.open();
