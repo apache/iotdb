@@ -150,24 +150,6 @@ public class UDFParameterValidator {
   }
 
   /**
-   * Validates whether the index of the specified column is out of bound.
-   * </p>
-   * bound: [0, parameters.getPaths().size())
-   *
-   * @param index the index of the specified column
-   * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
-   *                                              bound
-   */
-  public UDFParameterValidator validateInputSeriesIndex(int index)
-      throws UDFInputSeriesIndexNotValidException {
-    int actualSeriesNumber = parameters.getPaths().size();
-    if (index < 0 || actualSeriesNumber <= index) {
-      throw new UDFInputSeriesIndexNotValidException(index, actualSeriesNumber);
-    }
-    return this;
-  }
-
-  /**
    * Validates the input parameters according to the validation rule given by the user.
    *
    * @param validationRule the validation rule, which can be a lambda expression
@@ -207,5 +189,21 @@ public class UDFParameterValidator {
   public interface MultipleObjectsValidationRule {
 
     boolean validate(Object... args);
+  }
+
+  /**
+   * Validates whether the index of the specified column is out of bound.
+   * </p>
+   * bound: [0, parameters.getPaths().size())
+   *
+   * @param index the index of the specified column
+   * @throws UDFInputSeriesIndexNotValidException if the index of the specified column is out of
+   *                                              bound
+   */
+  private void validateInputSeriesIndex(int index) throws UDFInputSeriesIndexNotValidException {
+    int actualSeriesNumber = parameters.getPaths().size();
+    if (index < 0 || actualSeriesNumber <= index) {
+      throw new UDFInputSeriesIndexNotValidException(index, actualSeriesNumber);
+    }
   }
 }
