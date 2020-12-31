@@ -63,11 +63,20 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 | 接口定义                                                     | 描述                                                         | 是否必须           |
 | :----------------------------------------------------------- | :----------------------------------------------------------- | ------------------ |
+| `void validate(UDFParameterValidator validator) throws Exception` | 在初始化方法`beforeStart`调用前执行，用于检测`UDFParameters`中用户输入的参数是否合法。 | 否                 |
 | `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception` | 初始化方法，在UDTF处理输入数据前，调用用户自定义的初始化行为。用户每执行一次UDTF查询，框架就会构造一个新的UDF类实例，该方法在每个UDF类实例被初始化时调用一次。在每一个UDF类实例的生命周期内，该方法只会被调用一次。 | 是                 |
-| `void beforeDestroy() `                                      | UDTF的结束方法。此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后被调用。 | 否                 |
 | `void transform(Row row, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`RowByRowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`Row`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与下面的方法二选一 |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | 这个方法由框架调用。当您在`beforeStart`中选择以`SlidingSizeWindowAccessStrategy`或者`SlidingTimeWindowAccessStrategy`的策略消费原始数据时，这个数据处理方法就会被调用。输入参数以`RowWindow`的形式传入，输出结果通过`PointCollector`输出。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 与上面的方法二选一 |
 | `void terminate(PointCollector collector) throws Exception`  | 这个方法由框架调用。该方法会在所有的`transform`调用执行完成后，在`beforeDestory`方法执行前被调用。在一个UDF查询过程中，该方法会且只会调用一次。您需要在该方法内自行调用`collector`提供的数据收集方法，以决定最终的输出数据。 | 否                 |
+| `void beforeDestroy() `                                      | UDTF的结束方法。此方法由框架调用，并且只会被调用一次，即在处理完最后一条记录之后被调用。 | 否                 |
+
+在一个完整的UDTF实例生命周期中，各个方法的调用顺序如下：
+
+1. `void validate(UDFParameterValidator validator) throws Exception`
+2. `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception`
+3. `void transform(Row row, PointCollector collector) throws Exception`或者`void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
+4. `void terminate(PointCollector collector) throws Exception`
+5. `void beforeDestroy() `
 
 注意，框架每执行一次UDTF查询，都会构造一个全新的UDF类实例，查询结束时，对应的UDF类实例即被销毁，因此不同UDTF查询（即使是在同一个SQL语句中）UDF类实例内部的数据都是隔离的。您可以放心地在UDTF中维护一些状态数据，无需考虑并发对UDF类实例内部状态数据的影响。
 
@@ -75,7 +84,17 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 
 
-### `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception`
+### void validate(UDFParameterValidator validator) throws Exception
+
+`validate`方法能够对用户输入的参数进行验证。
+
+您可以在该方法中限制输入序列的数量和类型，检查用户输入的属性或者进行自定义逻辑的验证。
+
+`UDFParameterValidator`的使用方法请见Javadoc。
+
+
+
+### void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
 
 `beforeStart`方法有两个作用：
 
@@ -85,7 +104,7 @@ IoTDB 支持两种类型的 UDF 函数，如下表所示。
 
 
 
-#### `UDFParameters`
+#### UDFParameters
 
 `UDFParameters`的作用是解析SQL语句中的UDF参数（SQL中UDF函数名称后括号中的部分）。参数包括路径（及其序列类型）参数和字符串key-value对形式输入的属性参数。
 
@@ -117,7 +136,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-####  `UDTFConfigurations`
+####  UDTFConfigurations
 
 您必须使用 `UDTFConfigurations` 指定UDF访问原始数据时采取的策略和输出结果序列的类型。
 
@@ -139,7 +158,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-##### `setAccessStrategy`
+##### setAccessStrategy
 
 注意，您在此处设定的原始数据访问策略决定了框架会调用哪一种`transform`方法 ，请实现与原始数据访问策略对应的`transform`方法。当然，您也可以根据`UDFParameters`解析出来的属性参数，动态决定设定哪一种策略，因此，实现两种`transform`方法也是被允许的。
 
@@ -186,7 +205,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-##### `setOutputDataType`
+##### setOutputDataType
 
 注意，您在此处设定的输出结果序列的类型，决定了`transform`方法中`PointCollector`实际能够接收的数据类型。`setOutputDataType`中设定的输出类型和`PointCollector`实际能够接收的数据输出类型关系如下：
 
@@ -216,15 +235,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-### `void beforeDestroy() `
-
-UDTF的结束方法，您可以在此方法中进行一些资源释放等的操作。
-
-此方法由框架调用。对于一个UDF类实例而言，生命周期中会且只会被调用一次，即在处理完最后一条记录之后被调用。
-
-
-
-### `void transform(Row row, PointCollector collector) throws Exception`
+### void transform(Row row, PointCollector collector) throws Exception
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `RowByRowAccessStrategy`，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
@@ -262,7 +273,7 @@ public class Adder implements UDTF {
 
 
 
-### `void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
+### void transform(RowWindow rowWindow, PointCollector collector) throws Exception
 
 当您在`beforeStart`方法中指定UDF读取原始数据的策略为 `SlidingTimeWindowAccessStrategy`或者`SlidingSizeWindowAccessStrategy`时，您就需要实现该方法，在该方法中增加对原始数据处理的逻辑。
 
@@ -304,7 +315,7 @@ public class Counter implements UDTF {
 
 
 
-### `void terminate(PointCollector collector) throws Exception`
+### void terminate(PointCollector collector) throws Exception
 
 在一些场景下，UDF需要遍历完所有的原始数据后才能得到最后的输出结果。`terminate`接口为这类UDF提供了支持。
 
@@ -353,6 +364,14 @@ public class Max implements UDTF {
   }
 }
 ```
+
+
+
+### void beforeDestroy()
+
+UDTF的结束方法，您可以在此方法中进行一些资源释放等的操作。
+
+此方法由框架调用。对于一个UDF类实例而言，生命周期中会且只会被调用一次，即在处理完最后一条记录之后被调用。
 
 
 
@@ -423,7 +442,7 @@ UDF的使用方法与普通内建函数的类似。
 
 
 
-### 带`*`查询
+### 带 * 查询
 
 假定现在有时间序列 `root.sg.d1.s1`和 `root.sg.d1.s2`。
 
