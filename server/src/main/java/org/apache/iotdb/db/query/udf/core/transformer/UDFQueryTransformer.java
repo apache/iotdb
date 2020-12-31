@@ -33,23 +33,24 @@ public abstract class UDFQueryTransformer extends Transformer {
   protected final TSDataType udfOutputDataType;
   protected final LayerPointReader udfOutput;
 
+  protected boolean terminated;
+
   protected UDFQueryTransformer(UDTFExecutor executor) {
     this.executor = executor;
     udfOutputDataType = executor.getConfigurations().getOutputDataType();
     udfOutput = executor.getCollector().getPointReaderUsingEvictionStrategy();
+    terminated = false;
   }
 
   @Override
   protected boolean cacheValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
-      if (!executeUDFOnce()) {
+      if (!executeUDFOnce() && !terminate()) {
         return false;
       }
     }
     return true;
   }
-
-  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
 
   protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
     boolean hasNext = udfOutput.next();
@@ -80,6 +81,17 @@ public abstract class UDFQueryTransformer extends Transformer {
       udfOutput.readyForNext();
     }
     return hasNext;
+  }
+
+  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
+
+  protected final boolean terminate() throws QueryProcessException {
+    if (terminated) {
+      return false;
+    }
+    executor.terminate();
+    terminated = true;
+    return true;
   }
 
   @Override

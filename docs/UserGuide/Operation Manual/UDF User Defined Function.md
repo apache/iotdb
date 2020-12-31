@@ -67,6 +67,7 @@ The following table shows all the interfaces available for user implementation.
 | `void beforeDestroy() `                                      | This method is called by the framework after the last input data is processed, and will only be called once in the life cycle of each UDF instance. | Optional                                              |
 | `void transform(Row row, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `RowByRowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `Row`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `SlidingSizeWindowAccessStrategy` or `SlidingTimeWindowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `RowWindow`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
+| `void terminate(PointCollector collector) throws Exception`  | This method is called by the framework. This method will be called once after all `transform` calls have been executed. In a single UDF query, this method will and will only be called once. You need to call the data collection method provided by `collector`  to determine the output data. | Optional                                              |
 
 Note that every time the framework executes a UDTF query, a new UDF instance will be constructed. When the query ends, the corresponding instance will be destroyed. Therefore, the internal data of the instances in different UDTF queries (even in the same SQL statement) are isolated. You can maintain some state data in the UDTF without considering the influence of concurrency and other factors.
 
@@ -87,7 +88,7 @@ This method is mainly used to customize UDTF. In this method, the user can do th
 
 #### `UDFParameters`
 
-`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
+`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) and their data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
 
 
 Example：
@@ -102,6 +103,7 @@ Usage：
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
   // parameters
 	for (PartialPath path : parameters.getPaths()) {
+    TSDataType dataType = parameters.getDataType(path);
   	// do something
   }
   String stringValue = parameters.getString("key1"); // iotdb
@@ -199,6 +201,20 @@ Note that the type of output sequence you set here determines the type of data t
 | `BOOLEAN`                                   | `boolean`                                                    |
 | `TEXT`                                      | `java.lang.String` and `org.apache.iotdb.tsfile.utils.Binary` |
 
+The type of output time series of a UDTF is determined at runtime, which means that a UDTF can dynamically determine the type of output time series according to the type of input time series.
+Here is a simple example:
+
+```java
+void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+  // do something
+  // ...
+  
+  configurations
+    .setAccessStrategy(new RowByRowAccessStrategy())
+    .setOutputDataType(parameters.getDataType(0));
+}
+```
+
 
 
 ### `void beforeDestroy() `
@@ -282,6 +298,58 @@ public class Counter implements UDTF {
   public void transform(RowWindow rowWindow, PointCollector collector) {
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
+    }
+  }
+}
+```
+
+
+
+### `void terminate(PointCollector collector) throws Exception`
+
+In some scenarios, a UDF needs to traverse all the original data to calculate the final output data points. The `terminate` interface provides support for those scenarios.
+
+This method is called after all `transform` calls are executed and before the `beforeDestory` method is executed. You can implement the `transform` method to perform pure data processing (without outputting any data points), and implement the  `terminate` method to output the processing results.
+
+The processing results need to be output by the  `PointCollector`. You can output any number of data points in one `terminate` method call. It should be noted that the type of output data points must be the same as you set in the `beforeStart` method, and the timestamps of output data points must be strictly monotonically increasing.
+
+Below is a complete UDF example that implements the `void terminate(PointCollector collector) throws Exception` method. It takes one time series whose data type is `INT32` as input, and outputs the maximum value point of the series.
+
+```java
+import java.io.IOException;
+import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+public class Max implements UDTF {
+
+  private Long time;
+  private int value;
+
+  @Override
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    configurations
+        .setOutputDataType(TSDataType.INT32)
+        .setAccessStrategy(new RowByRowAccessStrategy());
+  }
+
+  @Override
+  public void transform(Row row, PointCollector collector) {
+    int candidateValue = row.getInt(0);
+    if (time == null || value < candidateValue) {
+      time = row.getTime();
+      value = candidateValue;
+    }
+  }
+
+  @Override
+  public void terminate(PointCollector collector) throws IOException {
+    if (time != null) {
+      collector.putInt(time, value);
     }
   }
 }

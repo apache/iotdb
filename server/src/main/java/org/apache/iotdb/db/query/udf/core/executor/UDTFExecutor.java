@@ -49,8 +49,7 @@ public class UDTFExecutor {
       udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
           configurations);
     } catch (Exception e) {
-      throw new QueryProcessException(
-          "Error occurred during initialization of udf:\n" + e.toString());
+      onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
     }
     configurations.check();
     collector = ElasticSerializableTVList
@@ -62,7 +61,7 @@ public class UDTFExecutor {
     try {
       udtf.transform(row, collector);
     } catch (Exception e) {
-      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
+      onError("transform(Row, PointCollector)", e);
     }
   }
 
@@ -70,12 +69,26 @@ public class UDTFExecutor {
     try {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
-      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
+      onError("transform(RowWindow, PointCollector)", e);
+    }
+  }
+
+  public void terminate() throws QueryProcessException {
+    try {
+      udtf.terminate(collector);
+    } catch (Exception e) {
+      onError("terminate(PointCollector)", e);
     }
   }
 
   public void beforeDestroy() {
     udtf.beforeDestroy();
+  }
+
+  private void onError(String methodName, Exception e) throws QueryProcessException {
+    throw new QueryProcessException(String
+        .format("Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
+        + e.toString());
   }
 
   public UDFContext getContext() {
