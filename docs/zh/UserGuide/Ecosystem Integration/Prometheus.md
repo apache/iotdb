@@ -20,7 +20,9 @@
 -->
 
 ## 环境
-* GoLang 1.13+
+* 支持的IoTDB版本 : V0.12+
+* 支持的Prometheus版本 : V2.23+
+* 支持的Go版本 : V1.13+
 
 ## 启动IoTDB
 
@@ -31,11 +33,11 @@
 除了支持session,jdbc,cli写入数据外, IoTDB还支持通过API服务程序来接入Prometheus的数据. 仅需在Prometheus添加相关配置.
 即可将数据直接写入IoTDB, 并按规则自动创建时序, 无需任何代码，以及提前在IoTDB做任何配置.
 
-## 使用prometheus_connector (从源码编译)
+## 使用prometheus-connector (从源码编译)
 
 ```
 git clone https://github.com/apache/iotdb.git
-cd iotdb/prometheus_connector
+cd iotdb/prometheus-connector
 go mod init iotdb_prometheus
 go build
 run write_adaptor.go
@@ -43,7 +45,7 @@ run write_adaptor.go
 
 ## Prometheus
 
-Prometheus作为Cloud Native Computing Fundation毕业的项目，在性能监控以及K8S性能监控领域有着非常广泛的应用。IoTDB可以通过prometheus_connector服务程序实现无代码的快速接入，高效的将数据写入IoTDB中。并通过Grafana来查询IoTDB中的数据
+Prometheus作为Cloud Native Computing Fundation毕业的项目，在性能监控以及K8S性能监控领域有着非常广泛的应用。IoTDB可以通过prometheus-connector服务程序实现无代码的快速接入，高效的将数据写入IoTDB中。并通过Grafana来查询IoTDB中的数据
 
 ### 安装 prometheus
 
