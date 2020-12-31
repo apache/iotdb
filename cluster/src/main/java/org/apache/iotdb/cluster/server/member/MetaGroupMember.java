@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
@@ -70,6 +71,7 @@ import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -1317,6 +1319,30 @@ public class MetaGroupMember extends RaftMember {
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot();
     snapshot.deserialize(request.snapshotBytes);
     snapshot.getDefaultInstaller(this).install(snapshot, -1);
+  }
+
+  /**
+   * Execute a non-query plan. According to the type of the plan, the plan will be executed on all
+   * nodes (like timeseries deletion) or the nodes that belong to certain groups (like data
+   * ingestion).
+   *
+   * @param plan a non-query plan.
+   */
+  @Override
+  public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+    TSStatus result;
+    long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
+    if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      // do it in local, only the follower forward the plan to local
+      logger.debug("receive a global meta plan {}", plan);
+      result = processNonPartitionedMetaPlan(plan);
+    } else {
+      // do nothing
+      logger.warn("receive a plan {} could not be processed in local", plan);
+      result = StatusUtils.UNSUPPORTED_OPERATION;
+    }
+    Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
+    return result;
   }
 
   /**
