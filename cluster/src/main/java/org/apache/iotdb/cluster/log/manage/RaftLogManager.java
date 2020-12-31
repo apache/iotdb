@@ -114,7 +114,7 @@ public abstract class RaftLogManager {
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
    */
-  private final Object logUpdateCondition = new Object();
+  private final Object[] logUpdateConditions = new Object[1024];
 
   private List<Log> blockedUnappliedLogList;
 
@@ -175,6 +175,10 @@ public abstract class RaftLogManager {
      */
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
       this.applyAllCommittedLogWhenStartUp();
+    }
+
+    for (int i = 0; i < logUpdateConditions.length; i++) {
+      logUpdateConditions[i] = new Object();
     }
   }
 
@@ -426,6 +430,8 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
+    Object logUpdateCondition = getLogUpdateCondition(
+        entries.get(entries.size() - 1).getCurrLogIndex());
     synchronized (logUpdateCondition) {
       logUpdateCondition.notifyAll();
     }
@@ -446,6 +452,7 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entry);
+    Object logUpdateCondition = getLogUpdateCondition(entry.getCurrLogIndex());
     synchronized (logUpdateCondition) {
       logUpdateCondition.notifyAll();
     }
@@ -568,7 +575,7 @@ public abstract class RaftLogManager {
           .clear();
     }
     try {
-      int currentSize = (int) committedEntryManager.getTotalSize();
+      int currentSize = committedEntryManager.getTotalSize();
       int deltaSize = entries.size();
       if (currentSize + deltaSize > maxNumOfLogsInMem) {
         int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
@@ -835,8 +842,8 @@ public abstract class RaftLogManager {
   }
 
 
-  public Object getLogUpdateCondition() {
-    return logUpdateCondition;
+  public Object getLogUpdateCondition(long logIndex) {
+    return logUpdateConditions[(int) (logIndex % logUpdateConditions.length)];
   }
 
   void applyAllCommittedLogWhenStartUp() {
