@@ -36,6 +36,10 @@ public class UDFParameterValidator {
     this.parameters = parameters;
   }
 
+  public UDFParameters getParameters() {
+    return parameters;
+  }
+
   /**
    * Validates whether the attributes entered by the user contain an attribute whose key is
    * attributeKey.
@@ -167,19 +171,40 @@ public class UDFParameterValidator {
    * Validates the input parameters according to the validation rule given by the user.
    *
    * @param validationRule the validation rule, which can be a lambda expression
-   * @param messageToThrow the message to throw when the given args are not valid
-   * @param args           the given args
-   * @throws UDFParameterNotValidException if the given args are not valid
+   * @param messageToThrow the message to throw when the given argument is not valid
+   * @param argument       the given argument
+   * @throws UDFParameterNotValidException if the given argument is not valid
    */
-  public UDFParameterValidator validate(ValidationRule validationRule, String messageToThrow,
-      Object... args) throws UDFParameterNotValidException {
-    if (!validationRule.validate(args)) {
+  public UDFParameterValidator validate(SingleObjectValidationRule validationRule,
+      String messageToThrow, Object argument) throws UDFParameterNotValidException {
+    if (!validationRule.validate(argument)) {
       throw new UDFParameterNotValidException(messageToThrow);
     }
     return this;
   }
 
-  private interface ValidationRule {
+  public interface SingleObjectValidationRule {
+
+    boolean validate(Object arg);
+  }
+
+  /**
+   * Validates the input parameters according to the validation rule given by the user.
+   *
+   * @param validationRule the validation rule, which can be a lambda expression
+   * @param messageToThrow the message to throw when the given arguments are not valid
+   * @param arguments      the given arguments
+   * @throws UDFParameterNotValidException if the given arguments are not valid
+   */
+  public UDFParameterValidator validate(MultipleObjectsValidationRule validationRule,
+      String messageToThrow, Object... arguments) throws UDFParameterNotValidException {
+    if (!validationRule.validate(arguments)) {
+      throw new UDFParameterNotValidException(messageToThrow);
+    }
+    return this;
+  }
+
+  public interface MultipleObjectsValidationRule {
 
     boolean validate(Object... args);
   }
