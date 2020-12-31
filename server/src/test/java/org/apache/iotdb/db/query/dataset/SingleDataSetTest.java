@@ -132,4 +132,20 @@ public class SingleDataSetTest {
     }
   }
 
+  @Test
+  public void countClient()
+      throws QueryProcessException, IOException, InvocationTargetException, QueryFilterOptimizationException, SQLException, InterruptedException, IllegalAccessException, MetadataException, StorageEngineException, TException {
+    PhysicalPlan plan = processor
+        .parseSQLToPhysicalPlan(
+            "count clients");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertTrue(dataSet instanceof SingleDataSet);
+    Assert.assertEquals("[count]", dataSet.getPaths().toString());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals("0\t0", record.toString());
+    }
+  }
+
 }

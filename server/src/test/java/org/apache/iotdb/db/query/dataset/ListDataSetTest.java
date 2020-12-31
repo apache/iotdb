@@ -125,4 +125,18 @@ public class ListDataSetTest {
       i++;
     }
   }
+
+  @Test
+  public void showConf()
+      throws QueryProcessException, TException, StorageEngineException, QueryFilterOptimizationException, MetadataException, IOException, InterruptedException, SQLException, InvocationTargetException, IllegalAccessException {
+    PhysicalPlan plan = processor
+        .parseSQLToPhysicalPlan(
+            "show configuration");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertTrue(dataSet instanceof ListDataSet);
+    Assert.assertEquals("[key, value]",dataSet.getPaths().toString());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals("0\treadonly\tfalse", record.toString());
+  }
 }

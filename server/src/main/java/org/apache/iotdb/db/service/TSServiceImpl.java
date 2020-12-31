@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
@@ -1072,7 +1073,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-      IOException, MetadataException, SQLException, TException, InterruptedException {
+      IOException, MetadataException, SQLException, TException, InterruptedException, InvocationTargetException, IllegalAccessException {
 
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
