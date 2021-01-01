@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.StartupException;
@@ -53,7 +54,8 @@ public class UDFClassLoaderManager implements IService {
   private volatile UDFClassLoader activeClassLoader;
 
   UDFClassLoaderManager() {
-    libRoot = IoTDBDescriptor.getInstance().getConfig().getUdfDir();
+    libRoot = IoTDBDescriptor.getInstance().getConfig().getExtDir()
+        + File.separator + IoTDBConstant.UDF_FOLDER_NAME;
     logger.info("UDF lib root: {}", libRoot);
     queryIdToUDFClassLoaderMap = new ConcurrentHashMap<>();
     activeClassLoader = null;
