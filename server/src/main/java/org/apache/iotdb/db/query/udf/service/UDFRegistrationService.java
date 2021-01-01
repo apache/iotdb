@@ -268,14 +268,12 @@ public class UDFRegistrationService implements IService {
     }
   }
 
-  private void registerBuiltinFunctions() throws ClassNotFoundException {
-    ClassLoader classLoader = getClass().getClassLoader();
+  private void registerBuiltinFunctions() {
     for (BuiltinFunction builtinFunction : BuiltinFunction.values()) {
       String functionName = builtinFunction.getFunctionName();
-      String className = builtinFunction.getClassName();
-      Class<?> functionClass = Class.forName(className, true, classLoader);
       registrationInformation.put(functionName,
-          new UDFRegistrationInformation(functionName, className, false, true, functionClass));
+          new UDFRegistrationInformation(functionName, builtinFunction.getClassName(), false, true,
+              builtinFunction.getFunctionClass()));
     }
   }
 

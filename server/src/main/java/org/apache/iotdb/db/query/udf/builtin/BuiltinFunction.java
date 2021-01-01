@@ -26,15 +26,21 @@ public enum BuiltinFunction {
   ;
 
   private final String functionName;
+  private final Class<?> functionClass;
   private final String className;
 
-  BuiltinFunction(String functionName, String className) {
+  BuiltinFunction(String functionName, Class<?> functionClass) {
     this.functionName = functionName;
-    this.className = className;
+    this.functionClass = functionClass;
+    this.className = functionClass.getName();
   }
 
   public String getFunctionName() {
     return functionName;
+  }
+
+  public Class<?> getFunctionClass() {
+    return functionClass;
   }
 
   public String getClassName() {
