@@ -950,6 +950,7 @@ public class IoTDBConfig {
     walDir = addHomeDir(walDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
