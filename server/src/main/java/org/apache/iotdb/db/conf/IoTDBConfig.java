@@ -254,6 +254,12 @@ public class IoTDBConfig {
   private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
 
   /**
+   * External lib directory for UDF, stores user-uploaded JAR files
+   */
+  private String udfDir = IoTDBConstant.EXT_FOLDER_NAME + File.separator
+      + IoTDBConstant.UDF_FOLDER_NAME;
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -1154,6 +1160,14 @@ public class IoTDBConfig {
 
   public void setExtDir(String extDir) {
     this.extDir = extDir;
+  }
+
+  public String getUdfDir() {
+    return udfDir;
+  }
+
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
   }
 
   public String getMultiDirStrategyClassName() {

@@ -865,7 +865,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
 
-    conf.setExtDir(properties.getProperty("ext_root_dir", conf.getExtDir()));
+    conf.setUdfDir(properties.getProperty("udf_root_dir", conf.getUdfDir()));
 
     String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
