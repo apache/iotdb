@@ -18,31 +18,22 @@
  */
 package org.apache.iotdb.tool;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import jline.console.ConsoleReader;
 import me.tongfei.progressbar.ProgressBar;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
+import org.apache.commons.cli.*;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -129,7 +120,7 @@ public class ImportCsv extends AbstractCsvTool {
           String device = deviceToPositions.getKey();
           devices.add(device);
 
-          times.add(Long.parseLong(cols[0]));
+          times.add(parseTime(cols[0]));
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
@@ -211,6 +202,35 @@ public class ImportCsv extends AbstractCsvTool {
     } finally {
       reader.close();
     }
+  }
+
+  private static long parseTime(String str) {
+
+    SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    SimpleDateFormat format2 = new SimpleDateFormat("yyy-MM-dd HH:mm:ss");
+    SimpleDateFormat format3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+
+    try {
+      return Long.parseLong(str);
+    } catch (Exception ignored) {
+    }
+
+    try {
+      return format1.parse(str).getTime();
+    } catch (java.text.ParseException ignored) {
+    }
+
+    try {
+      return format2.parse(str).getTime();
+    } catch (java.text.ParseException ignored) {
+    }
+
+    try {
+      return format3.parse(str).getTime();
+    } catch (java.text.ParseException ignored) {
+    }
+
+    throw new IllegalArgumentException("Input time format " + str + "error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or yyyy-MM-ddTHH:mm:ss.SSSZ");
   }
 
   private static void parseSpecialParams(CommandLine commandLine) {
