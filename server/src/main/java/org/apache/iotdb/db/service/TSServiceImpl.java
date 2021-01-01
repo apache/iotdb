@@ -630,15 +630,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         fetchSize = DEFAULT_FETCH_SIZE;
       }
 
-      if (plan instanceof ShowTimeSeriesPlan) {
-        //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
-        if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
-          ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
-          ((ShowTimeSeriesPlan) plan).setHasLimit(false);
-        } else {
-          ((ShowTimeSeriesPlan) plan).setHasLimit(true);
-        }
-      }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
@@ -1601,11 +1592,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
     try {
-      if (!checkLogin(req.getSessionId())) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-      }
       if (auditLogger.isDebugEnabled()) {
         auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
             req.getPaths().size(), req.getPaths().get(0));
@@ -1616,22 +1607,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       List<TSDataType> dataTypes = new ArrayList<>(req.paths.size());
       List<TSEncoding> encodings = new ArrayList<>(req.paths.size());
       List<CompressionType> compressors = new ArrayList<>(req.paths.size());
-      List<String> alias = null;
-      if (req.measurementAliasList != null) {
-        alias = new ArrayList<>(req.paths.size());
-      }
-      List<Map<String, String>> props = null;
-      if (req.propsList != null) {
-        props = new ArrayList<>(req.paths.size());
-      }
-      List<Map<String, String>> tags = null;
-      if (req.tagsList != null) {
-        tags = new ArrayList<>(req.paths.size());
-      }
-      List<Map<String, String>> attributes = null;
-      if (req.attributesList != null) {
-        attributes = new ArrayList<>(req.paths.size());
-      }
 
       // for authority check
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan();
@@ -1648,28 +1623,24 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         dataTypes.add(TSDataType.values()[req.dataTypes.get(i)]);
         encodings.add(TSEncoding.values()[req.encodings.get(i)]);
         compressors.add(CompressionType.values()[req.compressors.get(i)]);
-        if (alias != null) {
-          alias.add(req.measurementAliasList.get(i));
-        }
-        if (props != null) {
-          props.add(req.propsList.get(i));
-        }
-        if (tags != null) {
-          tags.add(req.tagsList.get(i));
-        }
-        if (attributes != null) {
-          attributes.add(req.attributesList.get(i));
-        }
       }
 
       multiPlan.setPaths(paths);
       multiPlan.setDataTypes(dataTypes);
       multiPlan.setEncodings(encodings);
       multiPlan.setCompressors(compressors);
-      multiPlan.setAlias(alias);
-      multiPlan.setProps(props);
-      multiPlan.setTags(tags);
-      multiPlan.setAttributes(attributes);
+      if (req.measurementAliasList != null) {
+        multiPlan.setAlias(req.measurementAliasList);
+      }
+      if (req.propsList != null) {
+        multiPlan.setProps(req.propsList);
+      }
+      if (req.tagsList != null) {
+        multiPlan.setTags(req.tagsList);
+      }
+      if (req.attributesList != null) {
+        multiPlan.setAttributes(req.attributesList);
+      }
       multiPlan.setIndexes(new ArrayList<>());
 
       return executeNonQueryPlan(multiPlan);
@@ -1684,11 +1655,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
+    if (!checkLogin(sessionId)) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
     try {
-      if (!checkLogin(sessionId)) {
-        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
-      }
       List<PartialPath> pathList = new ArrayList<>();
       for (String path : paths) {
         pathList.add(new PartialPath(path));
@@ -1738,10 +1710,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    boolean execRet;
     try {
       plan.checkIntegrity();
-      execRet = executeNonQuery(plan);
+
+      if (!executeNonQuery(plan)) {
+        return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
     } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
@@ -1755,10 +1730,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.warn(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
-
-    return execRet
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
-        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
 

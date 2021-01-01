@@ -119,6 +119,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -132,6 +133,9 @@ public class PhysicalGenerator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
       throws QueryProcessException {
+    if (fetchSize == 0) {
+      fetchSize = TSServiceImpl.getDefaultFetchSize();
+    }
     List<PartialPath> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -247,10 +251,18 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
+            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(
+                showTimeSeriesOperator.getPath(),
                 showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
                 showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
                 showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
+
+            showTimeSeriesPlan.setHasLimit(true);
+            if (showTimeSeriesPlan.getLimit() == 0) {
+              showTimeSeriesPlan.setLimit(fetchSize);
+              showTimeSeriesPlan.setHasLimit(false);
+            }
+            return showTimeSeriesPlan;
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
