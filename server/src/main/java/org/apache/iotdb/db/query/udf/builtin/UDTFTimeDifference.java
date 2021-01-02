@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
+import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -41,7 +42,7 @@ public class UDTFTimeDifference implements UDTF {
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) throws Exception {
+  public void transform(Row row, PointCollector collector) throws IOException {
     if (!hasPrevious) {
       previousTime = row.getTime();
       hasPrevious = true;
