@@ -21,44 +21,23 @@ package org.apache.iotdb.db.query.udf.builtin;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class UDTFMath implements UDTF {
-
-  protected interface Transformer {
-
-    double transform(double operand);
-  }
-
-  protected Transformer transformer;
-
-  @Override
-  public void validate(UDFParameterValidator validator) throws UDFException {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE);
-  }
+public class UDTFAbs extends UDTFMath {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
-    setTransformer();
+        .setOutputDataType(parameters.getDataType(0));
   }
-
-  protected abstract void setTransformer();
 
   @Override
   public void transform(Row row, PointCollector collector)
@@ -66,21 +45,25 @@ public abstract class UDTFMath implements UDTF {
     long time = row.getTime();
     switch (row.getDataType(0)) {
       case INT32:
-        collector.putDouble(time, transformer.transform(row.getInt(0)));
+        collector.putInt(time, Math.abs(row.getInt(0)));
         break;
       case INT64:
-        collector.putDouble(time, transformer.transform(row.getLong(0)));
+        collector.putLong(time, Math.abs(row.getLong(0)));
         break;
       case FLOAT:
-        collector.putDouble(time, transformer.transform(row.getFloat(0)));
+        collector.putFloat(time, Math.abs(row.getFloat(0)));
         break;
       case DOUBLE:
-        collector.putDouble(time, transformer.transform(row.getDouble(0)));
+        collector.putDouble(time, Math.abs(row.getDouble(0)));
         break;
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
+  }
+
+  protected void setTransformer() {
+    throw new UnsupportedOperationException("UDTFAbs#setTransformer()");
   }
 }
