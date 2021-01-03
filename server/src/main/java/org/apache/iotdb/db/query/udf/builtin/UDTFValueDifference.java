@@ -36,10 +36,10 @@ public class UDTFValueDifference implements UDTF {
 
   private boolean hasPrevious = false;
 
-  private int previousInt = 0;
-  private long previousLong = 0;
-  private float previousFloat = 0;
-  private double previousDouble = 0;
+  protected int previousInt = 0;
+  protected long previousLong = 0;
+  protected float previousFloat = 0;
+  protected double previousDouble = 0;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -90,7 +90,7 @@ public class UDTFValueDifference implements UDTF {
     }
   }
 
-  private void doTransform(Row row, PointCollector collector)
+  protected void doTransform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long time = row.getTime();
     switch (row.getDataType(0)) {

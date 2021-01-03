@@ -44,6 +44,7 @@ public enum BuiltinFunction {
   CONTAINS("CONTAINS", UDTFContains.class),
   MATCHES("MATCHES", UDTFMatches.class),
   DIFFERENCE("DIFFERENCE", UDTFValueDifference.class),
+  NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
   DERIVATIVE("DERIVATIVE", UDTFDerivative.class),
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
