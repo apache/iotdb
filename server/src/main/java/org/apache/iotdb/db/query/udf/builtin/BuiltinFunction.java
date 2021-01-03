@@ -45,6 +45,8 @@ public enum BuiltinFunction {
   MATCHES("MATCHES", UDTFMatches.class),
   DIFFERENCE("DIFFERENCE", UDTFValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
+  DERIVATIVE("DERIVATIVE", UDTFDerivative.class),
+  NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   ;
 
   private final String functionName;
