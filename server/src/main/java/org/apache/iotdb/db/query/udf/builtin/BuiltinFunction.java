@@ -43,10 +43,10 @@ public enum BuiltinFunction {
   SQRT("SQRT", UDTFSqrt.class),
   CONTAINS("CONTAINS", UDTFContains.class),
   MATCHES("MATCHES", UDTFMatches.class),
-  DIFFERENCE("DIFFERENCE", UDTFValueDifference.class),
+  DIFFERENCE("DIFFERENCE", UDTFCommonValueDifference.class),
   NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
-  DERIVATIVE("DERIVATIVE", UDTFDerivative.class),
+  DERIVATIVE("DERIVATIVE", UDTFCommonDerivative.class),
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
   ;
 

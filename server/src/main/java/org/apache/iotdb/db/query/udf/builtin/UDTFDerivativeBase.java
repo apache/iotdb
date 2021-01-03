@@ -31,7 +31,7 @@ import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class UDTFDerivative implements UDTF {
+public abstract class UDTFDerivativeBase implements UDTF {
 
   private boolean hasPrevious = false;
 
@@ -91,36 +91,6 @@ public class UDTFDerivative implements UDTF {
     }
   }
 
-  protected void doTransform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException, IOException {
-    long currentTime = row.getTime();
-    double timeDelta = (double) currentTime - previousTime;
-    switch (row.getDataType(0)) {
-      case INT32:
-        int currentInt = row.getInt(0);
-        collector.putDouble(currentTime, (currentInt - previousInt) / timeDelta);
-        previousInt = currentInt;
-        break;
-      case INT64:
-        long currentLong = row.getLong(0);
-        collector.putDouble(currentTime, (currentLong - previousLong) / timeDelta);
-        previousLong = currentLong;
-        break;
-      case FLOAT:
-        float currentFloat = row.getFloat(0);
-        collector.putDouble(currentTime, (currentFloat - previousFloat) / timeDelta);
-        previousFloat = currentFloat;
-        break;
-      case DOUBLE:
-        double currentDouble = row.getDouble(0);
-        collector.putDouble(currentTime, (currentDouble - previousDouble) / timeDelta);
-        previousDouble = currentDouble;
-        break;
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
-    }
-    previousTime = currentTime;
-  }
+  protected abstract void doTransform(Row row, PointCollector collector)
+      throws UDFInputSeriesDataTypeNotValidException, IOException;
 }
