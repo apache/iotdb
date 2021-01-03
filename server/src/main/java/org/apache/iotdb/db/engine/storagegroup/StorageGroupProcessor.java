@@ -1856,7 +1856,6 @@ public class StorageGroupProcessor {
       throws IllegalPathException, WriteProcessException {
     for (Entry<String, Integer> entry : newTsFileResource.getDeviceToIndexMap().entrySet()) {
       PartialPath device = new PartialPath(entry.getKey());
-      int index = entry.getValue();
       tryToDeleteLastCacheByDevice(device);
     }
   }
