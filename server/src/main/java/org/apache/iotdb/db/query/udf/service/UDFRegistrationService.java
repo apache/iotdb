@@ -78,6 +78,7 @@ public class UDFRegistrationService implements IService {
 
   public void register(String functionName, String className, boolean isTemporary,
       boolean writeToTemporaryLogFile) throws UDFRegistrationException {
+    functionName = functionName.toUpperCase();
     validateFunctionName(functionName, className);
     checkIfRegistered(functionName, className, isTemporary);
     doRegister(functionName, className, isTemporary);
@@ -181,6 +182,7 @@ public class UDFRegistrationService implements IService {
   }
 
   public void deregister(String functionName) throws UDFRegistrationException {
+    functionName = functionName.toUpperCase();
     UDFRegistrationInformation information = registrationInformation.remove(functionName);
     if (information == null) {
       String errorMessage = String.format("UDF %s does not exist.", functionName);
@@ -228,11 +230,12 @@ public class UDFRegistrationService implements IService {
   }
 
   public UDF reflect(UDFContext context) throws QueryProcessException {
-    UDFRegistrationInformation information = registrationInformation.get(context.getName());
+    String functionName = context.getName().toUpperCase();
+    UDFRegistrationInformation information = registrationInformation.get(functionName);
     if (information == null) {
       String errorMessage = String
           .format("Failed to reflect UDF instance, because UDF %s has not been registered.",
-              context.getName());
+              functionName);
       logger.warn(errorMessage);
       throw new QueryProcessException(errorMessage);
     }
@@ -246,7 +249,7 @@ public class UDFRegistrationService implements IService {
       return (UDF) information.getFunctionClass().getDeclaredConstructor().newInstance();
     } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
       String errorMessage = String.format("Failed to reflect UDF %s(%s) instance, because %s",
-          context.getName(), information.getClassName(), e.toString());
+          functionName, information.getClassName(), e.toString());
       logger.warn(errorMessage);
       throw new QueryProcessException(errorMessage);
     }
@@ -368,13 +371,14 @@ public class UDFRegistrationService implements IService {
       throws ClassNotFoundException {
     ClassLoader classLoader = getClass().getClassLoader();
     Class<?> functionClass = Class.forName(className, true, classLoader);
+    functionName = functionName.toUpperCase();
     registrationInformation.put(functionName,
         new UDFRegistrationInformation(functionName, className, false, true, functionClass));
   }
 
   @TestOnly
   public void deregisterBuiltinFunction(String functionName) {
-    registrationInformation.remove(functionName);
+    registrationInformation.remove(functionName.toUpperCase());
   }
 
   @Override
