@@ -1356,10 +1356,14 @@ public class MManager {
     for (String key : keySet) {
       // check tag map
       // check attribute map
-      if (pair.left.containsKey(key)) {
-        deleteTag.put(key, pair.left.remove(key));
+      String removeVal = pair.left.remove(key);
+      if (removeVal != null) {
+        deleteTag.put(key, removeVal);
       } else {
-        pair.right.remove(key);
+        removeVal = pair.right.remove(key);
+        if (removeVal == null) {
+          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", fullPath, key);
+        }
       }
     }
 
