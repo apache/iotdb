@@ -111,7 +111,7 @@ public class SyncReceiverLogAnalyzerTest {
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + "0" + File.separator + "0" + File.separator + System
                 .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         Thread.sleep(1);
