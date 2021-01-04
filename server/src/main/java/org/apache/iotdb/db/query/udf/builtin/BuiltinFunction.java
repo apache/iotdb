@@ -48,6 +48,8 @@ public enum BuiltinFunction {
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
   DERIVATIVE("DERIVATIVE", UDTFCommonDerivative.class),
   NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
+  TOP_K("TOP_K", UDTFTopK.class),
+  BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   ;
 
   private final String functionName;
