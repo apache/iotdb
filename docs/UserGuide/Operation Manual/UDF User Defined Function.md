@@ -405,6 +405,8 @@ CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"
 
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.
 
+Note: UDF function names are not case sensitive.
+
 Note: Please ensure that the function name given to the UDF is different from all built-in function names. A UDF with the same name as a built-in function cannot be registered.
 
 Note: We recommend that you do not use classes that have the same class name but different function logic in different JAR packages. For example, in `UDF(UDAF/UDTF): udf1, udf2`, the JAR package of udf1 is `udf1.jar` and the JAR package of udf2 is `udf2.jar`. Assume that both JAR packages contain the `org.apache.iotdb.udf.ExampleUDTF` class. If you use two UDFs in the same SQL statement at the same time, the system will randomly load either of them and may cause inconsistency in UDF execution behavior.
