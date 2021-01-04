@@ -573,7 +573,7 @@ public class TsFileProcessor {
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
-        logger.error(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
+        logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
             tsFileResource.getTsFile().getName());
       }
     }
