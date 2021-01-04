@@ -498,6 +498,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         return;
       }
     }
+    isSeqMerging = true;
     long startTimeMillis = System.currentTimeMillis();
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
