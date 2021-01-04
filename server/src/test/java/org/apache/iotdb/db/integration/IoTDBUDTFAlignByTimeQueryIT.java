@@ -127,6 +127,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("create function max as \"org.apache.iotdb.db.query.udf.example.Max\"");
       statement.execute(
           "create function terminate as \"org.apache.iotdb.db.query.udf.example.TerminateTester\"");
+      statement.execute(
+          "create function validate as \"org.apache.iotdb.db.query.udf.example.ValidateTester\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -357,6 +359,48 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter8() {
+    String sqlStr = "select validate(s1, s2, 'k'='') from root.vehicle.d3";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains(
+          "the data type of the input series (index: 0) is not valid. expected: [INT32, INT64]. actual: FLOAT."));
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter9() {
+    String sqlStr = "select validate(s1, s2, s1, 'k'=''), * from root.vehicle.d1";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains(
+          "the number of the input series is not valid. expected: 2. actual: 3."));
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter10() {
+    String sqlStr = "select validate(s1, s2), * from root.vehicle.d1";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable.getMessage().contains("attribute \"k\" is required but was not provided."));
     }
   }
 

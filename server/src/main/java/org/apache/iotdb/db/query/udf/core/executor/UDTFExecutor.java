@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
@@ -45,13 +46,22 @@ public class UDTFExecutor {
   public void beforeStart(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
+
+    UDFParameters parameters = new UDFParameters(context.getPaths(), context.getAttributes());
+
     try {
-      udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
-          configurations);
+      udtf.validate(new UDFParameterValidator(parameters));
+    } catch (Exception e) {
+      onError("validate(UDFParameterValidator)", e);
+    }
+
+    try {
+      udtf.beforeStart(parameters, configurations);
     } catch (Exception e) {
       onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
     }
     configurations.check();
+
     collector = ElasticSerializableTVList
         .newElasticSerializableTVList(configurations.getOutputDataType(), queryId,
             collectorMemoryBudgetInMB, 1);

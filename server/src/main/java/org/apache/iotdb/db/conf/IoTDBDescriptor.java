@@ -228,6 +228,8 @@ public class IoTDBDescriptor {
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getSystemDir() + IoTDBConstant.QUERY_FOLDER_NAME));
 
+      conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
+
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
@@ -866,6 +868,8 @@ public class IoTDBDescriptor {
       conf.setUdfInitialByteArrayLengthForMemoryControl(
           Integer.parseInt(initialByteArrayLengthForMemoryControl));
     }
+
+    conf.setUdfDir(properties.getProperty("udf_root_dir", conf.getUdfDir()));
 
     String memoryBudgetInMb = properties.getProperty("udf_memory_budget_in_mb");
     if (memoryBudgetInMb != null) {
