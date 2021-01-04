@@ -53,6 +53,7 @@ public class MemTableFlushTask {
   private IMemTable memTable;
 
   private volatile boolean noMoreEncodingTask = false;
+  private volatile boolean noMoreIOTask = false;
 
   /**
    * @param memTable the memTable to flush
@@ -103,6 +104,7 @@ public class MemTableFlushTask {
       encodingTaskFuture.get();
     } catch (InterruptedException | ExecutionException e) {
       // avoid ioTask waiting forever
+      noMoreIOTask = true;
       ioTaskFuture.cancel(true);
       throw e;
     }
@@ -193,8 +195,8 @@ public class MemTableFlushTask {
             memSerializeTime += System.currentTimeMillis() - starTime;
           }
         }
-
       }
+      noMoreIOTask = true;
       logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
               + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
@@ -217,7 +219,7 @@ public class MemTableFlushTask {
         break;
       }
 
-      if (null == ioMessage && noMoreEncodingTask) {
+      if (null == ioMessage && noMoreIOTask) {
         break;
       }
 
