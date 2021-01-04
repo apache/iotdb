@@ -19,54 +19,28 @@
 
 package org.apache.iotdb.db.query.udf.example;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Max implements UDTF {
-
-  private Long time;
-  private int value;
+public class ValidateTester implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
+        .validateRequiredAttribute("k")
+        .validateInputSeriesNumber(2)
+        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64)
+        .validateInputSeriesDataType(1, TSDataType.INT32, TSDataType.INT64);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Max#beforeStart");
     configurations
-        .setOutputDataType(TSDataType.INT32)
-        .setAccessStrategy(new RowByRowAccessStrategy());
-  }
-
-  @Override
-  public void transform(Row row, PointCollector collector) {
-    int candidateValue = row.getInt(0);
-    if (time == null || value < candidateValue) {
-      time = row.getTime();
-      value = candidateValue;
-    }
-  }
-
-  @Override
-  public void terminate(PointCollector collector) throws IOException {
-    if (time != null) {
-      collector.putInt(time, value);
-    }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Max#beforeDestroy");
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.INT32);
   }
 }

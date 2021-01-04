@@ -73,11 +73,11 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
-import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -121,17 +121,6 @@ public abstract class RaftMember {
    * client.
    **/
   private static long waitLeaderTimeMs = 60 * 1000L;
-
-  /**
-   * when opening a client failed (connection refused), wait for a while to avoid sending useless
-   * connection requests too frequently
-   */
-  private static final long SYNC_CLIENT_TIMEOUT_MS = 1000;
-
-  /**
-   * the max retry times for get a available client
-   */
-  private static final int MAX_RETRY_TIMES_FOR_GET_CLIENT = 5;
 
   /**
    * when the leader of this node changes, the condition will be notified so other threads that wait
@@ -558,7 +547,7 @@ public abstract class RaftMember {
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
   public AsyncClient getAsyncHeartbeatClient(Node node) {
-    return getAsyncClient(node, asyncHeartbeatClientPool);
+    return getAsyncClient(node, asyncHeartbeatClientPool, false);
   }
 
   /**
@@ -567,7 +556,7 @@ public abstract class RaftMember {
    * @return the heartbeat client for the node
    */
   public Client getSyncHeartbeatClient(Node node) {
-    return getSyncClient(syncHeartbeatClientPool, node);
+    return getSyncClient(syncHeartbeatClientPool, node, false);
   }
 
   public void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
@@ -586,28 +575,12 @@ public abstract class RaftMember {
     }
   }
 
-  private Client getSyncClient(SyncClientPool pool, Node node) {
+  private Client getSyncClient(SyncClientPool pool, Node node, boolean activatedOnly) {
     if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
       return null;
     }
 
-    Client client = null;
-    for (int i = 0; i < MAX_RETRY_TIMES_FOR_GET_CLIENT; i++) {
-      client = pool.getClient(node);
-      if (client == null) {
-        // this is typically because the target server is not yet ready (connection refused), so we
-        // wait for a while before reopening the transport to avoid sending requests too frequently
-        try {
-          Thread.sleep(SYNC_CLIENT_TIMEOUT_MS);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return null;
-        }
-      } else {
-        return client;
-      }
-    }
-    return null;
+    return pool.getClient(node, activatedOnly);
   }
 
   public NodeCharacter getCharacter() {
@@ -737,9 +710,7 @@ public abstract class RaftMember {
    * @param plan a non-query plan.
    * @return A TSStatus indicating the execution result.
    */
-  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    return StatusUtils.OK;
-  }
+  abstract TSStatus executeNonQueryPlan(PhysicalPlan plan);
 
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and
@@ -1265,35 +1236,28 @@ public abstract class RaftMember {
    * the node cannot be reached.
    */
   public AsyncClient getAsyncClient(Node node) {
-    return getAsyncClient(node, asyncClientPool);
+    return getAsyncClient(node, asyncClientPool, true);
+  }
+
+  public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+    return getAsyncClient(node, asyncClientPool, activatedOnly);
   }
 
   public AsyncClient getSendLogAsyncClient(Node node) {
-    return getAsyncClient(node, asyncSendLogClientPool);
+    return getAsyncClient(node, asyncSendLogClientPool, true);
   }
 
-  private AsyncClient getAsyncClient(Node node, AsyncClientPool pool) {
+  private AsyncClient getAsyncClient(Node node, AsyncClientPool pool, boolean activatedOnly) {
     if (ClusterConstant.EMPTY_NODE.equals(node) || node == null) {
       return null;
     }
 
-    AsyncClient client = null;
-    for (int i = 0; i < MAX_RETRY_TIMES_FOR_GET_CLIENT; i++) {
-      try {
-        client = pool.getClient(node);
-        if (!ClientUtils.isClientReady(client)) {
-          Thread.sleep(SYNC_CLIENT_TIMEOUT_MS);
-        } else {
-          return client;
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return null;
-      } catch (IOException e) {
-        logger.warn("{} cannot connect to node {}", name, node, e);
-      }
+    try {
+      return pool.getClient(node, activatedOnly);
+    } catch (IOException e) {
+      logger.warn("{} cannot connect to node {}", name, node, e);
+      return null;
     }
-    return client;
   }
 
   /**
@@ -1304,7 +1268,11 @@ public abstract class RaftMember {
    * @return the client if node is available, otherwise null
    */
   public Client getSyncClient(Node node) {
-    return getSyncClient(syncClientPool, node);
+    return getSyncClient(syncClientPool, node, true);
+  }
+
+  public Client getSyncClient(Node node, boolean activatedOnly) {
+    return getSyncClient(syncClientPool, node, activatedOnly);
   }
 
   public AtomicLong getTerm() {
@@ -1537,6 +1505,11 @@ public abstract class RaftMember {
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
           retryTime++;
           if (retryTime > 5) {
             return false;

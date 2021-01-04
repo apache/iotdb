@@ -88,7 +88,7 @@ IoTDB>
 |-u <`username`>|string类型，不需要引号|是|IoTDB连接服务器锁使用的用户名。|-u root|
 |-maxPRC <`maxPrintRowCount`>|int类型|否|设置IoTDB返回客户端命令行中所显示的最大行数。|-maxPRC 10|
 |-e <`execute`> |string类型|否|在不进入客户端输入模式的情况下，批量操作IoTDB|-e "show storage group"|
-|-c | 控 | 否 | 如果服务器设置了 `rpc_thrift_compression_enable=true`, 则CLI必须使用 `-c` | -c |
+|-c | 空 | 否 | 如果服务器设置了 `rpc_thrift_compression_enable=true`, 则CLI必须使用 `-c` | -c |
 
 下面展示一条客户端命令，功能是连接IP为10.129.187.21的主机，端口为6667 ，用户名为root，密码为root，以数字的形式打印时间戳，IoTDB命令行显示的最大行数为10。
 
