@@ -81,7 +81,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       return member.appendEntries(request);
     } catch (BufferUnderflowException e) {
-      logger.error("Underflown buffers {} of logs from {}", request.getEntries(),
+      logger.error("Underflow buffers {} of logs from {}", request.getEntries(),
           request.getPrevLogIndex() + 1);
       throw new TException(e);
     } catch (Exception e) {
@@ -102,16 +102,15 @@ public abstract class BaseSyncService implements RaftService.Iface {
     if (client == null) {
       throw new TException(new LeaderUnknownException(member.getAllNodes()));
     }
-    long commitIndex1 = 0;
     try {
-      commitIndex1 = client.requestCommitIndex(header);
+      commitIndex = client.requestCommitIndex(header);
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
     } finally {
       putBackSyncClient(client);
     }
-    return commitIndex1;
+    return commitIndex;
   }
 
   void putBackSyncClient(Client client) {

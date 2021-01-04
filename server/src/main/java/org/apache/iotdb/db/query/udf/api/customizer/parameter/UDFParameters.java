@@ -21,9 +21,12 @@ package org.apache.iotdb.db.query.udf.api.customizer.parameter;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * Used in {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}.
@@ -41,13 +44,23 @@ public class UDFParameters {
   private final List<PartialPath> paths;
   private final Map<String, String> attributes;
 
+  private List<TSDataType> dataTypes;
+
   public UDFParameters(List<PartialPath> paths, Map<String, String> attributes) {
     this.paths = paths;
     this.attributes = attributes;
+    dataTypes = null;
   }
 
   public List<PartialPath> getPaths() {
     return paths;
+  }
+
+  public List<TSDataType> getDataTypes() throws MetadataException {
+    if (dataTypes == null) {
+      dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
+    }
+    return dataTypes;
   }
 
   public Map<String, String> getAttributes() {
@@ -56,6 +69,23 @@ public class UDFParameters {
 
   public PartialPath getPath(int index) {
     return paths.get(index);
+  }
+
+  public TSDataType getDataType(int index) throws MetadataException {
+    return dataTypes != null ? dataTypes.get(index)
+        : SchemaUtils.getSeriesTypeByPath(paths.get(index));
+  }
+
+  public TSDataType getDataType(String path) throws MetadataException {
+    return SchemaUtils.getSeriesTypeByPath(new PartialPath(path));
+  }
+
+  public TSDataType getDataType(PartialPath path) throws MetadataException {
+    return SchemaUtils.getSeriesTypeByPath(path);
+  }
+
+  public boolean hasAttribute(String attributeKey) {
+    return attributes.containsKey(attributeKey);
   }
 
   public String getString(String key) {

@@ -42,7 +42,7 @@ public class Config {
   static final String DEFAULT_USER = "user";
 
   static final String AUTH_PASSWORD = "password";
-  static final String DEFALUT_PASSWORD = "password";
+  static final String DEFAULT_PASSWORD = "password";
 
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;

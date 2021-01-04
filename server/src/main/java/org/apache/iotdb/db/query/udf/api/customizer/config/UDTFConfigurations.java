@@ -57,7 +57,8 @@ public class UDTFConfigurations extends UDFConfigurations {
   /**
    * Used to specify the output data type of the UDTF. In other words, the data type you set here
    * determines the type of data that the PointCollector in {@link UDTF#transform(Row,
-   * PointCollector)} or {@link UDTF#transform(RowWindow, PointCollector)} can receive.
+   * PointCollector)}, {@link UDTF#transform(RowWindow, PointCollector)} or {@link
+   * UDTF#terminate(PointCollector)} can receive.
    *
    * @param outputDataType the output data type of the UDTF
    * @return this
