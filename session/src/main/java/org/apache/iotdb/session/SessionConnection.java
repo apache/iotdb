@@ -285,7 +285,7 @@ public class SessionConnection {
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+        execResp.isIgnoreTimeStamp(), timeout);
   }
 
 

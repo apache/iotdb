@@ -195,8 +195,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
-
   private static final AtomicInteger queryCount = new AtomicInteger(0);
+
+  private QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
 
 
   public TSServiceImpl() throws QueryProcessException {
@@ -715,9 +716,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // generate the queryId for the operation
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
-      // register startTime to query time manager
+      // register query info to queryTimeManager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        QueryTimeManager.getInstance()
+        queryTimeManager
             .registerQuery(queryId, startTime, statement, timeout, Thread.currentThread());
       }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
@@ -780,7 +781,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       // remove query info in QueryTimeManager
-      QueryTimeManager.getInstance().unRegisterQuery(queryId);
+      if (!(plan instanceof ShowQueryProcesslistPlan)) {
+        queryTimeManager.unRegisterQuery(queryId);
+      }
       return resp;
     } catch (Exception e) {
       if (e instanceof QueryTimeoutRuntimeException && Thread.interrupted()) {
@@ -1001,6 +1004,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
+      // register query info to queryTimeManager
+      queryTimeManager
+          .registerQuery(req.queryId, System.currentTimeMillis(), req.statement, req.timeout,
+              Thread.currentThread());
+
       QueryDataSet queryDataSet = queryId2DataSet.get(req.queryId);
       if (req.isAlign) {
         TSQueryDataSet result =
@@ -1013,6 +1021,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
+
+        queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       } else {
         TSQueryNonAlignDataSet nonAlignResult =
@@ -1032,9 +1042,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setHasResultSet(hasResultSet);
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
+
+        queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       }
     } catch (Exception e) {
+      if (e instanceof QueryTimeoutRuntimeException && Thread.interrupted()) {
+        // do nothing, just recover the state of thread here
+        logger.error("Recover the state of the thread interrupted");
+      }
       logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       try {
         releaseQueryResource(req.queryId);

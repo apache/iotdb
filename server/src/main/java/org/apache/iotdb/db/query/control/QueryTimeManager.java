@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.control;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
@@ -55,9 +56,12 @@ public class QueryTimeManager implements IService {
 
   private ScheduledExecutorService executorService;
 
+  private Map<Long, ScheduledFuture> queryScheduledTaskMap;
+
   private QueryTimeManager() {
     queryInfoMap = new ConcurrentHashMap<>();
     queryThreadMap = new ConcurrentHashMap<>();
+    queryScheduledTaskMap = new ConcurrentHashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "query-time-manager");
   }
@@ -67,13 +71,14 @@ public class QueryTimeManager implements IService {
     queryInfoMap.put(queryId, new Pair<>(startTime, sql));
     queryThreadMap.put(queryId, queryThread);
     // submit a scheduled task to judge whether query is still running after timeout
-    executorService.schedule(() -> {
+    ScheduledFuture scheduledFuture = executorService.schedule(() -> {
       queryThreadMap.computeIfPresent(queryId, (k, v) -> {
         killQuery(k);
         logger.error(String.format("Query is time out with queryId %d", queryId));
         return null;
       });
     }, timeout, TimeUnit.MILLISECONDS);
+    queryScheduledTaskMap.put(queryId, scheduledFuture);
   }
 
   public void killQuery(long queryId) {
@@ -91,6 +96,8 @@ public class QueryTimeManager implements IService {
     }
     queryInfoMap.remove(queryId);
     queryThreadMap.remove(queryId);
+    queryScheduledTaskMap.get(queryId).cancel(true);
+    queryScheduledTaskMap.remove(queryId);
   }
 
   public boolean isQueryInterrupted(long queryId) {
