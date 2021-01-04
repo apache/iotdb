@@ -466,6 +466,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
     };
+    metaGroupMember.getCoordinator().setMetaGroupMember(metaGroupMember);
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
@@ -730,6 +731,42 @@ public class MetaGroupMemberTest extends MemberTest {
     mockDataClusterServer = true;
     // as a leader
     testMetaMember.setCharacter(LEADER);
+    testMetaMember.setAppendLogThreadPool(testThreadPool);
+    for (int i = 10; i < 20; i++) {
+      // process a non partitioned plan
+      SetStorageGroupPlan setStorageGroupPlan =
+        new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
+      TSStatus status = coordinator.executeNonQueryPlan(setStorageGroupPlan);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
+
+      // process a partitioned plan
+      TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
+      CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
+        new PartialPath(schema.getFullPath()), schema.getType(),
+        schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+        Collections.emptyMap(), Collections.emptyMap(), null);
+      status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
+      if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
+    }
+    testThreadPool.shutdownNow();
+  }
+
+  @Test
+  public void testProcessNonQueryAsFollower() throws IllegalPathException, QueryProcessException {
+    System.out.println("Start testProcessNonQuery()");
+    mockDataClusterServer = true;
+
+    MetaGroupMember testMetaMember2 = getMetaGroupMember(TestUtils.getNode(2));
+    testMetaMember2.setCharacter(LEADER);
+
+    // as a follower
+    testMetaMember.setCharacter(FOLLOWER);
+    testMetaMember.setLeader(testMetaMember2.thisNode);
     testMetaMember.setAppendLogThreadPool(testThreadPool);
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan
