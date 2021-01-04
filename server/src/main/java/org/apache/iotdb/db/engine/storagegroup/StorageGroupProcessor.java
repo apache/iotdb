@@ -1806,8 +1806,15 @@ public class StorageGroupProcessor {
   public void merge(boolean fullMerge) {
     writeLock();
     try {
-      this.tsFileManagement.merge(fullMerge, tsFileManagement.getTsFileList(true),
-          tsFileManagement.getTsFileList(false), dataTTL);
+      if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
+          .isTerminated()) {
+        compactionMergeWorking = true;
+        this.tsFileManagement.merge(fullMerge, tsFileManagement.getTsFileList(true),
+            tsFileManagement.getTsFileList(false), dataTTL);
+      } else {
+        logger.info("{} last compaction merge task is working, skip current unseq merge",
+            storageGroupName);
+      }
     } finally {
       writeUnlock();
     }
