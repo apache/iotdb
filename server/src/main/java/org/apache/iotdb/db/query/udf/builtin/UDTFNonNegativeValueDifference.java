@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class UDTFNonNegativeValueDifference extends UDTFValueDifferenceBase {
+public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
 
   @Override
   protected void doTransform(Row row, PointCollector collector)

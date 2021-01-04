@@ -32,11 +32,9 @@ import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class UDTFDerivativeBase implements UDTF {
+public abstract class UDTFValueDifference implements UDTF {
 
   private boolean hasPrevious = false;
-
-  protected long previousTime = 0;
 
   protected int previousInt = 0;
   protected long previousLong = 0;
@@ -59,7 +57,7 @@ public abstract class UDTFDerivativeBase implements UDTF {
     dataType = parameters.getDataType(0);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(dataType);
   }
 
   @Override
@@ -75,7 +73,6 @@ public abstract class UDTFDerivativeBase implements UDTF {
   }
 
   private void updatePrevious(Row row) throws UDFInputSeriesDataTypeNotValidException {
-    previousTime = row.getTime();
     switch (dataType) {
       case INT32:
         previousInt = row.getInt(0);
