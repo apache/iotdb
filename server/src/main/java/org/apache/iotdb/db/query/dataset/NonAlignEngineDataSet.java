@@ -194,6 +194,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
         }
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+        interrupted = true;
         Thread.currentThread().interrupt();
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
@@ -268,6 +269,11 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   private void init(WatermarkEncoder encoder, int fetchSize) {
+    if (Thread.interrupted()) {
+      interrupted = true;
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
     initLimit(super.rowOffset, super.rowLimit, seriesReaderWithoutValueFilterList.size());
     this.fetchSize = fetchSize;
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -298,6 +304,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
       if (!noMoreDataInQueueArray[seriesIndex]) {
         // check the interrupted status of main thread before take next batch
         if (Thread.interrupted()) {
+          interrupted = true;
           throw new QueryTimeoutRuntimeException(
               QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
         }

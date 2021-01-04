@@ -341,9 +341,13 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {
     QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-    if (killQueryPlan.getQueryId() != -1) {
-      if (queryTimeManager.getQueryThreadMap().get(killQueryPlan.getQueryId()) != null) {
-        queryTimeManager.killQuery(killQueryPlan.getQueryId());
+    long killQueryId = killQueryPlan.getQueryId();
+    if (killQueryId != -1) {
+      if (queryTimeManager.getQueryThreadMap().get(killQueryId) != null) {
+        queryTimeManager.getQueryThreadMap().computeIfPresent(killQueryId, (k, v) -> {
+          queryTimeManager.killQuery(k);
+          return null;
+        });
       } else {
         throw new QueryIdNotExsitException(String
             .format("Query Id %d is not exist, please check it.", killQueryPlan.getQueryId()));
@@ -351,8 +355,11 @@ public class PlanExecutor implements IPlanExecutor {
     } else {
       // if queryId is not specified, kill all running queries
       if (!queryTimeManager.getQueryThreadMap().isEmpty()) {
-        for (Long queryId : queryTimeManager.getQueryThreadMap().keySet()) {
-          queryTimeManager.killQuery(queryId);
+        synchronized (queryTimeManager.getQueryThreadMap()) {
+          List<Long> queryIdList = new ArrayList<>(queryTimeManager.getQueryInfoMap().keySet());
+          for (Long queryId : queryIdList) {
+            queryTimeManager.killQuery(queryId);
+          }
         }
       }
     }

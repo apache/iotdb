@@ -48,6 +48,10 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
+
+  /**
+   * query timeout with seconds unit
+   */
   private int queryTimeout = 60;
   protected TSIService.Iface client;
   private List<String> batchSQLList;

@@ -190,6 +190,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of main thread before taking next batch
       if (Thread.interrupted()) {
+        interrupted = true;
         throw new QueryTimeoutRuntimeException(
             QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
       }
@@ -300,6 +301,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
 
           // check the interrupted status of main thread before taking next batch
           if (Thread.interrupted()) {
+            interrupted = true;
             throw new QueryTimeoutRuntimeException(
                 QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
           }
@@ -452,6 +454,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
 
         // check the interrupted status of main thread before taking next batch
         if (Thread.interrupted()) {
+          interrupted = true;
           throw new QueryTimeoutRuntimeException(
               QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
         }
@@ -462,6 +465,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
             fillCache(seriesIndex);
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
+            interrupted = true;
             Thread.currentThread().interrupt();
             throw new QueryTimeoutRuntimeException(
                 QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);

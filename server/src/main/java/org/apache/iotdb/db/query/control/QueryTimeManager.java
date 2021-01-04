@@ -68,14 +68,18 @@ public class QueryTimeManager implements IService {
     queryThreadMap.put(queryId, queryThread);
     // submit a scheduled task to judge whether query is still running after timeout
     executorService.schedule(() -> {
-      if (queryThreadMap.get(queryId) != null) {
-        killQuery(queryId);
+      queryThreadMap.computeIfPresent(queryId, (k, v) -> {
+        killQuery(k);
         logger.error(String.format("Query is time out with queryId %d", queryId));
-      }
+        return null;
+      });
     }, timeout, TimeUnit.MILLISECONDS);
   }
 
   public void killQuery(long queryId) {
+    if (queryThreadMap.get(queryId) == null) {
+      return;
+    }
     queryThreadMap.get(queryId).interrupt();
     unRegisterQuery(queryId);
   }
