@@ -348,7 +348,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
-        deviceMetadataIndexNode, path.getDevice(), MetadataIndexNodeType.INTERNAL_DEVICE, true);
+        deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
       return null;
     }
@@ -357,7 +357,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
       metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
-          path.getMeasurement(), MetadataIndexNodeType.INTERNAL_MEASUREMENT, false);
+          path.getMeasurement(), false, false);
     }
     if (metadataIndexPair == null) {
       return null;
