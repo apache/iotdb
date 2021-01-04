@@ -63,11 +63,20 @@ The following table shows all the interfaces available for user implementation.
 
 | Interface definition                                         | Description                                                  | Required to Implement                                 |
 | :----------------------------------------------------------- | :----------------------------------------------------------- | ----------------------------------------------------- |
+| `void validate(UDFParameterValidator validator) throws Exception` | This method is mainly used to validate `UDFParameters` and it is executed before `beforeStart(UDFParameters, UDTFConfigurations)` is called. | Optional                                              |
 | `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception` | The initialization method to call the user-defined initialization behavior before a UDTF processes the input data. Every time a user executes a UDTF query, the framework will construct a new UDF instance, and `beforeStart` will be called. | Required                                              |
-| `void beforeDestroy() `                                      | This method is called by the framework after the last input data is processed, and will only be called once in the life cycle of each UDF instance. | Optional                                              |
 | `void transform(Row row, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `RowByRowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `Row`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
 | `void transform(RowWindow rowWindow, PointCollector collector) throws Exception` | This method is called by the framework. This data processing method will be called when you choose to use the `SlidingSizeWindowAccessStrategy` or `SlidingTimeWindowAccessStrategy` strategy (set in `beforeStart`) to consume raw data. Input data is passed in by `RowWindow`, and the transformation result should be output by `PointCollector`. You need to call the data collection method provided by `collector`  to determine the output data. | Required to implement at least one `transform` method |
 | `void terminate(PointCollector collector) throws Exception`  | This method is called by the framework. This method will be called once after all `transform` calls have been executed. In a single UDF query, this method will and will only be called once. You need to call the data collection method provided by `collector`  to determine the output data. | Optional                                              |
+| `void beforeDestroy() `                                      | This method is called by the framework after the last input data is processed, and will only be called once in the life cycle of each UDF instance. | Optional                                              |
+
+In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
+
+1. `void validate(UDFParameterValidator validator) throws Exception`
+2. `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception`
+3. `void transform(Row row, PointCollector collector) throws Exception` or `void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
+4. `void terminate(PointCollector collector) throws Exception`
+5. `void beforeDestroy() `
 
 Note that every time the framework executes a UDTF query, a new UDF instance will be constructed. When the query ends, the corresponding instance will be destroyed. Therefore, the internal data of the instances in different UDTF queries (even in the same SQL statement) are isolated. You can maintain some state data in the UDTF without considering the influence of concurrency and other factors.
 
@@ -75,7 +84,17 @@ The usage of each interface will be described in detail below.
 
 
 
-### `void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception`
+### void validate(UDFParameterValidator validator) throws Exception
+
+The `validate` method is used to validate the parameters entered by the user.
+
+In this method, you can limit the number and types of input time series, check the attributes of user input, or perform any custom verification.
+
+Please refer to the Javadoc for the usage of `UDFParameterValidator`.
+
+
+
+### void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception
 
 This method is mainly used to customize UDTF. In this method, the user can do the following things:
 
@@ -86,9 +105,9 @@ This method is mainly used to customize UDTF. In this method, the user can do th
 
 
 
-#### `UDFParameters`
+#### UDFParameters
 
-`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
+`UDFParameters` is used to parse UDF parameters in SQL statements (the part in parentheses after the UDF function name in SQL). The input parameters have two parts. The first part is the paths (measurements) and their data types of the time series that the UDF needs to process, and the second part is the key-value pair attributes for customization. Only the second part can be empty.
 
 
 Example：
@@ -103,6 +122,7 @@ Usage：
 void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
   // parameters
 	for (PartialPath path : parameters.getPaths()) {
+    TSDataType dataType = parameters.getDataType(path);
   	// do something
   }
   String stringValue = parameters.getString("key1"); // iotdb
@@ -118,7 +138,7 @@ void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) th
 
 
 
-####  `UDTFConfigurations`
+####  UDTFConfigurations
 
 You must use `UDTFConfigurations` to specify the strategy used by UDF to access raw data and the type of output sequence.
 
@@ -140,7 +160,7 @@ The `setAccessStrategy` method is used to set the UDF's strategy for accessing t
 
 
 
-##### `setAccessStrategy`
+##### setAccessStrategy
 
 Note that the raw data access strategy you set here determines which `transform` method the framework will call. Please implement the `transform` method corresponding to the raw data access strategy. Of course, you can also dynamically decide which strategy to set based on the attribute parameters parsed by `UDFParameters`. Therefore, two `transform` methods are also allowed to be implemented in one UDF.
 
@@ -187,7 +207,7 @@ Please see the Javadoc for more details.
 
 
 
-##### `setOutputDataType`
+##### setOutputDataType
 
 Note that the type of output sequence you set here determines the type of data that the `PointCollector` can actually receive in the `transform` method. The relationship between the output data type set in `setOutputDataType` and the actual data output type that `PointCollector` can receive is as follows:
 
@@ -200,17 +220,23 @@ Note that the type of output sequence you set here determines the type of data t
 | `BOOLEAN`                                   | `boolean`                                                    |
 | `TEXT`                                      | `java.lang.String` and `org.apache.iotdb.tsfile.utils.Binary` |
 
+The type of output time series of a UDTF is determined at runtime, which means that a UDTF can dynamically determine the type of output time series according to the type of input time series.
+Here is a simple example:
+
+```java
+void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) throws Exception {
+  // do something
+  // ...
+  
+  configurations
+    .setAccessStrategy(new RowByRowAccessStrategy())
+    .setOutputDataType(parameters.getDataType(0));
+}
+```
 
 
-### `void beforeDestroy() `
 
-The method for terminating a UDF.
-
-This method is called by the framework. For a UDF instance, `beforeDestroy` will be called after the last record is processed. In the entire life cycle of the instance, `beforeDestroy` will only be called once.
-
-
-
-### `void transform(Row row, PointCollector collector) throws Exception`
+### void transform(Row row, PointCollector collector) throws Exception
 
 You need to implement this method when you specify the strategy of UDF to read the original data as `RowByRowAccessStrategy`.
 
@@ -248,7 +274,7 @@ public class Adder implements UDTF {
 
 
 
-### `void transform(RowWindow rowWindow, PointCollector collector) throws Exception`
+### void transform(RowWindow rowWindow, PointCollector collector) throws Exception
 
 You need to implement this method when you specify the strategy of UDF to read the original data as `SlidingTimeWindowAccessStrategy` or `SlidingSizeWindowAccessStrategy`.
 
@@ -290,7 +316,7 @@ public class Counter implements UDTF {
 
 
 
-### `void terminate(PointCollector collector) throws Exception`
+### void terminate(PointCollector collector) throws Exception
 
 In some scenarios, a UDF needs to traverse all the original data to calculate the final output data points. The `terminate` interface provides support for those scenarios.
 
@@ -342,6 +368,14 @@ public class Max implements UDTF {
 
 
 
+### void beforeDestroy() 
+
+The method for terminating a UDF.
+
+This method is called by the framework. For a UDF instance, `beforeDestroy` will be called after the last record is processed. In the entire life cycle of the instance, `beforeDestroy` will only be called once.
+
+
+
 ## Maven Project Example
 
 If you use Maven, you can build your own UDF project referring to our **udf-example** module. You can find the project [here](https://github.com/apache/iotdb/tree/master/example/udf).
@@ -355,6 +389,7 @@ The process of registering a UDF in IoTDB is as follows:
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+    > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
 The following shows the SQL syntax of how to register a UDF.
@@ -409,7 +444,7 @@ The usage of UDF is similar to that of built-in aggregation functions.
 
 
 
-### Queries with `*` in `SELECT` Clauses
+### Queries with * in SELECT Clauses
 
 Assume that there are 2 time series (`root.sg.d1.s1` and `root.sg.d1.s2`)  in the system.
 

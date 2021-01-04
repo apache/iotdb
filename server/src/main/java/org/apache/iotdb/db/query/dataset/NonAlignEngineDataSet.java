@@ -53,16 +53,14 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
     private WatermarkEncoder encoder;
     private int index;
-    private Thread mainThread;
 
     public ReadTask(ManagedSeriesReader reader,
         BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue, WatermarkEncoder encoder,
-        int index, Thread mainThread) {
+        int index) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.encoder = encoder;
       this.index = index;
-      this.mainThread = mainThread;
     }
 
     @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -71,7 +69,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
       PublicBAOS timeBAOS = new PublicBAOS();
       PublicBAOS valueBAOS = new PublicBAOS();
       try {
-        if (mainThread.isInterrupted()) {
+        if (interrupted) {
           // nothing is put here since before reading it the main thread will return
           return;
         }
@@ -233,6 +231,11 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  /**
+   * flag that main thread is interrupted or not
+   */
+  private volatile boolean interrupted = false;
+
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonAlignEngineDataSet.class);
@@ -271,7 +274,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
       ManagedSeriesReader reader = seriesReaderWithoutValueFilterList.get(i);
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
-      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, i, Thread.currentThread()));
+      pool.submit(new ReadTask(reader, blockingQueueArray[i], encoder, i));
     }
     this.initialized = true;
   }
@@ -322,7 +325,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             pool.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                encoder, seriesIndex, Thread.currentThread()));
+                encoder, seriesIndex));
           }
         }
       }

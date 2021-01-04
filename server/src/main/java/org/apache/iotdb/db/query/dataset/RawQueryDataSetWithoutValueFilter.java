@@ -50,26 +50,24 @@ import org.slf4j.LoggerFactory;
 public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     DirectAlignByTimeDataSet {
 
-  private static class ReadTask extends WrappedRunnable {
+  private class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private final String pathName;
     private BlockingQueue<BatchData> blockingQueue;
-    private final Thread mainThread;
 
-    public ReadTask(ManagedSeriesReader reader,
-        BlockingQueue<BatchData> blockingQueue, String pathName, Thread mainThread) {
+    public ReadTask(ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue,
+        String pathName) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
-      this.mainThread = mainThread;
     }
 
     @Override
     public void runMayThrow() {
       try {
         // check the status of mainThread before next reading
-        if (mainThread.isInterrupted()) {
+        if (interrupted) {
           return;
         }
         synchronized (reader) {
@@ -148,6 +146,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  /**
+   * flag that main thread is interrupted or not
+   */
+  private volatile boolean interrupted = false;
+
   private static final QueryTaskPoolManager TASK_POOL_MANAGER = QueryTaskPoolManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory
@@ -182,8 +185,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       TASK_POOL_MANAGER
-          .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath(),
-              Thread.currentThread()));
+          .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of main thread before taking next batch
@@ -401,7 +403,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           if (!reader.isManagedByQueryManager() && reader.hasRemaining()) {
             reader.setManagedByQueryManager(true);
             TASK_POOL_MANAGER.submit(new ReadTask(reader, blockingQueueArray[seriesIndex],
-                paths.get(seriesIndex).getFullPath(), Thread.currentThread()));
+                paths.get(seriesIndex).getFullPath()));
           }
         }
       }

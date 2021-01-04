@@ -356,7 +356,7 @@ public class PhysicalGenerator {
   }
 
   protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPath(paths);
+    return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
 

@@ -1829,7 +1829,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return SchemaUtils.getSeriesTypeByPaths(path);
+    return SchemaUtils.getSeriesTypeByPath(path);
   }
 
   public static int getDefaultFetchSize() {

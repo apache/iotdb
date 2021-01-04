@@ -69,7 +69,6 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -91,6 +90,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -177,7 +177,7 @@ public class MetaGroupMemberTest extends MemberTest {
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
     System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
@@ -287,7 +287,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
-    MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node) {
+    MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node, new Coordinator()) {
 
       @Override
       public DataClusterServer getDataClusterServer() {
@@ -350,6 +350,11 @@ public class MetaGroupMemberTest extends MemberTest {
         return getClient(node);
       }
 
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getClient(node);
+      }
+
       AsyncClient getClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
@@ -363,6 +368,11 @@ public class MetaGroupMemberTest extends MemberTest {
                   resultHandler.onComplete(resp);
                 }
               }).start();
+            }
+
+            @Override
+            public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
+              new Thread(() -> resultHandler.onComplete(null)).start();
             }
 
             @Override
@@ -467,7 +477,6 @@ public class MetaGroupMemberTest extends MemberTest {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     });
-    metaGroupMember.setCoordinator(new Coordinator());
     return metaGroupMember;
   }
 

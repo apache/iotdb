@@ -81,9 +81,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public MetaClusterServer() throws QueryProcessException {
     super();
     metaHeartbeatServer = new MetaHeartbeatServer(thisNode, this);
-    member = new MetaGroupMember(protocolFactory, thisNode);
-    coordinator = new Coordinator(member);
-    member.setCoordinator(coordinator);
+    coordinator = new Coordinator();
+    member = new MetaGroupMember(protocolFactory, thisNode, coordinator);
+    coordinator.setMetaGroupMember(member);
     asyncService = new MetaAsyncService(member);
     syncService = new MetaSyncService(member);
     MetaPuller.getInstance().init(member);
@@ -347,5 +347,15 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void removeHardLink(String hardLinkPath,
       AsyncMethodCallback<Void> resultHandler) {
     asyncService.removeHardLink(hardLinkPath, resultHandler);
+  }
+
+  @Override
+  public void handshake(Node sender) {
+    syncService.handshake(sender);
+  }
+
+  @Override
+  public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.handshake(sender, resultHandler);
   }
 }
