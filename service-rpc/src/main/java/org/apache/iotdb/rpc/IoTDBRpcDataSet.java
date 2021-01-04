@@ -159,6 +159,7 @@ public class IoTDBRpcDataSet {
       }
     }
     this.tsQueryDataSet = queryDataSet;
+    this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -474,5 +475,6 @@ public class IoTDBRpcDataSet {
 
   public void setTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
     this.tsQueryDataSet = tsQueryDataSet;
+    this.emptyResultSet = (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining());
   }
 }

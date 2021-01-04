@@ -32,11 +32,11 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 
 /**
  * LogicalGenerator.
- *
  */
 public class LogicalGenerator {
 
-  public LogicalGenerator() { }
+  public LogicalGenerator() {
+  }
 
   public Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
@@ -51,8 +51,7 @@ public class LogicalGenerator {
     ParseTree tree;
     try {
       tree = parser1.singleStatement();  // STAGE 1
-    }
-    catch (Exception ex) {
+    } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(sql);
       SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);

@@ -200,7 +200,7 @@ public class TsFileIOWriter {
     out.write(chunk.getData());
     endCurrentChunk();
     if (logger.isDebugEnabled()) {
-      logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetadata,
+      logger.debug("end flushing a chunk:{}, totalvalue:{}", chunkHeader.getMeasurementID(),
           chunkMetadata.getNumOfPoints());
     }
   }

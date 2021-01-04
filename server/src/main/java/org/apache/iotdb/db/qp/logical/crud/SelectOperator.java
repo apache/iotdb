@@ -18,29 +18,44 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
 /**
  * this class maintains information from select clause.
  */
 public final class SelectOperator extends Operator {
 
+  private final ZoneId zoneId;
   private List<PartialPath> suffixList;
   private List<String> aggregations;
+  private List<UDFContext> udfList;
+
   private boolean lastQuery;
+  private boolean udfQuery;
+  private boolean hasBuiltinAggregation;
 
   /**
    * init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>.
    */
-  public SelectOperator(int tokenIntType) {
+  public SelectOperator(int tokenIntType, ZoneId zoneId) {
     super(tokenIntType);
+    this.zoneId = zoneId;
     operatorType = OperatorType.SELECT;
     suffixList = new ArrayList<>();
     aggregations = new ArrayList<>();
+    udfList = new ArrayList<>();
     lastQuery = false;
+    udfQuery = false;
+    hasBuiltinAggregation = false;
+  }
+
+  public ZoneId getZoneId() {
+    return zoneId;
   }
 
   public void addSelectPath(PartialPath suffixPath) {
@@ -50,6 +65,13 @@ public final class SelectOperator extends Operator {
   public void addClusterPath(PartialPath suffixPath, String aggregation) {
     suffixList.add(suffixPath);
     aggregations.add(aggregation);
+    if (aggregation != null) {
+      hasBuiltinAggregation = true;
+    }
+  }
+
+  public boolean isLastQuery() {
+    return this.lastQuery;
   }
 
   public void setLastQuery() {
@@ -64,6 +86,10 @@ public final class SelectOperator extends Operator {
     this.aggregations = aggregations;
   }
 
+  public boolean hasAggregation() {
+    return hasBuiltinAggregation; // todo: hasBuiltinAggregation || hasUDAF
+  }
+
   public void setSuffixPathList(List<PartialPath> suffixPaths) {
     suffixList = suffixPaths;
   }
@@ -72,5 +98,22 @@ public final class SelectOperator extends Operator {
     return suffixList;
   }
 
-  public boolean isLastQuery() {return this.lastQuery; }
+  public void addUdf(UDFContext udf) {
+    if (udf != null) {
+      udfQuery = true;
+    }
+    udfList.add(udf);
+  }
+
+  public List<UDFContext> getUdfList() {
+    return udfList;
+  }
+
+  public boolean isUdfQuery() {
+    return udfQuery;
+  }
+
+  public void setUdfList(List<UDFContext> udfList) {
+    this.udfList = udfList;
+  }
 }

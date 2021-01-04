@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
 import org.antlr.v4.runtime.RecognitionException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -39,10 +42,6 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
 
 /**
  * test the correctness of {@linkplain ConcatPathOptimizer ConcatPathOptimizer}

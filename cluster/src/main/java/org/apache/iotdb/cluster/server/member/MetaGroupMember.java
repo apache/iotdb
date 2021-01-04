@@ -19,8 +19,88 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
+import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
+import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.EmptyIntervalException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
+import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
+import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
+import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterPlanRouter;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
+import org.apache.iotdb.cluster.server.ClientServer;
+import org.apache.iotdb.cluster.server.DataClusterServer;
+import org.apache.iotdb.cluster.server.HardLinkCleaner;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
+import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
+import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
+import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.server.monitor.NodeReport;
+import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
+import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
+import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TTransportException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -44,7 +124,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -55,103 +134,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.client.DataClientProvider;
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
-import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
-import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
-import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.AddSelfException;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
-import org.apache.iotdb.cluster.exception.EmptyIntervalException;
-import org.apache.iotdb.cluster.exception.LogExecutionException;
-import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
-import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
-import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
-import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
-import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
-import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.metadata.CMManager;
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.partition.NodeRemovalResult;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.query.ClusterPlanRouter;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.ClientServer;
-import org.apache.iotdb.cluster.server.DataClusterServer;
-import org.apache.iotdb.cluster.server.HardLinkCleaner;
-import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.NodeReport;
-import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
-import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
-import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
-import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
-import org.apache.iotdb.cluster.utils.ClientUtils;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
-import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
 @SuppressWarnings("java:S1135")
 public class MetaGroupMember extends RaftMember {
@@ -170,8 +155,6 @@ public class MetaGroupMember extends RaftMember {
    * in case of data loss, some file changes would be made to a temporary file first
    */
   private static final String TEMP_SUFFIX = ".tmp";
-  private static final String MSG_MULTIPLE_ERROR = "The following errors occurred when executing "
-      + "the query, please retry or contact the DBA: ";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   /**
@@ -264,14 +247,28 @@ public class MetaGroupMember extends RaftMember {
    */
   private ScheduledExecutorService hardLinkCleanerThread;
 
+  private Coordinator coordinator;
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
+  }
+
+  public Coordinator getCoordinator() {
+    return this.coordinator;
+  }
+
+  public ClusterPlanRouter getRouter() {
+    return router;
+  }
+
   @TestOnly
   public MetaGroupMember() {
   }
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
+  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) throws QueryProcessException {
     super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new ArrayList<>();
     initPeerMap();
@@ -296,6 +293,7 @@ public class MetaGroupMember extends RaftMember {
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
+    this.coordinator = coordinator;
     loadPartitionTable();
   }
 
@@ -335,7 +333,7 @@ public class MetaGroupMember extends RaftMember {
       return;
     }
     addSeedNodes();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(this);
     super.start();
   }
 
@@ -393,12 +391,13 @@ public class MetaGroupMember extends RaftMember {
   protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
+    clientServer.setCoordinator(this.coordinator);
     clientServer.start();
   }
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}" Ignore bad-formatted seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
@@ -457,6 +456,7 @@ public class MetaGroupMember extends RaftMember {
         logger.info("Partition table is set up");
       }
       router = new ClusterPlanRouter(partitionTable);
+      this.coordinator.setRouter(router);
       startSubServers();
     }
   }
@@ -671,6 +671,7 @@ public class MetaGroupMember extends RaftMember {
     }
 
     router = new ClusterPlanRouter(newTable);
+    this.coordinator.setRouter(router);
 
     updateNodeList(newTable.getAllNodes());
 
@@ -706,6 +707,7 @@ public class MetaGroupMember extends RaftMember {
           logger.info("Partition table is set up");
         }
         router = new ClusterPlanRouter(partitionTable);
+        this.coordinator.setRouter(router);
         startSubServers();
       }
     }
@@ -783,6 +785,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         getDataClusterServer().buildDataGroupMembers(partitionTable);
         initSubServers();
+        sendHandshake();
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();
@@ -790,6 +793,29 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     logger.info("Sub-servers started.");
+  }
+
+  /**
+   * When the node restarts, it sends handshakes to all other nodes so they may know it is back.
+   */
+  private void sendHandshake() {
+    for (Node node : allNodes) {
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
+          if (asyncClient != null) {
+            asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+          }
+        } else {
+          SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
+          if (syncClient != null) {
+            syncClient.handshake(thisNode);
+          }
+        }
+      } catch (TException e) {
+        // ignore handshake exceptions
+      }
+    }
   }
 
   /**
@@ -1022,7 +1048,7 @@ public class MetaGroupMember extends RaftMember {
 
   private CheckStatusResponse checkStatus(Node seedNode) {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
+      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode, false);
       if (client == null) {
         return null;
       }
@@ -1035,7 +1061,7 @@ public class MetaGroupMember extends RaftMember {
         logger.warn("Current thread is interrupted.");
       }
     } else {
-      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode);
+      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode, false);
       if (client == null) {
         return null;
       }
@@ -1327,48 +1353,19 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
-      result = executeNonQueryLocally(plan);
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
+    long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
+    if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      // do it in local, only the follower forward the plan to local
+      logger.debug("receive a global meta plan {}", plan);
       result = processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
-      result = processNonPartitionedDataPlan(plan);
-    } else { //split the plan and forward them to some PartitionGroups
-      try {
-        result = processPartitionedPlan(plan);
-      } catch (UnsupportedPlanException e) {
-        return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
-      }
+    } else {
+      // do nothing
+      logger.warn("receive a plan {} could not be processed in local", plan);
+      result = StatusUtils.UNSUPPORTED_OPERATION;
     }
-    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
+    Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
-
-  /**
-   * execute a non-query plan that is not necessary to be executed on other nodes.
-   */
-  private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
-    boolean execRet;
-    try {
-      execRet = getLocalExecutor().processNonQuery(plan);
-    } catch (QueryProcessException e) {
-      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
-        logger.debug("meet error while processing non-query. ", e);
-      } else {
-        logger.warn("meet error while processing non-query. ", e);
-      }
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-
-    return execRet
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
-        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-  }
-
 
   /**
    * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
@@ -1403,409 +1400,6 @@ public class MetaGroupMember extends RaftMember {
       result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
     }
     return result;
-  }
-
-  /**
-   * A non-partitioned plan (like DeleteData) should be executed on all data group nodes, so the
-   * DataGroupLeader should take the responsible to make sure that every node receives the plan.
-   * Thus the plan will be processed locally only by the DataGroupLeader and forwarded by non-leader
-   * nodes.
-   */
-  private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (plan instanceof DeleteTimeSeriesPlan || plan instanceof DeletePlan) {
-      try {
-        // as delete related plans may have abstract paths (paths with wildcards), we convert
-        // them to full paths so the executor nodes will not need to query the metadata holders,
-        // eliminating the risk that when they are querying the metadata holders, the timeseries
-        // has already been deleted
-        ((CMManager) IoTDB.metaManager).convertToFullPaths(plan);
-      } catch (PathNotExistException e) {
-        if (plan.getPaths().isEmpty()) {
-          // only reports an error when there is no matching path
-          return StatusUtils.getStatus(StatusUtils.TIMESERIES_NOT_EXIST_ERROR, e.getMessage());
-        }
-      }
-    }
-    try {
-      syncLeaderWithConsistencyCheck(true);
-      List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
-      logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
-      return forwardPlan(globalGroups, plan);
-    } catch (CheckConsistencyException e) {
-      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader.get());
-      waitLeader();
-      return forwardPlan(plan, leader.get(), null);
-    }
-  }
-
-  /**
-   * A partitioned plan (like batch insertion) will be split into several sub-plans, each belongs to
-   * a data group. And these sub-plans will be sent to and executed on the corresponding groups
-   * separately.
-   */
-  public TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
-    logger.debug("{}: Received a partitioned plan {}", name, plan);
-    if (partitionTable == null) {
-      logger.debug("{}: Partition table is not ready", name);
-      return StatusUtils.PARTITION_TABLE_NOT_READY;
-    }
-
-    // split the plan into sub-plans that each only involve one data group
-    Map<PhysicalPlan, PartitionGroup> planGroupMap;
-    try {
-      planGroupMap = splitPlan(plan);
-    } catch (CheckConsistencyException checkConsistencyException) {
-      return StatusUtils
-          .getStatus(StatusUtils.CONSISTENCY_FAILURE, checkConsistencyException.getMessage());
-    }
-
-    // the storage group is not found locally
-    if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan
-          || plan instanceof CreateMultiTimeSeriesPlan)
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
-        try {
-          ((CMManager) IoTDB.metaManager).createSchema(plan);
-          return processPartitionedPlan(plan);
-        } catch (MetadataException | CheckConsistencyException e) {
-          logger.error(
-              String.format("Failed to set storage group or create timeseries, because %s", e));
-        }
-      }
-      logger.error("{}: Cannot find storage groups for {}", name, plan);
-      return StatusUtils.NO_STORAGE_GROUP;
-    }
-    logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
-    return forwardPlan(planGroupMap, plan);
-  }
-
-  /**
-   * split a plan into several sub-plans, each belongs to only one data group.
-   */
-  private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, CheckConsistencyException {
-    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
-    try {
-      planGroupMap = router.splitAndRoutePlan(plan);
-    } catch (StorageGroupNotSetException e) {
-      // synchronize with the leader to see if this node has unpulled storage groups
-      syncLeaderWithConsistencyCheck(true);
-      try {
-        planGroupMap = router.splitAndRoutePlan(plan);
-      } catch (MetadataException ex) {
-        // ignore
-      }
-    } catch (MetadataException e) {
-      logger.error("Cannot route plan {}", plan, e);
-    }
-    return planGroupMap;
-  }
-
-  /**
-   * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
-   * nodes time out, will a TIME_OUT be returned.
-   *
-   * @param planGroupMap sub-plan -> belong data group pairs
-   */
-  private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
-    // the error codes from the groups that cannot execute the plan
-    TSStatus status;
-    if (planGroupMap.size() == 1) {
-      status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
-    } else {
-      if (plan instanceof InsertTabletPlan || plan instanceof CreateMultiTimeSeriesPlan) {
-        // InsertTabletPlan and CreateMultiTimeSeriesPlan contains many rows, each will correspond to a TSStatus as its
-        // execution result, as the plan is split and the sub-plans may have interleaving ranges,
-        // we must assure that each TSStatus is placed to the right position
-        // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
-        // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
-        // failure and success should be placed into proper positions in TSStatus.subStatus
-        status = forwardMultiSubPlan(planGroupMap, plan);
-      } else {
-        status = forwardToMultipleGroup(planGroupMap);
-      }
-    }
-    if (plan instanceof InsertPlan
-        && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-        && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-      TSStatus tmpStatus = createTimeseriesForFailedInsertion(planGroupMap, ((InsertPlan) plan));
-      if (tmpStatus != null) {
-        status = tmpStatus;
-      }
-    }
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && status
-        .isSetRedirectNode()) {
-      status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-    }
-    logger.debug("{}: executed {} with answer {}", name, plan, status);
-    return status;
-  }
-
-  private TSStatus createTimeseriesForFailedInsertion(
-      Map<PhysicalPlan, PartitionGroup> planGroupMap, InsertPlan plan) {
-    // try to create timeseries
-    if (plan.getFailedMeasurements() != null) {
-      plan.getPlanFromFailed();
-    }
-    boolean hasCreate;
-    try {
-      hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-    } catch (IllegalPathException | CheckConsistencyException e) {
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreate) {
-      return forwardPlan(planGroupMap, plan);
-    } else {
-      logger.error("{}, Cannot auto create timeseries.", thisNode);
-    }
-    return null;
-  }
-
-  /**
-   * Forward each sub-plan to its belonging data group, and combine responses from the groups.
-   *
-   * @param planGroupMap sub-plan -> data group pairs
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private TSStatus forwardMultiSubPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
-      PhysicalPlan parentPlan) {
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus tmpStatus;
-    TSStatus[] subStatus = null;
-    boolean noFailure = true;
-    boolean isBatchFailure = false;
-    EndPoint endPoint = null;
-    int totalRowNum = 0;
-    // send sub-plans to each belonging data group and collect results
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-      tmpStatus = forwardToSingleGroup(entry);
-      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
-      noFailure =
-          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
-      isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-          || isBatchFailure;
-      if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        if (parentPlan instanceof InsertTabletPlan) {
-          totalRowNum = ((InsertTabletPlan) parentPlan).getRowCount();
-        } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-          totalRowNum = ((CreateMultiTimeSeriesPlan) parentPlan).getIndexes().size();
-        }
-        if (subStatus == null) {
-          subStatus = new TSStatus[totalRowNum];
-          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-        }
-        // set the status from one group to the proper positions of the overall status
-        if (parentPlan instanceof InsertTabletPlan) {
-          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-              tmpStatus.subStatus.toArray(new TSStatus[]{}));
-        } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
-          CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
-          for (int i = 0; i < subPlan.getIndexes().size(); i++) {
-            subStatus[subPlan.getIndexes().get(i)] = tmpStatus.subStatus.get(i);
-          }
-        }
-      }
-      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-            tmpStatus.getCode(), entry.getValue().getHeader(),
-            tmpStatus.getMessage(), tmpStatus.subStatus));
-      }
-      if (parentPlan instanceof InsertTabletPlan && tmpStatus.isSetRedirectNode() &&
-          ((InsertTabletPlan) entry.getKey()).getMaxTime() == ((InsertTabletPlan) parentPlan)
-              .getMaxTime()) {
-        endPoint = tmpStatus.getRedirectNode();
-      }
-    }
-
-    if (parentPlan instanceof CreateMultiTimeSeriesPlan &&
-        !((CreateMultiTimeSeriesPlan) parentPlan).getResults().isEmpty()) {
-      if (subStatus == null) {
-        subStatus = new TSStatus[totalRowNum];
-        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-      }
-      noFailure = false;
-      isBatchFailure = true;
-      for (Entry<Integer, TSStatus> integerTSStatusEntry : ((CreateMultiTimeSeriesPlan) parentPlan)
-          .getResults().entrySet()) {
-        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
-      }
-    }
-    return concludeFinalStatus(noFailure, endPoint, isBatchFailure, subStatus,
-        errorCodePartitionGroups);
-  }
-
-  private TSStatus concludeFinalStatus(boolean noFailure, EndPoint endPoint,
-      boolean isBatchFailure, TSStatus[] subStatus, List<String> errorCodePartitionGroups) {
-    TSStatus status;
-    if (noFailure) {
-      status = StatusUtils.OK;
-      if (endPoint != null) {
-        status = StatusUtils.getStatus(status, endPoint);
-      }
-    } else if (isBatchFailure) {
-      status = RpcUtils.getStatus(Arrays.asList(subStatus));
-    } else {
-      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
-    }
-    return status;
-  }
-
-  private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
-    TSStatus result;
-    if (entry.getValue().contains(thisNode)) {
-      // the query should be handled by a group the local node is in, handle it with in the group
-      long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
-          .getOperationStartTime();
-      logger.debug("Execute {} in a local group of {}", entry.getKey(),
-          entry.getValue().getHeader());
-      result = getLocalDataMember(entry.getValue().getHeader())
-          .executeNonQueryPlan(entry.getKey());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
-          .calOperationCostTimeFromStart(startTime);
-    } else {
-      // forward the query to the group that should handle it
-      long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP
-          .getOperationStartTime();
-      logger.debug("Forward {} to a remote group of {}", entry.getKey(),
-          entry.getValue().getHeader());
-      result = forwardPlan(entry.getKey(), entry.getValue());
-      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_REMOTE_GROUP
-          .calOperationCostTimeFromStart(startTime);
-    }
-    return result;
-  }
-
-  /**
-   * forward each sub-plan to its corresponding data group, if some groups goes wrong, the error
-   * messages from each group will be compacted into one string.
-   *
-   * @param planGroupMap sub-plan -> data group pairs
-   */
-  private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus tmpStatus;
-    boolean allRedirect = true;
-    EndPoint endPoint = null;
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-      tmpStatus = forwardToSingleGroup(entry);
-      if (tmpStatus.isSetRedirectNode()) {
-        endPoint = tmpStatus.getRedirectNode();
-      } else {
-        allRedirect = false;
-      }
-      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            tmpStatus.getCode(), entry.getValue().getHeader(),
-            tmpStatus.getMessage()));
-      }
-    }
-    TSStatus status;
-    if (errorCodePartitionGroups.isEmpty()) {
-      status = StatusUtils.OK;
-      if (allRedirect) {
-        status = StatusUtils.getStatus(status, endPoint);
-      }
-    } else {
-      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
-    }
-    return status;
-  }
-
-  /**
-   * Forward a plan to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
-   * returned. The error messages from each group (if any) will be compacted into one string.
-   *
-   * @para plan
-   */
-  private TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
-    // the error codes from the groups that cannot execute the plan
-    TSStatus status;
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      if (partitionGroup.contains(thisNode)) {
-        // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
-        status = getLocalDataMember(partitionGroup.getHeader())
-            .executeNonQueryPlan(plan);
-      } else {
-        // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", plan,
-            partitionGroup.getHeader());
-        status = forwardPlan(plan, partitionGroup);
-      }
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() && (
-          !(plan instanceof DeleteTimeSeriesPlan) ||
-              status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            status.getCode(), partitionGroup.getHeader(),
-            status.getMessage()));
-      }
-    }
-    if (errorCodePartitionGroups.isEmpty()) {
-      status = StatusUtils.OK;
-    } else {
-      status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-          MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
-    }
-    logger.debug("{}: executed {} with answer {}", name, plan, status);
-    return status;
-  }
-
-  /**
-   * Forward a plan to the DataGroupMember of one node in the group. Only when all nodes time out,
-   * will a TIME_OUT be returned.
-   */
-  private TSStatus forwardPlan(PhysicalPlan plan, PartitionGroup group) {
-    for (Node node : group) {
-      TSStatus status;
-      try {
-        // only data plans are partitioned, so it must be processed by its data server instead of
-        // meta server
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          status = forwardDataPlanAsync(plan, node, group.getHeader());
-        } else {
-          status = forwardDataPlanSync(plan, node, group.getHeader());
-        }
-      } catch (IOException e) {
-        status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-      }
-      if (!StatusUtils.TIME_OUT.equals(status)) {
-        if (!status.isSetRedirectNode()) {
-          status.setRedirectNode(new EndPoint(node.getIp(), node.getClientPort()));
-        }
-        return status;
-      } else {
-        logger.warn("Forward {} to {} timed out", plan, node);
-      }
-    }
-    logger.warn("Forward {} to {} timed out", plan, group);
-    return StatusUtils.TIME_OUT;
-  }
-
-  /**
-   * Forward a non-query plan to the data port of "receiver"
-   *
-   * @param plan   a non-query plan
-   * @param header to determine which DataGroupMember of "receiver" will process the request.
-   * @return a TSStatus indicating if the forwarding is successful.
-   */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
-      throws IOException {
-    RaftService.AsyncClient client = getClientProvider().getAsyncDataClient(receiver,
-        RaftServer.getWriteOperationTimeoutMS());
-    return forwardPlanAsync(plan, receiver, header, client);
-  }
-
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header) {
-    Client client = getClientProvider().getSyncDataClient(receiver,
-        RaftServer.getWriteOperationTimeoutMS());
-    return forwardPlanSync(plan, receiver, header, client);
   }
 
   /**
@@ -1897,7 +1491,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) throws TException {
+  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) {
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
@@ -1919,6 +1513,7 @@ public class MetaGroupMember extends RaftMember {
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
     router = new ClusterPlanRouter(partitionTable);
+    this.coordinator.setRouter(router);
     DataClusterServer dClusterServer = getDataClusterServer();
     if (dClusterServer != null) {
       dClusterServer.setPartitionTable(partitionTable);
@@ -2154,7 +1749,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private PlanExecutor getLocalExecutor() throws QueryProcessException {
+  public PlanExecutor getLocalExecutor() throws QueryProcessException {
     if (localExecutor == null) {
       localExecutor = new PlanExecutor();
     }
@@ -2168,5 +1763,9 @@ public class MetaGroupMember extends RaftMember {
   @TestOnly
   public void setClientProvider(DataClientProvider dataClientProvider) {
     this.dataClientProvider = dataClientProvider;
+  }
+
+  public void handleHandshake(Node sender) {
+    NodeStatusManager.getINSTANCE().activate(sender);
   }
 }

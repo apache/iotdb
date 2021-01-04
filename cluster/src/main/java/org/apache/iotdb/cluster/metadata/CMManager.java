@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -116,6 +117,7 @@ public class CMManager extends MManager {
   private RemoteMetaCache mRemoteMetaCache;
   private MetaPuller metaPuller;
   private MetaGroupMember metaGroupMember;
+  private Coordinator coordinator;
 
   private CMManager() {
     super();
@@ -488,7 +490,7 @@ public class CMManager extends MManager {
   /**
    * Create timeseries automatically for an InsertPlan.
    *
-   * @param insertPlan, some of the timeseries in it are not created yet
+   * @param insertPlan some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
   public boolean createTimeseries(InsertPlan insertPlan)
@@ -542,7 +544,7 @@ public class CMManager extends MManager {
       // TODO-Cluster: add executeNonQueryBatch() to create the series in batch
       TSStatus result;
       try {
-        result = metaGroupMember.processPartitionedPlan(createTimeSeriesPlan);
+        result = coordinator.processPartitionedPlan(createTimeSeriesPlan);
       } catch (UnsupportedPlanException e) {
         logger.error("Failed to create timeseries {} automatically. Unsupported plan exception {} ",
             seriesPath, e.getMessage());
@@ -561,6 +563,10 @@ public class CMManager extends MManager {
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
   }
 
   /**
@@ -824,7 +830,7 @@ public class CMManager extends MManager {
   private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(
       List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregations == null) {
@@ -1154,7 +1160,7 @@ public class CMManager extends MManager {
   /**
    * Get all paths after removing wildcards in the path
    *
-   * @param originalPaths, a list of paths, potentially with wildcard
+   * @param originalPaths a list of paths, potentially with wildcard
    * @return a pair of path lists, the first are the existing full paths, the second are invalid
    * original paths
    */
