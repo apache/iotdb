@@ -640,7 +640,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @TestOnly
-  public Map<Long, List<TreeSet<TsFileResource>>> getSequenceTsFileResources() {
+  public Map<Long, List<SortedSet<TsFileResource>>> getSequenceTsFileResources() {
     return sequenceTsFileResources;
   }
 }
