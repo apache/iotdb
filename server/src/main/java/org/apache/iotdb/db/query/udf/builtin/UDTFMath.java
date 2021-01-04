@@ -41,6 +41,8 @@ public abstract class UDTFMath implements UDTF {
 
   protected Transformer transformer;
 
+  protected TSDataType dataType;
+
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
@@ -52,6 +54,7 @@ public abstract class UDTFMath implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
+    dataType = parameters.getDataType(0);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.DOUBLE);
@@ -64,7 +67,7 @@ public abstract class UDTFMath implements UDTF {
   public void transform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long time = row.getTime();
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         collector.putDouble(time, transformer.transform(row.getInt(0)));
         break;
@@ -79,7 +82,7 @@ public abstract class UDTFMath implements UDTF {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }

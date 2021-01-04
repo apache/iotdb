@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.builtin;
 
 import java.io.IOException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -42,6 +43,8 @@ public abstract class UDTFDerivativeBase implements UDTF {
   protected float previousFloat = 0;
   protected double previousDouble = 0;
 
+  protected TSDataType dataType;
+
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
@@ -51,7 +54,9 @@ public abstract class UDTFDerivativeBase implements UDTF {
   }
 
   @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws MetadataException {
+    dataType = parameters.getDataType(0);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.DOUBLE);
@@ -71,7 +76,7 @@ public abstract class UDTFDerivativeBase implements UDTF {
 
   private void updatePrevious(Row row) throws UDFInputSeriesDataTypeNotValidException {
     previousTime = row.getTime();
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         previousInt = row.getInt(0);
         break;
@@ -86,7 +91,7 @@ public abstract class UDTFDerivativeBase implements UDTF {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }

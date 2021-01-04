@@ -41,6 +41,8 @@ public abstract class UDTFValueDifferenceBase implements UDTF {
   protected float previousFloat = 0;
   protected double previousDouble = 0;
 
+  protected TSDataType dataType;
+
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
     validator
@@ -52,9 +54,10 @@ public abstract class UDTFValueDifferenceBase implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
+    dataType = parameters.getDataType(0);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(parameters.getDataType(0));
+        .setOutputDataType(dataType);
   }
 
   @Override
@@ -70,7 +73,7 @@ public abstract class UDTFValueDifferenceBase implements UDTF {
   }
 
   private void updatePrevious(Row row) throws UDFInputSeriesDataTypeNotValidException {
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         previousInt = row.getInt(0);
         break;
@@ -85,7 +88,7 @@ public abstract class UDTFValueDifferenceBase implements UDTF {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }

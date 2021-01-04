@@ -31,7 +31,7 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifferenceBase {
   protected void doTransform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long time = row.getTime();
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         int currentInt = row.getInt(0);
         collector.putInt(time, Math.abs(currentInt - previousInt));
@@ -54,7 +54,7 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifferenceBase {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }

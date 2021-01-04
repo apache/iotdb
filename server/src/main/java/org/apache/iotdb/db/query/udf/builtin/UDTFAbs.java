@@ -34,16 +34,17 @@ public class UDTFAbs extends UDTFMath {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
+    dataType = parameters.getDataType(0);
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(parameters.getDataType(0));
+        .setOutputDataType(dataType);
   }
 
   @Override
   public void transform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long time = row.getTime();
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         collector.putInt(time, Math.abs(row.getInt(0)));
         break;
@@ -58,7 +59,7 @@ public class UDTFAbs extends UDTFMath {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
   }

@@ -32,7 +32,7 @@ public class UDTFNonNegativeDerivative extends UDTFDerivativeBase {
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long currentTime = row.getTime();
     double timeDelta = (double) currentTime - previousTime;
-    switch (row.getDataType(0)) {
+    switch (dataType) {
       case INT32:
         int currentInt = row.getInt(0);
         collector.putDouble(currentTime, Math.abs(currentInt - previousInt) / timeDelta);
@@ -55,7 +55,7 @@ public class UDTFNonNegativeDerivative extends UDTFDerivativeBase {
         break;
       default:
         // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, row.getDataType(0), TSDataType.INT32,
+        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
             TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
     }
     previousTime = currentTime;
