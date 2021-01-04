@@ -1844,7 +1844,7 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException | WriteProcessException e) {
-      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath(), e);
+      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
@@ -1939,7 +1939,7 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException | WriteProcessException e) {
-      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath(), e);
+      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
