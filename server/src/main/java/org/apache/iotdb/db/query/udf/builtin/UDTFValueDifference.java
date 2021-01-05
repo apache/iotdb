@@ -21,35 +21,14 @@ package org.apache.iotdb.db.query.udf.builtin;
 
 import java.io.IOException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public abstract class UDTFValueDifference implements UDTF {
-
-  private boolean hasPrevious = false;
-
-  protected int previousInt = 0;
-  protected long previousLong = 0;
-  protected float previousFloat = 0;
-  protected double previousDouble = 0;
-
-  protected TSDataType dataType;
-
-  @Override
-  public void validate(UDFParameterValidator validator) throws UDFException {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT,
-            TSDataType.DOUBLE);
-  }
+public abstract class UDTFValueDifference extends UDTFValueTrend {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
@@ -64,35 +43,11 @@ public abstract class UDTFValueDifference implements UDTF {
   public void transform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     if (!hasPrevious) {
-      updatePrevious(row);
+      updatePreviousValue(row);
       hasPrevious = true;
       return;
     }
 
     doTransform(row, collector);
   }
-
-  private void updatePrevious(Row row) throws UDFInputSeriesDataTypeNotValidException {
-    switch (dataType) {
-      case INT32:
-        previousInt = row.getInt(0);
-        break;
-      case INT64:
-        previousLong = row.getLong(0);
-        break;
-      case FLOAT:
-        previousFloat = row.getFloat(0);
-        break;
-      case DOUBLE:
-        previousDouble = row.getDouble(0);
-        break;
-      default:
-        // This will not happen.
-        throw new UDFInputSeriesDataTypeNotValidException(0, dataType, TSDataType.INT32,
-            TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
-    }
-  }
-
-  protected abstract void doTransform(Row row, PointCollector collector)
-      throws UDFInputSeriesDataTypeNotValidException, IOException;
 }
