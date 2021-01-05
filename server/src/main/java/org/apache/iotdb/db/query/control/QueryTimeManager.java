@@ -56,7 +56,7 @@ public class QueryTimeManager implements IService {
 
   private ScheduledExecutorService executorService;
 
-  private Map<Long, ScheduledFuture> queryScheduledTaskMap;
+  private Map<Long, ScheduledFuture<?>> queryScheduledTaskMap;
 
   private QueryTimeManager() {
     queryInfoMap = new ConcurrentHashMap<>();
@@ -71,7 +71,7 @@ public class QueryTimeManager implements IService {
     queryInfoMap.put(queryId, new Pair<>(startTime, sql));
     queryThreadMap.put(queryId, queryThread);
     // submit a scheduled task to judge whether query is still running after timeout
-    ScheduledFuture scheduledFuture = executorService.schedule(() -> {
+    ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       queryThreadMap.computeIfPresent(queryId, (k, v) -> {
         killQuery(k);
         logger.error(String.format("Query is time out with queryId %d", queryId));
@@ -96,7 +96,7 @@ public class QueryTimeManager implements IService {
     }
     queryInfoMap.remove(queryId);
     queryThreadMap.remove(queryId);
-    queryScheduledTaskMap.get(queryId).cancel(true);
+    queryScheduledTaskMap.get(queryId).cancel(false);
     queryScheduledTaskMap.remove(queryId);
   }
 

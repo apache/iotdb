@@ -93,11 +93,14 @@ public class IoTDBQueryTimeoutTest {
         Statement statement = connection.createStatement()) {
 
       statement.setFetchSize(20000);
-      ((IoTDBStatement) statement)
-          .executeQuery("select count(*) from root group by ([1, 40000), 2ms)", 1);
-      fail("QueryTimeoutRuntimeException is not thrown");
-    } catch (IoTDBSQLException e) {
-      Assert.assertTrue(e.getMessage().contains("Current query is time out"));
+      try {
+        ((IoTDBStatement) statement)
+            .executeQuery("select count(*) from root group by ([1, 40000), 2ms)", 1);
+        fail("QueryTimeoutRuntimeException is not thrown");
+      } catch (IoTDBSQLException e) {
+        Assert.assertTrue(e.getMessage().contains("Current query is time out"));
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -113,8 +116,8 @@ public class IoTDBQueryTimeoutTest {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      statement.setFetchSize(20000);
       try {
-        statement.setFetchSize(20000);
         ((IoTDBStatement) statement)
             .executeQuery("select count(*) from root group by ([1, 20000), 2ms)", 1);
       } catch (IoTDBSQLException e) {
