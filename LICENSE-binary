@@ -223,7 +223,6 @@ org.apache.commons:commons-lang3:3.8.1
 commons-lang:commons-lang:2.6
 com.nimbusds:content-type:2.0
 com.google.code.gson:gson:2.8.6
-it.unimi.dsi:fastutil:7.0.6
 com.google.guava.guava:24.1.1
 com.fasterxml.jackson.core:jackson-annotations:2.10.0
 com.fasterxml.jackson.core:jackson-core:2.10.0
@@ -268,7 +267,6 @@ org.osgi:org.osgi.core:6.0.0
 org.osgi:osgi.cmpn:6.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
 org.xerial.snappy:snappy-java:1.1.7.2
-com.clearspring.analytics:stream:2.9.5
 io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
 

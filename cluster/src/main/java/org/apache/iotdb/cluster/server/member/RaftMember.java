@@ -225,7 +225,7 @@ public abstract class RaftMember {
    */
   private Object syncLock = new Object();
   /**
-   * when this node is send logs to the followers, the sends are performed parallel in this pool, so
+   * when this node sends logs to the followers, the send is performed in parallel in this pool, so
    * that a slow or unavailable node will not block other nodes.
    */
   private ExecutorService appendLogThreadPool;
@@ -295,8 +295,8 @@ public abstract class RaftMember {
             new ThreadFactoryBuilder().setNameFormat(getName() +
                 "-AppendLog%d").build());
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      serialToParallelPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
-          0L, TimeUnit.MILLISECONDS,
+      serialToParallelPool = new ThreadPoolExecutor(allNodes.size(), Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
+          1000L, TimeUnit.MILLISECONDS,
           new LinkedBlockingQueue<>(), new ThreadFactoryBuilder().setNameFormat(getName() +
           "-SerialToParallel%d").build());
     }
@@ -607,7 +607,7 @@ public abstract class RaftMember {
         return client;
       }
     }
-    return client;
+    return null;
   }
 
   public NodeCharacter getCharacter() {
@@ -709,7 +709,7 @@ public abstract class RaftMember {
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
-          logger.error("Catup task exits with unexpected exception", e);
+          logger.error("{}: Catch up task exits with unexpected exception", name, e);
         }
       });
     }

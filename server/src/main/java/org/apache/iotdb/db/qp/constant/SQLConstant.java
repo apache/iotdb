@@ -155,8 +155,12 @@ public class SQLConstant {
   public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 89;
   public static final int TOK_TRACING = 91;
 
-  public static final int TOK_COUNT_DEVICES = 92;
-  public static final int TOK_COUNT_STORAGE_GROUP = 93;
+  public static final int TOK_FUNCTION_CREATE = 92;
+  public static final int TOK_FUNCTION_DROP = 93;
+  public static final int TOK_SHOW_FUNCTIONS = 94;
+
+  public static final int TOK_COUNT_DEVICES = 95;
+  public static final int TOK_COUNT_STORAGE_GROUP = 96;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -238,10 +242,13 @@ public class SQLConstant {
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
 
+    tokenNames.put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE");
+    tokenNames.put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP");
+    tokenNames.put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS");
+
     tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
     tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
     tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
-
   }
 
   static {
@@ -258,5 +265,4 @@ public class SQLConstant {
   public static boolean isReservedPath(PartialPath pathStr) {
     return pathStr.equals(TIME_PATH);
   }
-
 }

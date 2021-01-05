@@ -20,6 +20,7 @@ package org.apache.iotdb.db.writelog.node;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.channels.ClosedChannelException;
@@ -78,7 +79,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
-      logger.info("create the WAL folder {}", logDirectory);
+      logger.info("create the WAL folder {}.", logDirectory);
     }
   }
 
@@ -186,7 +187,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
 
   @Override
-  public void notifyStartFlush() {
+  public void notifyStartFlush() throws FileNotFoundException {
     lock.lock();
     try {
       close();
@@ -282,6 +283,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for available buffer interrupted");
+    } catch (FileNotFoundException e) {
+      logger.warn("can not found file {}", identifier, e);
     } finally {
       lock.unlock();
     }
@@ -343,21 +346,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private ILogWriter getFileWriter(boolean toPrevious) {
+  private ILogWriter getFileWriter(boolean toPrevious) throws FileNotFoundException {
     if (getWalWriteProcessor(toPrevious).getFileWriter() == null) {
       nextFileWriter(toPrevious);
     }
     return getWalWriteProcessor(toPrevious).getFileWriter();
   }
 
-  private void nextFileWriter(boolean toPrevious) {
+  private void nextFileWriter(boolean toPrevious) throws FileNotFoundException{
     fileId++;
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
     logger.debug("WAL file {} is opened", newFile);
-    getWalWriteProcessor(toPrevious).setFileWriter(new LogWriter(newFile));
+    getWalWriteProcessor(toPrevious).setFileWriter(new LogWriter(newFile, config.getForceWalPeriodInMs() == 0));
   }
 
   @Override

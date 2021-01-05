@@ -76,6 +76,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -90,8 +92,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
+import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
+import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -140,7 +143,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Thrift RPC implementation at server side.
@@ -290,7 +292,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (long queryId : queryIds) {
         try {
           releaseQueryResource(queryId);
-        } catch (StorageEngineException e) {
+        } catch (StorageEngineException | IOException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
           exceptions.add(e);
@@ -354,9 +356,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
     // remove the corresponding Physical Plan
-    queryId2DataSet.remove(queryId);
+    QueryDataSet dataSet = queryId2DataSet.remove(queryId);
+    if (dataSet instanceof UDTFDataSet) {
+      ((UDTFDataSet) dataSet).finalizeUDFs(queryId);
+    }
     QueryResourceManager.getInstance().endQuery(queryId);
   }
 
@@ -525,8 +530,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
               req.fetchSize);
       if (physicalPlan.isQuery()) {
         return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
-            req.fetchSize,
-            sessionIdUsernameMap.get(req.getSessionId()));
+            req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()));
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -607,8 +611,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       PhysicalPlan physicalPlan;
       try {
-        physicalPlan =
-            processor.rawDataQueryReqToPhysicalPlan(req);
+        physicalPlan = processor
+            .rawDataQueryReqToPhysicalPlan(req, sessionIdZoneIdMap.get(req.getSessionId()));
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -642,8 +646,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, some
-   *             AuthorPlan
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
+   *             some AuthorPlan
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
@@ -716,7 +720,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
         }
       }
-      // put it into the corresponding Set
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
           .add(queryId);
@@ -726,31 +729,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       TSExecuteStatementResp resp = null;
-
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username);
       }
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
-
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
+      } else if (plan instanceof UDFPlan) {
+        resp = getQueryColumnHeaders(plan, username);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
-
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
 
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
-          && newDataSet instanceof NonAlignEngineDataSet) {
-        TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
-        resp.setNonAlignQueryDataSet(result);
+      if (newDataSet instanceof DirectNonAlignDataSet) {
+        resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
       } else {
-        TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
-        resp.setQueryDataSet(result);
+        resp.setQueryDataSet(fillRpcReturnData(fetchSize, newDataSet, username));
       }
       resp.setQueryId(queryId);
 
@@ -772,9 +771,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return resp;
     } catch (Exception e) {
-      logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       if (e instanceof NullPointerException) {
-        e.printStackTrace();
+        logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      } else {
+        logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       }
       if (queryId != -1) {
         try {
@@ -906,6 +906,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
         seriesTypes = getSeriesTypesByPaths(paths, aggregations);
         break;
+      case UDTF:
+        seriesTypes = new ArrayList<>();
+        UDTFPlan udtfPlan = (UDTFPlan) plan;
+        for (int i = 0; i < paths.size(); i++) {
+          respColumns.add(paths.get(i) != null
+              ? paths.get(i).getFullPath()
+              : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getContext().getColumnName());
+          seriesTypes.add(paths.get(i) != null
+              ? udtfPlan.getDataTypes().get(i)
+              : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getConfigurations()
+                  .getOutputDataType());
+        }
+        break;
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
     }
@@ -1010,7 +1023,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       try {
         releaseQueryResource(req.queryId);
-      } catch (StorageEngineException ex) {
+      } catch (StorageEngineException | IOException ex) {
         logger.warn("Error happened while releasing query resource: ", ex);
       }
       return RpcUtils.getTSFetchResultsResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -1019,54 +1032,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryDataSet fillRpcReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, IOException, InterruptedException {
-    IAuthorizer authorizer;
-    try {
-      authorizer = BasicAuthorizer.getInstance();
-    } catch (AuthException e) {
-      throw new TException(e);
-    }
-    TSQueryDataSet result;
-
-    if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      WatermarkEncoder encoder;
-      if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
-        encoder = new GroupedLSBWatermarkEncoder(config);
-      } else {
-        throw new UnSupportedDataTypeException(
-            String.format(
-                "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
-      }
-      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, encoder);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
-      }
-    } else {
-      if (queryDataSet instanceof RawQueryDataSetWithoutValueFilter) {
-        // optimize for query without value filter
-        result = ((RawQueryDataSetWithoutValueFilter) queryDataSet).fillBuffer(fetchSize, null);
-      } else {
-        result = QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize);
-      }
-    }
-    return result;
+      throws TException, AuthException, IOException, InterruptedException, QueryProcessException {
+    WatermarkEncoder encoder = getWatermarkEncoder(userName);
+    return queryDataSet instanceof DirectAlignByTimeDataSet
+        ? ((DirectAlignByTimeDataSet) queryDataSet).fillBuffer(fetchSize, encoder)
+        : QueryDataSetUtils.convertQueryDataSetByFetchSize(queryDataSet, fetchSize, encoder);
   }
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, InterruptedException {
+      throws TException, AuthException, InterruptedException, IOException, QueryProcessException {
+    WatermarkEncoder encoder = getWatermarkEncoder(userName);
+    return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+  }
+
+  private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }
-    TSQueryNonAlignDataSet result;
 
+    WatermarkEncoder encoder = null;
     if (config.isEnableWatermark() && authorizer.isUserUseWaterMark(userName)) {
-      WatermarkEncoder encoder;
       if (config.getWatermarkMethodName().equals(IoTDBConfig.WATERMARK_GROUPED_LSB)) {
         encoder = new GroupedLSBWatermarkEncoder(config);
       } else {
@@ -1074,11 +1063,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             String.format(
                 "Watermark method is not supported yet: %s", config.getWatermarkMethodName()));
       }
-      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
-    } else {
-      result = ((NonAlignEngineDataSet) queryDataSet).fillBuffer(fetchSize, null);
     }
-    return result;
+    return encoder;
   }
 
   /**

@@ -24,8 +24,8 @@ import java.io.File;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -98,7 +98,6 @@ public class IoTDBConfig {
    * max mqtt message size
    */
   private int mqttMaxMessageSize = 1048576;
-
 
   /**
    * Rpc binding address.
@@ -208,12 +207,19 @@ public class IoTDBConfig {
   private long forceWalPeriodInMs = 100;
 
   /**
-   * Size of log buffer in each log node(in byte). If WAL is enabled and the size of a insert plan
-   * is smaller than this parameter, then the insert plan will be rejected by WAL.
+   * The size of the log buffer in each log node (in bytes). Due to the double buffer mechanism, if
+   * WAL is enabled and the size of the inserted plan is greater than one-half of this parameter,
+   * then the insert plan will be rejected by WAL.
    */
   private int walBufferSize = 16 * 1024 * 1024;
 
   private int estimatedSeriesSize = 300;
+
+  /**
+   * Size of log buffer for every MetaData operation. If the size of a MetaData operation plan
+   * is larger than this parameter, then the MetaData operation plan will be rejected by MManager.
+   */
+  private int mlogBufferSize = 1024 * 1024;
 
   /**
    * Whether to enable sliding memory table, to reduce the CI time, the default value is false
@@ -256,6 +262,17 @@ public class IoTDBConfig {
    * Query directory, stores temporary files of query
    */
   private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
+
+  /**
+   * External lib directory, stores user-uploaded JAR files
+   */
+  private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
+
+  /**
+   * External lib directory for UDF, stores user-uploaded JAR files
+   */
+  private String udfDir = IoTDBConstant.EXT_FOLDER_NAME + File.separator
+      + IoTDBConstant.UDF_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -719,9 +736,10 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
-   * property is changed, previous created storage group which are not set TTL will also be
-   * affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * <p>
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -775,6 +793,28 @@ public class IoTDBConfig {
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  /**
+   * Used to estimate the memory usage of text fields in a UDF query. It is recommended to set this
+   * value to be slightly larger than the average length of all text records.
+   */
+  private int udfInitialByteArrayLengthForMemoryControl = 48;
+
+  /**
+   * How much memory may be used in ONE UDF query (in MB).
+   * <p>
+   * The upper limit is 20% of allocated memory for read.
+   * <p>
+   * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
+   * udfCollectorMemoryBudgetInMB
+   */
+  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+
+  private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfTransformerMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
+  private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -805,6 +845,47 @@ public class IoTDBConfig {
 
   public IoTDBConfig() {
     // empty constructor
+  }
+
+  public float getUdfMemoryBudgetInMB() {
+    return udfMemoryBudgetInMB;
+  }
+
+  public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
+    this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getUdfReaderMemoryBudgetInMB() {
+    return udfReaderMemoryBudgetInMB;
+  }
+
+  public void setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
+    this.udfReaderMemoryBudgetInMB = udfReaderMemoryBudgetInMB;
+  }
+
+  public float getUdfTransformerMemoryBudgetInMB() {
+    return udfTransformerMemoryBudgetInMB;
+  }
+
+  public void setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
+    this.udfTransformerMemoryBudgetInMB = udfTransformerMemoryBudgetInMB;
+  }
+
+  public float getUdfCollectorMemoryBudgetInMB() {
+    return udfCollectorMemoryBudgetInMB;
+  }
+
+  public void setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
+    this.udfCollectorMemoryBudgetInMB = udfCollectorMemoryBudgetInMB;
+  }
+
+  public int getUdfInitialByteArrayLengthForMemoryControl() {
+    return udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public void setUdfInitialByteArrayLengthForMemoryControl(
+      int udfInitialByteArrayLengthForMemoryControl) {
+    this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
   public int getConcurrentWritingTimePartition() {
@@ -878,6 +959,8 @@ public class IoTDBConfig {
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
     indexRootFolder = addHomeDir(indexRootFolder);
+    extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1098,6 +1181,22 @@ public class IoTDBConfig {
     this.walDir = walDir;
   }
 
+  public String getExtDir() {
+    return extDir;
+  }
+
+  public void setExtDir(String extDir) {
+    this.extDir = extDir;
+  }
+
+  public String getUdfDir() {
+    return udfDir;
+  }
+
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1249,7 +1348,7 @@ public class IoTDBConfig {
   public void setEstimatedSeriesSize(int estimatedSeriesSize) {
     this.estimatedSeriesSize = estimatedSeriesSize;
   }
-  
+
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }
@@ -2146,5 +2245,13 @@ public class IoTDBConfig {
   public void setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
     this.rpcAdvancedCompressionEnable = rpcAdvancedCompressionEnable;
     RpcTransportFactory.setUseSnappy(this.rpcAdvancedCompressionEnable);
+  }
+
+  public int getMlogBufferSize() {
+    return mlogBufferSize;
+  }
+
+  public void setMlogBufferSize(int mlogBufferSize) {
+    this.mlogBufferSize = mlogBufferSize;
   }
 }

@@ -120,7 +120,6 @@
 
 ## Configuration Files
 1. iotdb-cluster.properties
-2. cluster-env.sh
 
 ## State Related Files
 > under directory basedir/

@@ -40,9 +40,9 @@ public class AuthorityChecker {
   /**
    * check permission.
    *
-   * @param username username
-   * @param paths paths in List structure
-   * @param type Operator type
+   * @param username   username
+   * @param paths      paths in List structure
+   * @param type       Operator type
    * @param targetUser target user
    * @return if permission-check is passed
    * @throws AuthException Authentication Exception
@@ -127,6 +127,8 @@ public class AuthorityChecker {
       case QUERY_INDEX:
       case MERGEQUERY:
       case AGGREGATION:
+      case UDAF:
+      case UDTF:
       case LAST:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case DELETE:
@@ -136,8 +138,6 @@ public class AuthorityChecker {
       case LOADDATA:
       case CREATE_INDEX:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
-      case UPDATE:
-        return PrivilegeType.UPDATE_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:
@@ -146,6 +146,10 @@ public class AuthorityChecker {
       case LIST_USER_ROLES:
       case LIST_USER_PRIVILEGE:
         return PrivilegeType.LIST_USER.ordinal();
+      case CREATE_FUNCTION:
+        return PrivilegeType.CREATE_FUNCTION.ordinal();
+      case DROP_FUNCTION:
+        return PrivilegeType.DROP_FUNCTION.ordinal();
       case AUTHOR:
       case METADATA:
       case BASIC_FUNC:
@@ -165,6 +169,5 @@ public class AuthorityChecker {
       default:
         return -1;
     }
-
   }
 }
