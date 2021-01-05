@@ -98,7 +98,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         long startTime = System.currentTimeMillis();
         while (tsFileProcessor.getFlushingMemTableSize() == 1 && !tsFileProcessor.isShouldClose()
             && !SystemInfo.getInstance().shouldForceFlush()
-            && System.currentTimeMillis() - startTime < config.getFlushWaitTime()) {
+            && System.currentTimeMillis() - startTime < tsFileProcessor.getFlushWaitTime()) {
           // wait
           try {
             TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());

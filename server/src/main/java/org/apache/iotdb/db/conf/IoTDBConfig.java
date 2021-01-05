@@ -222,14 +222,16 @@ public class IoTDBConfig {
   private int mlogBufferSize = 1024 * 1024;
 
   /**
-   * Whether to enable sliding memory table, to reduce the CI time, the default value is false
+   * Whether to enable sliding memory table
    */
-  private boolean enableSlidingMemTable = false;
+  private boolean enableSlidingMemTable = true;
 
   /**
    * Save the flushing memtable in the memory during the period, can help reduce the unseq ratio, Unit: millis.
+   * If flush_wait_time = 0 it means system will keep the flushing memtable during 0.1 * working memtable living time
+   * Manually setting this value may result in larger memory usage
    */
-  private int flushWaitTime = 60000;
+  private int flushWaitTime = 0;
 
   /**
    * default base dir, stores all IoTDB runtime files

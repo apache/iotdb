@@ -140,7 +140,7 @@ public class StorageGroupProcessorTest {
   @Test
   public void testSlidingMemTable()
       throws WriteProcessException, QueryProcessException, MetadataException {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSlidingMemTable(true);
+    IoTDBDescriptor.getInstance().getConfig().setFlushWaitTime(30000);
 
     TSRecord record;
     for (int j = 5; j <= 10; j++) {
@@ -163,7 +163,7 @@ public class StorageGroupProcessorTest {
         .query(new PartialPath(deviceId), measurementId, context,
             null, null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
-    IoTDBDescriptor.getInstance().getConfig().setEnableSlidingMemTable(false);
+    IoTDBDescriptor.getInstance().getConfig().setFlushWaitTime(0);
   }
 
   @Test

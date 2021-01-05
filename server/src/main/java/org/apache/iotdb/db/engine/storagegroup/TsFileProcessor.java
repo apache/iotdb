@@ -110,6 +110,8 @@ public class TsFileProcessor {
 
   private boolean isFlushMemTableAlive = false;
   private boolean updateLatestTime = false;
+  private long workingMemTableCreateTime;
+  private long workingMemTableLivingTime;
 
   private final VersionController versionController;
 
@@ -176,6 +178,7 @@ public class TsFileProcessor {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
+      workingMemTableCreateTime = System.currentTimeMillis();
     }
     if (enableMemControl) {
       checkMemCostAndAddToTspInfo(insertRowPlan);
@@ -222,6 +225,7 @@ public class TsFileProcessor {
 
     if (workMemTable == null) {
       workMemTable = new PrimitiveMemTable(enableMemControl);
+      workingMemTableCreateTime = System.currentTimeMillis();
     }
 
     try {
@@ -608,11 +612,9 @@ public class TsFileProcessor {
    * put the working memtable into flushing list and set the working memtable to null
    */
   public void asyncFlush() {
-    if (config.isEnableSlidingMemTable()){
-      if (flushMemTable != null) {
-        // if previous flush memtable is still alive, update partitionLatestFlushedTimeForEachDevice
-        updateLatestFlushTimeCallback.call(this, true);
-      }
+    if (config.isEnableSlidingMemTable() && flushMemTable != null) {
+      // if previous flush memtable is still alive, update partitionLatestFlushedTimeForEachDevice
+      updateLatestFlushTimeCallback.call(this, true);
     }
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
@@ -670,6 +672,7 @@ public class TsFileProcessor {
     if (sequence && config.isEnableSlidingMemTable()) {
       flushMemTable = workMemTable;
       isFlushMemTableAlive = true;
+      workingMemTableLivingTime = System.currentTimeMillis() - workingMemTableCreateTime;
     }
     if(isClosing){
       updateLatestTime = true;
@@ -1063,5 +1066,12 @@ public class TsFileProcessor {
 
   public boolean isUpdateLatestTime() {
     return updateLatestTime;
+  }
+
+  public long getFlushWaitTime(){
+    if (IoTDBDescriptor.getInstance().getConfig().getFlushWaitTime() != 0) {
+      return IoTDBDescriptor.getInstance().getConfig().getFlushWaitTime();
+    }
+    return new Double(workingMemTableLivingTime * 0.1).longValue();
   }
 }
