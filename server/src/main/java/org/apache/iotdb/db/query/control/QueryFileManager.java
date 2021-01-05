@@ -97,7 +97,6 @@ public class QueryFileManager {
     if (tsFiles != null) {
       for (TsFileResource tsFile : sealedFilePathsMap.get(queryId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
-        logger.warn("{} is read-unlocked by {}", tsFile, queryId, new Exception());
       }
       sealedFilePathsMap.remove(queryId);
     }
@@ -105,7 +104,6 @@ public class QueryFileManager {
     if (tsFiles != null) {
       for (TsFileResource tsFile : unsealedFilePathsMap.get(queryId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
-        logger.warn("{} is read-unlocked by {}", tsFile, queryId, new Exception());
       }
       unsealedFilePathsMap.remove(queryId);
     }
