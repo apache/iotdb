@@ -2507,10 +2507,6 @@ public class StorageGroupProcessor {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws WriteProcessException {
-//    for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-//      insert(plan);
-//    }
-
     if (enableMemControl) {
       StorageEngine.blockInsertionIfReject();
     }
