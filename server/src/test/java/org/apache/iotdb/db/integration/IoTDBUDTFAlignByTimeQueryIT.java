@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -87,6 +88,10 @@ public class IoTDBUDTFAlignByTimeQueryIT {
             CompressionType.UNCOMPRESSED, null);
     IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d3.s2"), TSDataType.DOUBLE,
         TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d4.s1"), TSDataType.INT32,
+        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.createTimeseries(new PartialPath("root.vehicle.d4.s2"), TSDataType.INT32,
+        TSEncoding.PLAIN, CompressionType.UNCOMPRESSED, null);
   }
 
   private static void generateData() {
@@ -104,6 +109,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
             .format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
         statement.execute((String
             .format("insert into root.vehicle.d3(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute((String
+            .format("insert into root.vehicle.d4(timestamp,s1) values(%d,%d)", 2 * i, 3 * i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -117,6 +124,11 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       statement.execute("create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       statement.execute(
           "create function multiplier as \"org.apache.iotdb.db.query.udf.example.Multiplier\"");
+      statement.execute("create function max as \"org.apache.iotdb.db.query.udf.example.Max\"");
+      statement.execute(
+          "create function terminate as \"org.apache.iotdb.db.query.udf.example.TerminateTester\"");
+      statement.execute(
+          "create function validate as \"org.apache.iotdb.db.query.udf.example.ValidateTester\"");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -284,6 +296,111 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter6() {
+    String sqlStr = "select max(s1), max(s2) from root.vehicle.d4";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+
+      String columnS1 = "max(root.vehicle.d4.s1)";
+      String columnS2 = "max(root.vehicle.d4.s2)";
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+
+      assertTrue(resultSet.next());
+      assertEquals(3 * (ITERATION_TIMES - 1), Integer.parseInt(resultSet.getString(columnS1)));
+      assertNull(resultSet.getString(columnS2));
+      assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter7() {
+    String sqlStr = "select terminate(s1), terminate(s2) from root.vehicle.d4";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+
+      String columnS1 = "terminate(root.vehicle.d4.s1)";
+      String columnS2 = "terminate(root.vehicle.d4.s2)";
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        assertTrue(resultSet.next());
+        assertEquals(1, Integer.parseInt(resultSet.getString(columnS1)));
+        assertNull(resultSet.getString(columnS2));
+      }
+
+      assertTrue(resultSet.next());
+      assertEquals(ITERATION_TIMES, Integer.parseInt(resultSet.getString(columnS1)));
+      assertNull(resultSet.getString(columnS2));
+
+      assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter8() {
+    String sqlStr = "select validate(s1, s2, 'k'='') from root.vehicle.d3";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains(
+          "the data type of the input series (index: 0) is not valid. expected: [INT32, INT64]. actual: FLOAT."));
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter9() {
+    String sqlStr = "select validate(s1, s2, s1, 'k'=''), * from root.vehicle.d1";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains(
+          "the number of the input series is not valid. expected: 2. actual: 3."));
+    }
+  }
+
+  @Test
+  public void queryWithoutValueFilter10() {
+    String sqlStr = "select validate(s1, s2), * from root.vehicle.d1";
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      statement.executeQuery(sqlStr);
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable.getMessage().contains("attribute \"k\" is required but was not provided."));
     }
   }
 
@@ -518,6 +635,102 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter8() {
+    String sqlStr = "select max(s1), max(s2) from root.vehicle.d4"
+        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s2 < %d ",
+        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+
+      String columnS1 = "max(root.vehicle.d4.s1)";
+      String columnS2 = "max(root.vehicle.d4.s2)";
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+
+      assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter9() {
+    String sqlStr = "select max(s1), max(s2) from root.vehicle.d4"
+        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
+        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+
+      String columnS1 = "max(root.vehicle.d4.s1)";
+      String columnS2 = "max(root.vehicle.d4.s2)";
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+
+      assertTrue(resultSet.next());
+      assertEquals((int) (0.7 * ITERATION_TIMES) - 1,
+          Integer.parseInt(resultSet.getString(columnS1)));
+      assertNull(resultSet.getString(columnS2));
+      assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void queryWithValueFilter10() {
+    String sqlStr = "select terminate(s1), terminate(s2) from root.vehicle.d4"
+        + String.format(" where root.vehicle.d4.s1 >= %d and root.vehicle.d4.s1 < %d ",
+        (int) (0.3 * ITERATION_TIMES), (int) (0.7 * ITERATION_TIMES));
+
+    try (Statement statement = DriverManager.getConnection(
+        Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root").createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+
+      assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+
+      String columnS1 = "terminate(root.vehicle.d4.s1)";
+      String columnS2 = "terminate(root.vehicle.d4.s2)";
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(2))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(2)));
+      assertTrue(columnS1.equals(resultSet.getMetaData().getColumnName(3))
+          || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
+
+      for (int i = 0; i < (int) ((0.7 - 0.3) * ITERATION_TIMES) / 3 + 1; ++i) {
+        assertTrue(resultSet.next());
+        assertEquals(1, Integer.parseInt(resultSet.getString(columnS1)));
+        assertNull(resultSet.getString(columnS2));
+      }
+
+      assertTrue(resultSet.next());
+      assertEquals((int) ((0.7 - 0.3) * ITERATION_TIMES) / 3 + 1,
+          Integer.parseInt(resultSet.getString(columnS1)));
+      assertNull(resultSet.getString(columnS2));
+
+      assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

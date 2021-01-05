@@ -86,8 +86,15 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
-  public static final String COLUMN_FUNCTION_NAME = "UDF name";
-  public static final String COLUMN_FUNCTION_CLASS = "class name";
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
+  public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";

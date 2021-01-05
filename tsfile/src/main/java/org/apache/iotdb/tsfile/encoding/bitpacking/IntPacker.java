@@ -163,9 +163,7 @@ public class IntPacker {
       int[] tv = new int[8];
       // decode 8 values one time, current result will be saved in the array named 'tv'
       unpack8Values(buf, idx, tv);
-      for (int i = 0; i < 8; i++) {
-        values[k + i] = tv[i];
-      }
+      System.arraycopy(tv, 0, values, k, 8);
       idx += width;
       k += 8;
     }

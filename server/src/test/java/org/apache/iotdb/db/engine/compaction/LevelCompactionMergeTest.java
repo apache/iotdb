@@ -118,7 +118,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
         context,
-        levelCompactionTsFileManagement.getStableTsFileList(true), new ArrayList<>(), null, null,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null,
         true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
@@ -128,7 +128,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
       }
     }
-    assertEquals(200, count);
+    assertEquals(500, count);
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
