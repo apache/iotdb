@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p>
@@ -95,6 +97,7 @@ public class QueryFileManager {
     if (tsFiles != null) {
       for (TsFileResource tsFile : sealedFilePathsMap.get(queryId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+        logger.warn("{} is read-unlocked by {}", tsFile, queryId, new Exception());
       }
       sealedFilePathsMap.remove(queryId);
     }
@@ -102,6 +105,7 @@ public class QueryFileManager {
     if (tsFiles != null) {
       for (TsFileResource tsFile : unsealedFilePathsMap.get(queryId)) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+        logger.warn("{} is read-unlocked by {}", tsFile, queryId, new Exception());
       }
       unsealedFilePathsMap.remove(queryId);
     }
@@ -119,6 +123,9 @@ public class QueryFileManager {
     if (!pathMap.get(queryId).contains(tsFile)) {
       pathMap.get(queryId).add(tsFile);
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
+      logger.warn("{} is read-locked by {}", tsFile, queryId, new Exception());
     }
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(QueryFileManager.class);
 }

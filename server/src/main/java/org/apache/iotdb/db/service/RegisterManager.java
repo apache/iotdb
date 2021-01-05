@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ public class RegisterManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RegisterManager.class);
   private List<IService> iServices;
+  private static long DEREGISTER_TIME_OUT = 10_000L;
 
   public RegisterManager() {
     iServices = new ArrayList<>();
@@ -57,7 +59,7 @@ public class RegisterManager {
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        service.waitAndStop(10000);
+        service.waitAndStop(DEREGISTER_TIME_OUT);
         logger.info("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
@@ -74,9 +76,14 @@ public class RegisterManager {
     //we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
-      service.shutdown(10000);
+      service.shutdown(DEREGISTER_TIME_OUT);
     }
     iServices.clear();
     logger.info("deregister all service.");
+  }
+
+  @TestOnly
+  public static void setDeregisterTimeOut(long deregisterTimeOut) {
+    DEREGISTER_TIME_OUT = deregisterTimeOut;
   }
 }
