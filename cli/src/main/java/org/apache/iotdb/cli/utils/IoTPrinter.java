@@ -19,6 +19,7 @@
 package org.apache.iotdb.cli.utils;
 
 import java.io.PrintStream;
+import java.lang.Character.UnicodeScript;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
@@ -52,8 +53,27 @@ public class IoTPrinter {
 
   public static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
     printf("|");
+    int count;
+    int maxSize;
+    String element;
+    StringBuilder paddingStr;
     for (int j = 0; j < maxSizeList.size(); j++) {
-      printf("%" + maxSizeList.get(j) + "s|", lists.get(j).get(i));
+      maxSize = maxSizeList.get(j);
+      element = lists.get(j).get(i);
+      count = computeHANCount(element);
+
+      if (count > 0) {
+        int remain = maxSize - (element.length() + count);
+        if (remain > 0) {
+          paddingStr = padding(remain);
+          maxSize = maxSize - count;
+          element = paddingStr.append(element).toString();
+        } else if (remain == 0) {
+          maxSize = maxSize - count;
+        }
+      }
+
+      printf("%" + maxSize + "s|", element);
     }
     println();
   }
@@ -64,6 +84,24 @@ public class IoTPrinter {
     } else {
       println("Total line number = " + cnt);
     }
+  }
+
+  public static StringBuilder padding(int count) {
+    StringBuilder sb = new StringBuilder();
+    for (int k = 0; k < count; k++) {
+      sb.append(' ');
+    }
+
+    return sb;
+  }
+
+  /**
+   * compute the number of Chinese characters included in the String
+   */
+  public static int computeHANCount(String s) {
+    return (int) s.codePoints()
+        .filter(codePoint -> UnicodeScript.of(codePoint) == UnicodeScript.HAN)
+        .count();
   }
 
 }

@@ -23,6 +23,7 @@ import static org.apache.iotdb.cli.utils.IoTPrinter.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.Character.UnicodeScript;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -507,9 +508,11 @@ public abstract class AbstractCli {
     if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
-        list.add(resultSetMetaData.getColumnLabel(i));
+        String columnLabel = resultSetMetaData.getColumnLabel(i);
+        list.add(columnLabel);
         lists.add(list);
-        maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
+        int count = computeHANCount(columnLabel);
+        maxSizeList.add(columnLabel.length() + count);
       }
 
       boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
@@ -526,8 +529,10 @@ public abstract class AbstractCli {
             tmp = NULL;
           }
           lists.get(i - 1).add(tmp);
-          if (maxSizeList.get(i - 1) < tmp.length()) {
-            maxSizeList.set(i - 1, tmp.length());
+          int count = computeHANCount(tmp);
+          int realLength = tmp.length() + count;
+          if (maxSizeList.get(i - 1) < realLength) {
+            maxSizeList.set(i - 1, realLength);
           }
         }
         j++;
