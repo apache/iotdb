@@ -389,6 +389,7 @@ The process of registering a UDF in IoTDB is as follows:
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
@@ -491,6 +492,18 @@ SELECT *, example(*) FROM root.sg.d1 NON ALIGN;
 ``` sql
 SHOW FUNCTIONS
 ```
+
+
+
+## User Permission Management
+
+There are 3 types of user permissions related to UDF:
+
+* `CREATE_FUNCTION`: Only users with this permission are allowed to register UDFs
+* `DROP_FUNCTION`: Only users with this permission are allowed to deregister UDFs
+* `READ_TIMESERIES`: Only users with this permission are allowed to use UDFs for queries
+
+For more user permissions related content, please refer to [Account Management Statements](../Operation%20Manual/Administration.md).
 
 
 
