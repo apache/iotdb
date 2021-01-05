@@ -107,7 +107,7 @@ public class VirtualStorageGroupManager {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
             processor = StorageEngine.getInstance()
-                .buildNewStorageGroupProcessor(partialPath, storageGroupMNode, String.valueOf(loc));
+                .buildNewStorageGroupProcessor(storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(loc));
             virtualStorageGroupProcessor[loc] = processor;
           }
         }
