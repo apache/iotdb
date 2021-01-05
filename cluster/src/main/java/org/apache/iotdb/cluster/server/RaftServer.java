@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.util.ConcurrentModificationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
@@ -144,7 +145,11 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
       return;
     }
 
-    poolServer.stop();
+    try {
+      poolServer.stop();
+    } catch (ConcurrentModificationException e) {
+      // ignore
+    }
     socket.close();
     clientService.shutdownNow();
     socket = null;
