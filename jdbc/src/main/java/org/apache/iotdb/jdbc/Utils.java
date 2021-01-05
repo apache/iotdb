@@ -62,10 +62,11 @@ public class Utils {
       params.setPassword(info.getProperty(Config.AUTH_PASSWORD));
     }
     if (info.containsKey(Config.INITIAL_BUFFER_CAPACITY)) {
-      params.setInitialBufferCapacity(info.getProperty(Config.DEFAULT_INITIAL_BUFFER_CAPACITY));
+      params.setInitialBufferCapacity(Integer.parseInt(
+          info.getProperty(Config.INITIAL_BUFFER_CAPACITY)));
     }
     if (info.containsKey(Config.MAX_FRAME_SIZE)) {
-      params.setMaxFrameSize(info.getProperty(Config.DEFAULT_MAX_FRAME_SIZE));
+      params.setMaxFrameSize(Integer.parseInt(info.getProperty(Config.MAX_FRAME_SIZE)));
     }
     return params;
   }
