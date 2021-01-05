@@ -34,6 +34,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -45,6 +47,8 @@ import java.util.List;
 import java.util.Map;
 
 public class MLogParserTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(MLogParserTest.class);
 
   @Before
   public void setUp() throws Exception {
@@ -114,8 +118,10 @@ public class MLogParserTest {
     try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
       + "tmp"  + File.separator + "text.mlog"))) {
       int lineNum = 0;
-      while (reader.readLine() != null) {
+      String line;
+      while ((line = reader.readLine()) != null) {
         lineNum++;
+        logger.info(line);
       }
       Assert.assertEquals(108, lineNum);
     } catch (IOException e) {
@@ -139,8 +145,10 @@ public class MLogParserTest {
     try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
       + "tmp"  + File.separator + "text.snapshot"))) {
       int lineNum = 0;
-      while (reader.readLine() != null) {
+      String line;
+      while ((line = reader.readLine()) != null) {
         lineNum++;
+        logger.info(line);
       }
       Assert.assertEquals(113, lineNum);
     } catch (IOException e) {
