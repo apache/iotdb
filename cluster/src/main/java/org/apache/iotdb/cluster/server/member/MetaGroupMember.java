@@ -66,7 +66,6 @@ import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -1353,7 +1352,7 @@ public class MetaGroupMember extends RaftMember {
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
-    long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
+    long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
     if (PartitionUtils.isGlobalMetaPlan(plan)) {
       // do it in local, only the follower forward the plan to local
       logger.debug("receive a global meta plan {}", plan);
@@ -1363,7 +1362,7 @@ public class MetaGroupMember extends RaftMember {
       logger.warn("receive a plan {} could not be processed in local", plan);
       result = StatusUtils.UNSUPPORTED_OPERATION;
     }
-    Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
+    Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
 
