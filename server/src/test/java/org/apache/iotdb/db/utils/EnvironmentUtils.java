@@ -284,6 +284,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
+    IoTDB.metaManager.clear();
     reactiveDaemon();
   }
 

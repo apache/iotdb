@@ -54,4 +54,5 @@
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>
+    <logger level="ERROR" name="DETAILED_FAILUER_QUERY_TRACE"/>
 </configuration>

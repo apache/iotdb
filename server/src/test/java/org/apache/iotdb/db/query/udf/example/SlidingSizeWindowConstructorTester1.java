@@ -27,9 +27,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SlidingSizeWindowConstructorTester1 implements UDTF {
-
+  private static Logger logger = LoggerFactory.getLogger(SlidingSizeWindowConstructorTester1.class);
   private int consumptionPoint;
 
   @Override
@@ -41,7 +43,7 @@ public class SlidingSizeWindowConstructorTester1 implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("SlidingSizeWindowConstructorTester1#beforeStart");
+    logger.debug("SlidingSizeWindowConstructorTester1#beforeStart");
     consumptionPoint = parameters.getInt("consumptionPoint");
     configurations
         .setOutputDataType(TSDataType.INT32)
@@ -57,6 +59,6 @@ public class SlidingSizeWindowConstructorTester1 implements UDTF {
 
   @Override
   public void beforeDestroy() {
-    System.out.println("SlidingSizeWindowConstructorTester1#beforeDestroy");
+    logger.debug("SlidingSizeWindowConstructorTester1#beforeDestroy");
   }
 }

@@ -575,8 +575,10 @@ public class TsFileResource {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
-    fsFactory.moveFile(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX),
-        fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
+    if(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).exists()) {
+      fsFactory.moveFile(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX),
+          fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX));
+    }
   }
 
   @Override

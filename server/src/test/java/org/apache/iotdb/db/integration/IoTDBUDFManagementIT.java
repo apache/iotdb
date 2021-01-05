@@ -104,7 +104,7 @@ public class IoTDBUDFManagementIT {
 
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       fail(throwable.getMessage());
     }
   }
@@ -176,7 +176,7 @@ public class IoTDBUDFManagementIT {
 
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       fail(throwable.getMessage());
     }
   }
@@ -188,7 +188,7 @@ public class IoTDBUDFManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       assertTrue(throwable.getMessage().contains("Failed to reflect UDF instance"));
     }
   }
@@ -202,7 +202,6 @@ public class IoTDBUDFManagementIT {
       statement.execute("drop function udf");
       statement.execute("select udf(*, *) from root.vehicle");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(throwable.getMessage().contains("Failed to reflect UDF instance"));
     }
   }
@@ -215,7 +214,6 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function aVg as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(throwable.getMessage().contains("expecting ID"));
     }
   }
@@ -229,7 +227,6 @@ public class IoTDBUDFManagementIT {
           .execute("create function MAX_VALUE as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(throwable.getMessage().contains("expecting ID"));
     }
   }
@@ -343,7 +340,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function adder as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       assertTrue(throwable.getMessage()
           .contains("the given function name is the same as a built-in UDF function name"));
     } finally {
@@ -361,7 +358,7 @@ public class IoTDBUDFManagementIT {
       statement.execute("drop function adder");
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       assertTrue(
           throwable.getMessage().contains("Built-in function adder can not be deregistered"));
     } finally {
@@ -378,7 +375,7 @@ public class IoTDBUDFManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute("select adder(*, *) from root.vehicle");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       fail(throwable.getMessage());
     } finally {
       UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
@@ -429,7 +426,7 @@ public class IoTDBUDFManagementIT {
 
       statement.execute("drop function udf");
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
+      
       fail(throwable.getMessage());
     } finally {
       UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");

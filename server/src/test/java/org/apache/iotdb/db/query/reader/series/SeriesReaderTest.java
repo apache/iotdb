@@ -43,12 +43,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 public class SeriesReaderTest {
-
+  private static Logger logger = LoggerFactory.getLogger(SeriesReaderTest.class);
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
   private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -145,7 +147,7 @@ public class SeriesReaderTest {
       long expectedTime = 499;
       while (pointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        System.out.println(timeValuePair);
+        logger.debug(timeValuePair.toString());
         assertEquals(expectedTime, timeValuePair.getTimestamp());
         int value = timeValuePair.getValue().getInt();
         if (expectedTime < 200) {

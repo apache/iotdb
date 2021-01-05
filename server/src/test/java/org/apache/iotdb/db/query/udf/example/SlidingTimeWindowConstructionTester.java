@@ -31,9 +31,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SlidingTimeWindowConstructionTester implements UDTF {
-
+  private static Logger logger = LoggerFactory.getLogger(SlidingTimeWindowConstructionTester.class);
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
@@ -43,7 +45,7 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("SlidingTimeWindowConstructionTester#beforeStart");
+    logger.debug("SlidingTimeWindowConstructionTester#beforeStart");
     long timeInterval = parameters.getLong(TIME_INTERVAL_KEY);
     configurations
         .setOutputDataType(TSDataType.INT32)
@@ -64,6 +66,6 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
 
   @Override
   public void beforeDestroy() {
-    System.out.println("SlidingTimeWindowConstructionTester#beforeDestroy");
+    logger.debug("SlidingTimeWindowConstructionTester#beforeDestroy");
   }
 }

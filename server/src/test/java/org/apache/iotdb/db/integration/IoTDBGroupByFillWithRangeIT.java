@@ -34,9 +34,11 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBGroupByFillWithRangeIT {
-
+  private static Logger logger = LoggerFactory.getLogger(IoTDBGroupByFillWithRangeIT.class);
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -113,7 +115,7 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[cnt], ans);
-          System.out.println(ans);
+          logger.debug(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -131,7 +133,7 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[cnt], ans);
-          System.out.println(ans);
+          logger.debug(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -149,7 +151,7 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[retArray2.length - cnt - 1], ans);
-          System.out.println(ans);
+          logger.debug(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);

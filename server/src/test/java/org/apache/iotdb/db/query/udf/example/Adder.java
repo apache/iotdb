@@ -28,9 +28,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Adder implements UDTF {
-
+  private static Logger logger = LoggerFactory.getLogger(Adder.class);
   private double addend;
 
   @Override
@@ -45,7 +47,7 @@ public class Adder implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Adder#beforeStart");
+    logger.debug("Adder#beforeStart");
     addend = parameters.getFloatOrDefault("addend", 0);
     configurations
         .setOutputDataType(TSDataType.INT64)
@@ -84,6 +86,6 @@ public class Adder implements UDTF {
 
   @Override
   public void beforeDestroy() {
-    System.out.println("Adder#beforeDestroy");
+    logger.debug("Adder#beforeDestroy");
   }
 }

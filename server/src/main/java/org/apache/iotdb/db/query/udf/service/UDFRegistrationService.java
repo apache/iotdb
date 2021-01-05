@@ -191,7 +191,7 @@ public class UDFRegistrationService implements IService {
     if (information.isBuiltin()) {
       String errorMessage = String
           .format("Built-in function %s can not be deregistered.", functionName);
-      logger.error(errorMessage);
+      logger.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 

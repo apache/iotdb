@@ -34,9 +34,11 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrat
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Accumulator implements UDTF {
-
+  private static Logger logger = LoggerFactory.getLogger(Accumulator.class);
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
@@ -46,7 +48,7 @@ public class Accumulator implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Accumulator#beforeStart");
+    logger.debug("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ACCESS_STRATEGY_SLIDING_SIZE:
@@ -85,6 +87,6 @@ public class Accumulator implements UDTF {
 
   @Override
   public void beforeDestroy() {
-    System.out.println("Accumulator#beforeDestroy");
+    logger.debug("Accumulator#beforeDestroy");
   }
 }
