@@ -572,7 +572,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
    * if level < maxLevel-1, the file need compaction else, the file can be merged later
    */
   private File createNewTsFileName(File sourceFile, int level) {
-    String path = sourceFile.getAbsolutePath();
+    String path = sourceFile.getPath();
     String prefixPath = path.substring(0, path.lastIndexOf(FILE_NAME_SEPARATOR) + 1);
     return new File(prefixPath + level + TSFILE_SUFFIX);
   }
