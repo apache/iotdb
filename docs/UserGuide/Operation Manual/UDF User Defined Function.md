@@ -389,6 +389,7 @@ The process of registering a UDF in IoTDB is as follows:
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+    > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
 The following shows the SQL syntax of how to register a UDF.

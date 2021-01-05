@@ -387,7 +387,8 @@ UDTF的结束方法，您可以在此方法中进行一些资源释放等的操�
 
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
-3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/udf`的子目录）下
+3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/udf`的子目录）下。
+    > 您可以通过修改配置文件中的`udf_root_dir`来指定UDF加载Jar的根路径。
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
 注册UDF的SQL语法如下：
