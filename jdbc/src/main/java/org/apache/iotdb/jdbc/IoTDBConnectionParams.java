@@ -86,7 +86,15 @@ public class IoTDBConnectionParams {
     return initialBufferCapacity;
   }
 
+  public void setInitialBufferCapacity(int initialBufferCapacity) {
+    this.initialBufferCapacity = initialBufferCapacity;
+  }
+
   public int getMaxFrameSize() {
     return maxFrameSize;
+  }
+
+  public void setMaxFrameSize(int maxFrameSize) {
+    this.maxFrameSize = maxFrameSize;
   }
 }
