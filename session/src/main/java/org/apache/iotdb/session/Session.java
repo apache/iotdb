@@ -76,6 +76,8 @@ public class Session {
   private int rpcPort;
   private String username;
   private String password;
+  private int initialBufferCapacity;
+  private int maxFrameSize;
   private TSIService.Iface client = null;
   private long sessionId;
   private TTransport transport;
@@ -87,32 +89,46 @@ public class Session {
   private int connectionTimeoutInMs;
 
   public Session(String host, int rpcPort) {
-    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE,
+        null, Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
-    this(host, rpcPort, username, password, fetchSize, null);
+    this(host, rpcPort, username, password, fetchSize, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
-  public Session(String host, int rpcPort, String username, String password, int fetchSize, ZoneId zoneId) {
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      ZoneId zoneId) {
+    this(host, rpcPort, username, password, fetchSize, zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      ZoneId zoneId, int initialBufferCapacity, int maxFrameSize) {
     this.host = host;
     this.rpcPort = rpcPort;
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
+    this.initialBufferCapacity = initialBufferCapacity;
+    this.maxFrameSize = maxFrameSize;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -132,7 +148,8 @@ public class Session {
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
 
-    transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs));
+    transport = new TFastFramedTransport(new TSocket(host, rpcPort, connectionTimeoutInMs),
+        initialBufferCapacity, maxFrameSize);
 
     if (!transport.isOpen()) {
       try {
@@ -393,8 +410,9 @@ public class Session {
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-     insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+    insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
   }
+
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
@@ -402,15 +420,15 @@ public class Session {
    * <p>
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
-   * @param haveSorted  whether the times have been sorted
+   * @param haveSorted whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, boolean haveSorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times, measurementsList,
-        typesList, valuesList, haveSorted);
+    TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times,
+        measurementsList, typesList, valuesList, haveSorted);
     try {
       RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
     } catch (TException e) {
@@ -427,9 +445,10 @@ public class Session {
     }
   }
 
-  private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, boolean haveSorted) throws IoTDBConnectionException, BatchExecutionException {
+  private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId,
+      List<Long> times, List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted)
+      throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
@@ -439,7 +458,8 @@ public class Session {
 
     if (haveSorted) {
       if (!checkSorted(times)) {
-        throw new BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
+        throw new BatchExecutionException(
+            "Times in InsertOneDeviceRecords are not in ascending order");
       }
     } else {
       //sort
@@ -478,8 +498,8 @@ public class Session {
     return Arrays.asList(result);
   }
 
-  private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList, List<List<TSDataType>> typesList)
-      throws IoTDBConnectionException {
+  private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList,
+      List<List<TSDataType>> typesList) throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
       ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));

@@ -27,6 +27,9 @@ public class IoTDBConnectionParams {
   private String username = Config.DEFAULT_USER;
   private String password = Config.DEFALUT_PASSWORD;
 
+  private int initialBufferCapacity = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
+  private int maxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
+
   public IoTDBConnectionParams(String url) {
     this.jdbcUriString = url;
   }
@@ -79,4 +82,11 @@ public class IoTDBConnectionParams {
     this.password = password;
   }
 
+  public int getInitialBufferCapacity() {
+    return initialBufferCapacity;
+  }
+
+  public int getMaxFrameSize() {
+    return maxFrameSize;
+  }
 }
