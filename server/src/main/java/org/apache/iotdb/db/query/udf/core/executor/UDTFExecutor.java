@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
@@ -45,14 +46,22 @@ public class UDTFExecutor {
   public void beforeStart(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(context);
+
+    UDFParameters parameters = new UDFParameters(context.getPaths(), context.getAttributes());
+
     try {
-      udtf.beforeStart(new UDFParameters(context.getPaths(), context.getAttributes()),
-          configurations);
+      udtf.validate(new UDFParameterValidator(parameters));
     } catch (Exception e) {
-      throw new QueryProcessException(
-          "Error occurred during initialization of udf:\n" + e.toString());
+      onError("validate(UDFParameterValidator)", e);
+    }
+
+    try {
+      udtf.beforeStart(parameters, configurations);
+    } catch (Exception e) {
+      onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
     }
     configurations.check();
+
     collector = ElasticSerializableTVList
         .newElasticSerializableTVList(configurations.getOutputDataType(), queryId,
             collectorMemoryBudgetInMB, 1);
@@ -62,7 +71,7 @@ public class UDTFExecutor {
     try {
       udtf.transform(row, collector);
     } catch (Exception e) {
-      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
+      onError("transform(Row, PointCollector)", e);
     }
   }
 
@@ -70,12 +79,26 @@ public class UDTFExecutor {
     try {
       udtf.transform(rowWindow, collector);
     } catch (Exception e) {
-      throw new QueryProcessException("Error occurred during execution of udf:\n" + e.toString());
+      onError("transform(RowWindow, PointCollector)", e);
+    }
+  }
+
+  public void terminate() throws QueryProcessException {
+    try {
+      udtf.terminate(collector);
+    } catch (Exception e) {
+      onError("terminate(PointCollector)", e);
     }
   }
 
   public void beforeDestroy() {
     udtf.beforeDestroy();
+  }
+
+  private void onError(String methodName, Exception e) throws QueryProcessException {
+    throw new QueryProcessException(String
+        .format("Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
+        + e.toString());
   }
 
   public UDFContext getContext() {

@@ -50,6 +50,7 @@ public class SystemInfo {
   private static final double REJECT_THRESHOLD =
       config.getAllocateMemoryForWrite() * config.getRejectProportion();
 
+
   /**
    * Report current mem cost of storage group to system. Called when the memory of
    * storage group newly accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()

@@ -138,8 +138,8 @@ public class FileLoaderManager {
 
   private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
       throws IOException, ClassNotFoundException {
-    try (ObjectInputStream deviceOwnerInput = new ObjectInputStream(
-        new FileInputStream(deviceOwnerFile))) {
+    try (FileInputStream fis = new FileInputStream(deviceOwnerFile);
+         ObjectInputStream deviceOwnerInput = new ObjectInputStream(fis)) {
       deviceOwnerMap = (Map<String, String>) deviceOwnerInput.readObject();
     }
   }
