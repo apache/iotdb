@@ -348,4 +348,14 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
       AsyncMethodCallback<Void> resultHandler) {
     asyncService.removeHardLink(hardLinkPath, resultHandler);
   }
+
+  @Override
+  public void handshake(Node sender) {
+    syncService.handshake(sender);
+  }
+
+  @Override
+  public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.handshake(sender, resultHandler);
+  }
 }
