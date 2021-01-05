@@ -1052,6 +1052,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                       .putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
                 }
               }
+              measurementSchemaList = new ArrayList<>();
               // last chunk group Metadata
               chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
               lastDeviceId = null;
@@ -1080,7 +1081,6 @@ public class TsFileSequenceReader implements AutoCloseable {
                 .putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
           }
         }
-        measurementSchemaList = new ArrayList<>();
         // last chunk group Metadata
         chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
       }

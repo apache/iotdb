@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.v2.read;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -32,11 +31,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -44,9 +41,6 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -60,13 +54,9 @@ import org.apache.iotdb.tsfile.v2.file.metadata.ChunkMetadataV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.MetadataIndexNodeV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.TimeseriesMetadataV2;
 import org.apache.iotdb.tsfile.v2.file.metadata.TsFileMetadataV2;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReaderForV2.class);
   private int totalChunkNum;
 
   /**

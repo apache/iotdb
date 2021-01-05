@@ -138,8 +138,6 @@ public class UpgradeTask extends WrappedRunnable {
       TsFileOnlineUpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
-    } catch (Exception e) {
-      throw e;
     } finally {
       upgradeResource.readUnlock();
     }

@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileIOWriter {
 
-  public static final byte[] MAGIC_STRING_BYTES;
+  protected static final byte[] MAGIC_STRING_BYTES;
   public static final byte VERSION_NUMBER_BYTE;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
