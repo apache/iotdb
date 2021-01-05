@@ -617,7 +617,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .values()) {
         for (SortedSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }
@@ -628,7 +629,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .values()) {
         for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }
