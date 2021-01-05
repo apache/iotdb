@@ -41,6 +41,10 @@ public class MetadataException extends IoTDBException {
     super(msg, TSStatusCode.METADATA_ERROR.getStatusCode());
   }
 
+  public MetadataException(String msg, boolean isUserException) {
+    super(msg, TSStatusCode.METADATA_ERROR.getStatusCode(), isUserException);
+  }
+
   public MetadataException(String message, Throwable cause) {
     super(message + cause.getMessage(), TSStatusCode.METADATA_ERROR.getStatusCode());
   }

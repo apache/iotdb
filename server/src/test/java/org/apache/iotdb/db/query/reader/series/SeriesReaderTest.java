@@ -145,7 +145,6 @@ public class SeriesReaderTest {
       long expectedTime = 499;
       while (pointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        System.out.println(timeValuePair);
         assertEquals(expectedTime, timeValuePair.getTimestamp());
         int value = timeValuePair.getValue().getInt();
         if (expectedTime < 200) {

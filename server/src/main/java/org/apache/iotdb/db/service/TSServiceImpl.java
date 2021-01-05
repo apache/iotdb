@@ -52,6 +52,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -773,6 +774,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       if (e instanceof NullPointerException) {
         logger.error("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      } else if (e instanceof IoTDBException && ((IoTDBException) e).isUserException()) {
+        logger.warn("{}: Internal server error: {}", IoTDBConstant.GLOBAL_DB_NAME, e.getMessage());
       } else {
         logger.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       }
@@ -1778,12 +1781,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (BatchProcessException e) {
       return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
     } catch (QueryProcessException e) {
-      logger.warn("meet error while processing non-query. ", e);
-      Throwable cause = e;
-      while (cause.getCause() != null) {
-        cause = cause.getCause();
+      if (e.isUserException()) {
+        logger.warn("meet error while processing non-query: {}", e.getMessage());
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      } else {
+        logger.warn("meet error while processing non-query. ", e);
+        Throwable cause = e;
+        while (cause.getCause() != null) {
+          cause = cause.getCause();
+        }
+        return RpcUtils.getStatus(e.getErrorCode(), cause.getMessage());
       }
-      return RpcUtils.getStatus(e.getErrorCode(), cause.getMessage());
     } catch (Exception e) {
       logger.warn(SERVER_INTERNAL_ERROR, IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

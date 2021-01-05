@@ -137,7 +137,6 @@ public class IoTDBMultiSeriesIT {
 
       // insert large amount of data time range : 3000 ~ 13600
       for (int time = 3000; time < 13600; time++) {
-        // System.out.println("===" + time);
         String sql = String
             .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
         statement.execute(sql);
@@ -312,7 +311,6 @@ public class IoTDBMultiSeriesIT {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
                   .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
-          // System.out.println("===" + ans);
           cnt++;
         }
         assertEquals(16440, cnt);
@@ -343,7 +341,6 @@ public class IoTDBMultiSeriesIT {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet
                   .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0);
-          // System.out.println(ans);
           cnt++;
         }
 
@@ -437,7 +434,6 @@ public class IoTDBMultiSeriesIT {
           "select s1 from root.vehicle.d0 where root.vehicle.d0.s0 < 111 and root.vehicle.d0.s10 < 111");
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
-      e.printStackTrace();
       assertEquals(
           "411: Meet error in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
