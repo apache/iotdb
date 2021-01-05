@@ -19,16 +19,11 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -36,27 +31,48 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class ShowDevicesDataSet extends ShowDataSet {
+public abstract class ShowDataSet extends QueryDataSet {
+  protected ShowPlan plan;
+  private List<RowRecord> result = new ArrayList<>();
+  private int index = 0;
+  protected boolean hasLimit;
 
-  private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false)};
-  private static final TSDataType[] resourceTypes = {TSDataType.TEXT};
-
-  public ShowDevicesDataSet(ShowDevicesPlan showDevicesPlan) throws MetadataException {
-    super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
-    this.plan = showDevicesPlan;
-    hasLimit = plan.hasLimit();
-    getQueryDataSet();
+  public ShowDataSet(List<Path> paths, List<TSDataType> dataTypes) {
+    super(paths, dataTypes);
   }
 
-  public List<RowRecord> getQueryDataSet() throws MetadataException {
-    Set<PartialPath> devicesSet = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
-    List<RowRecord> records = new ArrayList<>();
-    for (PartialPath path : devicesSet) {
-      RowRecord record = new RowRecord(0);
-      updateRecord(record, path.getFullPath());
-      records.add(record);
-      putRecord(record);
+  @Override
+  public boolean hasNextWithoutConstraint() throws IOException {
+    if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
+      plan.setOffset(plan.getOffset() + plan.getLimit());
+      try {
+        result = getQueryDataSet();
+        index = 0;
+      } catch (MetadataException e) {
+        throw new IOException(e);
+      }
     }
-    return records;
+    return index < result.size();
+  }
+
+  public abstract List<RowRecord> getQueryDataSet() throws MetadataException;
+
+  @Override
+  public RowRecord nextWithoutConstraint() {
+    return result.get(index++);
+  }
+
+  protected void updateRecord(RowRecord record, String s) {
+    if (s == null) {
+      record.addField(null);
+      return;
+    }
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(new Binary(s));
+    record.addField(field);
+  }
+
+  protected void putRecord(RowRecord newRecord) {
+    result.add(newRecord);
   }
 }

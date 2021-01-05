@@ -250,15 +250,14 @@ public class PhysicalGenerator {
             return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
                 showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
                 showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
-                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
+                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat(), fetchSize);
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
-            return new ShowDevicesPlan(
-                ShowContentType.DEVICES, showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
-                  showDevicesOperator.getOffset());
+            return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
+                  showDevicesOperator.getOffset(), fetchSize);
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
