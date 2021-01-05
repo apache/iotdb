@@ -53,7 +53,7 @@ public class IoTDBRpcDataSet {
   public Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
-  private final long timeout;
+  public final long timeout;
   public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
