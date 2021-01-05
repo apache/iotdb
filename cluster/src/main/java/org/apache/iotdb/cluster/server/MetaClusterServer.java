@@ -222,9 +222,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
+  public void readFile(String filePath, long offset, int length, int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    asyncService.readFile(filePath, offset, length, resultHandler);
+    asyncService.readFile(filePath, offset, length, raftId, resultHandler);
   }
 
   @Override
@@ -324,8 +324,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
-    return syncService.readFile(filePath, offset, length);
+  public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
+    return syncService.readFile(filePath, offset, length, raftId);
   }
 
   @Override
@@ -334,13 +334,13 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath) throws TException {
-    syncService.removeHardLink(hardLinkPath);
+  public void removeHardLink(String hardLinkPath, int raftId) throws TException {
+    syncService.removeHardLink(hardLinkPath, raftId);
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath,
+  public void removeHardLink(String hardLinkPath, int raftId,
       AsyncMethodCallback<Void> resultHandler) {
-    asyncService.removeHardLink(hardLinkPath, resultHandler);
+    asyncService.removeHardLink(hardLinkPath, raftId, resultHandler);
   }
 }

@@ -122,7 +122,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+  public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
     try {
       return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
@@ -131,7 +131,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath) throws TException {
+  public void removeHardLink(String hardLinkPath, int raftId) throws TException {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
     } catch (IOException e) {

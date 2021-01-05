@@ -311,7 +311,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         if (client != null) {
           try {
             client.removeHardLink(resource.getTsFile().getAbsolutePath(),
-                new GenericHandler<>(sourceNode, null));
+                dataGroupMember.getRaftGroupId(), new GenericHandler<>(sourceNode, null));
           } catch (TException e) {
             logger
                 .error("Cannot remove hardlink {} from {}", resource.getTsFile().getAbsolutePath(),
@@ -326,7 +326,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           return;
         }
         try {
-          client.removeHardLink(resource.getTsFile().getAbsolutePath());
+          client.removeHardLink(resource.getTsFile().getAbsolutePath(),
+              dataGroupMember.getRaftGroupId());
         } catch (TException te) {
           client.getInputProtocol().getTransport().close();
           logger
@@ -516,7 +517,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         if (client == null) {
           throw new IOException("No available client for " + node.toString());
         }
-        ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
+        ByteBuffer buffer = SyncClientAdaptor
+            .readFile(client, remotePath, offset, fetchSize, dataGroupMember.getRaftGroupId());
         int len = writeBuffer(buffer, dest);
         if (len == 0) {
           break;
@@ -552,7 +554,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
       try {
         while (true) {
-          ByteBuffer buffer = client.readFile(remotePath, offset, fetchSize);
+          ByteBuffer buffer = client.readFile(remotePath, offset, fetchSize,
+              dataGroupMember.getRaftGroupId());
           int len = writeBuffer(buffer, dest);
           if (len == 0) {
             break;

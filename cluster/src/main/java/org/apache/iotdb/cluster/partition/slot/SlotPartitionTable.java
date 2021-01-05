@@ -265,7 +265,7 @@ public class SlotPartitionTable implements PartitionTable {
     }
 
     SlotNodeAdditionResult result = new SlotNodeAdditionResult();
-    for (int raftId = 0 ;raftId < multiRaftFactor; raftId++) {
+    for (int raftId = 0; raftId < multiRaftFactor; raftId++) {
       PartitionGroup newGroup = getHeaderGroup(new RaftNode(node, raftId));
       if (newGroup.contains(thisNode)) {
         localGroups.add(newGroup);
@@ -296,7 +296,7 @@ public class SlotPartitionTable implements PartitionTable {
     // move the slots to the new node if any previous node have more slots than the new average
     int newAvg = totalSlotNumbers / nodeRing.size() / multiRaftFactor;
     int raftId = 0;
-    for(int i = 0 ; i < multiRaftFactor; i++) {
+    for (int i = 0; i < multiRaftFactor; i++) {
       RaftNode raftNode = new RaftNode(newNode, i);
       nodeSlotMap.putIfAbsent(raftNode, new ArrayList<>());
       previousNodeMap.putIfAbsent(raftNode, new HashMap<>());
@@ -307,10 +307,11 @@ public class SlotPartitionTable implements PartitionTable {
       if (transferNum > 0) {
         RaftNode curNode = new RaftNode(newNode, raftId);
         int numToMove = transferNum;
-        if(raftId != multiRaftFactor - 1) {
+        if (raftId != multiRaftFactor - 1) {
           numToMove = Math.min(numToMove, newAvg - nodeSlotMap.get(curNode).size());
         }
-        List<Integer> slotsToMove = slots.subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
+        List<Integer> slotsToMove = slots
+            .subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
         nodeSlotMap.get(curNode).addAll(slotsToMove);
         for (Integer slot : slotsToMove) {
           // record what node previously hold the integer

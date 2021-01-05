@@ -113,7 +113,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     // 1.collect tsfile
     collectTsFiles();
 
-    //2.register the measurement
+    // 2.register the measurement
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
       int slotNum = entry.getKey();
       FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,

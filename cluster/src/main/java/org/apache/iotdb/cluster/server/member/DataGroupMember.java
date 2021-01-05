@@ -572,8 +572,9 @@ public class DataGroupMember extends RaftMember {
    * @return the path of the directory that is provided exclusively for the member.
    */
   private String getMemberDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator +
-        "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
+    return IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "raft"
+        + File.separator + getHeader().nodeIdentifier + File.separator + getRaftGroupId()
+        + File.separator;
   }
 
   public MetaGroupMember getMetaGroupMember() {
@@ -625,8 +626,8 @@ public class DataGroupMember extends RaftMember {
         RaftNode raftNode = metaGroupMember.getPartitionTable().routeToHeaderByTime(storageGroupName,
             partitionId * StorageEngine.getTimePartitionInterval());
         DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(raftNode);
-        if (localDataMember.getHeader().equals(this.getHeader())) {
-          localListPair.add(new Pair<>(partitionId, pair.right));
+        if (localDataMember.getHeader().equals(thisNode)) {
+          localListPair.add(pair);
         }
       }
       try {

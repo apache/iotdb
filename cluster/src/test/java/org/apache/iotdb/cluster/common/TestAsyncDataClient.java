@@ -117,7 +117,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
+  public void readFile(String filePath, long offset, int length, int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(() -> {
       File file = new File(filePath);

@@ -132,6 +132,7 @@ struct StartUpStatus {
   3: required int replicationNumber
   4: required list<Node> seedNodeList
   5: required string clusterName
+  6: required int multiRaftFactor
 }
 
 // follower -> leader
@@ -141,6 +142,7 @@ struct CheckStatusResponse {
   3: required bool replicationNumEquals
   4: required bool seedNodeEquals
   5: required bool clusterNameEquals
+  6: required bool multiRaftFactorEquals
 }
 
 struct SendSnapshotRequest {
@@ -319,7 +321,7 @@ service RaftService {
   * bytes, only the remaining will be returned.
   * Notice that when the last chunk of the file is read, the file will be deleted immediately.
   **/
-  binary readFile(1:string filePath, 2:long offset, 3:int length)
+  binary readFile(1:string filePath, 2:long offset, 3:int length, 4: int raftId)
 
   /**
   * Test if a log of "index" and "term" exists.
@@ -330,7 +332,7 @@ service RaftService {
   * When a follower finds that it already has a file in a snapshot locally, it calls this
   * interface to notify the leader to remove the associated hardlink.
   **/
-  void removeHardLink(1: string hardLinkPath)
+  void removeHardLink(1: string hardLinkPath, 2: int raftId)
 }
 
 

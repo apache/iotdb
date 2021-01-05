@@ -64,7 +64,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
@@ -94,7 +93,7 @@ public class SyncClientAdaptorTest {
   @Before
   public void setUp() {
     nodeStatus = new TNodeStatus();
-    checkStatusResponse = new CheckStatusResponse(true, false, true, false, true);
+    checkStatusResponse = new CheckStatusResponse(true, false, true, false, true, true);
     addNodeResponse = new AddNodeResponse((int) Response.RESPONSE_AGREE);
     aggregateResults = Arrays.asList(ByteBuffer.wrap("1".getBytes()),
         ByteBuffer.wrap("2".getBytes()), ByteBuffer.wrap("2".getBytes()));
@@ -247,7 +246,7 @@ public class SyncClientAdaptorTest {
       }
 
       @Override
-      public void readFile(String filePath, long offset, int length,
+      public void readFile(String filePath, long offset, int length, int raftId,
           AsyncMethodCallback<ByteBuffer> resultHandler) {
         resultHandler.onComplete(readFileResult);
       }
@@ -338,7 +337,7 @@ public class SyncClientAdaptorTest {
         TestUtils.getNode(0), 0, paths));
     assertEquals(1L, (long) SyncClientAdaptor.getGroupByExecutor(dataClient, new GroupByRequest()));
     assertEquals(fillResult, SyncClientAdaptor.previousFill(dataClient, new PreviousFillRequest()));
-    assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000));
+    assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000, 0));
     assertEquals(aggregateResults, SyncClientAdaptor.getGroupByResult(dataClient,
         TestUtils.getNode(0), 0, 1, 1, 2));
     assertEquals(peekNextNotNullValueResult, SyncClientAdaptor.peekNextNotNullValue(dataClient,

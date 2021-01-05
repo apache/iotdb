@@ -532,6 +532,7 @@ public class MetaGroupMember extends RaftMember {
     newStartUpStatus
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     newStartUpStatus.setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
+    newStartUpStatus.setMultiRaftFactor(ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor());
     List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<Node> seedNodeList = new ArrayList<>();
     for (String seedUrl : seedUrls) {
@@ -545,7 +546,7 @@ public class MetaGroupMember extends RaftMember {
    * Send a join cluster request to "node". If the joining is accepted, set the partition table,
    * start DataClusterServer and ClientServer and initialize DataGroupMembers.
    *
-   * @return rue if the node has successfully joined the cluster, false otherwise.
+   * @return true if the node has successfully joined the cluster, false otherwise.
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException, ConfigInconsistentException {
@@ -594,18 +595,17 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void handleConfigInconsistency(AddNodeResponse resp) throws ConfigInconsistentException {
-    if (logger.isInfoEnabled()) {
-      CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-      String parameters =
-          (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
-              + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
-              + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
-              + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
-              + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName");
-      logger.error(
-          "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
-          parameters.substring(1));
-    }
+    CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
+    String parameters =
+        (checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval")
+            + (checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt")
+            + (checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number")
+            + (checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes")
+            + (checkStatusResponse.isClusterNameEquals() ? "" : ", clusterName")
+            + (checkStatusResponse.isMultiRaftFactorEquals() ? "" : ", multiRaftFactor");
+    logger.error(
+        "The start up configuration{} conflicts the cluster. Please reset the configurations. ",
+        parameters.substring(1));
     throw new ConfigInconsistentException();
   }
 
@@ -897,6 +897,7 @@ public class MetaGroupMember extends RaftMember {
     long remotePartitionInterval = remoteStartUpStatus.getPartitionInterval();
     int remoteHashSalt = remoteStartUpStatus.getHashSalt();
     int remoteReplicationNum = remoteStartUpStatus.getReplicationNumber();
+    int remoteMultiRaftFactor = remoteStartUpStatus.getMultiRaftFactor();
     String remoteClusterName = remoteStartUpStatus.getClusterName();
     List<Node> remoteSeedNodeList = remoteStartUpStatus.getSeedNodeList();
     long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
@@ -904,7 +905,9 @@ public class MetaGroupMember extends RaftMember {
     int localHashSalt = ClusterConstant.HASH_SALT;
     int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     String localClusterName = ClusterDescriptor.getInstance().getConfig().getClusterName();
+    int localMultiRaftFactor = ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor();
     boolean partitionIntervalEquals = true;
+    boolean multiRaftFactorEquals = true;
     boolean hashSaltEquals = true;
     boolean replicationNumEquals = true;
     boolean seedNodeEquals = true;
@@ -914,6 +917,11 @@ public class MetaGroupMember extends RaftMember {
       partitionIntervalEquals = false;
       logger.info("Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
           localPartitionInterval, remotePartitionInterval);
+    }
+    if (localMultiRaftFactor != remoteMultiRaftFactor) {
+      multiRaftFactorEquals = false;
+      logger.info("Remote multi-raft factor conflicts with the leader's. Leader: {}, remote: {}",
+          localMultiRaftFactor, remoteMultiRaftFactor);
     }
     if (localHashSalt != remoteHashSalt) {
       hashSaltEquals = false;
@@ -938,11 +946,11 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals
-        && clusterNameEquals)) {
+        && clusterNameEquals && multiRaftFactorEquals)) {
       response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
       response.setCheckStatusResponse(
           new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-              replicationNumEquals, seedNodeEquals, clusterNameEquals));
+              replicationNumEquals, seedNodeEquals, clusterNameEquals, multiRaftFactorEquals));
       return false;
     }
     return true;

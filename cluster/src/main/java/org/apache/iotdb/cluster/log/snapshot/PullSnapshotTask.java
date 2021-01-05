@@ -80,6 +80,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
     this.newMember = newMember;
     this.snapshotFactory = snapshotFactory;
     this.snapshotSave = snapshotSave;
+    persistTask();
   }
 
   @SuppressWarnings("java:S3740") // type cannot be known ahead
@@ -162,9 +163,9 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
 
   @Override
   public Void call() {
-    persistTask();
     request = new PullSnapshotRequest();
     request.setHeader(descriptor.getPreviousHolders().getHeader());
+    request.setRaftId(descriptor.getPreviousHolders().getId());
     request.setRequiredSlots(descriptor.getSlots());
     request.setRequireReadOnly(descriptor.isRequireReadOnly());
 

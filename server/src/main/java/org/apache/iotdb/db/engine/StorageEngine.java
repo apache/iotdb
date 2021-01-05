@@ -500,9 +500,7 @@ public class StorageEngine implements IService {
    * @throws StorageGroupNotSetException
    */
   public void closeStorageGroupProcessor(PartialPath storageGroupPath, long partitionId,
-      boolean isSeq,
-      boolean isSync)
-      throws StorageGroupNotSetException {
+      boolean isSeq, boolean isSync) throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
       throw new StorageGroupNotSetException(storageGroupPath.getFullPath());

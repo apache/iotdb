@@ -137,6 +137,7 @@ public class MetaPuller {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
+    pullSchemaRequest.setRaftId(partitionGroup.getId());
     pullSchemaRequest.setPrefixPaths(prefixPaths.stream().map(PartialPath::getFullPath).collect(
         Collectors.toList()));
 

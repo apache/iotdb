@@ -62,7 +62,7 @@ public abstract class DataSnapshotTest {
       public AsyncClient getAsyncClient(Node node) {
         return new AsyncDataClient(null, null, null) {
           @Override
-          public void readFile(String filePath, long offset, int length,
+          public void readFile(String filePath, long offset, int length, int raftId,
               AsyncMethodCallback<ByteBuffer> resultHandler) {
             new Thread(() -> {
               if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
@@ -79,8 +79,7 @@ public abstract class DataSnapshotTest {
           }
 
           @Override
-          public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler)
-              throws TException {
+          public void removeHardLink(String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
             new Thread(() -> {
               try {
                 Files.deleteIfExists(new File(hardLinkPath).toPath());
@@ -121,7 +120,7 @@ public abstract class DataSnapshotTest {
           }
         })) {
           @Override
-          public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+          public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
             if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
               // simulate failures
               throw new TException("Faked network failure");

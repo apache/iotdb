@@ -119,7 +119,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
           }
 
           @Override
-          public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+          public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
             try {
               return IOUtils.readFile(filePath, offset, length);
             } catch (IOException e) {

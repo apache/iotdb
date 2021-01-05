@@ -104,7 +104,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
+  public void readFile(String filePath, long offset, int length, int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
@@ -114,7 +114,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath,
+  public void removeHardLink(String hardLinkPath, int raftId,
       AsyncMethodCallback<Void> resultHandler) {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());

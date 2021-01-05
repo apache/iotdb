@@ -387,12 +387,12 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer readFile(AsyncDataClient client, String remotePath, long offset,
-      int fetchSize)
+      int fetchSize, int raftId)
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
 
-    client.readFile(remotePath, offset, fetchSize, handler);
+    client.readFile(remotePath, offset, fetchSize, raftId, handler);
     return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 

@@ -679,6 +679,7 @@ public class CMManager extends MManager {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
+    pullSchemaRequest.setRaftId(partitionGroup.getId());
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     // decide the node access order with the help of QueryCoordinator

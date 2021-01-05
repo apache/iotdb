@@ -317,12 +317,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length,
+  public void readFile(String filePath, long offset, int length, int raftId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataAsyncService service = getDataAsyncService(new RaftNode(thisNode, 0), resultHandler,
+    DataAsyncService service = getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler,
         "Read file:" + filePath);
     if (service != null) {
-      service.readFile(filePath, offset, length, resultHandler);
+      service.readFile(filePath, offset, length, raftId, resultHandler);
     }
   }
 
@@ -849,8 +849,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
-    return getDataSyncService(new RaftNode(thisNode, 0)).readFile(filePath, offset, length);
+  public ByteBuffer readFile(String filePath, long offset, int length, int raftId) throws TException {
+    return getDataSyncService(new RaftNode(thisNode, raftId)).readFile(filePath, offset, length, raftId);
   }
 
   @Override
@@ -874,14 +874,14 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath) throws TException {
-    getDataSyncService(new RaftNode(thisNode, 0)).removeHardLink(hardLinkPath);
+  public void removeHardLink(String hardLinkPath, int raftId) throws TException {
+    getDataSyncService(new RaftNode(thisNode, raftId)).removeHardLink(hardLinkPath, raftId);
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath,
+  public void removeHardLink(String hardLinkPath, int raftId,
       AsyncMethodCallback<Void> resultHandler) {
-    getDataAsyncService(new RaftNode(thisNode, 0), resultHandler, hardLinkPath).removeHardLink(hardLinkPath,
+    getDataAsyncService(new RaftNode(thisNode, raftId), resultHandler, hardLinkPath).removeHardLink(hardLinkPath, raftId,
         resultHandler);
   }
 }

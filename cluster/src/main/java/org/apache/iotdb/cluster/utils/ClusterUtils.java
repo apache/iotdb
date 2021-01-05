@@ -82,11 +82,17 @@ public class ClusterUtils {
     boolean replicationNumEquals = true;
     boolean seedNodeListEquals = true;
     boolean clusterNameEqual = true;
+    boolean multiRaftFactorEqual = true;
 
     if (localStartUpStatus.getPartitionInterval() != remoteStartUpStatus.getPartitionInterval()) {
       partitionIntervalEquals = false;
       logger.error("Remote partition interval conflicts with local. local: {}, remote: {}",
           localStartUpStatus.getPartitionInterval(), remoteStartUpStatus.getPartitionInterval());
+    }
+    if (localStartUpStatus.getMultiRaftFactor() != remoteStartUpStatus.getMultiRaftFactor()) {
+      multiRaftFactorEqual = false;
+      logger.error("Remote multi-raft factor conflicts with local. local: {}, remote: {}",
+          localStartUpStatus.getMultiRaftFactor(), remoteStartUpStatus.getMultiRaftFactor());
     }
     if (localStartUpStatus.getHashSalt() != remoteStartUpStatus.getHashSalt()) {
       hashSaltEquals = false;
@@ -115,7 +121,7 @@ public class ClusterUtils {
     }
 
     return new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-        replicationNumEquals, seedNodeListEquals, clusterNameEqual);
+        replicationNumEquals, seedNodeListEquals, clusterNameEqual, multiRaftFactorEqual);
   }
 
   public static boolean checkSeedNodes(boolean isClusterEstablished, List<Node> localSeedNodes,

@@ -222,7 +222,7 @@ public class DataGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
+            public void removeHardLink(String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
               new Thread(() -> {
                 try {
                   Files.deleteIfExists(new File(hardLinkPath).toPath());

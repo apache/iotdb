@@ -59,6 +59,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   private void doSnapshotCatchUp()
       throws TException, InterruptedException, LeaderUnknownException {
     SendSnapshotRequest request = new SendSnapshotRequest();
+    request.setRaftId(raftMember.getRaftGroupId());
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
