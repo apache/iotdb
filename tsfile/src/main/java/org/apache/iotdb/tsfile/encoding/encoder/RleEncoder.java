@@ -121,7 +121,7 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
   /**
    * constructor.
    */
-  public RleEncoder() {
+  protected RleEncoder() {
     super(TSEncoding.RLE);
     bytesBuffer = new ArrayList<>();
     isBitPackRun = false;

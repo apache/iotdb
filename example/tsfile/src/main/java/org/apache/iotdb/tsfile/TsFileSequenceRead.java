@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class TsFileSequenceRead {
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S106"}) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename = "test.tsfile";
     if (args.length >= 1) {

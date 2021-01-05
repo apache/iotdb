@@ -59,7 +59,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
     this.sumValue = sum;
   }
 
-  private void updateStats(boolean firstValue, boolean lastValue, long sum) {
+  private void updateStats(boolean lastValue, long sum) {
     this.lastValue = lastValue;
     this.sumValue += sum;
   }
@@ -83,7 +83,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
       initializeStats(value, value, value ? 1 : 0);
       isEmpty = false;
     } else {
-      updateStats(value, value, value ? 1 : 0);
+      updateStats(value, value ? 1 : 0);
     }
   }
 

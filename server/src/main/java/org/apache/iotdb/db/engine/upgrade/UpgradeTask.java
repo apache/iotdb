@@ -139,8 +139,6 @@ public class UpgradeTask extends WrappedRunnable {
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } catch (Exception e) {
-      logger
-          .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
       throw e;
     } finally {
       upgradeResource.readUnlock();

@@ -308,11 +308,11 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private void writePageToPageBuffer() {
     try {
-      int sizeWithoutStatistic = pageWriter
+      int size = pageWriter
           .writePageHeaderAndDataIntoBuff(pageBuffer, numOfPages == 0);
       if (numOfPages == 0) { // record the firstPageStatistics
         this.firstPageStatistics = pageWriter.getStatistics();
-        this.sizeWithoutStatistic = sizeWithoutStatistic;
+        this.sizeWithoutStatistic = size;
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         byte[] b = pageBuffer.toByteArray();
         pageBuffer.reset();

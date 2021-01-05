@@ -179,8 +179,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
-            logger.error("Unrecognized marker detected, this file may be corrupted");
-            throw new IOException();
+            throw new IOException("Unrecognized marker detected, "
+                + "this file may be corrupted");
         }
       }
       // close upgraded tsFiles and generate resources for them
@@ -188,9 +188,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
     } catch (IOException e2) {
-      logger.info("TsFile upgrade process cannot proceed at position {} " +
-          "because : {}", reader.position(), e2);
-      throw e2;
+      throw new IOException("TsFile upgrade process cannot proceed at position " +
+          reader.position() + "because: " + e2.getMessage());
     } finally {
       if (reader != null) {
         reader.close();

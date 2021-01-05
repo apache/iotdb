@@ -359,6 +359,7 @@ public class IoTDBConfigCheck {
     logger.info("Move version-2 TsFile successfully");
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void moveFileToUpgradeFolder(List<String> folders) {
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir);

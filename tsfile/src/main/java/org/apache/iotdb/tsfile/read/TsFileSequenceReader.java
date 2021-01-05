@@ -932,8 +932,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || !(TSFileConfig.VERSION_NUMBER
-        == readVersionNumber())) {
+    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic()) || (TSFileConfig.VERSION_NUMBER
+        != readVersionNumber())) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
@@ -1052,7 +1052,6 @@ public class TsFileSequenceReader implements AutoCloseable {
                       .putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
                 }
               }
-              measurementSchemaList = new ArrayList<>();
               // last chunk group Metadata
               chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
               lastDeviceId = null;

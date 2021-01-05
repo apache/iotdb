@@ -59,15 +59,15 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileIOWriter {
 
-  public static final byte[] magicStringBytes;
-  public static final byte versionNumberByte;
+  public static final byte[] MAGIC_STRING_BYTES;
+  public static final byte VERSION_NUMBER_BYTE;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   static {
-    magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
-    versionNumberByte = TSFileConfig.VERSION_NUMBER;
+    MAGIC_STRING_BYTES = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
+    VERSION_NUMBER_BYTE = TSFileConfig.VERSION_NUMBER;
   }
 
   protected TsFileOutput out;
@@ -137,8 +137,8 @@ public class TsFileIOWriter {
   }
 
   protected void startFile() throws IOException {
-    out.write(magicStringBytes);
-    out.write(versionNumberByte);
+    out.write(MAGIC_STRING_BYTES);
+    out.write(VERSION_NUMBER_BYTE);
   }
 
   public void startChunkGroup(String deviceId) throws IOException {
@@ -260,7 +260,7 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.
 
     // write magic string
-    out.write(magicStringBytes);
+    out.write(MAGIC_STRING_BYTES);
 
     // close file
     out.close();
