@@ -59,8 +59,14 @@ public class UnCommittedEntryManager {
    */
   long maybeLastIndex() {
     int entryNum = entries.size();
-    if (entryNum != 0) {
-      return offset + entryNum - 1;
+    while (entryNum != 0) {
+      try {
+        return entries.get(entryNum - 1).getCurrLogIndex();
+      } catch (IndexOutOfBoundsException e) {
+        // the exception is thrown when there is a concurrent deletion, which is rare, so a retry
+        // is usually enough and it is not likely that we will get stuck here
+        entryNum = entries.size();
+      }
     }
     return -1;
   }
