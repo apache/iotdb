@@ -572,7 +572,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
    * if level < maxLevel-1, the file need compaction else, the file can be merged later
    */
   private File createNewTsFileName(File sourceFile, int level) {
-    String path = sourceFile.getAbsolutePath();
+    String path = sourceFile.getPath();
     String prefixPath = path.substring(0, path.lastIndexOf(FILE_NAME_SEPARATOR) + 1);
     return new File(prefixPath + level + TSFILE_SUFFIX);
   }
@@ -617,7 +617,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .values()) {
         for (SortedSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }
@@ -628,7 +629,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .values()) {
         for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }
