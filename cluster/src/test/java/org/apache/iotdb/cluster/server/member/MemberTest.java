@@ -71,11 +71,9 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MemberTest {
-private static final Logger logger = LoggerFactory.getLogger(MemberTest.class);
+
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
   Map<Node, DataGroupMember> dataGroupMemberMap;
@@ -156,7 +154,6 @@ private static final Logger logger = LoggerFactory.getLogger(MemberTest.class);
 
     testMetaMember.setPartitionTable(partitionTable);
     MetaPuller.getInstance().init(testMetaMember);
-    logger.warn("Member test set up");
   }
 
   @After

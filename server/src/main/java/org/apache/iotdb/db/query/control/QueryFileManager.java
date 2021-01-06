@@ -121,9 +121,7 @@ public class QueryFileManager {
     if (!pathMap.get(queryId).contains(tsFile)) {
       pathMap.get(queryId).add(tsFile);
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
-      logger.warn("{} is read-locked by {}", tsFile, queryId, new Exception());
     }
   }
 
-  private static final Logger logger = LoggerFactory.getLogger(QueryFileManager.class);
 }
