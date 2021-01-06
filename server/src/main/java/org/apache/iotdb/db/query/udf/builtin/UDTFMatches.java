@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -31,7 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDTFMatches implements UDTF {
 
-  private String regex;
+  private Pattern pattern;
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
@@ -43,7 +44,7 @@ public class UDTFMatches implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    regex = parameters.getString("regex");
+    pattern = Pattern.compile(parameters.getString("regex"));
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
         .setOutputDataType(TSDataType.BOOLEAN);
@@ -51,6 +52,6 @@ public class UDTFMatches implements UDTF {
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
-    collector.putBoolean(row.getTime(), row.getString(0).matches(regex));
+    collector.putBoolean(row.getTime(), pattern.matcher(row.getString(0)).matches());
   }
 }
