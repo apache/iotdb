@@ -1869,10 +1869,7 @@ public class StorageGroupProcessor {
 
       for (MNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
-          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
-          if (lastPair != null) {
-            ((MeasurementMNode) measurementNode).resetCache();
-          }
+          ((MeasurementMNode) measurementNode).resetCache();
         }
       }
     } catch (MetadataException e) {
