@@ -1082,7 +1082,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         statusList.add(status);
       } catch (Exception e) {
         isAllSuccessful = false;
-        statusList.add(onNPEOrUnexpectedException(e, "inserting in batch",
+        statusList.add(onNPEOrUnexpectedException(e, "inserting records",
             TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
@@ -1115,7 +1115,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (Exception e) {
-      statusList.add(onNPEOrUnexpectedException(e, "inserting in batch",
+      statusList.add(onNPEOrUnexpectedException(e, "inserting records of one device",
           TSStatusCode.INTERNAL_SERVER_ERROR));
     }
 
@@ -1156,7 +1156,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         statusList.add(status);
       } catch (Exception e) {
         isAllSuccessful = false;
-        statusList.add(onNPEOrUnexpectedException(e, "inserting in batch",
+        statusList.add(onNPEOrUnexpectedException(e, "inserting string records",
             TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
