@@ -41,4 +41,11 @@ public enum TimeIndexLevel {
         return new DeviceTimeIndex(deviceNumInLastClosedTsFile);
     }
   }
+
+  public static TimeIndexLevel valueOf(int ordinal) {
+    if (ordinal < 0 || ordinal >= values().length) {
+      throw new IndexOutOfBoundsException("Invalid ordinal");
+    }
+    return values()[ordinal];
+  }
 }

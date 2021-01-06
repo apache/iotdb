@@ -38,6 +38,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -70,6 +71,11 @@ public class TsFileResource {
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
 
+  /**
+   * version number
+   */
+  public static final byte versionNumber = 1;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
@@ -77,6 +83,11 @@ public class TsFileResource {
   private TsFileProcessor processor;
 
   protected ITimeIndex timeIndex;
+
+  /**
+   * time index type, fileTimeIndex = 0, deviceTimeIndex = 1
+   */
+  private byte timeIndexType;
 
   private ModificationFile modFile;
 
@@ -147,6 +158,7 @@ public class TsFileResource {
     this.file = other.file;
     this.processor = other.processor;
     this.timeIndex = other.timeIndex;
+    this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
@@ -166,6 +178,7 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
   /**
@@ -174,6 +187,7 @@ public class TsFileResource {
   public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
     this.file = file;
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
+    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
@@ -185,6 +199,7 @@ public class TsFileResource {
       throws IOException {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
+    this.timeIndexType = originTsFileResource.timeIndexType;
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
@@ -196,6 +211,7 @@ public class TsFileResource {
       long[] endTimes) {
     this.file = file;
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
+    this.timeIndexType = 1;
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
@@ -234,6 +250,8 @@ public class TsFileResource {
   public synchronized void serialize() throws IOException {
     try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
+      ReadWriteIOUtils.write(versionNumber, outputStream);
+      ReadWriteIOUtils.write(timeIndexType, outputStream);
       timeIndex.serialize(outputStream);
 
       ReadWriteIOUtils.write(maxPlanIndex, outputStream);
@@ -253,7 +271,9 @@ public class TsFileResource {
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
-      timeIndex = config.getTimeIndexLevel().getTimeIndex().deserialize(inputStream);
+      readVersionNumber(inputStream);
+      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
+      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -265,6 +285,13 @@ public class TsFileResource {
         }
       }
     }
+  }
+
+  /**
+   * read version number, used for checking compatibility of TsFileResource in the future
+   */
+  private byte readVersionNumber(InputStream inputStream) throws IOException {
+    return ReadWriteIOUtils.readBytes(inputStream, 1)[0];
   }
 
   public void updateStartTime(String device, long time) {

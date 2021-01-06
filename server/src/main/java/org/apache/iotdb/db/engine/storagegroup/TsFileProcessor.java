@@ -123,6 +123,7 @@ public class TsFileProcessor {
   private List<CloseFileListener> closeFileListeners = new ArrayList<>();
   private List<FlushListener> flushListeners = new ArrayList<>();
 
+  @SuppressWarnings("squid:S107")
   TsFileProcessor(String storageGroupName, File tsfile,
       StorageGroupInfo storageGroupInfo,
       VersionController versionController,
