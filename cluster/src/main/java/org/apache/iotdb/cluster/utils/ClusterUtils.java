@@ -222,11 +222,12 @@ public class ClusterUtils {
       // break the loop and establish the cluster
       return true;
     } else if (inconsistentNum > 0) {
-      // can't connect other nodes, try in next turn
-      return false;
-    } else {
       // find config InConsistence, stop building cluster
       throw new ConfigInconsistentException();
+    } else {
+      // The status of some nodes was not obtained, possibly because those node did not start successfully,
+      // this node can't connect to those nodes, try in next turn
+      return false;
     }
   }
 
