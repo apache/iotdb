@@ -23,8 +23,12 @@ import org.apache.iotdb.db.utils.TestOnly;
 
 public class ClusterConstant {
 
-  private static long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
-  private static long ELECTION_RANDOM_TIME_OUT_MS = 3 * 1000L;
+  /**
+   * We only change the two values in tests to reduce test time, so they are essentially constant.
+   */
+  private static long electionLeastTimeOutMs = 2 * 1000L;
+  private static long electionRandomTimeOutMs = 3 * 1000L;
+
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
@@ -44,20 +48,20 @@ public class ClusterConstant {
    * interval, or a stale node may frequently issue elections and thus makes the leader step down
    */
   public static long getElectionLeastTimeOutMs() {
-    return ELECTION_LEAST_TIME_OUT_MS;
+    return electionLeastTimeOutMs;
   }
 
   public static long getElectionRandomTimeOutMs() {
-    return ELECTION_RANDOM_TIME_OUT_MS;
+    return electionRandomTimeOutMs;
   }
 
   @TestOnly
   public static void setElectionLeastTimeOutMs(long electionLeastTimeOutMs) {
-    ELECTION_LEAST_TIME_OUT_MS = electionLeastTimeOutMs;
+    ClusterConstant.electionLeastTimeOutMs = electionLeastTimeOutMs;
   }
 
   @TestOnly
   public static void setElectionRandomTimeOutMs(long electionRandomTimeOutMs) {
-    ELECTION_RANDOM_TIME_OUT_MS = electionRandomTimeOutMs;
+    ClusterConstant.electionRandomTimeOutMs = electionRandomTimeOutMs;
   }
 }

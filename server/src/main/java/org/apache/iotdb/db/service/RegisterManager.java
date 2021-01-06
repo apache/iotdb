@@ -31,7 +31,7 @@ public class RegisterManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RegisterManager.class);
   private List<IService> iServices;
-  private static long DEREGISTER_TIME_OUT = 10_000L;
+  private static long deregisterTimeOut = 10_000L;
 
   public RegisterManager() {
     iServices = new ArrayList<>();
@@ -59,7 +59,7 @@ public class RegisterManager {
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        service.waitAndStop(DEREGISTER_TIME_OUT);
+        service.waitAndStop(deregisterTimeOut);
         logger.info("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
@@ -76,7 +76,7 @@ public class RegisterManager {
     //we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
-      service.shutdown(DEREGISTER_TIME_OUT);
+      service.shutdown(deregisterTimeOut);
     }
     iServices.clear();
     logger.info("deregister all service.");
@@ -84,6 +84,6 @@ public class RegisterManager {
 
   @TestOnly
   public static void setDeregisterTimeOut(long deregisterTimeOut) {
-    DEREGISTER_TIME_OUT = deregisterTimeOut;
+    RegisterManager.deregisterTimeOut = deregisterTimeOut;
   }
 }
