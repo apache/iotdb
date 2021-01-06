@@ -221,7 +221,7 @@ public class ClusterUtils {
     if (consistentNum == totalSeedNum) {
       // break the loop and establish the cluster
       return true;
-    } else if (inconsistentNum == 0) {
+    } else if (inconsistentNum > 0) {
       // can't connect other nodes, try in next turn
       return false;
     } else {
