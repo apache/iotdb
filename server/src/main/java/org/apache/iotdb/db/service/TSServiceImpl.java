@@ -448,32 +448,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         result.add(resp.status);
         return false;
       }
-    } catch (ParseCancellationException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(ERROR_PARSING_SQL, statement + " " + e.getMessage());
-      result.add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
-      return false;
-    } catch (SQLParserException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER
-          .warn("Error occurred when executing {}, check metadata error: ", statement, e);
-      result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
-      return false;
-    } catch (QueryProcessException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.info(
-          "Error occurred when executing {}, meet error while parsing SQL to physical plan: {}",
-          statement, e.getMessage());
-      result.add(RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR, MEET_ERROR_IN_QUERY_PROCESS + e.getMessage()));
-      return false;
-    } catch (QueryInBatchStatementException e) {
-      LOGGER.info("Error occurred when executing {}, query statement not allowed: ", statement, e);
-      result.add(
-          RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED,
-              "query statement not allowed: " + statement));
-      return false;
     } catch (Exception e) {
+      TSStatus status = tryCatchQueryException(e);
+      if (status != null) {
+        result.add(status);
+        return false;
+      }
       result.add(onNPEOrUnexpectedException(e, "executing " + statement,
           TSStatusCode.INTERNAL_SERVER_ERROR));
     }
@@ -496,22 +476,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           ? internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
           req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()))
           : executeUpdateStatement(physicalPlan, req.getSessionId());
-    } catch (ParseCancellationException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER
-          .warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
-    } catch (SQLParserException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(CHECK_METADATA_ERROR, e);
-      return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
-    } catch (QueryProcessException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.info(ERROR_PARSING_SQL, e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
-          MEET_ERROR_IN_QUERY_PROCESS + e.getMessage()));
     } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onNPEOrUnexpectedException(e, "executing executeStatement",
-              TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSExecuteStatementResp(onException(e, "executing executeStatement"));
     }
   }
 
@@ -532,24 +498,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
-    } catch (ParseCancellationException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER
-          .warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + e.getMessage());
-    } catch (SQLParserException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(CHECK_METADATA_ERROR, e);
-      return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
-    } catch (QueryProcessException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(MEET_ERROR_IN_QUERY_PROCESS, e);
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
-              MEET_ERROR_IN_QUERY_PROCESS + e.getMessage()));
     } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onNPEOrUnexpectedException(e, "executing executeQueryStatement",
-              TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSExecuteStatementResp(onException(e, "executing executeQueryStatement"));
     }
   }
 
@@ -567,22 +517,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR,
               "Statement is not a query statement.");
-    } catch (ParseCancellationException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(ERROR_PARSING_SQL, e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + e.getMessage());
-    } catch (SQLParserException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(CHECK_METADATA_ERROR, e);
-      return RpcUtils.getTSExecuteStatementResp(
-          TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
-    } catch (QueryProcessException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(MEET_ERROR_IN_QUERY_PROCESS, e);
-      return RpcUtils.getTSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
-          MEET_ERROR_IN_QUERY_PROCESS + e.getMessage()));
     } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onNPEOrUnexpectedException(e, "executing executeRawDataQuery",
-              TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSExecuteStatementResp(onException(e, "executing executeRawDataQuery"));
     }
   }
 
@@ -1015,13 +951,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     String statement = req.getStatement();
     try {
       return executeUpdateStatement(statement, req.getSessionId());
-    } catch (QueryProcessException | SQLParserException e) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(ERROR_PARSING_SQL, statement, e);
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onNPEOrUnexpectedException(e, "executing update statement",
-              TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSExecuteStatementResp(onException(e, "executing update statement"));
     }
   }
 
@@ -1659,6 +1590,30 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return SchemaUtils.getSeriesTypeByPath(path);
   }
 
+  private TSStatus onException(Exception e, String operation) {
+    TSStatus status = tryCatchQueryException(e);
+    return status != null ? status : onNPEOrUnexpectedException(e, operation,
+        TSStatusCode.INTERNAL_SERVER_ERROR);
+  }
+
+  private TSStatus tryCatchQueryException(Exception e) {
+    if (e instanceof ParseCancellationException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(ERROR_PARSING_SQL, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + e.getMessage());
+    } else if (e instanceof SQLParserException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(CHECK_METADATA_ERROR, e);
+      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
+    } else if (e instanceof QueryProcessException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(MEET_ERROR_IN_QUERY_PROCESS, e);
+      return RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
+          MEET_ERROR_IN_QUERY_PROCESS + e.getMessage());
+    } else if (e instanceof QueryInBatchStatementException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn("query statement not allowed in batch: ", e);
+      return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, e.getMessage());
+    }
+    return null;
+  }
+
   private TSStatus onNPEOrUnexpectedException(Exception e, String operation,
       TSStatusCode statusCode) {
     String message = String
@@ -1672,6 +1627,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     while (cause.getCause() != null) {
       cause = cause.getCause();
     }
-    return new TSStatus(RpcUtils.getStatus(statusCode, message + e.getMessage()));
+    return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
 }
