@@ -160,10 +160,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       .getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
 
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
-  private static final String ERROR_PARSING_SQL =
-      "Error occurred while parsing SQL to physical plan: {}";
-  private static final String CHECK_METADATA_ERROR = "Check metadata error: ";
-  private static final String MEET_ERROR_IN_QUERY_PROCESS = "Error occurred in query process: ";
+  private static final String INFO_PARSING_SQL_ERROR = "Error occurred while parsing SQL to physical plan: ";
+  private static final String INFO_CHECK_METADATA_ERROR = "Check metadata error: ";
+  private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
+  private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR = "The query statement is not allowed in batch: ";
 
   private static final int MAX_SIZE = IoTDBDescriptor.getInstance().getConfig()
       .getQueryCacheSizeInMetric();
@@ -1600,18 +1600,21 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSStatus tryCatchQueryException(Exception e) {
     if (e instanceof ParseCancellationException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(ERROR_PARSING_SQL, e.getMessage());
-      return RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + e.getMessage());
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
+      return RpcUtils
+          .getStatus(TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + e.getMessage());
     } else if (e instanceof SQLParserException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(CHECK_METADATA_ERROR, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, CHECK_METADATA_ERROR + e.getMessage());
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
+      return RpcUtils
+          .getStatus(TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + e.getMessage());
     } else if (e instanceof QueryProcessException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(MEET_ERROR_IN_QUERY_PROCESS, e);
-      return RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
-          MEET_ERROR_IN_QUERY_PROCESS + e.getMessage());
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
+      return RpcUtils
+          .getStatus(TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + e.getMessage());
     } else if (e instanceof QueryInBatchStatementException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn("query statement not allowed in batch: ", e);
-      return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, e.getMessage());
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
+      return RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED,
+          INFO_NOT_ALLOWED_IN_BATCH_ERROR + e.getMessage());
     }
     return null;
   }
@@ -1619,7 +1622,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus onNPEOrUnexpectedException(Exception e, String operation,
       TSStatusCode statusCode) {
     String message = String
-        .format("[%s] Exception occurred while %s: ", statusCode.name(), operation);
+        .format("[%s] Exception occurred while %s. %s", statusCode.name(), operation,
+            System.lineSeparator());
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
     } else {
