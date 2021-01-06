@@ -389,6 +389,7 @@ The process of registering a UDF in IoTDB is as follows:
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
 3. Place the JAR package in the directory `iotdb-server-0.12.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.12.0-SNAPSHOT/ext/udf`.
+    
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
@@ -495,6 +496,63 @@ SHOW FUNCTIONS
 ## Configurable Properties
 
 When querying by a UDF, IoTDB may prompt that there is insufficient memory. You can resolve the issue by configuring `udf_initial_byte_array_length_for_memory_control`, `udf_memory_budget_in_mb` and `udf_reader_transformer_collector_memory_proportion` in `iotdb-engine.properties` and restarting the server.
+
+
+
+## Contribute UDF
+
+<!-- The template is copied and modified from the Apache Doris community-->
+
+This part mainly introduces how external users can contribute their own UDFs to the IoTDB community.
+
+
+
+### Prerequisites
+
+1. UDFs must be universal.
+
+   The "universal" mentioned here refers to: UDFs can be widely used in some scenarios. In other words, the UDF function must have reuse value and may be directly used by other users in the community.
+
+   If you are not sure whether the UDF you want to contribute is universal, you can send an email to `dev@iotdb.apache.org` or create an issue to initiate a discussion.
+
+2. The UDF you are going to contribute has been well tested and can run normally in the production environment.
+
+
+
+### What you need to prepare
+
+1. UDF source code
+2. Test cases
+3. Instructions
+
+
+
+#### UDF Source Code
+
+1. Create the UDF main class and related classes in `src/main/java/org/apache/iotdb/db/query/udf/builtin` or in its subfolders.
+2. Register your UDF in `src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`.
+
+
+
+#### Test Cases
+
+At a minimum, you need to write integration tests for the UDF.
+
+You can add a test class in `server/src/test/java/org/apache/iotdb/db/integration`. 
+
+
+
+#### Instructions
+
+The instructions need to include: the name and the function of the UDF, the attribute parameters that must be provided when the UDF is executed, the applicable scenarios, and the usage examples, etc.
+
+The instructions should be added in `docs/UserGuide/Operation Manual/DML Data Manipulation Language.md`.
+
+
+
+### Submit a PR
+
+When you have prepared the UDF source code, test cases, and instructions, you are ready to submit a Pull Request (PR) on [Github](https://github.com/apache/iotdb). You can refer to our code contribution guide to submit a PR: [Pull Request Guide](https://iotdb.apache.org/Development/HowToCommit.html).
 
 
 

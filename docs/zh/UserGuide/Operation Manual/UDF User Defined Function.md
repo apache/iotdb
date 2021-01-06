@@ -388,6 +388,7 @@ UDTF的结束方法，您可以在此方法中进行一些资源释放等的操�
 1. 实现一个完整的UDF类，假定这个类的全类名为`org.apache.iotdb.udf.ExampleUDTF`
 2. 将项目打成JAR包，如果您使用Maven管理项目，可以参考上述Maven项目示例的写法
 3. 将JAR包放置到目录 `iotdb-server-0.12.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.12.0-SNAPSHOT/ext/udf`的子目录）下。
+   
     > 您可以通过修改配置文件中的`udf_root_dir`来指定UDF加载Jar的根路径。
 4. 使用SQL语句注册该UDF，假定赋予该UDF的名字为`example`
 
@@ -496,6 +497,65 @@ SHOW FUNCTIONS
 ## 配置项
 
 在SQL语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
+
+
+
+## 贡献UDF
+
+<!-- The template is copied and modified from the Apache Doris community-->
+
+该部分主要讲述了外部用户如何将自己编写的 UDF 贡献给 IoTDB 社区。
+
+
+
+### 前提条件
+
+1. UDF 具有通用性。
+
+    通用性主要指的是：UDF 在某些业务场景下，可以被广泛使用。换言之，就是 UDF 具有复用价值，可被社区内其他用户直接使用。
+
+    如果您不确定自己写的 UDF 是否具有通用性，可以发邮件到 `dev@iotdb.apache.org` 或直接创建 ISSUE 发起讨论。
+
+2. UDF 已经完成测试，且能够正常运行在用户的生产环境中。
+
+
+
+### 贡献清单
+
+1. UDF 的源代码
+2. UDF 的测试用例
+3. UDF 的使用说明
+
+
+
+#### 源代码
+
+1. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin`或者它的子文件夹中创建 UDF 主类和相关的辅助类。
+2. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`中注册您编写的 UDF。
+
+
+
+#### 测试用例
+
+您至少需要为您贡献的 UDF 编写集成测试。
+
+您可以在`server/src/test/java/org/apache/iotdb/db/integration`中为您贡献的 UDF 新增一个测试类进行测试。
+
+
+
+#### 使用说明
+
+使用说明需要包含：UDF 的名称、UDF的作用、执行函数必须的属性参数、函数的适用的场景以及使用示例等。
+
+使用说明需包含中英文两个版本。应分别在 `docs/zh/UserGuide/Operation Manual/DML Data Manipulation Language.md` 和 `docs/UserGuide/Operation Manual/DML Data Manipulation Language.md` 中新增使用说明。
+
+
+
+### 提交PR
+
+当您准备好源代码、测试用例和使用说明后，就可以将 UDF 贡献到 IoTDB 社区了。在 [Github](https://github.com/apache/iotdb) 上面提交 Pull Request (PR) 即可。具体提交方式见：[Pull Request Guide](https://iotdb.apache.org/Development/HowToCommit.html)。
+
+当 PR 评审通过并被合并后，您的 UDF 就已经贡献给 IoTDB 社区了！
 
 
 
