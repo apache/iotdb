@@ -53,6 +53,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -88,6 +89,8 @@ public class SyncClient implements ISyncClient {
   private static final Logger logger = LoggerFactory.getLogger(SyncClient.class);
 
   private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
+
+  private static final IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int BATCH_LINE = 1000;
 
@@ -233,9 +236,9 @@ public class SyncClient implements ISyncClient {
     syncSchema();
 
     // 3. Sync all data
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    String[] dataDirs = ioTDBConfig.getDataDirs();
     logger.info("There are {} data dirs to be synced.", dataDirs.length);
-    for (int i = 0 ; i < dataDirs.length; i++) {
+    for (int i = 0; i < dataDirs.length; i++) {
       String dataDir = dataDirs[i];
       logger.info("Start to sync data in data dir {}, the process is {}/{}", dataDir, i + 1,
           dataDirs.length);
@@ -274,9 +277,10 @@ public class SyncClient implements ISyncClient {
 
   @Override
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
-    transport = new TFastFramedTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
-    TProtocol protocol = null;
-    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+    transport = new TFastFramedTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS),
+        ioTDBConfig.getThriftInitBufferSize(), ioTDBConfig.getThriftMaxFrameSize());
+    TProtocol protocol;
+    if (ioTDBConfig.isRpcThriftCompressionEnable()) {
       protocol = new TCompactProtocol(transport);
     } else {
       protocol = new TBinaryProtocol(transport);
@@ -296,10 +300,9 @@ public class SyncClient implements ISyncClient {
   public void confirmIdentity() throws SyncConnectionException {
     try (Socket socket = new Socket(config.getServerIp(), config.getServerPort())) {
       ConfirmInfo info = new ConfirmInfo(socket.getLocalAddress().getHostAddress(),
-          getOrCreateUUID(getUuidFile()),
-          IoTDBDescriptor.getInstance().getConfig().getPartitionInterval(), IoTDBConstant.VERSION);
-      SyncStatus status = serviceClient
-          .check(info);
+          getOrCreateUUID(getUuidFile()), ioTDBConfig.getPartitionInterval(),
+          IoTDBConstant.VERSION);
+      SyncStatus status = serviceClient.check(info);
       if (status.code != SUCCESS_CODE) {
         throw new SyncConnectionException(
             "The receiver rejected the synchronization task because " + status.msg);
@@ -432,14 +435,14 @@ public class SyncClient implements ISyncClient {
       if (syncSchemaLogFile.exists()) {
         try (BufferedReader br = new BufferedReader(new FileReader(syncSchemaLogFile))) {
           String pos = br.readLine();
-          if(pos != null) {
+          if (pos != null) {
             return Integer.parseInt(pos);
           }
         }
       }
     } catch (IOException e) {
       logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);
-    } catch (NumberFormatException e){
+    } catch (NumberFormatException e) {
       logger.error("Sync schema pos is not valid", e);
     }
     return 0;
@@ -514,8 +517,8 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void syncDeletedFilesNameInOneGroup(String sgName, Long timeRangeId, Set<File> deletedFilesName)
-      throws IOException {
+  public void syncDeletedFilesNameInOneGroup(String sgName, Long timeRangeId,
+      Set<File> deletedFilesName) throws IOException {
     if (deletedFilesName.isEmpty()) {
       logger.info("There has no deleted files to be synced in storage group {}", sgName);
       return;
@@ -615,7 +618,7 @@ public class SyncClient implements ISyncClient {
             ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
             bos.reset();
             SyncStatus status = serviceClient.syncData(buffToSend);
-            if(status.code == CONFLICT_CODE){
+            if (status.code == CONFLICT_CODE) {
               throw new SyncDeviceOwnerConflictException(status.msg);
             }
             if (status.code != SUCCESS_CODE) {
@@ -649,7 +652,7 @@ public class SyncClient implements ISyncClient {
     try (BufferedWriter bw = new BufferedWriter(new FileWriter(currentLocalFile))) {
       for (Map<Long, Set<File>> currentLocalFiles : lastLocalFilesMap.values()) {
         for (Set<File> files : currentLocalFiles.values()) {
-          for(File file: files) {
+          for (File file : files) {
             bw.write(file.getAbsolutePath());
             bw.newLine();
           }
@@ -677,23 +680,21 @@ public class SyncClient implements ISyncClient {
 
 
   private File getSchemaPosFile() {
-    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+    return new File(ioTDBConfig.getSyncDir(),
         config.getSyncReceiverName() + File.separator + SyncConstant.SCHEMA_POS_FILE_NAME);
   }
 
   private File getSchemaLogFile() {
-    return new File(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(),
-        MetadataConstant.METADATA_LOG);
+    return new File(ioTDBConfig.getSchemaDir(), MetadataConstant.METADATA_LOG);
   }
 
   private File getLockFile() {
-    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
+    return new File(ioTDBConfig.getSyncDir(),
         config.getSyncReceiverName() + File.separator + SyncConstant.LOCK_FILE_NAME);
   }
 
   private File getUuidFile() {
-    return new File(IoTDBDescriptor.getInstance().getConfig().getSyncDir(),
-        SyncConstant.UUID_FILE_NAME);
+    return new File(ioTDBConfig.getSyncDir(), SyncConstant.UUID_FILE_NAME);
   }
 
   private static class InstanceHolder {

@@ -49,7 +49,8 @@ public class Utils {
       }
     }
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
+      throw new IoTDBURLException(
+          "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
     }
     params.setHost(matcher.group(1));
     params.setPort(Integer.parseInt(matcher.group(2)));
@@ -60,8 +61,13 @@ public class Utils {
     if (info.containsKey(Config.AUTH_PASSWORD)) {
       params.setPassword(info.getProperty(Config.AUTH_PASSWORD));
     }
-
+    if (info.containsKey(Config.INITIAL_BUFFER_CAPACITY)) {
+      params.setInitialBufferCapacity(Integer.parseInt(
+          info.getProperty(Config.INITIAL_BUFFER_CAPACITY)));
+    }
+    if (info.containsKey(Config.MAX_FRAME_SIZE)) {
+      params.setMaxFrameSize(Integer.parseInt(info.getProperty(Config.MAX_FRAME_SIZE)));
+    }
     return params;
   }
-  
 }
