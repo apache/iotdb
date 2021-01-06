@@ -302,4 +302,5 @@
     <logger level="info" name="QUERY_FREQUENCY">
         <appender-ref ref="QUERY_FREQUENCY"/>
     </logger>
+    <logger level="info" name="DETAILED_FAILURE_QUERY_TRACE"/>
 </configuration>
