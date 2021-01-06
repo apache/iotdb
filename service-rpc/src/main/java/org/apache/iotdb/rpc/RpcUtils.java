@@ -19,6 +19,10 @@
 package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -124,6 +128,51 @@ public class RpcUtils {
     TSStatus tsStatus = new TSStatus(status);
     resp.setStatus(tsStatus);
     return resp;
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static String parseLongToDateWithPrecision(DateTimeFormatter formatter,
+      long timestamp, ZoneId zoneid, String timestampPrecision) {
+    if (timestampPrecision.equals("ms")) {
+      long integerofDate = timestamp / 1000;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 3) {
+        for (int i = 0; i < 3 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else if (timestampPrecision.equals("us")) {
+      long integerofDate = timestamp / 1000_000;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 6) {
+        for (int i = 0; i < 6 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    } else {
+      long integerofDate = timestamp / 1000_000_000L;
+      StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
+      ZonedDateTime dateTime = ZonedDateTime
+          .ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+      String datetime = dateTime.format(formatter);
+      int length = digits.length();
+      if (length != 9) {
+        for (int i = 0; i < 9 - length; i++) {
+          digits.insert(0, "0");
+        }
+      }
+      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+    }
   }
 
 }
