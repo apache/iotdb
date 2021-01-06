@@ -58,11 +58,11 @@ public class RpcTransportFactory extends TTransportFactory {
     USE_SNAPPY = useSnappy;
   }
 
-  public void setInitialBufferCapacity(int initialBufferCapacity) {
+  public static void setInitialBufferCapacity(int initialBufferCapacity) {
     RpcTransportFactory.initialBufferCapacity = initialBufferCapacity;
   }
 
-  public void setMaxLength(int maxLength) {
+  public static void setMaxLength(int maxLength) {
     RpcTransportFactory.maxLength = maxLength;
   }
 }
