@@ -514,6 +514,65 @@ SHOW FUNCTIONS
 
 
 
+## 贡献UDF
+
+<!-- The template is copied and modified from the Apache Doris community-->
+
+该部分主要讲述了外部用户如何将自己编写的 UDF 贡献给 IoTDB 社区。
+
+
+
+### 前提条件
+
+1. UDF 具有通用性。
+
+    通用性主要指的是：UDF 在某些业务场景下，可以被广泛使用。换言之，就是 UDF 具有复用价值，可被社区内其他用户直接使用。
+
+    如果您不确定自己写的 UDF 是否具有通用性，可以发邮件到 `dev@iotdb.apache.org` 或直接创建 ISSUE 发起讨论。
+
+2. UDF 已经完成测试，且能够正常运行在用户的生产环境中。
+
+
+
+### 贡献清单
+
+1. UDF 的源代码
+2. UDF 的测试用例
+3. UDF 的使用说明
+
+
+
+#### 源代码
+
+1. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin`或者它的子文件夹中创建 UDF 主类和相关的辅助类。
+2. 在`src/main/java/org/apache/iotdb/db/query/udf/builtin/BuiltinFunction.java`中注册您编写的 UDF。
+
+
+
+#### 测试用例
+
+您至少需要为您贡献的 UDF 编写集成测试。
+
+您可以在`server/src/test/java/org/apache/iotdb/db/integration`中为您贡献的 UDF 新增一个测试类进行测试。
+
+
+
+#### 使用说明
+
+使用说明需要包含：UDF 的名称、UDF的作用、执行函数必须的属性参数、函数的适用的场景以及使用示例等。
+
+使用说明需包含中英文两个版本。应分别在 `docs/zh/UserGuide/Operation Manual/DML Data Manipulation Language.md` 和 `docs/UserGuide/Operation Manual/DML Data Manipulation Language.md` 中新增使用说明。
+
+
+
+### 提交PR
+
+当您准备好源代码、测试用例和使用说明后，就可以将 UDF 贡献到 IoTDB 社区了。在 [Github](https://github.com/apache/iotdb) 上面提交 Pull Request (PR) 即可。具体提交方式见：[Pull Request Guide](https://iotdb.apache.org/Development/HowToCommit.html)。
+
+当 PR 评审通过并被合并后，您的 UDF 就已经贡献给 IoTDB 社区了！
+
+
+
 ## Q&A
 
 **Q1: 如何修改已经注册的UDF？**
