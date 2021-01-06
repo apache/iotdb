@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -26,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -37,17 +44,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeriesReaderTest {
+
+  private static final Logger logger = LoggerFactory.getLogger(SeriesReaderTest.class);
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
@@ -55,7 +57,6 @@ public class SeriesReaderTest {
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
-
 
   @Before
   public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
@@ -130,7 +131,6 @@ public class SeriesReaderTest {
       e.printStackTrace();
       fail();
     }
-
   }
 
   @Test
@@ -145,7 +145,7 @@ public class SeriesReaderTest {
       long expectedTime = 499;
       while (pointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        System.out.println(timeValuePair);
+        logger.debug(timeValuePair.toString());
         assertEquals(expectedTime, timeValuePair.getTimestamp());
         int value = timeValuePair.getValue().getInt();
         if (expectedTime < 200) {
@@ -162,6 +162,5 @@ public class SeriesReaderTest {
       e.printStackTrace();
       fail();
     }
-
   }
 }
