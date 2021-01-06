@@ -1711,17 +1711,18 @@ public abstract class RaftMember {
       return resp;
     }
 
+    long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+    long success;
     synchronized (logManager) {
-      long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-      long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-      if (success != -1) {
-        logger.debug("{} append a new log {}", name, log);
-        resp = Response.RESPONSE_AGREE;
-      } else {
-        // the incoming log points to an illegal position, reject it
-        resp = Response.RESPONSE_LOG_MISMATCH;
-      }
+      success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+    }
+    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+    if (success != -1) {
+      logger.debug("{} append a new log {}", name, log);
+      resp = Response.RESPONSE_AGREE;
+    } else {
+      // the incoming log points to an illegal position, reject it
+      resp = Response.RESPONSE_LOG_MISMATCH;
     }
     return resp;
   }
@@ -1732,17 +1733,18 @@ public abstract class RaftMember {
   private boolean waitForPrevLog(long prevLogIndex) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
-    Object logUpdateCondition = logManager.getLogUpdateCondition();
-    while (logManager.getLastLogIndex() < prevLogIndex &&
+    Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
+    long lastLogIndex = logManager.getLastLogIndex();
+    while (lastLogIndex < prevLogIndex &&
         alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       try {
         // each time new logs are appended, this will be notified
-        long lastLogIndex = logManager.getLastLogIndex();
-        if (lastLogIndex >= prevLogIndex) {
-          return true;
-        }
         synchronized (logUpdateCondition) {
           logUpdateCondition.wait(1);
+        }
+        lastLogIndex = logManager.getLastLogIndex();
+        if (lastLogIndex >= prevLogIndex) {
+          return true;
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
