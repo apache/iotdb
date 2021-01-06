@@ -74,7 +74,7 @@ public class TsFileResource {
   /**
    * version number
    */
-  public static final byte versionNumber = 1;
+  public static final byte VERSION_NUMBER = 1;
 
   public TsFileProcessor getProcessor() {
     return processor;
@@ -250,7 +250,7 @@ public class TsFileResource {
   public synchronized void serialize() throws IOException {
     try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
-      ReadWriteIOUtils.write(versionNumber, outputStream);
+      ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
       ReadWriteIOUtils.write(timeIndexType, outputStream);
       timeIndex.serialize(outputStream);
 
