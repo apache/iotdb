@@ -139,7 +139,7 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("meet error while parsing SQL to physical plan"));
+      assertTrue(throwable.getMessage().contains("parsing SQL to physical plan"));
     }
   }
 
