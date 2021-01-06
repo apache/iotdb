@@ -72,7 +72,6 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -89,8 +88,6 @@ public class SyncClient implements ISyncClient {
 
   private static SyncSenderConfig config = SyncSenderDescriptor.getInstance().getConfig();
 
-  private static final int BATCH_LINE = 1000;
-
   private static final int TIMEOUT_MS = 1000;
 
   /**
@@ -99,7 +96,7 @@ public class SyncClient implements ISyncClient {
    * location is recorded once after each synchronization task for the next synchronization task to
    * use.
    */
-  private int schemaFileLinePos;
+  private long schemaFilePos;
 
   private TTransport transport;
 
@@ -365,45 +362,30 @@ public class SyncClient implements ISyncClient {
   }
 
   private boolean tryToSyncSchema() {
-    int schemaPos = readSyncSchemaPos(getSchemaPosFile());
+    schemaFilePos = readSyncSchemaPos(getSchemaPosFile());
 
     // start to sync file data and get digest of this file.
-    try (BufferedReader br = new BufferedReader(new FileReader(getSchemaLogFile()));
+    try (FileInputStream fis = new FileInputStream(getSchemaLogFile());
         ByteArrayOutputStream bos = new ByteArrayOutputStream(SyncConstant.DATA_CHUNK_SIZE)) {
-      schemaFileLinePos = 0;
-      String line;
-      while (schemaFileLinePos < schemaPos) {
-        line = br.readLine();
-        schemaFileLinePos++;
+      long skipNum = fis.skip(schemaFilePos);
+      if (skipNum != schemaFilePos) {
+        logger.warn(
+            "The schema file has been smaller when sync, please check whether the logic of schema persistence has changed!");
+        schemaFilePos = skipNum;
       }
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      int cntLine = 0;
-      while ((line = br.readLine()) != null) {
-        schemaFileLinePos++;
-        byte[] singleLineData = BytesUtils.stringToBytes(line);
-        bos.write(singleLineData);
-        bos.write("\r\n".getBytes());
-        if (cntLine++ == BATCH_LINE) {
-          md.update(bos.toByteArray());
-          ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-          bos.reset();
-          SyncStatus status = serviceClient.syncData(buffToSend);
-          if (status.code != SUCCESS_CODE) {
-            logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
-            return false;
-          }
-          cntLine = 0;
-        }
-      }
-      if (bos.size() != 0) {
-        md.update(bos.toByteArray());
+      byte[] buffer = new byte[SyncConstant.DATA_CHUNK_SIZE];
+      int dataLength;
+      while ((dataLength = fis.read(buffer)) != -1) {
+        bos.write(buffer, 0, dataLength);
+        md.update(buffer, 0, dataLength);
         ByteBuffer buffToSend = ByteBuffer.wrap(bos.toByteArray());
-        bos.reset();
         SyncStatus status = serviceClient.syncData(buffToSend);
         if (status.code != SUCCESS_CODE) {
           logger.error("Receiver failed to receive metadata because {}, retry.", status.msg);
           return false;
         }
+        schemaFilePos += dataLength;
       }
 
       // check digest
@@ -453,7 +435,7 @@ public class SyncClient implements ISyncClient {
         syncSchemaLogFile.createNewFile();
       }
       try (BufferedWriter br = new BufferedWriter(new FileWriter(syncSchemaLogFile))) {
-        br.write(Integer.toString(schemaFileLinePos));
+        br.write(Long.toString(schemaFilePos));
       }
     } catch (IOException e) {
       logger.error("Can not find file {}", syncSchemaLogFile.getAbsoluteFile(), e);

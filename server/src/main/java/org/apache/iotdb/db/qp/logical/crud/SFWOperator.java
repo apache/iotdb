@@ -32,6 +32,7 @@ public abstract class SFWOperator extends RootOperator {
   private FromOperator fromOperator;
   private FilterOperator filterOperator;
   private boolean hasAggregation = false;
+  private boolean hasUdf = false;
   private boolean lastQuery = false;
 
   public SFWOperator(int tokenIntType) {
@@ -56,8 +57,11 @@ public abstract class SFWOperator extends RootOperator {
    */
   public void setSelectOperator(SelectOperator sel) {
     this.selectOperator = sel;
-    if (!sel.getAggregations().isEmpty()) {
+    if (sel.hasAggregation()) {
       hasAggregation = true;
+    }
+    if (sel.isUdfQuery()) {
+      hasUdf = true;
     }
     if (sel.isLastQuery()) {
       lastQuery = true;
@@ -78,15 +82,15 @@ public abstract class SFWOperator extends RootOperator {
    * @return - a list of seriesPath
    */
   public List<PartialPath> getSelectedPaths() {
-    List<PartialPath> suffixPaths = null;
-    if (selectOperator != null) {
-      suffixPaths = selectOperator.getSuffixPaths();
-    }
-    return suffixPaths;
+    return selectOperator != null ? selectOperator.getSuffixPaths() : null;
   }
 
   public boolean hasAggregation() {
     return hasAggregation;
+  }
+
+  public boolean hasUdf() {
+    return hasUdf;
   }
 
   public boolean isLastQuery() {

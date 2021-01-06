@@ -38,13 +38,13 @@ jobs:
       - name: SonarCloud Test
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+          SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
         run: |
           mvn -B verify sonar:sonar \
           -Dsonar.organization=apache \
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
-          -Dsonar.login=${{ env.SONAR_TOKEN }} \
+          -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
           -DskipTests -pl '!distribution' -am
   
   coveralls:

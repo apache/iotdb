@@ -37,9 +37,4 @@ public class AuthException extends Exception {
     super(cause);
   }
 
-  protected AuthException(String message, Throwable cause, boolean enableSuppression,
-      boolean writableStackTrace) {
-    super(message, cause, enableSuppression, writableStackTrace);
-  }
-
 }

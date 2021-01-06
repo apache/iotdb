@@ -51,11 +51,6 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getStableTsFileList(boolean sequence) {
-    return getTsFileList(sequence);
-  }
-
-  @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
     if (sequence) {
       return new ArrayList<>(sequenceFileTreeSet);

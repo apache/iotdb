@@ -32,6 +32,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -203,6 +204,24 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testFullDeleteWithoutWhereClause() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM root.vehicle.d0.s0");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+      cleanData();
+    }
+  }
+
+  @Test
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
     try (Connection connection = DriverManager
@@ -258,6 +277,40 @@ public class IoTDBDeletionIT {
       cleanData();
     }
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+  }
+
+  @Test
+  public void testDelSeriesWithSpecialSymbol() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.ln.d1.\"status,01\" WITH DATATYPE=BOOLEAN,"
+          + " ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") "
+          + "values(300,true)");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(500, false)");
+
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\" WHERE time <= 400");
+
+      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\"");
+
+      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
   }
 
   private static void prepareSeries() {
