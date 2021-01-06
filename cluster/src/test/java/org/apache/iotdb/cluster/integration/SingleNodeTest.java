@@ -49,7 +49,9 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    session.close();
+    if (session != null) {
+      session.close();
+    }
   }
 
   @Test
