@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.cli;
 
-import static org.apache.iotdb.cli.utils.IoTPrinter.*;
+import static org.apache.iotdb.cli.utils.IoTPrinter.computeHANCount;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printBlockLine;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printCount;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printRow;
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.Character.UnicodeScript;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
