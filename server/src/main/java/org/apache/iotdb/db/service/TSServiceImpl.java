@@ -297,7 +297,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (long queryId : queryIds) {
         try {
           releaseQueryResource(queryId);
-        } catch (StorageEngineException | IOException e) {
+        } catch (StorageEngineException e) {
           // release as many as resources as possible, so do not break as soon as one exception is
           // raised
           exceptions.add(e);
@@ -362,7 +362,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   /**
    * release single operation resource
    */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // remove the corresponding Physical Plan
     QueryDataSet dataSet = queryId2DataSet.remove(queryId);
     if (dataSet instanceof UDTFDataSet) {
@@ -670,7 +670,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username)
-      throws IOException, QueryProcessException {
+      throws QueryProcessException {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
@@ -823,7 +823,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private void releaseQueryResourceWithCatchException(long queryId) throws IOException {
+  private void releaseQueryResourceWithCatchException(long queryId) {
     if (queryId != -1) {
       try {
         releaseQueryResource(queryId);
@@ -1049,7 +1049,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.warn("{}: Internal server error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       try {
         releaseQueryResource(req.queryId);
-      } catch (StorageEngineException | IOException ex) {
+      } catch (StorageEngineException ex) {
         LOGGER.warn("Error happened while releasing query resource: ", ex);
       }
       return RpcUtils.getTSFetchResultsResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
