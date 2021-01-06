@@ -769,7 +769,7 @@ public class PlanExecutor implements IPlanExecutor {
     final Binary className = Binary.valueOf("");
     for (String functionName : SQLConstant.getNativeFunctionNames()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-      rowRecord.addField(Binary.valueOf(functionName), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(functionName.toUpperCase()), TSDataType.TEXT);
       rowRecord.addField(functionType, TSDataType.TEXT);
       rowRecord.addField(className, TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);

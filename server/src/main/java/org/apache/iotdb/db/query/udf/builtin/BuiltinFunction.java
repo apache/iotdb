@@ -20,21 +20,54 @@
 package org.apache.iotdb.db.query.udf.builtin;
 
 /**
- * All built-in UDFs need to register function names and full class names here.
+ * All built-in UDFs need to register their function names and classes here.
  */
 public enum BuiltinFunction {
+
+  SIN("SIN", UDTFSin.class),
+  COS("COS", UDTFCos.class),
+  TAN("TAN", UDTFTan.class),
+  ASIN("ASIN", UDTFAsin.class),
+  ACOS("ACOS", UDTFAcos.class),
+  ATAN("ATAN", UDTFAtan.class),
+  DEGREES("DEGREES", UDTFDegrees.class),
+  RADIANS("RADIANS", UDTFRadians.class),
+  ABS("ABS", UDTFAbs.class),
+  SIGN("SIGN", UDTFSign.class),
+  CEIL("CEIL", UDTFCeil.class),
+  FLOOR("FLOOR", UDTFFloor.class),
+  ROUND("ROUND", UDTFRound.class),
+  EXP("EXP", UDTFExp.class),
+  LN("LN", UDTFLog.class),
+  LOG10("LOG10", UDTFLog10.class),
+  SQRT("SQRT", UDTFSqrt.class),
+  STRING_CONTAINS("STRING_CONTAINS", UDTFContains.class),
+  STRING_MATCHES("STRING_MATCHES", UDTFMatches.class),
+  DIFFERENCE("DIFFERENCE", UDTFCommonValueDifference.class),
+  NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
+  TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
+  DERIVATIVE("DERIVATIVE", UDTFCommonDerivative.class),
+  NON_NEGATIVE_DERIVATIVE("NON_NEGATIVE_DERIVATIVE", UDTFNonNegativeDerivative.class),
+  TOP_K("TOP_K", UDTFTopK.class),
+  BOTTOM_K("BOTTOM_K", UDTFBottomK.class),
   ;
 
   private final String functionName;
+  private final Class<?> functionClass;
   private final String className;
 
-  BuiltinFunction(String functionName, String className) {
+  BuiltinFunction(String functionName, Class<?> functionClass) {
     this.functionName = functionName;
-    this.className = className;
+    this.functionClass = functionClass;
+    this.className = functionClass.getName();
   }
 
   public String getFunctionName() {
     return functionName;
+  }
+
+  public Class<?> getFunctionClass() {
+    return functionClass;
   }
 
   public String getClassName() {

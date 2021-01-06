@@ -20,7 +20,8 @@ package org.apache.iotdb.jdbc;
 
 public class Config {
 
-  private Config(){}
+  private Config() {
+  }
 
   /**
    * The required prefix for the connection URL.
@@ -54,4 +55,17 @@ public class Config {
 
   public static boolean rpcThriftCompressionEnable = false;
 
+  /**
+   * thrift init buffer size, 1KB by default
+   */
+  public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
+
+  public static final String INITIAL_BUFFER_CAPACITY = "initial_buffer_capacity";
+
+  /**
+   * thrift max frame size (16384000 bytes by default), we change it to 64MB
+   */
+  public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
+
+  public static final String MAX_FRAME_SIZE = "max_frame_size";
 }
