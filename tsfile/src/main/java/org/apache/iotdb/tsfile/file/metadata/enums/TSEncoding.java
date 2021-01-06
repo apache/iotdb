@@ -20,7 +20,21 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR, GORILLA;
+  PLAIN(0),
+  PLAIN_DICTIONARY(1),
+  RLE(2),
+  DIFF(3),
+  TS_2DIFF(4),
+  BITMAP(5),
+  GORILLA_V1(6),
+  REGULAR(7),
+  GORILLA(8);
+
+  private final int type;
+
+  TSEncoding(int type) {
+    this.type = type;
+  }
 
   /**
    * judge the encoding deserialize type.
@@ -33,36 +47,20 @@ public enum TSEncoding {
   }
 
   public static byte deserializeToByte(short encoding) {
-    if (encoding < 0 || 8 < encoding) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
-    }
+    getTsEncoding(encoding);
     return (byte) encoding;
   }
 
   private static TSEncoding getTsEncoding(short encoding) {
-    if (encoding < 0 || 8 < encoding) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
+
+
+    for (TSEncoding tsEncoding : TSEncoding.values()) {
+      if (encoding == tsEncoding.type) {
+        return tsEncoding;
+      }
     }
-    switch (encoding) {
-      case 1:
-        return PLAIN_DICTIONARY;
-      case 2:
-        return RLE;
-      case 3:
-        return DIFF;
-      case 4:
-        return TS_2DIFF;
-      case 5:
-        return BITMAP;
-      case 6:
-        return GORILLA_V1;
-      case 7:
-        return REGULAR;
-      case 8:
-        return GORILLA;
-      default:
-        return PLAIN;
-    }
+
+    throw new IllegalArgumentException("Invalid input: " + encoding);
   }
 
   /**
@@ -92,25 +90,6 @@ public enum TSEncoding {
    * @return byte number
    */
   public byte enumToByte() {
-    switch (this) {
-      case PLAIN_DICTIONARY:
-        return 1;
-      case RLE:
-        return 2;
-      case DIFF:
-        return 3;
-      case TS_2DIFF:
-        return 4;
-      case BITMAP:
-        return 5;
-      case GORILLA_V1:
-        return 6;
-      case REGULAR:
-        return 7;
-      case GORILLA:
-        return 8;
-      default:
-        return 0;
-    }
+    return (byte) type;
   }
 }

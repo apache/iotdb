@@ -24,7 +24,41 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 
 public enum TSDataType {
-  BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
+  /**
+   * BOOLEAN
+   */
+  BOOLEAN(0),
+
+  /**
+   *
+   */
+  INT32(1),
+
+  /**
+   * INT64
+   */
+  INT64(2),
+
+  /**
+   * FLOAT
+   */
+  FLOAT(3),
+
+  /**
+   * DOUBLE
+   */
+  DOUBLE(4),
+
+  /**
+   * TEXT
+   */
+  TEXT(5);
+
+  private final int type;
+
+  TSDataType(int type) {
+    this.type = type;
+  }
 
   /**
    * give an integer to return a data type.
@@ -38,29 +72,17 @@ public enum TSDataType {
 
 
   private static TSDataType getTsDataType(short type) {
-    if (type >= 6 || type < 0) {
-      throw new IllegalArgumentException("Invalid input: " + type);
+    for (TSDataType tsDataType : TSDataType.values()) {
+      if (type == tsDataType.type) {
+        return tsDataType;
+      }
     }
-    switch (type) {
-      case 0:
-        return BOOLEAN;
-      case 1:
-        return INT32;
-      case 2:
-        return INT64;
-      case 3:
-        return FLOAT;
-      case 4:
-        return DOUBLE;
-      default:
-        return TEXT;
-    }
+
+    throw new IllegalArgumentException("Invalid input: " + type);
   }
 
   public static byte deserializeToByte(short type) {
-    if (type >= 6 || type < 0) {
-      throw new IllegalArgumentException("Invalid input: " + type);
-    }
+    getTsDataType(type);
     return (byte) type;
   }
 
@@ -120,21 +142,6 @@ public enum TSDataType {
    * @return byte number
    */
   public byte enumToByte() {
-    switch (this) {
-      case BOOLEAN:
-        return 0;
-      case INT32:
-        return 1;
-      case INT64:
-        return 2;
-      case FLOAT:
-        return 3;
-      case DOUBLE:
-        return 4;
-      case TEXT:
-        return 5;
-      default:
-        return -1;
-    }
+    return (byte) type;
   }
 }
