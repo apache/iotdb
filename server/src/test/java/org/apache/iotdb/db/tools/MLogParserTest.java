@@ -118,10 +118,16 @@ public class MLogParserTest {
     try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
       + "tmp"  + File.separator + "text.mlog"))) {
       int lineNum = 0;
+      List<String> lines = new ArrayList<>();
       String line;
       while ((line = reader.readLine()) != null) {
         lineNum++;
-        logger.info(line);
+        lines.add(line);
+      }
+      if (lineNum != 108) {
+        for (String content : lines) {
+          logger.info(content);
+        }
       }
       Assert.assertEquals(108, lineNum);
     } catch (IOException e) {
@@ -145,10 +151,16 @@ public class MLogParserTest {
     try (BufferedReader reader = new BufferedReader(new FileReader("target" + File.separator
       + "tmp"  + File.separator + "text.snapshot"))) {
       int lineNum = 0;
+      List<String> lines = new ArrayList<>();
       String line;
       while ((line = reader.readLine()) != null) {
         lineNum++;
-        logger.info(line);
+        lines.add(line);
+      }
+      if (lineNum != 113) {
+        for (String content : lines) {
+          logger.info(content);
+        }
       }
       Assert.assertEquals(113, lineNum);
     } catch (IOException e) {
