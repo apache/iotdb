@@ -1211,12 +1211,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
-      AUDIT_LOGGER
-          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
-              req.getDeviceId(), req.getTimestamp());
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
+
+      AUDIT_LOGGER
+          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+              req.getDeviceId(), req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan(
           new PartialPath(req.getDeviceId()), req.getTimestamp(),
@@ -1234,12 +1235,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) throws TException {
     try {
-      AUDIT_LOGGER
-          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
-              req.getDeviceId(), req.getTimestamp());
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
+
+      AUDIT_LOGGER
+          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+              req.getDeviceId(), req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(new PartialPath(req.getDeviceId()));
