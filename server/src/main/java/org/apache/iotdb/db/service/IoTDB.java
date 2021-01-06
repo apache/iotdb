@@ -169,7 +169,6 @@ public class IoTDB implements IoTDBMBean {
 
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
-    IoTDB.metaManager.clear();
     TracingManager.getInstance().close();
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();
