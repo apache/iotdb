@@ -647,6 +647,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|FLOAT |
 |Effective|After restart system|
 
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| whether enable data partition. If disabled, all data belongs to partition 0|
+|Type| BOOLEAN |
+|Default|false |
+|Effective|After restart system|
+
+* partition\_interval
+
+|Name| partition\_interval |
+|:---:|:---|
+|Description| time range for partitioning data inside each storage group, the unit is second|
+|Type| LONG |
+|Default| 604800 |
+|Effective|After restart system|
+
 ## Enable GC log
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
