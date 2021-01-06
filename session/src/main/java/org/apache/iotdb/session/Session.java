@@ -119,6 +119,7 @@ public class Session {
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
   }
 
+  @SuppressWarnings("squid:S107")
   public Session(String host, int rpcPort, String username, String password, int fetchSize,
       ZoneId zoneId, int initialBufferCapacity, int maxFrameSize) {
     this.host = host;
