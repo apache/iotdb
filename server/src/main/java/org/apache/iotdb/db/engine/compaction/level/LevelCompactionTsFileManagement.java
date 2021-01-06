@@ -562,6 +562,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } catch (Exception e) {
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
+      isSeqMerging = false;
       // reset the merge working state to false
       logger.info("{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
           storageGroupName, sequence,
