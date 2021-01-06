@@ -17,50 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.example;
+package org.apache.iotdb.db.query.udf.builtin;
 
 import java.io.IOException;
-import org.apache.iotdb.db.query.udf.api.UDTF;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 
-public class Max implements UDTF {
-
-  private Long time;
-  private int value;
+public abstract class UDTFValueDifference extends UDTFValueTrend {
 
   @Override
-  public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
-  }
-
-  @Override
-  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+  public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
+      throws MetadataException {
+    dataType = parameters.getDataType(0);
     configurations
-        .setOutputDataType(TSDataType.INT32)
-        .setAccessStrategy(new RowByRowAccessStrategy());
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(dataType);
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) {
-    int candidateValue = row.getInt(0);
-    if (time == null || value < candidateValue) {
-      time = row.getTime();
-      value = candidateValue;
+  public void transform(Row row, PointCollector collector)
+      throws UDFInputSeriesDataTypeNotValidException, IOException {
+    if (!hasPrevious) {
+      updatePreviousValue(row);
+      hasPrevious = true;
+      return;
     }
-  }
 
-  @Override
-  public void terminate(PointCollector collector) throws IOException {
-    if (time != null) {
-      collector.putInt(time, value);
-    }
+    doTransform(row, collector);
   }
 }

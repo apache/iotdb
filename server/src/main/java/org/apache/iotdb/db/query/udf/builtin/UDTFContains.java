@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.example;
+package org.apache.iotdb.db.query.udf.builtin;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -27,40 +26,31 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.exception.UDFException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Max implements UDTF {
+public class UDTFContains implements UDTF {
 
-  private Long time;
-  private int value;
+  private String s;
 
   @Override
-  public void validate(UDFParameterValidator validator) throws Exception {
+  public void validate(UDFParameterValidator validator) throws UDFException {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
+        .validateRequiredAttribute("s")
+        .validateInputSeriesDataType(0, TSDataType.TEXT);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    s = parameters.getString("s");
     configurations
-        .setOutputDataType(TSDataType.INT32)
-        .setAccessStrategy(new RowByRowAccessStrategy());
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.BOOLEAN);
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) {
-    int candidateValue = row.getInt(0);
-    if (time == null || value < candidateValue) {
-      time = row.getTime();
-      value = candidateValue;
-    }
-  }
-
-  @Override
-  public void terminate(PointCollector collector) throws IOException {
-    if (time != null) {
-      collector.putInt(time, value);
-    }
+  public void transform(Row row, PointCollector collector) throws Exception {
+    collector.putBoolean(row.getTime(), row.getString(0).contains(s));
   }
 }

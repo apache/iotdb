@@ -42,7 +42,6 @@ public class Multiplier implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Multiplier#beforeStart");
     a = parameters.getLongOrDefault("a", 0);
     b = parameters.getLongOrDefault("b", 0);
     configurations
@@ -53,10 +52,5 @@ public class Multiplier implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putLong(row.getTime(), row.getLong(0) * a * b);
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Multiplier#beforeDestroy");
   }
 }

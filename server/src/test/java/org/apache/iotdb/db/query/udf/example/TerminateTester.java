@@ -34,7 +34,6 @@ public class TerminateTester implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("TerminateTester#beforeStart");
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());
@@ -55,10 +54,5 @@ public class TerminateTester implements UDTF {
     if (maxTime != null) {
       collector.putInt(maxTime + 1, count);
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("TerminateTester#beforeDestroy");
   }
 }

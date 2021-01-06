@@ -41,7 +41,6 @@ public class SlidingSizeWindowConstructorTester1 implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("SlidingSizeWindowConstructorTester1#beforeStart");
     consumptionPoint = parameters.getInt("consumptionPoint");
     configurations
         .setOutputDataType(TSDataType.INT32)
@@ -53,10 +52,5 @@ public class SlidingSizeWindowConstructorTester1 implements UDTF {
     if (row.getTime() == consumptionPoint) {
       collector.putInt(row.getTime(), row.getInt(0));
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("SlidingSizeWindowConstructorTester1#beforeDestroy");
   }
 }
