@@ -500,6 +500,9 @@ public class IoTDBDescriptor {
 //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
 //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
+      conf.setTimeIndexLevel(
+          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
+
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
           Integer.parseInt(properties.getProperty("default_fill_interval",
