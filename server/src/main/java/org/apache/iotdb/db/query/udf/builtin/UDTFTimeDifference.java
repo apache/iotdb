@@ -17,50 +17,40 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.example;
+package org.apache.iotdb.db.query.udf.builtin;
 
 import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class Max implements UDTF {
+public class UDTFTimeDifference implements UDTF {
 
-  private Long time;
-  private int value;
+  private boolean hasPrevious = false;
 
-  @Override
-  public void validate(UDFParameterValidator validator) throws Exception {
-    validator
-        .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(0, TSDataType.INT32);
-  }
+  private long previousTime = 0;
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     configurations
-        .setOutputDataType(TSDataType.INT32)
-        .setAccessStrategy(new RowByRowAccessStrategy());
+        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setOutputDataType(TSDataType.INT64);
   }
 
   @Override
-  public void transform(Row row, PointCollector collector) {
-    int candidateValue = row.getInt(0);
-    if (time == null || value < candidateValue) {
-      time = row.getTime();
-      value = candidateValue;
+  public void transform(Row row, PointCollector collector) throws IOException {
+    if (!hasPrevious) {
+      previousTime = row.getTime();
+      hasPrevious = true;
+      return;
     }
-  }
 
-  @Override
-  public void terminate(PointCollector collector) throws IOException {
-    if (time != null) {
-      collector.putInt(time, value);
-    }
+    long currentTime = row.getTime();
+    collector.putLong(currentTime, currentTime - previousTime);
+    previousTime = currentTime;
   }
 }

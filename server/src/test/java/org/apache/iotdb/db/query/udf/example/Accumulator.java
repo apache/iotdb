@@ -46,7 +46,6 @@ public class Accumulator implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ACCESS_STRATEGY_SLIDING_SIZE:
@@ -81,10 +80,5 @@ public class Accumulator implements UDTF {
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), accumulator);
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Accumulator#beforeDestroy");
   }
 }

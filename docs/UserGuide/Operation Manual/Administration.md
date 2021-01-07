@@ -141,6 +141,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|
 |GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
+|CREATE_FUNCTION|register UDFs; path independent|
+|DROP_FUNCTION|deregister UDFs; path independent|
 </center>
 
 ### Username Restrictions
