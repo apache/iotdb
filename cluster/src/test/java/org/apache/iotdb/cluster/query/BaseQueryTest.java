@@ -30,6 +30,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.server.member.MemberTest;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -74,7 +75,7 @@ public class BaseQueryTest extends MemberTest {
       pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
     }
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     TestUtils.prepareData();
   }
 
@@ -82,7 +83,7 @@ public class BaseQueryTest extends MemberTest {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
   }
 
   void checkSequentialDataset(QueryDataSet dataSet, int offset, int size) throws IOException {

@@ -24,6 +24,7 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_HOST;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_PORT;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_TIME_DISPLAY_TYPE;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ZONE_ID;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ENABLE_RPC_COMPRESSION;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_HOST;
@@ -59,7 +60,7 @@ public class IoTDBInterpreterTest {
     properties.put(IOTDB_USERNAME, "root");
     properties.put(IOTDB_PASSWORD, "root");
     properties.put(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE);
-    properties.put(IOTDB_ZONE_ID, "UTC");
+    properties.put(IOTDB_ZONE_ID, DEFAULT_ZONE_ID);
     properties.put(IOTDB_ENABLE_RPC_COMPRESSION, DEFAULT_ENABLE_RPC_COMPRESSION);
     properties.put(IOTDB_TIME_DISPLAY_TYPE, DEFAULT_TIME_DISPLAY_TYPE);
     interpreter = new IoTDBInterpreter(properties);
@@ -193,7 +194,7 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:13 missing ROOT at '<EOF>'",
+        "SQLException: 401: line 1:13 missing ROOT at '<EOF>'",
         actual.message().get(0).getData());
 
     wrongSql = "select * from a";
@@ -201,14 +202,14 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
+        "SQLException: 401: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
         actual.message().get(0).getData());
 
     wrongSql = "select * from root a";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
+        "SQLException: 401: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
         actual.message().get(0).getData());
   }
 

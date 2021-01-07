@@ -95,7 +95,7 @@ public class FileLoaderManager {
       throws SyncDeviceOwnerConflictException, IOException {
     String curOwner = tsFileResource.getTsFile().getParentFile().getParentFile().getParentFile()
         .getName();
-    Set<String> deviceSet = tsFileResource.getDeviceToIndexMap().keySet();
+    Set<String> deviceSet = tsFileResource.getDevices();
     checkDeviceConflict(curOwner, deviceSet);
     updateDeviceOwner(curOwner, deviceSet);
   }
@@ -138,8 +138,8 @@ public class FileLoaderManager {
 
   private void deSerializeDeviceOwnerMap(File deviceOwnerFile)
       throws IOException, ClassNotFoundException {
-    try (ObjectInputStream deviceOwnerInput = new ObjectInputStream(
-        new FileInputStream(deviceOwnerFile))) {
+    try (FileInputStream fis = new FileInputStream(deviceOwnerFile);
+         ObjectInputStream deviceOwnerInput = new ObjectInputStream(fis)) {
       deviceOwnerMap = (Map<String, String>) deviceOwnerInput.readObject();
     }
   }

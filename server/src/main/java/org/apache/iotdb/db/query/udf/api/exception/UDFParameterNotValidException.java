@@ -16,26 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
 
-/**
- * this class extends {@code RootOperator} and process update statement.
- */
-public final class UpdateOperator extends SFWOperator {
+package org.apache.iotdb.db.query.udf.api.exception;
 
-  private String value;
+public class UDFParameterNotValidException extends UDFException {
 
-  public UpdateOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.UPDATE;
+  public UDFParameterNotValidException(String message) {
+    super(message);
   }
-
-  public String getValue() {
-    return value;
-  }
-
-  public void setValue(String value) {
-    this.value = value;
-  }
-
 }

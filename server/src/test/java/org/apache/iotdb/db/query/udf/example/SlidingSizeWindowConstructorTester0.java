@@ -31,7 +31,6 @@ public class SlidingSizeWindowConstructorTester0 implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("SlidingSizeWindowConstructorTester0#beforeStart");
     int windowSize = parameters.getInt("windowSize");
     int slidingStep = parameters.getInt("slidingStep");
     configurations
@@ -44,10 +43,5 @@ public class SlidingSizeWindowConstructorTester0 implements UDTF {
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), rowWindow.windowSize());
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("SlidingSizeWindowConstructorTester0#beforeDestroy");
   }
 }

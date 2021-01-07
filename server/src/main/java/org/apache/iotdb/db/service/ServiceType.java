@@ -40,6 +40,7 @@ public enum ServiceType {
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
+  UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
   UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
   TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE("CACHE_HIT_RATIO_DISPLAY_SERVICE",
@@ -49,8 +50,8 @@ public enum ServiceType {
       generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
   CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor");
 
-  private String name;
-  private String jmxName;
+  private final String name;
+  private final String jmxName;
 
   ServiceType(String name, String jmxName) {
     this.name = name;
