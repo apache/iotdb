@@ -125,6 +125,12 @@ public class MLogParserTest {
         lines.add(line);
       }
       if (lineNum != 108) {
+        // We prepare 2 storage groups, each one has 5 devices, and every device has 10 measurements.
+        // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
+        // Next, we do 6 operations which will be written into mlog, include set 2 sgs, set ttl,
+        // delete timeseries, delete sg, add tags.
+        // The final operation changeAlias only change the mtree in memory, so it will not write record to mlog.
+        // Finally, the mlog should have 100 + 2  + 6 = 108 records
         for (String content : lines) {
           logger.info(content);
         }
@@ -158,6 +164,11 @@ public class MLogParserTest {
         lines.add(line);
       }
       if (lineNum != 113) {
+        // We prepare 2 storage groups, each one has 5 devices, and every device has 10 measurements.
+        // So, mtree records 2 * 5 * 10 = 100 TimeSeries, and 2 SetStorageGroup, 2 * 5 devices.
+        // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete timeseries, delete sg.
+        // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 = 112 records, and we have root record,
+        // so we have 112 + 1 = 113 records finally.
         for (String content : lines) {
           logger.info(content);
         }
