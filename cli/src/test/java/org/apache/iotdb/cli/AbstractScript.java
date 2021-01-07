@@ -19,6 +19,7 @@
 package org.apache.iotdb.cli;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -45,7 +46,7 @@ public abstract class AbstractScript {
     p.destroy();
 
     for (int i = 0; i < output.length; i++) {
-      assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
+      assertTrue(outputList.get(outputList.size() - 1 - i).startsWith(output[output.length - 1 - i]));
     }
   }
 
