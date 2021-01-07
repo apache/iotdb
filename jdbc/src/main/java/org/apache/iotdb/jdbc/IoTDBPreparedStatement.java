@@ -181,53 +181,63 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  //  throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  //  throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  //  throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, Blob x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  //  throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBlob(int parameterIndex, InputStream inputStream, long length)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
@@ -237,39 +247,46 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setByte(int parameterIndex, byte x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, int length)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setCharacterStream(int parameterIndex, Reader reader, long length)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Clob x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
@@ -284,7 +301,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
@@ -309,43 +327,51 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNCharacterStream(int parameterIndex, Reader value, long length)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, NClob value) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  //  throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNString(int parameterIndex, String value) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_NOT_NULL);
   }
 
   @Override
   public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_NOT_NULL);
   }
 
   @Override
@@ -375,13 +401,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setObject(int parameterIndex, Object x, int targetSqlType, int scaleOrLength)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
@@ -401,7 +429,9 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setShort(int parameterIndex, short x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    //throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    
   }
 
   @Override
@@ -411,12 +441,28 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setTime(int parameterIndex, Time x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
+	            super.zoneId);
+	        this.parameters.put(parameterIndex, zonedDateTime
+	            .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+   // throw new SQLException(Constant.PARAMETER_SUPPORTED);
+  
+   
   }
 
   @Override
   public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  ZonedDateTime zonedDateTime=null;
+		if(cal != null) {
+			   zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
+					  ZoneId.of( cal.getTimeZone().getID()));
+		}else {
+			  zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
+					 super.zoneId);
+		}
+		this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)); 
   }
 
   @Override
@@ -429,7 +475,16 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   // throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  ZonedDateTime zonedDateTime=null;
+	if(cal != null) {
+		   zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
+				  ZoneId.of( cal.getTimeZone().getID()));
+	}else {
+		  zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()),
+				 super.zoneId);
+	}
+	this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)); 
   }
 
   @Override
@@ -448,8 +503,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("SQL {}",sql);
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("parameters {}",parameters.size());
+      LoggerFactory.getLogger(IoTDBPreparedStatement.class).info("SQL {}",sql);
+      LoggerFactory.getLogger(IoTDBPreparedStatement.class).info("parameters {}",parameters.size());
       if (!parameters.containsKey(i)) {
         throw new SQLException("Parameter #" + i + " is unset");
       }
