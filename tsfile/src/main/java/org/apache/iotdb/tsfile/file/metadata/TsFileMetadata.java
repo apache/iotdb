@@ -66,12 +66,6 @@ public class TsFileMetadata {
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
-    int versionSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < versionSize; i++) {
-      long versionPos = ReadWriteIOUtils.readLong(buffer);
-      long version = ReadWriteIOUtils.readLong(buffer);
-    }
-
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
     fileMetaData.setMetaOffset(metaOffset);
