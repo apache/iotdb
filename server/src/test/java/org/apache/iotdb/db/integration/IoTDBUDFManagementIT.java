@@ -33,6 +33,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.udf.builtin.BuiltinFunction;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -48,6 +49,7 @@ import org.junit.Test;
 public class IoTDBUDFManagementIT {
 
   private static final int NATIVE_FUNCTIONS_COUNT = SQLConstant.getNativeFunctionNames().size();
+  private static final int BUILTIN_FUNCTIONS_COUNT = BuiltinFunction.values().length;
 
   @Before
   public void setUp() throws Exception {
@@ -87,12 +89,9 @@ public class IoTDBUDFManagementIT {
         if (result.contains(FUNCTION_TYPE_NATIVE)) {
           continue;
         }
-
-        Assert.assertEquals(String.format("udf,%s,org.apache.iotdb.db.query.udf.example.Adder,",
-            FUNCTION_TYPE_EXTERNAL_UDTF), result);
         ++count;
       }
-      Assert.assertEquals(1, count);
+      Assert.assertEquals(1 + BUILTIN_FUNCTIONS_COUNT, count);
 
       resultSet = statement.executeQuery("show temporary functions");
       count = 0;
@@ -122,7 +121,7 @@ public class IoTDBUDFManagementIT {
       while (resultSet.next()) {
         ++count;
       }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT, count);
+      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 
       resultSet = statement.executeQuery("show temporary functions");
@@ -143,7 +142,7 @@ public class IoTDBUDFManagementIT {
       while (resultSet.next()) {
         ++count;
       }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT, count);
+      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 
       resultSet = statement.executeQuery("show temporary functions");
@@ -163,7 +162,7 @@ public class IoTDBUDFManagementIT {
       while (resultSet.next()) {
         ++count;
       }
-      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT, count);
+      Assert.assertEquals(1 + NATIVE_FUNCTIONS_COUNT + BUILTIN_FUNCTIONS_COUNT, count);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 
       resultSet = statement.executeQuery("show temporary functions");
@@ -363,7 +362,7 @@ public class IoTDBUDFManagementIT {
     } catch (SQLException throwable) {
       throwable.printStackTrace();
       assertTrue(
-          throwable.getMessage().contains("Built-in function adder can not be deregistered"));
+          throwable.getMessage().contains("Built-in function ADDER can not be deregistered"));
     } finally {
       UDFRegistrationService.getInstance().deregisterBuiltinFunction("adder");
     }
@@ -408,16 +407,14 @@ public class IoTDBUDFManagementIT {
         }
 
         if (result.contains(FUNCTION_TYPE_EXTERNAL_UDTF)) {
-          Assert.assertEquals(String.format("udf,%s,org.apache.iotdb.db.query.udf.example.Adder,",
+          Assert.assertEquals(String.format("UDF,%s,org.apache.iotdb.db.query.udf.example.Adder,",
               FUNCTION_TYPE_EXTERNAL_UDTF), result);
           ++count;
         } else if (result.contains(FUNCTION_TYPE_BUILTIN_UDTF)) {
-          Assert.assertEquals(String.format("adder,%s,org.apache.iotdb.db.query.udf.example.Adder,",
-              FUNCTION_TYPE_BUILTIN_UDTF), result);
           ++count;
         }
       }
-      Assert.assertEquals(2, count);
+      Assert.assertEquals(2 + BUILTIN_FUNCTIONS_COUNT, count);
 
       resultSet = statement.executeQuery("show temporary functions");
       count = 0;

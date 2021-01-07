@@ -222,7 +222,160 @@ Total line number = 10
 It costs 0.016s
 ```
 
+### Time Series Generating Functions
+
+The time series generating function takes several time series as input and outputs one time series. Unlike the aggregation function, the result set of the time series generating function has a timestamp column.
+
+All time series generating functions can accept * as input.
+
+IoTDB supports hybrid queries of time series generating function queries and raw data queries.
+
+#### Mathematical Functions
+
+Currently IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
+
+| Function Name | Allowed Input Series Data Types | Output Series Data Type       | Corresponding Implementation in the Java Standard Library    |
+| ------------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| SIN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sin(double)                                             |
+| COS           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#cos(double)                                             |
+| TAN           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#tan(double)                                             |
+| ASIN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#asin(double)                                            |
+| ACOS          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#acos(double)                                            |
+| ATAN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#atan(double)                                            |
+| DEGREES       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toDegrees(double)                                       |
+| RADIANS       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toRadians(double)                                       |
+| ABS           | INT32 / INT64 / FLOAT / DOUBLE  | Same type as the input series | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
+| SIGN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#signum(double)                                          |
+| CEIL          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#ceil(double)                                            |
+| FLOOR         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#floor(double)                                           |
+| ROUND         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#rint(double)                                            |
+| EXP           | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#exp(double)                                             |
+| LN            | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#log(double)                                             |
+| LOG10         | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#log10(double)                                           |
+| SQRT          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sqrt(double)                                            |
+
+Example:
+
+```   sql
+select s1, sin(s1), cos(s1), tan(s1) from root.sg1.d1 limit 5 offset 1000;
+```
+
+Result:
+
+```
++-----------------------------+-------------------+-------------------+--------------------+-------------------+
+|                         Time|     root.sg1.d1.s1|sin(root.sg1.d1.s1)| cos(root.sg1.d1.s1)|tan(root.sg1.d1.s1)|
++-----------------------------+-------------------+-------------------+--------------------+-------------------+
+|2020-12-10T17:11:49.037+08:00|7360723084922759782| 0.8133527237573284|  0.5817708713544664| 1.3980636773094157|
+|2020-12-10T17:11:49.038+08:00|4377791063319964531|-0.8938962705202537|  0.4482738644511651| -1.994085181866842|
+|2020-12-10T17:11:49.039+08:00|7972485567734642915| 0.9627757585308978|-0.27030138509681073|-3.5618602479083545|
+|2020-12-10T17:11:49.040+08:00|2508858212791964081|-0.6073417341629443| -0.7944406950452296| 0.7644897069734913|
+|2020-12-10T17:11:49.041+08:00|2817297431185141819|-0.8419358900502509| -0.5395775727782725| 1.5603611649667768|
++-----------------------------+-------------------+-------------------+--------------------+-------------------+
+Total line number = 5
+It costs 0.008s
+```
+
+#### String Processing Functions
+
+Currently IoTDB supports the following string processing functions:
+
+| Function Name   | Allowed Input Series Data Types | Required Attributes                                          | Output Series Data Type | Description                                            |
+| --------------- | ------------------------------- | ------------------------------------------------------------ | ----------------------- | ------------------------------------------------------ |
+| STRING_CONTAINS | TEXT                            | `s`: the sequence to search for                              | BOOLEAN                 | Determine whether `s` is in the string                 |
+| STRING_MATCHES  | TEXT                            | `regex`: the regular expression to which the string is to be matched | BOOLEAN                 | Determine whether the string can be matched by `regex` |
+
+Example：
+
+```   sql
+select s1, string_contains(s1, "s"="warn"), string_matches(s1, "regex"="[^\\s]+37229") from root.sg1.d4;
+```
+
+Result：
+
+``` 
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+|                         Time|root.sg1.d4.s1|string_contains(root.sg1.d4.s1, "s"="warn")|string_matches(root.sg1.d4.s1, "regex"="[^\\s]+37229")|
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|    warn:-8721|                                       true|                                                 false|
+|1970-01-01T08:00:00.002+08:00|  error:-37229|                                      false|                                                  true|
+|1970-01-01T08:00:00.003+08:00|     warn:1731|                                       true|                                                 false|
++-----------------------------+--------------+-------------------------------------------+------------------------------------------------------+
+Total line number = 3
+It costs 0.007s
+```
+
+#### Selector Functions
+
+Currently IoTDB supports the following selector functions:
+
+| Function Name | Allowed Input Series Data Types       | Required Attributes                                          | Output Series Data Type       | Description                                                  |
+| ------------- | ------------------------------------- | ------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------ |
+| TOP_K         | INT32 / INT64 / FLOAT / DOUBLE / TEXT | `k`: the maximum number of selected data points, must be greater than 0 and less than or equal to 1000 | Same type as the input series | Returns `k` data points with the largest values in a time series. |
+| BOTTOM_K      | INT32 / INT64 / FLOAT / DOUBLE / TEXT | `k`: the maximum number of selected data points, must be greater than 0 and less than or equal to 1000 | Same type as the input series | Returns `k` data points with the smallest values in a time series. |
+
+Example：
+
+```   sql
+select s1, top_k(s1, "k"="2"), bottom_k(s1, "k"="2") from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
+```
+
+Result：
+
+``` 
++-----------------------------+--------------------+------------------------------+---------------------------------+
+|                         Time|      root.sg1.d2.s1|top_k(root.sg1.d2.s1, "k"="2")|bottom_k(root.sg1.d2.s1, "k"="2")|
++-----------------------------+--------------------+------------------------------+---------------------------------+
+|2020-12-10T20:36:15.531+08:00| 1531604122307244742|           1531604122307244742|                             null|
+|2020-12-10T20:36:15.532+08:00|-7426070874923281101|                          null|                             null|
+|2020-12-10T20:36:15.533+08:00|-7162825364312197604|          -7162825364312197604|                             null|
+|2020-12-10T20:36:15.534+08:00|-8581625725655917595|                          null|             -8581625725655917595|
+|2020-12-10T20:36:15.535+08:00|-7667364751255535391|                          null|             -7667364751255535391|
++-----------------------------+--------------------+------------------------------+---------------------------------+
+Total line number = 5
+It costs 0.006s
+```
+
+#### Variation Trend Calculation Functions
+
+Currently IoTDB supports the following variation trend calculation functions:
+
+| Function Name           | Allowed Input Series Data Types                 | Output Series Data Type       | Description                                                  |
+| ----------------------- | ----------------------------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| TIME_DIFFERENCE         | INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | INT64                         | Calculates the difference between the time stamp of a data point and the time stamp of the previous data point. There is no corresponding output for the first data point. |
+| DIFFERENCE              | INT32 / INT64 / FLOAT / DOUBLE                  | Same type as the input series | Calculates the difference between the value of a data point and the value of the previous data point. There is no corresponding output for the first data point. |
+| NON_NEGATIVE_DIFFERENCE | INT32 / INT64 / FLOAT / DOUBLE                  | Same type as the input series | Calculates the absolute value of the difference between the value of a data point and the value of the previous data point. There is no corresponding output for the first data point. |
+| DERIVATIVE              | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                        | Calculates the rate of change of a data point compared to the previous data point, the result is equals to DIFFERENCE / TIME_DIFFERENCE. There is no corresponding output for the first data point. |
+| NON_NEGATIVE_DERIVATIVE | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                        | Calculates the absolute value of the rate of change of a data point compared to the previous data point, the result is equals to NON_NEGATIVE_DIFFERENCE / TIME_DIFFERENCE. There is no corresponding output for the first data point. |
+
+Example:
+
+```   sql
+select s1, time_difference(s1), difference(s1), non_negative_difference(s1), derivative(s1), non_negative_derivative(s1) from root.sg1.d1 limit 5 offset 1000; 
+```
+
+Result:
+
+``` 
++-----------------------------+-------------------+-------------------------------+--------------------------+---------------------------------------+--------------------------+---------------------------------------+
+|                         Time|     root.sg1.d1.s1|time_difference(root.sg1.d1.s1)|difference(root.sg1.d1.s1)|non_negative_difference(root.sg1.d1.s1)|derivative(root.sg1.d1.s1)|non_negative_derivative(root.sg1.d1.s1)|
++-----------------------------+-------------------+-------------------------------+--------------------------+---------------------------------------+--------------------------+---------------------------------------+
+|2020-12-10T17:11:49.037+08:00|7360723084922759782|                              1|      -8431715764844238876|                    8431715764844238876|    -8.4317157648442388E18|                  8.4317157648442388E18|
+|2020-12-10T17:11:49.038+08:00|4377791063319964531|                              1|      -2982932021602795251|                    2982932021602795251|     -2.982932021602795E18|                   2.982932021602795E18|
+|2020-12-10T17:11:49.039+08:00|7972485567734642915|                              1|       3594694504414678384|                    3594694504414678384|     3.5946945044146785E18|                  3.5946945044146785E18|
+|2020-12-10T17:11:49.040+08:00|2508858212791964081|                              1|      -5463627354942678834|                    5463627354942678834|     -5.463627354942679E18|                   5.463627354942679E18|
+|2020-12-10T17:11:49.041+08:00|2817297431185141819|                              1|        308439218393177738|                     308439218393177738|     3.0843921839317773E17|                  3.0843921839317773E17|
++-----------------------------+-------------------+-------------------------------+--------------------------+---------------------------------------+--------------------------+---------------------------------------+
+Total line number = 5
+It costs 0.014s
+```
+
+#### User Defined Timeseries Generating Functions
+
+Please refer to [UDF (User Defined Function)](../Operation%20Manual/UDF%20User%20Defined%20Function.md).
+
 ### Aggregate Query
+
 This section mainly introduces the related examples of aggregate query.
 
 #### Count Points
@@ -686,7 +839,7 @@ using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
 ### Last point Query
 
 In scenarios when IoT devices updates data in a fast manner, users are more interested in the most recent point of IoT devices.
- 
+
 The Last point query is to return the most recent data point of the given timeseries in a three column format.
 
 The SQL statement is defined as:

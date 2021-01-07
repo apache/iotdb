@@ -43,7 +43,6 @@ public class Max implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Max#beforeStart");
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());
@@ -63,10 +62,5 @@ public class Max implements UDTF {
     if (time != null) {
       collector.putInt(time, value);
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Max#beforeDestroy");
   }
 }

@@ -34,11 +34,13 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -54,6 +56,9 @@ import org.slf4j.LoggerFactory;
 public class IoTDBLoadExternalTsfileIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadExternalTsfileIT.class);
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private static String[] insertSequenceSqls = new String[]{
       "SET STORAGE GROUP TO root.vehicle",
       "SET STORAGE GROUP TO root.test",
@@ -347,10 +352,17 @@ public class IoTDBLoadExternalTsfileIT {
           .getSequenceFileTreeSet().size());
       assertEquals(1, StorageEngine.getInstance().getProcessor(new PartialPath("root.vehicle"))
           .getUnSequenceFileList().size());
-      assertEquals(1, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
-          .getUnSequenceFileList().size());
-      assertEquals(3, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
-          .getSequenceFileTreeSet().size());
+      if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
+        assertEquals(1, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
+            .getUnSequenceFileList().size());
+        assertEquals(3, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
+            .getSequenceFileTreeSet().size());
+      } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
+        assertEquals(2, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
+            .getUnSequenceFileList().size());
+        assertEquals(2, StorageEngine.getInstance().getProcessor(new PartialPath("root.test"))
+            .getSequenceFileTreeSet().size());
+      }
       assertNotNull(tmpDir.listFiles());
       assertEquals(0, new File(tmpDir, new PartialPath("root.vehicle")  + File.separator + "0").listFiles().length);
       assertEquals(0, new File(tmpDir, new PartialPath("root.test")  + File.separator + "0").listFiles().length);

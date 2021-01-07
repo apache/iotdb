@@ -45,7 +45,6 @@ public class Adder implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Adder#beforeStart");
     addend = parameters.getFloatOrDefault("addend", 0);
     configurations
         .setOutputDataType(TSDataType.INT64)
@@ -80,10 +79,5 @@ public class Adder implements UDTF {
         throw new UnSupportedDataTypeException(row.getDataType(index).toString());
     }
     return value;
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Adder#beforeDestroy");
   }
 }

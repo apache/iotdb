@@ -43,7 +43,6 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("SlidingTimeWindowConstructionTester#beforeStart");
     long timeInterval = parameters.getLong(TIME_INTERVAL_KEY);
     configurations
         .setOutputDataType(TSDataType.INT32)
@@ -60,10 +59,5 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
     if (rowWindow.windowSize() != 0) {
       collector.putInt(rowWindow.getRow(0).getTime(), accumulator);
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("SlidingTimeWindowConstructionTester#beforeDestroy");
   }
 }
