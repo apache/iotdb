@@ -275,20 +275,6 @@ public class IoTDBMultiSeriesIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TestConstant.TIMESTAMP_STR)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s3)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s4)
-                  + "," + resultSet
-                  .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s5);
           cnt++;
         }
         assertEquals(23400, cnt);
