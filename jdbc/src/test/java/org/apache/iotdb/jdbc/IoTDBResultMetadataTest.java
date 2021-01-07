@@ -136,7 +136,7 @@ public class IoTDBResultMetadataTest {
     }
     assertTrue(flag);
 
-    String[] columns = {"timestamp", "root.a.b.boolean", "root.a.b.int32", "root.a.b.int64",
+    String[] columns = {"time", "root.a.b.boolean", "root.a.b.int32", "root.a.b.int64",
         "root.a.b.float",
         "root.a.b.double", "root.a.b.text"};
     String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};

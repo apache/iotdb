@@ -262,7 +262,7 @@ public class IoTDBPreparedStatementTest {
   @SuppressWarnings("resource")
   @Test
   public void testInsertStatement1() throws Exception {
-    String sql = "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
+    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
 
     IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
@@ -279,14 +279,14 @@ public class IoTDBPreparedStatementTest {
         .forClass(TSExecuteStatementReq.class);
     verify(client).executeStatement(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(12324,false,123,123234345,123.423,-1323.0,'abc')",
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(12324,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
   @Test
   public void testInsertStatement2() throws Exception {
-    String sql = "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
+    String sql = "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(?,?,?,?,?,?,?)";
 
     IoTDBPreparedStatement ps = new IoTDBPreparedStatement(connection, client, sessionId, sql,
         zoneId);
@@ -303,7 +303,7 @@ public class IoTDBPreparedStatementTest {
         .forClass(TSExecuteStatementReq.class);
     verify(client).executeStatement(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,'abc')",
+        "INSERT INTO root.ln.wf01.wt01(time,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,'abc')",
         argument.getValue().getStatement());
   }
 }
