@@ -1622,16 +1622,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus onNPEOrUnexpectedException(Exception e, String operation,
       TSStatusCode statusCode) {
     String message = String
-        .format("[%s] Exception occurred while %s. %s", statusCode.name(), operation,
-            System.lineSeparator());
+        .format("[%s] Exception occurred while %s.", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
     } else {
       LOGGER.warn(message, e);
-    }
-    Throwable cause = e;
-    while (cause.getCause() != null) {
-      cause = cause.getCause();
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
