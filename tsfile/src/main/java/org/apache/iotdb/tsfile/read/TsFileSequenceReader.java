@@ -1020,7 +1020,6 @@ public class TsFileSequenceReader implements AutoCloseable {
             measurementSchemaList = new ArrayList<>();
             break;
           case MetaMarker.VERSION:
-            long version = readVersion();
             truncatedSize = this.position();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:

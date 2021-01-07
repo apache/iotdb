@@ -101,11 +101,6 @@ public class TsFileIOWriterTest {
     ChunkGroupFooter footer = reader.readChunkGroupFooter();
     Assert.assertEquals(deviceId, footer.getDeviceID());
 
-    // separator
-    Assert.assertEquals(MetaMarker.VERSION, reader.readMarker());
-
-    reader.readVersion();
-
     Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
     reader.readPlanIndex();
     Assert.assertEquals(100, reader.getMinPlanIndex());
