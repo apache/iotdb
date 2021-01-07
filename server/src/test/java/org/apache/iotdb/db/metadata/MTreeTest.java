@@ -504,4 +504,21 @@ public class MTreeTest {
     assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
         Collections.singletonList(new PartialPath(sgPath1)));
   }
+
+  @Test
+  public void testDeleteHierachicalSeries() throws MetadataException {
+    MTree root = new MTree();
+    String path1 = "root";
+    String sgPath1 = "root.vehicle";
+    root.setStorageGroup(new PartialPath(sgPath1));
+    assertTrue(root.isPathExist(new PartialPath(path1)));
+    root.createTimeseries(new PartialPath("root.vehicle.d1"), TSDataType.INT32, TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    root.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+    assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root")));
+    root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.vehicle.d1.s1"));
+    assertTrue(root.isPathExist(new PartialPath("root.vehicle.d1")));
+    assertEquals(1, root.getAllTimeseriesCount(new PartialPath("root")));
+  }
 }
