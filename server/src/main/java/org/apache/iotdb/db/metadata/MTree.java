@@ -110,10 +110,10 @@ public class MTree implements Serializable {
     } else {
       try {
         QueryDataSource dataSource = QueryResourceManager.getInstance().
-                getQueryDataSource(node.getPartialPath(), queryContext, null);
+            getQueryDataSource(node.getPartialPath(), queryContext, null);
         LastPointReader lastReader = new LastPointReader(node.getPartialPath(),
-                node.getSchema().getType(), Collections.emptySet(), queryContext,
-                dataSource, Long.MAX_VALUE, null);
+            node.getSchema().getType(), Collections.emptySet(), queryContext,
+            dataSource, Long.MAX_VALUE, null);
         last = lastReader.readLastPoint();
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
@@ -459,9 +459,9 @@ public class MTree implements Serializable {
       curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
     }
     curNode = curNode.getParent();
-    // delete all empty ancestors except storage group
+    // delete all empty ancestors except storage group and MeasurementMNode
     while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
-        && curNode.getChildren().size() == 0) {
+        && !(curNode instanceof MeasurementMNode) && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
       if (curNode instanceof StorageGroupMNode) {
         return new Pair<>(curNode.getPartialPath(), deletedNode);
@@ -635,12 +635,11 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the storage group that given path belonged to or under given path
-   * All related storage groups refer two cases:
-   * 1. Storage groups with a prefix that is identical to path, e.g. given path "root.sg1",
-   *    storage group "root.sg1.sg2" and "root.sg1.sg3" will be added into result list.
-   * 2. Storage group that this path belongs to, e.g. given path "root.sg1.d1", and it is in
-   *    storage group "root.sg1". Then we adds "root.sg1" into result list.
+   * Get the storage group that given path belonged to or under given path All related storage
+   * groups refer two cases: 1. Storage groups with a prefix that is identical to path, e.g. given
+   * path "root.sg1", storage group "root.sg1.sg2" and "root.sg1.sg3" will be added into result
+   * list. 2. Storage group that this path belongs to, e.g. given path "root.sg1.d1", and it is in
+   * storage group "root.sg1". Then we adds "root.sg1" into result list.
    *
    * @return a list contains all storage groups related to given path
    */
@@ -670,13 +669,11 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Traverse the MTree to match all storage group with prefix path.
-   * When trying to find storage groups via a path, we divide into two cases:
-   * 1. This path is only regarded as a prefix, in other words, this path is part of the result
-   *    storage groups.
-   * 2. This path is a full path and we use this method to find its belonged storage group.
-   * When prefixOnly is set to true, storage group paths in 1 is only added into result,
-   * otherwise, both 1 and 2 are returned.
+   * Traverse the MTree to match all storage group with prefix path. When trying to find storage
+   * groups via a path, we divide into two cases: 1. This path is only regarded as a prefix, in
+   * other words, this path is part of the result storage groups. 2. This path is a full path and we
+   * use this method to find its belonged storage group. When prefixOnly is set to true, storage
+   * group paths in 1 is only added into result, otherwise, both 1 and 2 are returned.
    *
    * @param node              the current traversing node
    * @param nodes             split the prefix path with '.'
@@ -782,11 +779,11 @@ public class MTree implements Serializable {
    * Get all timeseries paths under the given path
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
-   *
-   * @return Pair.left  contains all the satisfied paths
-   *         Pair.right means the current offset or zero if we don't set offset.
+   * @return Pair.left  contains all the satisfied paths Pair.right means the current offset or zero
+   * if we don't set offset.
    */
-  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
+  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit,
+      int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
     plan.setLimit(limit);
@@ -1007,7 +1004,8 @@ public class MTree implements Serializable {
   }
 
 
-  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan, boolean removeCurrentOffset)
+  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan,
+      boolean removeCurrentOffset)
       throws MetadataException {
     List<Pair<PartialPath, String[]>> res;
     String[] nodes = plan.getPath().getNodes();
