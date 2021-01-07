@@ -217,7 +217,8 @@ public class IoTDBAggregationSmallDataIT {
             "SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
-        Assert.assertTrue(e.getMessage().contains("Binary statistics does not support: max"));
+        Assert.assertTrue(e.toString().contains(
+            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
       }
 
       boolean hasResultSet = statement.execute(

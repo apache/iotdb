@@ -159,7 +159,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger AUDIT_LOGGER = LoggerFactory
       .getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
 
-  private static final String INFO_NOT_LOGIN = "{}: Not login.";
+  private static final String INFO_NOT_LOGIN = "{}: Not login. ";
   private static final String INFO_PARSING_SQL_ERROR = "Error occurred while parsing SQL to physical plan: ";
   private static final String INFO_CHECK_METADATA_ERROR = "Check metadata error: ";
   private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
@@ -1622,7 +1622,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus onNPEOrUnexpectedException(Exception e, String operation,
       TSStatusCode statusCode) {
     String message = String
-        .format("[%s] Exception occurred while %s.", statusCode.name(), operation);
+        .format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
     } else {
