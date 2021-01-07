@@ -255,7 +255,7 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void shutdownDaemon() throws Exception {
+  private static void shutdownDaemon() throws Exception {
     if (daemon != null) {
       daemon.shutdown();
     }
@@ -279,6 +279,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
+    IoTDB.metaManager.clear();
     reactiveDaemon();
   }
 
