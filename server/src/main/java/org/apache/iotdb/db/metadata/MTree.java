@@ -411,9 +411,9 @@ public class MTree implements Serializable {
       curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
     }
     curNode = curNode.getParent();
-    // delete all empty ancestors except storage group
+    // delete all empty ancestors except storage group and MeasurementMNode
     while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
-        && curNode.getChildren().size() == 0) {
+        && !(curNode instanceof MeasurementMNode) && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
       if (curNode instanceof StorageGroupMNode) {
         return new Pair<>(curNode.getPartialPath(), deletedNode);
