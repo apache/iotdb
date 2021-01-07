@@ -189,8 +189,6 @@ public class RpcUtils {
     switch (newTimeFormat.trim().toLowerCase()) {
       case "long":
       case "number":
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         timeFormat = newTimeFormat.trim().toLowerCase();
