@@ -238,13 +238,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound, List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
-    List<TimeRange> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
-
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTVListForQuery();
@@ -252,23 +250,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props,
             curSize, deletionList);
-  }
-
-  private List<TimeRange> constructDeletionList(String deviceId, String measurement,
-      long timeLowerBound) throws MetadataException {
-    List<TimeRange> deletionList = new ArrayList<>();
-    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : modifications) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
-            && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
-      }
-    }
-    return TimeRange.sortAndMerge(deletionList);
   }
 
   @Override

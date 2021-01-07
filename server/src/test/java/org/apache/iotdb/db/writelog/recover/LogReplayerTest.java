@@ -118,7 +118,7 @@ public class LogReplayerTest {
       for (int i = 0; i < 5; i++) {
         ReadOnlyMemChunk memChunk = memTable
             .query("root.sg.device" + i, "sensor" + i, TSDataType.INT64,
-                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
+                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE, null);
         IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
@@ -148,7 +148,7 @@ public class LogReplayerTest {
       for (int i = 0; i < 2 ; i++) {
         ReadOnlyMemChunk memChunk = memTable
             .query("root.sg.device5", "sensor" + i, TSDataType.INT64,
-                TSEncoding.PLAIN, Collections.emptyMap(), Long.MIN_VALUE);
+                TSEncoding.PLAIN, Collections.emptyMap(), Long.MIN_VALUE, null);
         //s0 has datatype boolean, but required INT64, will return null
         if (i == 0) {
           assertNull(memChunk);

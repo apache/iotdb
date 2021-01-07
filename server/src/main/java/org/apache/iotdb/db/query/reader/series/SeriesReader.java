@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReaderPriority;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -471,15 +472,18 @@ public class SeriesReader {
             // addLast for asc; addFirst for desc
             if (orderUtils.getAscending()) {
               seqPageReaders
-                  .add(new VersionPageReader(chunkMetaData.getVersion(), pageReader, true));
+                  .add(new VersionPageReader(chunkMetaData.getVersion(),
+                          chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             } else {
               seqPageReaders
-                  .add(0, new VersionPageReader(chunkMetaData.getVersion(), pageReader, true));
+                  .add(0, new VersionPageReader(chunkMetaData.getVersion(),
+                          chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             }
 
           } else {
             unSeqPageReaders
-                .add(new VersionPageReader(chunkMetaData.getVersion(), pageReader, false));
+                .add(new VersionPageReader(chunkMetaData.getVersion(),
+                        chunkMetaData.getOffsetOfChunkHeader(), pageReader, false));
           }
         });
   }
@@ -879,13 +883,13 @@ public class SeriesReader {
 
   private class VersionPageReader {
 
-    protected long version;
+    protected PriorityMergeReader.MergeReaderPriority version;
     protected IPageReader data;
 
     protected boolean isSeq;
 
-    VersionPageReader(long version, IPageReader data, boolean isSeq) {
-      this.version = version;
+    VersionPageReader(long version, long offset, IPageReader data, boolean isSeq) {
+      this.version = new MergeReaderPriority(version, offset);
       this.data = data;
       this.isSeq = isSeq;
     }

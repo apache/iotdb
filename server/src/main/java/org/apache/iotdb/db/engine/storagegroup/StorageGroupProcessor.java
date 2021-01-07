@@ -1565,21 +1565,14 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
-      throws IOException {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
           deletion.getEndTime())) {
         continue;
       }
 
-      long partitionId = tsFileResource.getTimePartition();
       deletion.setFileOffset(tsFileResource.getTsFileSize());
-
-      // write deletion into modification file
-      tsFileResource.getModFile().write(deletion);
-      // remember to close mod file
-      tsFileResource.getModFile().close();
 
       tsFileResource.updatePlanIndexes(planIndex);
 

@@ -154,6 +154,8 @@ public class TsFileResource {
    */
   protected long minPlanIndex = Long.MAX_VALUE;
 
+  private long version = 0;
+
   public TsFileResource() {
   }
 
@@ -174,6 +176,7 @@ public class TsFileResource {
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
   }
 
   /**
@@ -184,6 +187,7 @@ public class TsFileResource {
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
     this.endTimes = new long[INIT_ARRAY_SIZE];
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     initTimes(startTimes, Long.MAX_VALUE);
     initTimes(endTimes, Long.MIN_VALUE);
   }
@@ -196,6 +200,7 @@ public class TsFileResource {
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
     this.endTimes = new long[INIT_ARRAY_SIZE];
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     initTimes(startTimes, Long.MAX_VALUE);
     initTimes(endTimes, Long.MIN_VALUE);
     this.processor = processor;
@@ -858,5 +863,13 @@ public class TsFileResource {
 
   public void setMinPlanIndex(long minPlanIndex) {
     this.minPlanIndex = minPlanIndex;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }

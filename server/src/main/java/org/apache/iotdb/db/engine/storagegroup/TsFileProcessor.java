@@ -69,7 +69,9 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +92,7 @@ public class TsFileProcessor {
    * sync this object in query() and asyncTryToFlush()
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
+  private List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
   private RestorableTsFileIOWriter writer;
   private final TsFileResource tsFileResource;
   // time range index to indicate this processor belongs to which time range
@@ -386,9 +389,10 @@ public class TsFileProcessor {
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
-      for (IMemTable memTable : flushingMemTables) {
+      modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
+      /*for (IMemTable memTable : flushingMemTables) {
         memTable.delete(deletion);
-      }
+      }*/
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
@@ -732,6 +736,20 @@ public class TsFileProcessor {
       flushListener.onFlushEnd(memTableToFlush);
     }
 
+    try {
+      for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+        if (entry.right.equals(memTableToFlush)) {
+          entry.left.setFileOffset(tsFileResource.getTsFileSize());
+          this.tsFileResource.getModFile().write(entry.left);
+          tsFileResource.getModFile().close();
+          modsToMemtable.remove(entry);
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Meet error when writing into ModificationFile file of {} ",
+              tsFileResource.getTsFile().getName(), e);
+    }
+
     if (logger.isDebugEnabled()) {
       logger.debug("{}: {} try get lock to release a memtable (signal={})", storageGroupName,
           tsFileResource.getTsFile().getName(), memTableToFlush.isSignalMemTable());
@@ -874,6 +892,33 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
+  private List<Modification> getModificationsForMemtable(IMemTable memTable) {
+    List<Modification> modifications = new ArrayList<>();
+    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+      if (entry.right.equals(memTable)) {
+        modifications.add(entry.left);
+      }
+    }
+    return modifications;
+  }
+
+  private List<TimeRange> constructDeletionList(IMemTable memTable, String deviceId, String measurement,
+                                                long timeLowerBound) throws MetadataException {
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    for (Modification modification : getModificationsForMemtable(memTable)) {
+      if (modification instanceof Deletion) {
+        Deletion deletion = (Deletion) modification;
+        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
+                && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+        }
+      }
+    }
+    return TimeRange.sortAndMerge(deletionList);
+  }
+
   /**
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
@@ -899,15 +944,17 @@ public class TsFileProcessor {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
+        List<TimeRange> deletionList = constructDeletionList(flushingMemTable,
+                deviceId, measurementId, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId,
-            dataType, encoding, props, context.getQueryTimeLowerBound());
+            dataType, encoding, props, context.getQueryTimeLowerBound(), deletionList);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
       if (workMemTable != null) {
         ReadOnlyMemChunk memChunk = workMemTable.query(deviceId, measurementId, dataType, encoding,
-            props, context.getQueryTimeLowerBound());
+            props, context.getQueryTimeLowerBound(), null);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
