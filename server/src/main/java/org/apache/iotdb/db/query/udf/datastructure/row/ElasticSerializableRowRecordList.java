@@ -119,7 +119,7 @@ public class ElasticSerializableRowRecordList {
     ++size;
 
     if (!disableMemoryControl) {
-      totalByteArrayLengthLimit += indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
+      totalByteArrayLengthLimit += (long) indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
       List<Field> fields = rowRecord.getFields();
       for (Integer indexListOfTextField : indexListOfTextFields) {
         totalByteArrayLength += fields.get(indexListOfTextField).getBinaryV().getLength();

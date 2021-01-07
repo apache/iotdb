@@ -41,7 +41,6 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -96,8 +95,6 @@ public class LogReplayer {
             replayInsert((InsertPlan) plan);
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
-          } else if (plan instanceof UpdatePlan) {
-            replayUpdate((UpdatePlan) plan);
           }
         } catch (Exception e) {
           logger.error("recover wal of {} failed", insertFilePath, e);
@@ -173,12 +170,6 @@ public class LogReplayer {
     } else {
       recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
-  }
-
-  @SuppressWarnings("unused")
-  private void replayUpdate(UpdatePlan updatePlan) {
-    // TODO: support update
-    throw new UnsupportedOperationException("Update not supported");
   }
 
   private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {

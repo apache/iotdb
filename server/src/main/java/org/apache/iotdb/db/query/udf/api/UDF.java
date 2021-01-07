@@ -19,7 +19,22 @@
 
 package org.apache.iotdb.db.query.udf.api;
 
+import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
+
 public interface UDF {
+
+  /**
+   * This method is mainly used to validate {@link UDFParameters} and it is executed before {@link
+   * UDTF#beforeStart(UDFParameters, UDTFConfigurations)} is called.
+   *
+   * @param validator the validator used to validate {@link UDFParameters}
+   * @throws Exception if any parameter is not valid
+   */
+  @SuppressWarnings("squid:S112")
+  default void validate(UDFParameterValidator validator) throws Exception {
+  }
 
   /**
    * This method is mainly used to release the resources used in the UDF.

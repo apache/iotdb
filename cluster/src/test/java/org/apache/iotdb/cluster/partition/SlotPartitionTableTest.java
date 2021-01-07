@@ -40,7 +40,6 @@ import java.util.stream.IntStream;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
@@ -51,7 +50,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -61,7 +59,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -306,18 +303,7 @@ public class SlotPartitionTableTest {
   public void testPhysicalPlan() throws QueryProcessException, IllegalPathException {
     PhysicalPlan deletePlan = new DeletePlan();
     assertTrue(PartitionUtils.isGlobalDataPlan(deletePlan));
-    PhysicalPlan updatePlan = new UpdatePlan();
 
-    ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-    try {
-      router.routePlan(updatePlan);
-    } catch (UnsupportedPlanException e) {
-      //success
-    } catch (StorageGroupNotSetException e) {
-      fail(e.getMessage());
-    } catch (MetadataException e) {
-      e.printStackTrace();
-    }
     try {
       PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test",
           "test", new String[]{}, new PartialPath("root.sg.l2.l3.l4.28.ld.l1.d0"));

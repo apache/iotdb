@@ -65,6 +65,10 @@ public class FilePathUtils {
     return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
   }
 
+  public static String[] splitTsFilePath(String tsFileAbsolutePath) {
+    return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
+  }
+
   /**
    * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0
    * level=1, return [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0],
