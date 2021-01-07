@@ -44,6 +44,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -53,6 +55,8 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
   private static final String FILE_SUFFIX = "csv";
+  private static final Logger logger = LoggerFactory.getLogger(ImportCsv.class);
+  private static final String TIME_TYPE = "It isn't a {} time type";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
@@ -223,21 +227,25 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       return Long.parseLong(str);
     } catch (Exception ignored) {
+      logger.debug("It isn't a long time type");
     }
 
     try {
       return format1.parse(str).getTime();
     } catch (java.text.ParseException ignored) {
+      logger.debug(TIME_TYPE, format1.toPattern());
     }
 
     try {
       return format2.parse(str).getTime();
     } catch (java.text.ParseException ignored) {
+      logger.debug(TIME_TYPE, format2.toPattern());
     }
 
     try {
       return format3.parse(str).getTime();
     } catch (java.text.ParseException ignored) {
+      logger.debug(TIME_TYPE, format3.toPattern());
     }
 
     throw new IllegalArgumentException("Input time format " + str + "error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or yyyy-MM-ddTHH:mm:ss.SSSZ");
