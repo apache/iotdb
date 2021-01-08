@@ -116,7 +116,7 @@ public class PathPrivilege {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-    SerializeUtils.serialize(privileges, dataOutputStream);
+    SerializeUtils.serializeIntSet(privileges, dataOutputStream);
     SerializeUtils.serialize(path, dataOutputStream);
 
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
@@ -124,7 +124,7 @@ public class PathPrivilege {
 
   public void deserialize(ByteBuffer buffer) {
     privileges = new HashSet<>();
-    SerializeUtils.deserialize(privileges, buffer);
+    SerializeUtils.deserializeIntSet(privileges, buffer);
     path = SerializeUtils.deserializeString(buffer);
   }
 }

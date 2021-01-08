@@ -504,4 +504,27 @@ public class MTreeTest {
     assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
         Collections.singletonList(new PartialPath(sgPath1)));
   }
+
+  @Test
+  public void testDeleteChildOfMeasurementMNode() throws MetadataException {
+    MTree root = new MTree();
+    String sgPath = "root.sg1";
+    root.setStorageGroup(new PartialPath(sgPath));
+    try {
+      root.createTimeseries(new PartialPath("root.sg1.a.b"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.createTimeseries(new PartialPath("root.sg1.a.b.c"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
+
+      root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.sg1.a.b.c"));
+
+      assertFalse(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+
+    } catch (MetadataException e1) {
+      fail(e1.getMessage());
+    }
+  }
 }

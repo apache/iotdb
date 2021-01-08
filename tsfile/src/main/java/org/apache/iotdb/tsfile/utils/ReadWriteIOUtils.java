@@ -52,11 +52,12 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
  */
 public class ReadWriteIOUtils {
 
-  private static final int SHORT_LEN = 2;
-  private static final int INT_LEN = 4;
-  private static final int LONG_LEN = 8;
-  private static final int DOUBLE_LEN = 8;
-  private static final int FLOAT_LEN = 4;
+  public static final int BOOLEAN_LEN = 1;
+  public static final int SHORT_LEN = 2;
+  public static final int INT_LEN = 4;
+  public static final int LONG_LEN = 8;
+  public static final int DOUBLE_LEN = 8;
+  public static final int FLOAT_LEN = 4;
 
   private static final byte[] magicStringBytes;
 

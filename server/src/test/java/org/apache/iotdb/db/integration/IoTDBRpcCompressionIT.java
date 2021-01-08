@@ -135,7 +135,6 @@ public class IoTDBRpcCompressionIT {
         }
         assertEquals(1, cnt);
       }
-      statement.execute("merge");
       Thread.sleep(1000);
       // before merge completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root")) {

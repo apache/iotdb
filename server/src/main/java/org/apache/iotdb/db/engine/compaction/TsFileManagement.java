@@ -74,11 +74,6 @@ public abstract class TsFileManagement {
   }
 
   /**
-   * get the TsFile list which has been completed hot compacted
-   */
-  public abstract List<TsFileResource> getStableTsFileList(boolean sequence);
-
-  /**
    * get the TsFile list in sequence
    */
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
@@ -178,7 +173,22 @@ public abstract class TsFileManagement {
     }
   }
 
-  public void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
+  public class CompactionRecoverTask implements Runnable {
+
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
+
+    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
+    }
+
+    @Override
+    public void run() {
+      recover();
+      closeCompactionMergeCallBack.call();
+    }
+  }
+
+  public synchronized void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList, long dataTTL) {
     if (isUnseqMerging) {
       if (logger.isInfoEnabled()) {

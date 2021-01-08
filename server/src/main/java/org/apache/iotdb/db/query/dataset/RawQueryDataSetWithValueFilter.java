@@ -56,7 +56,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     if (hasCachedRowRecord) {
       return true;
     }
@@ -64,7 +64,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedRowRecord && !cacheRowRecord()) {
       return null;
     }

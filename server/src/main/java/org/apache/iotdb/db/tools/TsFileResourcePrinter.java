@@ -70,13 +70,10 @@ public class TsFileResourcePrinter {
     System.out.printf("Resource plan index range [%d, %d]%n", resource.getMinPlanIndex(),
         resource.getMaxPlanIndex());
 
-    for (String device : resource.getDeviceToIndexMap().keySet()) {
+    for (String device : resource.getDevices()) {
       System.out.printf(
-          "device %s, "
-              + "start time %d (%s), "
-              + "end time %d (%s)%n",
-          device,
-          resource.getStartTime(device),
+          "device %s, start time %d (%s), end time %d (%s)%n",
+          device, resource.getStartTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
           resource.getEndTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));

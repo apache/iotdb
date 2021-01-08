@@ -96,15 +96,14 @@ public class TracingManagerTest {
     bufferedReader.close();
   }
 
-  void prepareTsFileResources() throws IOException {
+  void prepareTsFileResources() {
     Map<String, Integer> deviceToIndex = new HashMap<>();
     deviceToIndex.put("root.sg.d1", 0);
     deviceToIndex.put("root.sg.d2", 1);
     long[] startTimes = {1, 2};
     long[] endTimes = {999, 998};
     File file1 = new File(TestConstant.OUTPUT_DATA_DIR.concat("1-1-0.tsfile"));
-    TsFileResource tsFileResource1 = new TsFileResource(file1, deviceToIndex, startTimes, endTimes,
-        null, null, null);
+    TsFileResource tsFileResource1 = new TsFileResource(file1, deviceToIndex, startTimes, endTimes);
     tsFileResource1.setClosed(true);
     seqResources.add(tsFileResource1);
   }

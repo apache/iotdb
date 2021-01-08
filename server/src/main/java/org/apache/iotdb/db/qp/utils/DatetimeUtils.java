@@ -478,6 +478,46 @@ public class DatetimeUtils {
   }
 
   /**
+   * convert duration string to time value.
+   *
+   * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
+   */
+  public static long convertDurationStrToLong(String duration) {
+    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    return convertDurationStrToLong(duration, timestampPrecision);
+  }
+
+  /**
+   * convert duration string to time value.
+   *
+   * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
+   */
+  public static long convertDurationStrToLong(String duration, String timestampPrecision) {
+    long total = 0;
+    long temp = 0;
+    for (int i = 0; i < duration.length(); i++) {
+      char ch = duration.charAt(i);
+      if (Character.isDigit(ch)) {
+        temp *= 10;
+        temp += (ch - '0');
+      } else {
+        String unit = duration.charAt(i) + "";
+        // This is to identify units with two letters.
+        if (i + 1 < duration.length() && !Character.isDigit(duration.charAt(i + 1))) {
+          i++;
+          unit += duration.charAt(i);
+        }
+        total += DatetimeUtils
+            .convertDurationStrToLong(temp, unit.toLowerCase(), timestampPrecision);
+        temp = 0;
+      }
+    }
+    return total;
+  }
+
+  /**
    * convert duration string to millisecond, microsecond or nanosecond.
    */
   public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {

@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.sync.receiver.transfer;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -44,15 +52,6 @@ import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 public class SyncServiceImpl implements SyncService.Iface {
 
@@ -270,16 +269,18 @@ public class SyncServiceImpl implements SyncService.Iface {
   private void loadMetadata() {
     logger.info("Start to load metadata in sync process.");
     if (currentFile.get().exists()) {
-      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG)) {
+      try (MLogReader mLogReader = new MLogReader(currentFile.get())) {
         while (mLogReader.hasNext()) {
-          PhysicalPlan plan = mLogReader.next();
+          PhysicalPlan plan = null;
           try {
+            plan = mLogReader.next();
             if (plan == null) {
               continue;
             }
             IoTDB.metaManager.operation(plan);
           } catch (Exception e) {
-            logger.error("Can not operate metadata operation {} for err:{}", plan.getOperatorType(), e);
+            logger.error("Can not operate metadata operation {} for err:{}",
+                plan == null ? "" : plan.getOperatorType(), e);
           }
         }
       } catch (IOException e) {

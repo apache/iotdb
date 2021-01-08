@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.writelog;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -26,7 +29,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
@@ -34,15 +36,10 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 
 @Ignore
 public class PerformanceTest {
@@ -93,13 +90,10 @@ public class PerformanceTest {
               new String[]{"s1", "s2", "s3", "s4"},
               new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
               new String[]{"1.0", "15", "str", "false"});
-          UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
-              new PartialPath("root.logTestDevice.s1"));
           DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
               new PartialPath("root.logTestDevice.s1"));
 
           logNode.write(bwInsertPlan);
-          logNode.write(updatePlan);
           logNode.write(deletePlan);
         }
         logNode.forceSync();
@@ -154,12 +148,9 @@ public class PerformanceTest {
           new String[]{"s1", "s2", "s3", "s4"},
           new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
           new String[]{"1.0", "15", "str", "false"});
-      UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
-          new PartialPath("root.logTestDevice.s1"));
       DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
-      logNode.write(updatePlan);
       logNode.write(deletePlan);
     }
     try {
