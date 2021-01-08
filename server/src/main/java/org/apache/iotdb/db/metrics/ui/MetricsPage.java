@@ -120,7 +120,7 @@ public class MetricsPage {
                 + "<td>" + (int) (sqlArgument.getEndTime() - sqlArgument.getStartTime()) + " ms</td>"
                 + "<td class=\"sql\">" + sqlArgument.getStatement() + "</td>"
                 + "<td>" + status + "</td>"
-                + "<td>" + (errMsg.equals("") ? "== Parsed Physical Plan ==" : errMsg)
+                + "<td>" + ((errMsg == null || errMsg.equals("")) ? "== Parsed Physical Plan ==" : errMsg)
                 +   "<span class=\"expand-details\" onclick=\"this.parentNode.querySelector('.stacktrace-details').classList.toggle('collapsed')\">+ details</span>"
                 +   "<div class=\"stacktrace-details collapsed\">"
                 +     "<pre>"
