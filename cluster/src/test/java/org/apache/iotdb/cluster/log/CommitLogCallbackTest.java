@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.log;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.junit.After;
