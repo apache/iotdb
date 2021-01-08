@@ -333,59 +333,5 @@ Under the root path of iotdb:
 
 After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
-## Usage of import-csv.sh
-
-### Create metadata
-```
-SET STORAGE GROUP TO root.fit.d1;
-SET STORAGE GROUP TO root.fit.d2;
-SET STORAGE GROUP TO root.fit.p;
-CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN;
-CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
-CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
-```
-
-### An example of import csv file
-
-```
-Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
-1,100,'hello',200,300,400
-2,500,'world',600,700,800
-3,900,'IoTDB',1000,1100,1200
-```
-
-### Run import shell
-```
-# Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-
-# Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
-```
-
-### Error data file
-
-`csvInsertError.error`
-
-## Usage of export-csv.sh
-
-### Run export shell
-```
-# Unix/OS X
-> tools/export-csv.sh -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-
-# Windows
-> tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format>]
-```
-
-### Input query
-
-```
-select * from root.fit.d1
-```
-
-
 # Frequent Questions for Compiling
 see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org/Development/ContributeGuide.html#_Frequent-Questions-when-Compiling-the-Source-Code)

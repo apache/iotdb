@@ -160,7 +160,7 @@ public class TimeSeriesMetadataCache {
           BloomFilter bloomFilter = reader.readBloomFilter();
           if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
             if (config.isDebugOn()) {
-              DEBUG_LOGGER.info("TimeSeries meta data " + key + " is filter by bloomFilter!");
+              DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
             }
             return null;
           }
@@ -186,14 +186,14 @@ public class TimeSeriesMetadataCache {
     }
     if (timeseriesMetadata == null) {
       if (config.isDebugOn()) {
-        DEBUG_LOGGER.info("The file doesn't have this time series " + key);
+        DEBUG_LOGGER.info("The file doesn't have this time series {}", key);
       }
       return null;
     } else {
       if (config.isDebugOn()) {
         DEBUG_LOGGER.info(
-            "Get timeseries: " + key.device + "." + key.measurement + " metadata in file: "
-                + key.filePath + " from cache: " + timeseriesMetadata);
+            "Get timeseries: {}. {} metadata in file: {} from cache: {}",
+            key.device, key.measurement, key.filePath, timeseriesMetadata);
       }
       return new TimeseriesMetadata(timeseriesMetadata);
     }

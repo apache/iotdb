@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPERATOR;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -50,7 +48,7 @@ public class CompactionLogger {
   }
 
   public void logDevice(String device, long offset) throws IOException {
-    logStream.write(device + STR_DEVICE_OFFSET_SEPERATOR + offset);
+    logStream.write(device + CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPARATOR + offset);
     logStream.newLine();
     logStream.flush();
   }
@@ -58,19 +56,7 @@ public class CompactionLogger {
   public void logFile(String prefix, File file) throws IOException {
     logStream.write(prefix);
     logStream.newLine();
-    logStream.write(file.getAbsolutePath());
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logMergeFinish() throws IOException {
-    logStream.write(MERGE_FINISHED);
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFullMerge() throws IOException {
-    logStream.write(FULL_MERGE);
+    logStream.write(file.getPath());
     logStream.newLine();
     logStream.flush();
   }

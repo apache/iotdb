@@ -163,14 +163,22 @@ public class IoTDB implements IoTDBMBean {
 
   }
 
+  /**
+   * stop IoTDB's daemon service.
+   */
   @Override
   public void stop() {
     deactivate();
   }
 
+  /**
+   * stop accept new requests.
+   * @throws Exception
+   */
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
-    IoTDB.metaManager.clear();
+    //we can not clear the metadata manager before the compaction process really stops.
+    //IoTDB.metaManager.clear();
     TracingManager.getInstance().close();
     registerManager.shutdownAll();
     PrimitiveArrayManager.close();
