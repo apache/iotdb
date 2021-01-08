@@ -26,6 +26,7 @@ import java.util.Random;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -54,35 +55,26 @@ public class SessionExample {
     //set session fetchSize
     session.setFetchSize(10000);
 
-//    try {
-//      session.setStorageGroup("root.sg1");
-//    } catch (StatementExecutionException e) {
-//      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
-//        throw e;
-//    }
+    try {
+      session.setStorageGroup("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
+        throw e;
+    }
 
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
-//    insertTablet();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
     insertTablets();
-//    insertRecords();
-//    nonQuery();
+    insertRecords();
+    nonQuery();
     query();
-//    rawDataQuery();
-//    queryByIterator();
-//    deleteData();
-//    deleteTimeseries();
-    deleteAllData();
-    System.out.println("after delete all data");
-    query();
-
+    rawDataQuery();
+    queryByIterator();
+    deleteData();
+    deleteTimeseries();
     session.close();
-  }
-
-  private static void deleteAllData() throws StatementExecutionException, IoTDBConnectionException {
-    String sql = "delete storage group root.*";
-    session.executeNonQueryStatement(sql);
   }
 
   private static void createTimeseries()
@@ -186,8 +178,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertStrRecord()
-      throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -258,14 +249,17 @@ public class SessionExample {
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
-
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   * <p>
+   *
    * a Tablet example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    */
   private static void insertTablet() throws IoTDBConnectionException, StatementExecutionException {

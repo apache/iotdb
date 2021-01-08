@@ -35,9 +35,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.slf4j.Logger;
@@ -94,18 +92,6 @@ abstract class BaseApplier implements LogApplier {
       throw new QueryProcessException(ce.getMessage());
     }
     getQueryExecutor().processNonQuery(plan);
-  }
-
-  /**
-   * @param plan            the InsertMultiTabletPlan
-   * @param dataGroupMember the dataGroupMember the plan belongs to
-   */
-  private void processInsertMultiTabletPlanWithTolerance(InsertMultiTabletPlan plan,
-      DataGroupMember dataGroupMember)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
-      processPlanWithTolerance(insertTabletPlan, dataGroupMember);
-    }
   }
 
   /**
