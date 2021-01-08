@@ -105,7 +105,7 @@ public class PhysicalPlanSerializeTest {
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals(OperatorType.SET_STORAGE_GROUP, result.getOperatorType());
     Assert.assertEquals("root.sg", ((SetStorageGroupPlan) result).getPath().getFullPath());
-    Assert.assertTrue(result.equals(setStorageGroupPlan));
+    Assert.assertEquals(result, setStorageGroupPlan);
   }
 
   @Test
@@ -175,7 +175,7 @@ public class PhysicalPlanSerializeTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
-    Assert.assertTrue(createTimeSeriesPlan.equals(result));
+    Assert.assertEquals(createTimeSeriesPlan, result);
   }
 
   @Test
@@ -190,7 +190,7 @@ public class PhysicalPlanSerializeTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
-    Assert.assertTrue(createTimeSeriesPlan.equals(result));
+    Assert.assertEquals(createTimeSeriesPlan, result);
   }
 
   @Test
@@ -220,7 +220,7 @@ public class PhysicalPlanSerializeTest {
     Assert.assertEquals(byteBuffer1, byteBuffer2);
     PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_MULTI_TIMESERIES, result.getOperatorType());
-    Assert.assertTrue(plan.equals(result));
+    Assert.assertEquals(plan, result);
   }
 
   @Test
@@ -247,7 +247,7 @@ public class PhysicalPlanSerializeTest {
     Assert.assertEquals(byteBuffer1, byteBuffer2);
     PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_MULTI_TIMESERIES, result.getOperatorType());
-    Assert.assertTrue(plan.equals(result));
+    Assert.assertEquals(plan, result);
   }
 
   @Test
@@ -261,7 +261,7 @@ public class PhysicalPlanSerializeTest {
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     PhysicalPlan result = Factory.create(byteBuffer);
-    Assert.assertTrue(alterTimeSeriesPlan.equals(result));
+    Assert.assertEquals(alterTimeSeriesPlan, result);
   }
 
   @Test
@@ -300,6 +300,6 @@ public class PhysicalPlanSerializeTest {
     byteBuffer2.flip();
     Assert.assertEquals(byteBuffer1, byteBuffer2);
     PhysicalPlan result = Factory.create(byteBuffer1);
-    Assert.assertTrue(result.equals(authorPlan));
+    Assert.assertEquals(result, authorPlan);
   }
 }
