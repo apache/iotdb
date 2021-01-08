@@ -28,11 +28,13 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -65,6 +67,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
   static final String DEFAULT_ENABLE_RPC_COMPRESSION = "false";
   static final String DEFAULT_TIME_DISPLAY_TYPE = "long";
   static final String DEFAULT_ZONE_ID = "UTC";
+  static final String NULL_ITEM = "null";
 
   private static final char TAB = '\t';
   private static final char NEWLINE = '\n';
@@ -211,26 +214,33 @@ public class IoTDBInterpreter extends AbstractInterpreter {
       InterpreterResult interpreterResult;
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
+          boolean printTimestamp = resultSet instanceof IoTDBJDBCResultSet &&
+              !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
           final ResultSetMetaData metaData = resultSet.getMetaData();
           final int columnCount = metaData.getColumnCount();
 
           for (int i = 1; i <= columnCount; i++) {
-            stringBuilder.append(metaData.getColumnLabel(i));
+            stringBuilder.append(metaData.getColumnLabel(i).trim());
             stringBuilder.append(TAB);
           }
-          stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+          deleteLast(stringBuilder);
           stringBuilder.append(NEWLINE);
           while (resultSet.next()) {
-            stringBuilder
-                .append(RpcUtils.formatDatetime(timeFormat, RpcUtils.DEFAULT_TIMESTAMP_PRECISION,
-                    resultSet.getLong(TIMESTAMP_STR), zoneId));
-            for (int i = 2; i <= columnCount; i++) {
+            for (int i = 1; i <= columnCount; i++) {
+              if (printTimestamp && i == 1) {
+                stringBuilder.append(RpcUtils.formatDatetime(timeFormat,
+                    RpcUtils.DEFAULT_TIMESTAMP_PRECISION, resultSet.getLong(TIMESTAMP_STR),
+                    zoneId));
+              } else {
+                stringBuilder
+                    .append(Optional.ofNullable(resultSet.getString(i)).orElse(NULL_ITEM).trim());
+              }
               stringBuilder.append(TAB);
-              stringBuilder.append(resultSet.getString(i));
             }
+            deleteLast(stringBuilder);
             stringBuilder.append(NEWLINE);
           }
-          stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+          deleteLast(stringBuilder);
           interpreterResult = new InterpreterResult(Code.SUCCESS);
           interpreterResult.add(Type.TABLE, stringBuilder.toString());
           return interpreterResult;
@@ -241,6 +251,10 @@ public class IoTDBInterpreter extends AbstractInterpreter {
     } catch (SQLException e) {
       return new InterpreterResult(Code.ERROR, "SQLException: " + e.getMessage());
     }
+  }
+
+  private void deleteLast(StringBuilder stringBuilder) {
+    stringBuilder.deleteCharAt(stringBuilder.length() - 1);
   }
 
   @Override
