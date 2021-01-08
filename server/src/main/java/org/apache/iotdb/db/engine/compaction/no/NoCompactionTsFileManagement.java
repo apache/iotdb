@@ -88,6 +88,11 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
+  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+    logger.info("{} do not need to recover", storageGroupName);
+  }
+
+  @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     if (sequence) {
       sequenceFileTreeSet.addAll(tsFileResourceList);
