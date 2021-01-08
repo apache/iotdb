@@ -215,12 +215,12 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
   }
 
-  public void setParentInsetTablePlanIndexList(
+  public synchronized void setParentInsetTablePlanIndexList(
       List<Integer> parentInsetTablePlanIndexList) {
     this.parentInsetTablePlanIndexList = parentInsetTablePlanIndexList;
   }
 
-  public void setInsertTabletPlanList(
+  public synchronized void setInsertTabletPlanList(
       List<InsertTabletPlan> insertTabletPlanList) {
     this.insertTabletPlanList = insertTabletPlanList;
   }
