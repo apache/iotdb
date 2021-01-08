@@ -51,6 +51,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > 1. `,` : fields containing `,` should be quoted by a pair of `"` or a pair of `'`.
 > 2. `"` : `"` in fields should be replaced by `\"` or fields should be enclosed by `'`.
 > 3. `'` : `'` in fields should be replaced by `\'` or fields should be enclosed by `"`.
+> 4. you can input time format like yyyy-MM-dd'T'HH:mm:ss, yyy-MM-dd HH:mm:ss, or yyyy-MM-dd'T'HH:mm:ss.SSSZ.
 
 ### Run import shell
 ```
