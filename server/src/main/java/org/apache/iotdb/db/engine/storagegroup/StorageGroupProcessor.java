@@ -1527,7 +1527,7 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
           deletion.getEndTime())) {
@@ -1543,6 +1543,10 @@ public class StorageGroupProcessor {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
+      // write deletion into modification file
+      tsFileResource.getModFile().write(deletion);
+      // remember to close mod file
+      tsFileResource.getModFile().close();
 
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());

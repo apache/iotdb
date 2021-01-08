@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 /**
@@ -54,21 +53,13 @@ public class PriorityMergeReader implements IPointReader {
       return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
     });
     for (IPointReader reader : prioritySeriesReaders) {
-      addReader(reader);
+      addReader(reader, startPriority++);
     }
   }
 
-  public void addReader(IPointReader reader) throws IOException {
+  public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
-      heap.add(new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(0, 0)));
-    } else {
-      reader.close();
-    }
-  }
-
-  public void addReader(IPointReader reader, MergeReaderPriority priority) throws IOException {
-    if (reader.hasNextTimeValuePair()) {
-      heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
+      heap.add(new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0)));
     } else {
       reader.close();
     }

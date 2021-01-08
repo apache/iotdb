@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.memtable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;

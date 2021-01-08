@@ -33,9 +33,9 @@ public class PriorityMergeReaderTest2 {
     FakedSeriesReader reader3 = new FakedSeriesReader(180, 50, 7, 31);
 
     PriorityMergeReader priorityMergeReader = new PriorityMergeReader();
-    priorityMergeReader.addReader(reader1);
-    priorityMergeReader.addReader(reader2);
-    priorityMergeReader.addReader(reader3);
+    priorityMergeReader.addReader(reader1, 3);
+    priorityMergeReader.addReader(reader2, 2);
+    priorityMergeReader.addReader(reader3, 1);
 
     int cnt = 0;
     while (priorityMergeReader.hasNextTimeValuePair()) {

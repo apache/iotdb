@@ -196,11 +196,12 @@ public class UnseqTsFileRecoverTest {
     Path path = new Path("root.sg.device1", "sensor1");
 
     PriorityMergeReader unSeqMergeReader = new PriorityMergeReader();
+    int priorityValue = 1;
     for (ChunkMetadata chunkMetaData : metadataQuerier.getChunkMetaDataList(path)) {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReader(new ChunkDataIterator(chunkReader));
+          .addReader(new ChunkDataIterator(chunkReader), priorityValue++);
     }
 
     for (int i = 0; i < 10; i++) {

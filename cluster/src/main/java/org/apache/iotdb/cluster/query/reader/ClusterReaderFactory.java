@@ -200,7 +200,7 @@ public class ClusterReaderFactory {
       for (PartitionGroup partitionGroup : partitionGroups) {
         IPointReader seriesReader = getSeriesReader(partitionGroup, path,
             deviceMeasurements, timeFilter, valueFilter, context, dataType, ascending);
-        mergeReader.addReader(seriesReader);
+        mergeReader.addReader(seriesReader, 0);
       }
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);

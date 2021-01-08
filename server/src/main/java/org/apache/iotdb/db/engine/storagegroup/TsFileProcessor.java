@@ -401,8 +401,9 @@ public class TsFileProcessor {
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
-      modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
-
+      if (!flushingMemTables.isEmpty()) {
+        modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
+      }
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
