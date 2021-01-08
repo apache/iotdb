@@ -179,23 +179,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected IPlanExecutor executor;
 
   // Record the username for every rpc connection (session).
-  private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
-  private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
+  private final Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
+  private final Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
 
   // The sessionId is unique in one IoTDB instance.
-  private AtomicLong sessionIdGenerator = new AtomicLong();
+  private final AtomicLong sessionIdGenerator = new AtomicLong();
   // The statementId is unique in one IoTDB instance.
-  private AtomicLong statementIdGenerator = new AtomicLong();
+  private final AtomicLong statementIdGenerator = new AtomicLong();
 
   // (sessionId -> Set(statementId))
-  private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
+  private final Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
   // (statementId -> Set(queryId))
-  private Map<Long, Set<Long>> statementId2QueryId = new ConcurrentHashMap<>();
+  private final Map<Long, Set<Long>> statementId2QueryId = new ConcurrentHashMap<>();
   // (queryId -> QueryDataSet)
-  private Map<Long, QueryDataSet> queryId2DataSet = new ConcurrentHashMap<>();
+  private final Map<Long, QueryDataSet> queryId2DataSet = new ConcurrentHashMap<>();
 
   // When the client abnormally exits, we can still know who to disconnect
-  private ThreadLocal<Long> currSessionId = new ThreadLocal<>();
+  private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
 
   public static final TSProtocolVersion CURRENT_RPC_VERSION = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
@@ -1091,7 +1091,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) throws TException {
+  public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
     if (!checkLogin(req.getSessionId())) {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
@@ -1121,7 +1121,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus insertStringRecords(TSInsertStringRecordsReq req) throws TException {
+  public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
     if (!checkLogin(req.getSessionId())) {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
@@ -1231,7 +1231,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSStatus insertStringRecord(TSInsertStringRecordReq req) throws TException {
+  public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
