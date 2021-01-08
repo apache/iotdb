@@ -1541,7 +1541,7 @@ public class StorageGroupProcessor {
       }
 
       if (tsFileResource.getDevices().contains(deviceId) &&
-          (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+          (deleteEnd >= tsFileResource.getStartTime(deviceId) || deleteStart <= endTime)) {
         return false;
       }
     }
