@@ -143,6 +143,7 @@ public class RestorableTsFileIOWriterTest {
   }
 
   @Test
+  @Deprecated
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
