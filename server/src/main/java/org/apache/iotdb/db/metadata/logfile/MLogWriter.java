@@ -61,7 +61,7 @@ import java.util.Map;
 public class MLogWriter implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
-  private File logFile;
+  private final File logFile;
   private LogWriter logWriter;
   private int logNum;
   private static final String DELETE_FAILED_FORMAT = "Deleting %s failed with exception %s";
@@ -158,32 +158,22 @@ public class MLogWriter implements AutoCloseable {
   }
 
   public synchronized void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
-        node.getOffset(), childSize, node.getSchema());
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
+      node.getOffset(), childSize, node.getSchema());
+    putLog(plan);
   }
 
   public synchronized void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      StorageGroupMNodePlan plan = new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    StorageGroupMNodePlan plan = new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
+    putLog(plan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -287,13 +277,8 @@ public class MLogWriter implements AutoCloseable {
       operation(cmd);
     } else {
       PhysicalPlan plan = convertFromString(cmd);
-      try {
-        if (plan != null) {
-          putLog(plan);
-        }
-      } catch (BufferOverflowException e) {
-        throw new IOException(
-          LOG_TOO_LARGE_INFO, e);
+      if (plan != null) {
+        putLog(plan);
       }
     }
   }
