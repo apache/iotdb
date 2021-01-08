@@ -220,7 +220,7 @@ public class MergeMultiChunkTask {
       mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.putStartTime(deviceId, currDeviceMinTime);
+      currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }
 

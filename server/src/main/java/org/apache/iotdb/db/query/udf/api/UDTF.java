@@ -23,10 +23,11 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 
 /**
  * User-defined Time-series Generating Function (UDTF)
@@ -42,6 +43,13 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAc
  * <li>{@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row,
  * PointCollector)}
  * </ul>
+ * In the life cycle of a UDTF instance, the calling sequence of each method is as follows:
+ * <p>
+ * 1. {@link UDTF#validate(UDFParameterValidator)}
+ * 2. {@link UDTF#beforeStart(UDFParameters, UDTFConfigurations)}
+ * 3. {@link UDTF#transform(RowWindow, PointCollector)} or {@link UDTF#transform(Row, PointCollector)}
+ * 4. {@link UDTF#terminate(PointCollector)}
+ * 5. {@link UDTF#beforeDestroy()}
  * <p>
  * The query engine will instantiate an independent UDTF instance for each udf query column, and
  * different UDTF instances will not affect each other.

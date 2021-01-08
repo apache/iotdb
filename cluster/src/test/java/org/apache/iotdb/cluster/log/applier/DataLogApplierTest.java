@@ -46,7 +46,6 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -55,6 +54,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -95,6 +95,11 @@ public class DataLogApplierTest extends IoTDBTest {
     @Override
     public DataGroupMember getLocalDataMember(Node header, Object request) {
       return testDataGroupMember;
+    }
+
+    @Override
+    public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+      return getAsyncClient(node);
     }
 
     @Override
@@ -140,7 +145,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
     testDataGroupMember.setCharacter(NodeCharacter.LEADER);
     testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
     testMetaGroupMember.setClientProvider(new DataClientProvider(new Factory()) {
@@ -208,7 +213,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.stop();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
   }
 

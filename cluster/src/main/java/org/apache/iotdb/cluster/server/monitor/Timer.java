@@ -18,7 +18,7 @@
  */
 
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.member.RaftMember;

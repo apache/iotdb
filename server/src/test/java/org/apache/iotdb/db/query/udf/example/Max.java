@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -34,8 +35,14 @@ public class Max implements UDTF {
   private int value;
 
   @Override
+  public void validate(UDFParameterValidator validator) throws Exception {
+    validator
+        .validateInputSeriesNumber(1)
+        .validateInputSeriesDataType(0, TSDataType.INT32);
+  }
+
+  @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Max#beforeStart");
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());
@@ -55,10 +62,5 @@ public class Max implements UDTF {
     if (time != null) {
       collector.putInt(time, value);
     }
-  }
-
-  @Override
-  public void beforeDestroy() {
-    System.out.println("Max#beforeDestroy");
   }
 }

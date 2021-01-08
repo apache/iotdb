@@ -191,4 +191,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   public void exile() {
     metaGroupMember.applyRemoveNode(metaGroupMember.getThisNode());
   }
+
+  @Override
+  public void handshake(Node sender) {
+    metaGroupMember.handleHandshake(sender);
+  }
 }

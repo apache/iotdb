@@ -43,9 +43,14 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setDeduplicatedPaths(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
-    QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1)));
-    checkSequentialDataset(dataSet, 0, 20);
+    RemoteQueryContext context = new RemoteQueryContext(
+        QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    try {
+      QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
+      checkSequentialDataset(dataSet, 0, 20);
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
   }
 
   @Test
@@ -58,9 +63,14 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
-    QueryDataSet dataSet = queryExecutor.executeWithValueFilter(
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1)));
-    checkSequentialDataset(dataSet, 5, 15);
+    RemoteQueryContext context = new RemoteQueryContext(
+        QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+    try {
+      QueryDataSet dataSet = queryExecutor.executeWithValueFilter(context);
+      checkSequentialDataset(dataSet, 5, 15);
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
   }
 
 }
