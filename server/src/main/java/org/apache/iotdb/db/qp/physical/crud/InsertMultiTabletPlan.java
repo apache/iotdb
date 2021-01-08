@@ -112,16 +112,16 @@ public class InsertMultiTabletPlan extends InsertPlan {
     this.parentInsetTablePlanIndexList = parentInsetTablePlanIndexList;
   }
 
-  public synchronized void addInsertTabletPlan(InsertTabletPlan plan, Integer parentIndex) {
+  public void addInsertTabletPlan(InsertTabletPlan plan, Integer parentIndex) {
     insertTabletPlanList.add(plan);
     parentInsetTablePlanIndexList.add(parentIndex);
   }
 
-  public synchronized List<InsertTabletPlan> getInsertTabletPlanList() {
+  public List<InsertTabletPlan> getInsertTabletPlanList() {
     return insertTabletPlanList;
   }
 
-  public synchronized List<Integer> getParentInsetTablePlanIndexList() {
+  public List<Integer> getParentInsetTablePlanIndexList() {
     return parentInsetTablePlanIndexList;
   }
 
@@ -215,13 +215,11 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
   }
 
-  public synchronized void setParentInsetTablePlanIndexList(
-      List<Integer> parentInsetTablePlanIndexList) {
+  public void setParentInsetTablePlanIndexList(List<Integer> parentInsetTablePlanIndexList) {
     this.parentInsetTablePlanIndexList = parentInsetTablePlanIndexList;
   }
 
-  public synchronized void setInsertTabletPlanList(
-      List<InsertTabletPlan> insertTabletPlanList) {
+  public void setInsertTabletPlanList(List<InsertTabletPlan> insertTabletPlanList) {
     this.insertTabletPlanList = insertTabletPlanList;
   }
 
