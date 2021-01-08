@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -111,6 +112,8 @@ public class ClusterPlanRouter {
       throws UnsupportedPlanException, MetadataException {
     if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
+    } else if (plan instanceof InsertMultiTabletPlan) {
+      return splitAndRoutePlan((InsertMultiTabletPlan) plan);
     } else if (plan instanceof CountPlan) {
       return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
@@ -153,6 +156,40 @@ public class ClusterPlanRouter {
     PartitionGroup partitionGroup =
         partitionTable.partitionByPathTime(plan.getPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
+  }
+
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertMultiTabletPlan plan)
+      throws MetadataException {
+    Map<PartitionGroup, InsertMultiTabletPlan> pgInsertMultiTabletPlanMap = new HashMap<>();
+    for (int i = 0; i < plan.getInsertTabletPlanList().size(); i++) {
+      InsertTabletPlan insertTabletPlan = plan.getInsertTabletPlanList().get(i);
+      Map<PhysicalPlan, PartitionGroup> tmpResult = splitAndRoutePlan(insertTabletPlan);
+      for (Map.Entry<PhysicalPlan, PartitionGroup> entry : tmpResult.entrySet()) {
+        InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
+        PartitionGroup tmpPg = entry.getValue();
+
+        InsertMultiTabletPlan pgPlan = pgInsertMultiTabletPlanMap.get(tmpPg);
+        if (pgPlan == null) {
+          List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
+          List<Integer> parentInsetTablePlanIndexList = new ArrayList<>();
+          insertTabletPlanList.add(tmpPlan);
+          parentInsetTablePlanIndexList.add(i);
+          InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(
+              insertTabletPlanList, parentInsetTablePlanIndexList);
+          pgInsertMultiTabletPlanMap.put(tmpPg, insertMultiTabletPlan);
+        } else {
+          pgPlan.addInsertTabletPlan(tmpPlan, i);
+          pgInsertMultiTabletPlanMap.put(tmpPg, pgPlan);
+        }
+      }
+    }
+
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>(pgInsertMultiTabletPlanMap.size());
+    for (Map.Entry<PartitionGroup, InsertMultiTabletPlan> entry : pgInsertMultiTabletPlanMap
+        .entrySet()) {
+      result.put(entry.getValue(), entry.getKey());
+    }
+    return result;
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")

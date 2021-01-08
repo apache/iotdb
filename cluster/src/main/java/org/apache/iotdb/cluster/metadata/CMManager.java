@@ -79,6 +79,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -488,6 +489,25 @@ public class CMManager extends MManager {
   }
 
   /**
+   * @param insertMultiTabletPlan the InsertMultiTabletPlan
+   * @return true if all InsertTabletPlan in InsertMultiTabletPlan create timeseries success,
+   * otherwise false
+   */
+  public boolean createTimeseries(InsertMultiTabletPlan insertMultiTabletPlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertTabletPlan insertTabletPlan : insertMultiTabletPlan.getInsertTabletPlanList()) {
+      boolean success = createTimeseries(insertTabletPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error("create timeseries for device={} failed", insertTabletPlan.getDeviceId());
+      }
+    }
+    return allSuccess;
+  }
+
+
+  /**
    * Create timeseries automatically for an InsertPlan.
    *
    * @param insertPlan some of the timeseries in it are not created yet
@@ -495,6 +515,10 @@ public class CMManager extends MManager {
    */
   public boolean createTimeseries(InsertPlan insertPlan)
       throws IllegalPathException, CheckConsistencyException {
+    if (insertPlan instanceof InsertMultiTabletPlan) {
+      return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    }
+
     List<String> seriesList = new ArrayList<>();
     PartialPath deviceId = insertPlan.getDeviceId();
     PartialPath storageGroupName;
