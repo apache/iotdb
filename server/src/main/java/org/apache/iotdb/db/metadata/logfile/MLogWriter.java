@@ -104,7 +104,7 @@ public class MLogWriter implements AutoCloseable {
     mlogBuffer.clear();
   }
 
-  private void putLog(PhysicalPlan plan) throws IOException {
+  private synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();
@@ -115,40 +115,40 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public synchronized void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
+  public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
     putLog(createTimeSeriesPlan);
   }
 
-  public synchronized void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
+  public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     putLog(deleteTimeSeriesPlan);
   }
 
-  public synchronized void setStorageGroup(PartialPath storageGroup) throws IOException {
+  public void setStorageGroup(PartialPath storageGroup) throws IOException {
     SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
     putLog(plan);
   }
 
-  public synchronized void deleteStorageGroup(PartialPath storageGroup) throws IOException {
+  public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
     DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
     putLog(plan);
   }
 
-  public synchronized void setTTL(PartialPath storageGroup, long ttl) throws IOException {
+  public void setTTL(PartialPath storageGroup, long ttl) throws IOException {
     SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
     putLog(plan);
   }
 
-  public synchronized void changeOffset(PartialPath path, long offset) throws IOException {
+  public void changeOffset(PartialPath path, long offset) throws IOException {
     ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
     putLog(plan);
   }
 
-  public synchronized void changeAlias(PartialPath path, String alias) throws IOException {
+  public void changeAlias(PartialPath path, String alias) throws IOException {
     ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
     putLog(plan);
   }
 
-  public synchronized void serializeMNode(MNode node) throws IOException {
+  public void serializeMNode(MNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();
@@ -157,7 +157,7 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public synchronized void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
+  public void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();
@@ -167,7 +167,7 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public synchronized void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
+  public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();
