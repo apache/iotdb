@@ -209,6 +209,7 @@ public class TsFileResource {
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
+    this.version = originTsFileResource.version;
     generateTimeSeriesMetadata();
   }
 
