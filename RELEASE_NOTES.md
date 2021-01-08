@@ -27,6 +27,7 @@
 * IOTDB-1069 restrict the flushing memtable number to avoid OOM when mem_control is disabled
 * IOTDB-1077 add insertOneDeviceRecords API in java session
 * IOTDB-1087 fix compaction block flush: flush do not return until compaction finished
+* IOTDB-1106 Delete timeseries statement will incorrectly delete other timeseries  
 * Github issue-2137 fix grafana value-time position bug
 * Github issue-2169 GetObject returns String for all data types
 * Github issue-2240 fix Sync failed: Socket is closed by peer
@@ -36,6 +37,7 @@
 * Fix compaction recover block restart: IoTDB cannot restart until last compaction recover task finished
 * Fix compaction ignore modification file: delete does not work after compaction
 * print more insert error message in client
+* expose enablePartition parameter into iotdb-engines.properpties
 
 # Apache IoTDB 0.11.1
 
