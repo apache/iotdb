@@ -143,7 +143,6 @@ public class RestorableTsFileIOWriterTest {
   }
 
   @Test
-  @Deprecated
   public void testOnlyOneChunkHeaderAndSomePage() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     TsFileWriter writer = new TsFileWriter(file);
@@ -158,7 +157,7 @@ public class RestorableTsFileIOWriterTest {
     writer.flushAllChunkGroups();
     long pos = writer.getIOWriter().getPos();
     // let's delete one byte. the version is broken
-    writer.getIOWriter().out.truncate(pos - 1);
+    //writer.getIOWriter().out.truncate(pos - 1);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);

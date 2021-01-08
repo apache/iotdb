@@ -433,24 +433,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  /**
-   * get version controller by time partition Id Thread-safety should be ensure by caller
-   *
-   * @param timePartitionId time partition Id
-   * @return version controller
-   */
-  private VersionController getVersionControllerByTimePartitionId(long timePartitionId) {
-    return timePartitionIdVersionControllerMap.computeIfAbsent(timePartitionId,
-        id -> {
-          try {
-            return new SimpleFileVersionController(storageGroupSysDir.getPath(), timePartitionId);
-          } catch (IOException e) {
-            logger.error("can't build a version controller for time partition {}", timePartitionId);
-            return null;
-          }
-        });
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException {

@@ -276,11 +276,6 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void delete(Deletion deletion) {
-    this.modifications.add(deletion);
-  }
-
-  @Override
   public void addTVListRamCost(long cost) {
     this.tvListRamCost += cost;
   }

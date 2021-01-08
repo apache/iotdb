@@ -20,8 +20,10 @@ package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 /**
@@ -189,8 +191,27 @@ public class PriorityMergeReader implements IPointReader {
 
     @Override
     public int compareTo(MergeReaderPriority o) {
-      return (version < o.version) ? -1 :
-              ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
+      if (version < o.version) {
+        return -1;
+      }
+      return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
+    }
+
+    @Override
+    public boolean equals(Object object) {
+      if (this == object) {
+        return true;
+      }
+      if (object == null || getClass() != object.getClass()) {
+        return false;
+      }
+      MergeReaderPriority that = (MergeReaderPriority) object;
+      return (this.version == that.version && this.offset == that.offset);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(version, offset);
     }
   }
 

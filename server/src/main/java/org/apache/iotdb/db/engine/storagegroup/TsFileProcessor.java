@@ -45,7 +45,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -403,9 +402,7 @@ public class TsFileProcessor {
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
-      /*for (IMemTable memTable : flushingMemTables) {
-        memTable.delete(deletion);
-      }*/
+
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {

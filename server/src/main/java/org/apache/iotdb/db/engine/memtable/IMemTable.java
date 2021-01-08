@@ -112,14 +112,6 @@ public interface IMemTable {
   void delete(PartialPath path, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   /**
-   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * deviceId.measurementId. Only called for flushing MemTable.
-   *
-   * @param deletion and object representing this deletion
-   */
-  void delete(Deletion deletion);
-
-  /**
    * Make a copy of this MemTable.
    *
    * @return a MemTable with the same data as this one.

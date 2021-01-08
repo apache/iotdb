@@ -203,7 +203,6 @@ public class FilePathUtils {
 
   public static long splitAndGetTsFileVersion(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    long version = Long.parseLong(names[1]);
-    return version;
+    return Long.parseLong(names[1]);
   }
 }
