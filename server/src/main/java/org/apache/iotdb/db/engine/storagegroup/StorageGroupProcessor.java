@@ -1862,8 +1862,6 @@ public class StorageGroupProcessor {
       tsFileManagement.writeUnlock();
       writeUnlock();
     }
-
-    executeCompaction(newFilePartitionId);
   }
 
   private void executeCompaction(long timePartition) {
