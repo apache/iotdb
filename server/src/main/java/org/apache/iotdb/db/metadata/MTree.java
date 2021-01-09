@@ -1362,11 +1362,6 @@ public class MTree implements Serializable {
         for (int i = depth + 1; i < nodes.length; i++) {
           pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(nodes[i]);
         }
-        if (depth >= nodes.length - 1 && currNode.equals(PATH_WILDCARD)) {
-          // the we find the sg at the last node and the last node is a wildcard (find "root
-          // .group1", for "root.*"), also append the wildcard (to make "root.group1.*")
-          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(PATH_WILDCARD);
-        }
         paths.put(sgName, pathWithKnownSG.toString());
       } else if (!child.getChildren().isEmpty()) {
         // push it back so we can traver its children later
