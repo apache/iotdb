@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,6 +99,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
+    this.insertTabletPlanList = new ArrayList<>();
+    this.parentInsetTablePlanIndexList = new ArrayList<>();
   }
 
   public InsertMultiTabletPlan(List<InsertTabletPlan> insertTabletPlanList) {
@@ -124,6 +128,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public List<Integer> getParentInsetTablePlanIndexList() {
     return parentInsetTablePlanIndexList;
   }
+
 
   @Override
   public List<PartialPath> getPaths() {
@@ -187,6 +192,9 @@ public class InsertMultiTabletPlan extends InsertPlan {
     return insertTabletPlanList.get(index).getRowCount();
   }
 
+  public PartialPath getFirstDeviceId() {
+    return insertTabletPlanList.get(0).getDeviceId();
+  }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {
     if (index >= insertTabletPlanList.size() || index < 0) {
@@ -194,7 +202,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
     return insertTabletPlanList.get(index);
   }
-
 
   /**
    * @param index the index of the sub plan in this InsertMultiTabletPlan
@@ -206,7 +213,6 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
     return parentInsetTablePlanIndexList.get(index);
   }
-
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
@@ -241,12 +247,27 @@ public class InsertMultiTabletPlan extends InsertPlan {
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      insertTabletPlan.serialize(buffer);
+      insertTabletPlan.subSerialize(buffer);
     }
 
     buffer.putInt(parentInsetTablePlanIndexList.size());
     for (Integer index : parentInsetTablePlanIndexList) {
       buffer.putInt(index);
+    }
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.MULTI_BATCH_INSERT.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeInt(insertTabletPlanList.size());
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      insertTabletPlan.subSerialize(stream);
+    }
+
+    stream.writeInt(parentInsetTablePlanIndexList.size());
+    for (Integer index : parentInsetTablePlanIndexList) {
+      stream.writeInt(index);
     }
   }
 

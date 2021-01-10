@@ -1082,6 +1082,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
+    System.out.println("HAHAHAHAHAH=" + insertMultiTabletPlan.toString());
     for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
       if (insertMultiTabletPlan.getResults().containsKey(i)) {
         continue;

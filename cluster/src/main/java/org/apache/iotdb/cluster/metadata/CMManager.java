@@ -403,7 +403,7 @@ public class CMManager extends MManager {
     // try to set storage group
     List<PartialPath> deviceIds;
     // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
       deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
     } else if (plan instanceof CreateTimeSeriesPlan) {
       deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());

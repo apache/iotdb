@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -222,6 +223,10 @@ public abstract class PhysicalPlan {
           break;
         case BATCHINSERT:
           plan = new InsertTabletPlan();
+          plan.deserialize(buffer);
+          break;
+        case MULTI_BATCH_INSERT:
+          plan = new InsertMultiTabletPlan();
           plan.deserialize(buffer);
           break;
         case DELETE:

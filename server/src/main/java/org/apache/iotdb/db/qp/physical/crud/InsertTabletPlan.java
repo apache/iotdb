@@ -142,13 +142,17 @@ public class InsertTabletPlan extends InsertPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
+    subSerialize(stream);
+  }
 
+  public void subSerialize(DataOutputStream stream) throws IOException {
     putString(stream, deviceId.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
     writeValues(stream);
   }
+
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
     stream.writeInt(
@@ -209,7 +213,10 @@ public class InsertTabletPlan extends InsertPlan {
   public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
+    subSerialize(buffer);
+  }
 
+  public void subSerialize(ByteBuffer buffer) {
     putString(buffer, deviceId.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);

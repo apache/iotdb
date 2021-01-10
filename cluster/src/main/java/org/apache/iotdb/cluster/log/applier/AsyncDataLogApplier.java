@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -131,7 +132,10 @@ public class AsyncDataLogApplier implements LogApplier {
 
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertMultiTabletPlan) {
+      PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {
