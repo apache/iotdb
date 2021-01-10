@@ -100,7 +100,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 从二进制文件安装。推荐的方法是从官方网站下载二进制文件，您将获得一个开箱即用的二进制发布包。
 
-* 使用Docker: dockerfile的路径是https://github.com/apache/incubat-iotdb/tree/master/docker/src/main
+* 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
 在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅《用户指南》第3章。
 
@@ -124,7 +124,7 @@ git checkout release/x.x.x
 > mvn clean package -DskipTests
 ```
 
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
+执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 > 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
 
