@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,27 +18,10 @@
 # under the License.
 #
 
-# docker build context is the root path of the repository
+set -x
 
-FROM openjdk:11-jre-slim
+cd "$(dirname "$0")" || exit 1
 
-ADD distribution/target/apache-iotdb-*-bin.zip /
+docker-compose down
 
-RUN apt update \
-  && apt install lsof procps unzip -y \
-  && unzip /apache-iotdb-*-bin.zip -d / \
-  && rm /apache-iotdb-*-bin.zip \
-  && mv /apache-iotdb-* /iotdb \
-  && apt remove unzip -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y
-
-EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8181
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
-ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+cd - || exit 1

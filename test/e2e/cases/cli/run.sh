@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,27 +18,31 @@
 # under the License.
 #
 
-# docker build context is the root path of the repository
+set -e
 
-FROM openjdk:11-jre-slim
+cd "$(dirname "$0")"
 
-ADD distribution/target/apache-iotdb-*-bin.zip /
+docker-compose up -d
 
-RUN apt update \
-  && apt install lsof procps unzip -y \
-  && unzip /apache-iotdb-*-bin.zip -d / \
-  && rm /apache-iotdb-*-bin.zip \
-  && mv /apache-iotdb-* /iotdb \
-  && apt remove unzip -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y
+max_attempts=10
+attempts=1
 
-EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8181
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
-ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+while ! docker-compose logs | grep -c 'Ready to Run IoTDB E2E Tests' > /dev/null 2>&1; do
+  if [[ $attempts -gt $max_attempts ]]; then
+    echo "Preparation is not ready after $max_attempts attempts, will exit now"
+    exit 1
+  fi
+  echo "Preparation is not ready yet, retrying ($attempts/$max_attempts)"
+  sleep 3
+  attempts=$((attempts+1))
+done
+
+results=$(docker-compose exec -T server /iotdb/sbin/start-cli.sh -e 'SELECT temperature FROM root.ln.wf01.wt01')
+
+if [[ $results != *"Total line number = 2"* ]]; then
+  echo "Total line number should be 2"
+  echo "$results"
+  exit 1
+fi
+
+cd -
