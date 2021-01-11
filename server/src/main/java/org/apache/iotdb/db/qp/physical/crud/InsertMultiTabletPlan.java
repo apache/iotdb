@@ -42,18 +42,18 @@ public class InsertMultiTabletPlan extends InsertPlan {
   /**
    * the value is used to indict the parent InsertTabletPlan's index when the parent
    * InsertTabletPlan is split to multi sub InsertTabletPlans. if the InsertTabletPlan have no
-   * parent plan, the value is -1;
+   * parent plan, the value is zero;
    * <p>
-   * suppose we original have 3 InsertTabletPlans contains 1 InsertMultiTabletPlan, then the initial
+   * suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the initial
    * InsertMultiTabletPlan would have the following two attributes:
    * <p>
    * insertTabletPlanList={InsertTabletPlan_1,InsertTabletPlan_2,InsertTabletPlan_3}
    * <p>
-   * parentInsetTablePlanIndexList={-1,-1,-1} both have three values.
+   * parentInsetTablePlanIndexList={0,0,0} both have three values.
    *
    * <p>
-   * if the InsertTabletPlan_1 is split into two sub InsertTabletPlan, InsertTabletPlan_2 is split
-   * into three sub InsertTabletPlan, InsertTabletPlan_3 is split into four sub InsertTabletPlan.
+   * if the InsertTabletPlan_1 is split into two sub InsertTabletPlans, InsertTabletPlan_2 is split
+   * into three sub InsertTabletPlans, InsertTabletPlan_3 is split into four sub InsertTabletPlans.
    * <p>
    * InsertTabletPlan_1={InsertTabletPlan_1_subPlan1, InsertTabletPlan_1_subPlan2}
    *
@@ -65,8 +65,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
    * InsertTabletPlan_3={InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan2,
    * InsertTabletPlan_3_subPlan3, InsertTabletPlan_3_subPlan4}
    * <p>
-   * those sub plans belongs to two different raft data group, so will generate two new
-   * InsertMultiTabletPlan
+   * those sub plans belong to two different raft data groups, so will generate two new
+   * InsertMultiTabletPlans
    * <p>
    * InsertMultiTabletPlant1.insertTabletPlanList={InsertTabletPlan_1_subPlan1,
    * InsertTabletPlan_3_subPlan1, InsertTabletPlan_3_subPlan3, InsertTabletPlan_3_subPlan4}

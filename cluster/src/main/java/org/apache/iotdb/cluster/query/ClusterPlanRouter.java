@@ -179,7 +179,6 @@ public class ClusterPlanRouter {
           pgInsertMultiTabletPlanMap.put(tmpPg, insertMultiTabletPlan);
         } else {
           pgPlan.addInsertTabletPlan(tmpPlan, i);
-          pgInsertMultiTabletPlanMap.put(tmpPg, pgPlan);
         }
       }
     }
