@@ -40,43 +40,53 @@ import java.util.concurrent.ConcurrentMap;
 public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
-  private static Map<String, String> cachedPathPool =
-      CachedStringPool.getInstance().getCachedPool();
+  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance()
+      .getCachedPool();
 
-  /** Name of the MNode */
+  /**
+   * Name of the MNode
+   */
   protected String name;
-
   protected MNode parent;
 
-  /** from root to this node, only be set when used once for InternalMNode */
+  /**
+   * from root to this node, only be set when used once for InternalMNode
+   */
   protected String fullPath;
 
   /**
-   * use in Measurement Node so it's protected suppress warnings reason: volatile for double
-   * synchronized check
+   * use in Measurement Node so it's protected
+   * suppress warnings reason: volatile for double synchronized check
+   *
+   * This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile ConcurrentMap<String, MNode> children = null;
+  protected transient volatile Map<String, MNode> children = null;
 
-  /** suppress warnings reason: volatile for double synchronized check */
+  /**
+   * suppress warnings reason: volatile for double synchronized check
+   */
   @SuppressWarnings("squid:S3077")
   private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
 
-  /** Constructor of MNode. */
+  /**
+   * Constructor of MNode.
+   */
   public MNode(MNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }
 
-  /** check whether the MNode has a child with the name */
+  /**
+   * check whether the MNode has a child with the name
+   */
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name))
-        || (aliasChildren != null && aliasChildren.containsKey(name));
+    return (children != null && children.containsKey(name)) ||
+        (aliasChildren != null && aliasChildren.containsKey(name));
   }
 
   /**
    * add a child to current mnode
-   *
    * @param name child's name
    * @param child child's node
    */
@@ -97,21 +107,27 @@ public class MNode implements Serializable {
     children.putIfAbsent(name, child);
   }
 
-  /** delete a child */
+  /**
+   * delete a child
+   */
   public void deleteChild(String name) {
     if (children != null) {
       children.remove(name);
     }
   }
 
-  /** delete the alias of a child */
+  /**
+   * delete the alias of a child
+   */
   public void deleteAliasChild(String alias) {
     if (aliasChildren != null) {
       aliasChildren.remove(alias);
     }
   }
 
-  /** get the child with the name */
+  /**
+   * get the child with the name
+   */
   public MNode getChild(String name) {
     MNode child = null;
     if (children != null) {
@@ -123,22 +139,23 @@ public class MNode implements Serializable {
     return aliasChildren == null ? null : aliasChildren.get(name);
   }
 
-  /** get the count of all MeasurementMNode whose ancestor is current node */
-  public int getMeasurementMNodeCount() {
+  /**
+   * get the count of all leaves whose ancestor is current node
+   */
+  public int getLeafCount() {
     if (children == null) {
-      return 1;
+      return 0;
     }
-    int measurementMNodeCount = 0;
-    if (this instanceof MeasurementMNode) {
-      measurementMNodeCount += 1; // current node itself may be MeasurementMNode
-    }
+    int leafCount = 0;
     for (MNode child : children.values()) {
-      measurementMNodeCount += child.getMeasurementMNodeCount();
+      leafCount += child.getLeafCount();
     }
-    return measurementMNodeCount;
+    return leafCount;
   }
 
-  /** add an alias */
+  /**
+   * add an alias
+   */
   public boolean addAlias(String alias, MNode child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
@@ -152,7 +169,9 @@ public class MNode implements Serializable {
     return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
-  /** get full path */
+  /**
+   * get full path
+   */
   public String getFullPath() {
     if (fullPath == null) {
       fullPath = concatFullPath();
@@ -207,7 +226,7 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public void setChildren(ConcurrentMap<String, MNode> children) {
+  public void setChildren(Map<String, MNode> children) {
     this.children = children;
   }
 
@@ -233,4 +252,19 @@ public class MNode implements Serializable {
       entry.getValue().serializeTo(logWriter);
     }
   }
+
+  public void replaceChild(String measurement, MNode newChildNode) {
+    MNode child = this.getChild(measurement);
+    if (child == null) {
+      return;
+    }
+    Map<String, MNode> children = child.getChildren();
+    //newChildNode builds parent-child relationship
+    newChildNode.setChildren(children);
+    newChildNode.setParent(this);
+
+    this.deleteChild(measurement);
+    this.addChild(newChildNode.getName(), newChildNode);
+  }
+
 }
