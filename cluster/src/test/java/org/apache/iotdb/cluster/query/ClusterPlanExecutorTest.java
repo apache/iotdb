@@ -59,8 +59,12 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
-    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
-    checkSequentialDataset(dataSet, 0, 20);
+    try {
+      QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
+      checkSequentialDataset(dataSet, 0, 20);
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
   }
 
   @Test

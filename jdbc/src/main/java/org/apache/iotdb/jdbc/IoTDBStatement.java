@@ -309,6 +309,9 @@ public class IoTDBStatement implements Statement {
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
+    if (timeoutInMS <= 0) {
+      throw new SQLException("Timeout must be over 0, please check and try again.");
+    }
     isClosed = false;
     try {
       return executeQuerySQL(sql, timeoutInMS);
@@ -332,9 +335,6 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
-    if (timeoutInMS <= 0) {
-      throw new SQLException("Timeout must be over 0, please check and try again.");
-    }
     execReq.setTimeout(timeoutInMS);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();

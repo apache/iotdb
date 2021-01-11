@@ -71,6 +71,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -402,6 +403,18 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+
+    // TODO monitor: update statistics
+    try {
+      storageGroupProcessor.insert(insertRowsOfOneDevicePlan);
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
   /**
    * insert a InsertTabletPlan to a storage group
    */
@@ -663,11 +676,11 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws LoadFileException, StorageEngineException, MetadataException {
-    Map<String, Integer> deviceMap = newTsFileResource.getDeviceToIndexMap();
-    if (deviceMap == null || deviceMap.isEmpty()) {
+    Set<String> deviceSet = newTsFileResource.getDevices();
+    if (deviceSet == null || deviceSet.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
-    String device = deviceMap.keySet().iterator().next();
+    String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
     PartialPath storageGroupPath = IoTDB.metaManager.getStorageGroupPath(devicePath);
     getProcessor(storageGroupPath).loadNewTsFile(newTsFileResource);

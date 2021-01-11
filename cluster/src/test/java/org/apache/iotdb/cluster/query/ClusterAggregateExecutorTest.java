@@ -73,17 +73,21 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    executor = new ClusterAggregateExecutor(plan, testMetaMember);
-    QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context, plan);
-    assertTrue(queryDataSet.hasNext());
-    RowRecord record = queryDataSet.next();
-    List<Field> fields = record.getFields();
-    assertEquals(5, fields.size());
-    Object[] answers = new Object[] {0.0, 19.0, 9.5, 20.0, 190.0};
-    for (int i = 0; i < 5; i++) {
-      assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+    try {
+      executor = new ClusterAggregateExecutor(plan, testMetaMember);
+      QueryDataSet queryDataSet = executor.executeWithoutValueFilter(context, plan);
+      assertTrue(queryDataSet.hasNext());
+      RowRecord record = queryDataSet.next();
+      List<Field> fields = record.getFields();
+      assertEquals(5, fields.size());
+      Object[] answers = new Object[] {0.0, 19.0, 9.5, 20.0, 190.0};
+      for (int i = 0; i < 5; i++) {
+        assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+      }
+      assertFalse(queryDataSet.hasNext());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-    assertFalse(queryDataSet.hasNext());
   }
 
   @Test
@@ -114,16 +118,20 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
 
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    executor = new ClusterAggregateExecutor(plan, testMetaMember);
-    QueryDataSet queryDataSet = executor.executeWithValueFilter(context, plan);
-    assertTrue(queryDataSet.hasNext());
-    RowRecord record = queryDataSet.next();
-    List<Field> fields = record.getFields();
-    assertEquals(5, fields.size());
-    Object[] answers = new Object[] {3.0, 8.0, 5.5, 6.0, 33.0};
-    for (int i = 0; i < 5; i++) {
-      assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+    try {
+      executor = new ClusterAggregateExecutor(plan, testMetaMember);
+      QueryDataSet queryDataSet = executor.executeWithValueFilter(context, plan);
+      assertTrue(queryDataSet.hasNext());
+      RowRecord record = queryDataSet.next();
+      List<Field> fields = record.getFields();
+      assertEquals(5, fields.size());
+      Object[] answers = new Object[] {3.0, 8.0, 5.5, 6.0, 33.0};
+      for (int i = 0; i < 5; i++) {
+        assertEquals((double)answers[i], Double.parseDouble(fields.get(i).toString()), 0.00001);
+      }
+      assertFalse(queryDataSet.hasNext());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-    assertFalse(queryDataSet.hasNext());
   }
 }

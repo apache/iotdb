@@ -63,7 +63,7 @@ public class LocalTsFileInput implements TsFileInput {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.error("Error happened while getting {} current position", filePath);
       throw e;
     }
   }
@@ -77,7 +77,7 @@ public class LocalTsFileInput implements TsFileInput {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.error("Error happened while changing {} position to {}", filePath, newPosition);
       throw e;
     }
   }
@@ -90,7 +90,7 @@ public class LocalTsFileInput implements TsFileInput {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.error("Error happened while reading {} from current position", filePath);
       throw e;
     }
   }
@@ -103,7 +103,7 @@ public class LocalTsFileInput implements TsFileInput {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.error("Error happened while reading {} from position {}", filePath, position);
       throw e;
     }
   }
@@ -136,7 +136,7 @@ public class LocalTsFileInput implements TsFileInput {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
-      logger.error("Error happened while getting {} size", filePath);
+      logger.error("Error happened while closing {}", filePath);
       throw e;
     }
   }

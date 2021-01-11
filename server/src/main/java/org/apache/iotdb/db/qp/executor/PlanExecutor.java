@@ -107,6 +107,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -214,6 +215,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);
+        return true;
+      case BATCH_INSERT_ONE_DEVICE:
+        insert((InsertRowsOfOneDevicePlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -805,7 +809,7 @@ public class PlanExecutor implements IPlanExecutor {
     final Binary className = Binary.valueOf("");
     for (String functionName : SQLConstant.getNativeFunctionNames()) {
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
-      rowRecord.addField(Binary.valueOf(functionName), TSDataType.TEXT);
+      rowRecord.addField(Binary.valueOf(functionName.toUpperCase()), TSDataType.TEXT);
       rowRecord.addField(functionType, TSDataType.TEXT);
       rowRecord.addField(className, TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
@@ -1033,10 +1037,65 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
+  public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws QueryProcessException {
+    try {
+      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+        plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
+        // check whether types are match
+        getSeriesSchemas(plan);
+        //we do not need to infer data type for insertRowsOfOneDevicePlan
+      }
+      //ok, we can begin to write data into the engine..
+      StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
+
+      List<String> notExistedPaths = null;
+      List<String> failedMeasurements = null;
+      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+        if (plan.getFailedMeasurements() != null) {
+          if (notExistedPaths == null) {
+            notExistedPaths = new ArrayList<>();
+            failedMeasurements = new ArrayList<>();
+          }
+          // check if all path not exist exceptions
+          List<String> failedPaths = plan.getFailedMeasurements();
+          List<Exception> exceptions = plan.getFailedExceptions();
+          boolean isPathNotExistException = true;
+          for (Exception e : exceptions) {
+            Throwable curException = e;
+            while (curException.getCause() != null) {
+              curException = curException.getCause();
+            }
+            if (!(curException instanceof PathNotExistException)) {
+              isPathNotExistException = false;
+              break;
+            }
+          }
+          if (isPathNotExistException) {
+            notExistedPaths.addAll(failedPaths);
+          } else {
+            failedMeasurements.addAll(plan.getFailedMeasurements());
+          }
+        }
+      }
+      if (notExistedPaths != null && !notExistedPaths.isEmpty()) {
+        throw new PathNotExistException(notExistedPaths);
+      } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
+        throw new StorageEngineException(
+            "failed to insert points " + failedMeasurements);
+      }
+
+    } catch (StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      // check whether types are match
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);
