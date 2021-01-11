@@ -317,7 +317,7 @@ public class AuthorPlan extends PhysicalPlan {
     if (permissions == null) {
       buffer.put((byte) 0);
     } else {
-      buffer.putInt((byte) 1);
+      buffer.put((byte) 1);
       buffer.putInt(permissions.size());
       for (int permission : permissions) {
         buffer.putInt(permission);

@@ -99,6 +99,11 @@ public abstract class TsFileManagement {
   public abstract void add(TsFileResource tsFileResource, boolean sequence);
 
   /**
+   * add one TsFile to list for recover
+   */
+  public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
+
+  /**
    * add some TsFiles to list
    */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);

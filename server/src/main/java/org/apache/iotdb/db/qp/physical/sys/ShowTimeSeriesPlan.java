@@ -111,16 +111,13 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
-
     putString(outputStream, path.getFullPath());
     outputStream.writeBoolean(isContains);
     putString(outputStream, key);
     putString(outputStream, value);
-
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
     outputStream.writeBoolean(orderByHeat);
-
     outputStream.writeLong(index);
   }
 
@@ -130,11 +127,9 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     isContains = buffer.get() == 1;
     key = readString(buffer);
     value = readString(buffer);
-
     limit = buffer.getInt();
     limit = buffer.getInt();
     orderByHeat = buffer.get() == 1;
-
     this.index = buffer.getLong();
   }
 }
