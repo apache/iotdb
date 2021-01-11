@@ -27,17 +27,19 @@
 
 IoTDB允许您在创建时间序列时指定SDT的属性，并支持以下三个属性：
 
-* CompDev (压缩偏差)
+* CompDev （Compression Deviation，压缩偏差）
 
-CompDev是SDT中最重要的参数，代表当前样本和当前线性之间的最大差趋势。
+CompDev是SDT中最重要的参数，代表当前样本和当前线性之间的最大差趋势。CompDev设置的值需要大于0。
 
-* CompMin (最小压缩间隔)
+* CompMinTime （Compression Minimum Time Interval，最小压缩时间间隔）
 
-CompMin主要用于减少噪点。 CompMin测量两个存储的数据点之间的时间距离，如果当前点的时间到上一个存储的点的时间距离小于或等于compMin， 无论压缩偏差值，都不会存储当前数据点。
+CompMinTime主要用于减少噪点。 CompMinTime测量两个存储的数据点之间的时间距离，如果当前点的时间到上一个存储的点的时间距离
+小于或等于CompMinTime， 无论压缩偏差值，都不会存储当前数据点。默认为-2147483647，时间单位为ms。
 
-* CompMax (最大压缩间隔)
+* CompMaxTime （Compression Maximum Time Interval，最大压缩时间间隔）
 
-CompMax用于定期检查上一个存储的点到当前点之间的时间距离。它测量存储点之间的时间差。如果当前点时间到上一个存储点的时间距离 大于或等于compMax，无论压缩偏差值，都会存储当前数据点。
+CompMaxTime用于定期检查上一个存储的点到当前点之间的时间距离。它测量存储点之间的时间差。如果当前点时间到上一个存储点的时间距离
+大于或等于CompMaxTime，无论压缩偏差值，都会存储当前数据点。默认为2147483647，时间单位为ms。
 
 支持的数据类型:
 

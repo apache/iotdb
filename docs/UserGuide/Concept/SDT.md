@@ -30,19 +30,21 @@ IoTDB allows you to specify the properties of SDT when creating a time series, a
 
 * CompDev (Compression Deviation)
 
-CompDev is the most important parameter in SDT that represents the maximum difference between the current sample and the current linear trend.
+CompDev is the most important parameter in SDT that represents the maximum difference between the 
+current sample and the current linear trend. CompDev needs to be greater than 0 to perform compression.
 
-* CompMin (Compression Minimum)
+* CompMinTime (Compression Minimum Time Interval)
 
-CompMin is used for noisy reduction. CompMin measures the time distance between two stored data points, 
-if the current point's time to the last stored point's time distance is smaller than or equal to compMin, 
-current point will NOT be stored regardless of compression deviation.
+CompMinTime is used for noisy reduction. CompMinTime measures the time distance between two stored data points, 
+if the current point's time to the last stored point's time distance is smaller than or equal to CompMinTime, 
+current point will NOT be stored regardless of compression deviation. Default value is -2147483647 and time unit is ms.
 
-* CompMax (Compression Maximum)
+* CompMaxTime (Compression Maximum Time Interval)
 
-CompMax is used to periodically check the time distance between the last stored point to the current point. 
+CompMaxTime is used to periodically check the time distance between the last stored point to the current point. 
 It measures the time difference between stored points. If the current point time to the last 
-stored point's time distance is greater than or equal to compMax, current point will be stored regardless of compression deviation.
+stored point's time distance is greater than or equal to CompMaxTime, current point will be stored 
+regardless of compression deviation. Default value is 2147483647 and time unit is ms.
 
 The specified syntax for SDT is detailed in [Create Timeseries Statement](../Operation%20Manual/SQL%20Reference.md).
 

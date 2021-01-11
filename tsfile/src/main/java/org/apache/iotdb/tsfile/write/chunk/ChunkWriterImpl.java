@@ -139,7 +139,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compmin")) {
         try {
-          sdtEncoder.setCompMin(Double.parseDouble(measurementSchema.getProps().get("compmin")));
+          sdtEncoder.setCompMinTime(Double.parseDouble(measurementSchema.getProps().get("compmin")));
         } catch (NumberFormatException e) {
           logger.error("meet error when formatting SDT compression minimum");
         }
@@ -147,13 +147,13 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compmax")) {
         try {
-          sdtEncoder.setCompMax(Double.parseDouble(measurementSchema.getProps().get("compmax")));
+          sdtEncoder.setCompMaxTime(Double.parseDouble(measurementSchema.getProps().get("compmax")));
         } catch (NumberFormatException e) {
           logger.error("meet error when formatting SDT compression maximum");
         }
       }
 
-      if (isSdtEncoding && sdtEncoder.getCompMax() <= sdtEncoder.getCompMin()) {
+      if (isSdtEncoding && sdtEncoder.getCompMaxTime() <= sdtEncoder.getCompMinTime()) {
         logger
             .error("SDT compression maximum needs to be greater than compression minimum. SDT encoding is turned off");
         isSdtEncoding = false;
