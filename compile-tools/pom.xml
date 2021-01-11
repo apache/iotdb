@@ -22,12 +22,10 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.11.1-SNAPSHOT</version>
+        <version>0.11.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-tools</artifactId>
-    <groupId>org.apache.iotdb</groupId>
-    <version>0.11.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Compile Tools</name>
     <properties>
