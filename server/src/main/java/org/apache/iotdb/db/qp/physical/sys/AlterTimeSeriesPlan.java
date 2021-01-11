@@ -194,7 +194,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     AlterTimeSeriesPlan that = (AlterTimeSeriesPlan) o;
 
     return Objects.equals(path, that.path) &&
-        alterType != that.alterType &&
+        alterType == that.alterType &&
         Objects.equals(alterMap, that.alterMap) &&
         Objects.equals(alias, that.alias) &&
         Objects.equals(tagsMap, that.tagsMap) &&
