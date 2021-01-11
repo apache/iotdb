@@ -54,11 +54,6 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    return this == obj;
-  }
-
-  @Override
   public String toString() {
     return "PrimitiveMemTable{planIndex=[" + getMinPlanIndex() +"," + getMaxPlanIndex() + "]}";
   }

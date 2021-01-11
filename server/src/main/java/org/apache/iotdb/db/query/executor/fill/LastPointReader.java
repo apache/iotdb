@@ -80,11 +80,10 @@ public class LastPointReader {
         && resultPoint.getTimestamp() <= sortedChunkMetatdataList.peek().getEndTime()) {
       ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
       TimeValuePair chunkLastPoint = getChunkLastPoint(chunkMetadata);
-      if (chunkLastPoint.getTimestamp() >= resultPoint.getTimestamp()) {
-        if (cachedLastChunk == null || shouldUpdate(cachedLastChunk, chunkMetadata)) {
-          cachedLastChunk = chunkMetadata;
-          resultPoint = chunkLastPoint;
-        }
+      if (chunkLastPoint.getTimestamp() >= resultPoint.getTimestamp() &&
+              (cachedLastChunk == null || shouldUpdate(cachedLastChunk, chunkMetadata))) {
+        cachedLastChunk = chunkMetadata;
+        resultPoint = chunkLastPoint;
       }
     }
     return resultPoint;
@@ -210,9 +209,11 @@ public class LastPointReader {
               } else if (endTime1 > endTime2) {
                 return -1;
               }
-              return o2.getVersion() > o1.getVersion() ? 1 :
-                      (o2.getVersion() < o1.getVersion() ? -1 :
-                              Long.compare(o2.getOffsetOfChunkHeader(), o1.getOffsetOfChunkHeader()));
+              if (o2.getVersion() > o1.getVersion()) {
+                return 1;
+              }
+              return (o2.getVersion() < o1.getVersion() ? -1 :
+                      Long.compare(o2.getOffsetOfChunkHeader(), o1.getOffsetOfChunkHeader()));
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
       if (timeseriesMetadata != null) {
