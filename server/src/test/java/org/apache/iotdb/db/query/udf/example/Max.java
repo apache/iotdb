@@ -28,8 +28,12 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Max implements UDTF {
+
+  private static final Logger logger = LoggerFactory.getLogger(Max.class);
 
   private Long time;
   private int value;
@@ -43,6 +47,7 @@ public class Max implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    logger.debug("Max#beforeStart");
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());
@@ -62,5 +67,10 @@ public class Max implements UDTF {
     if (time != null) {
       collector.putInt(time, value);
     }
+  }
+
+  @Override
+  public void beforeDestroy() {
+    logger.debug("Max#beforeDestroy");
   }
 }

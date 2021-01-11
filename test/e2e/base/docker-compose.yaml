@@ -17,27 +17,35 @@
 # under the License.
 #
 
-# docker build context is the root path of the repository
+version: '3.8'
 
-FROM openjdk:11-jre-slim
+services:
+  server-prototype:
+    build:
+      context: ../../..
+      dockerfile: docker/src/main/Dockerfile
+    ports:
+      - 6667:6667
+    networks:
+      iotdb:
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/6667" ]
+      interval: 5s
+      timeout: 60s
+      retries: 120
 
-ADD distribution/target/apache-iotdb-*-bin.zip /
+  initializer:
+    build:
+      context: ../../..
+      dockerfile: docker/src/main/Dockerfile
+    networks:
+      iotdb:
+    entrypoint:
+      - bash
+      - -c
+      - |
+        cat /res/init.sql | grep -v '^--' | xargs -I {} /iotdb/sbin/start-cli.sh -h server -e {}
+        echo "Ready to Run IoTDB E2E Tests"
 
-RUN apt update \
-  && apt install lsof procps unzip -y \
-  && unzip /apache-iotdb-*-bin.zip -d / \
-  && rm /apache-iotdb-*-bin.zip \
-  && mv /apache-iotdb-* /iotdb \
-  && apt remove unzip -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y
-
-EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8181
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
-ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+networks:
+  iotdb:

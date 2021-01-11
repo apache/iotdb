@@ -17,27 +17,25 @@
 # under the License.
 #
 
-# docker build context is the root path of the repository
+version: '3.8'
 
-FROM openjdk:11-jre-slim
+services:
+  server:
+    extends:
+      file: ../../base/docker-compose.yaml
+      service: server-prototype
+    volumes:
+      - ./res:/resources
 
-ADD distribution/target/apache-iotdb-*-bin.zip /
+  initializer:
+    extends:
+      service: initializer
+      file: ../../base/docker-compose.yaml
+    volumes:
+      - ./res:/res:ro
+    depends_on:
+      server:
+        condition: service_healthy
 
-RUN apt update \
-  && apt install lsof procps unzip -y \
-  && unzip /apache-iotdb-*-bin.zip -d / \
-  && rm /apache-iotdb-*-bin.zip \
-  && mv /apache-iotdb-* /iotdb \
-  && apt remove unzip -y \
-  && apt autoremove -y \
-  && apt purge --auto-remove -y \
-  && apt clean -y
-
-EXPOSE 6667
-EXPOSE 31999
-EXPOSE 5555
-EXPOSE 8181
-VOLUME /iotdb/data
-VOLUME /iotdb/logs
-ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
-ENTRYPOINT ["/iotdb/sbin/start-server.sh"]
+networks:
+  iotdb:
