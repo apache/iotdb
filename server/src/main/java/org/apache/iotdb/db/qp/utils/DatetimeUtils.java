@@ -524,25 +524,25 @@ public class DatetimeUtils {
     DurationUnit durationUnit = DurationUnit.valueOf(unit);
     long res = value;
     switch (durationUnit) {
-      case y:
+      case Y:
         res *= 365 * 86_400_000L;
         break;
-      case mo:
+      case MO:
         res *= 30 * 86_400_000L;
         break;
-      case w:
+      case W:
         res *= 7 * 86_400_000L;
         break;
-      case d:
+      case D:
         res *= 86_400_000L;
         break;
-      case h:
+      case H:
         res *= 3_600_000L;
         break;
-      case m:
+      case M:
         res *= 60_000L;
         break;
-      case s:
+      case S:
         res *= 1_000L;
         break;
       default:
@@ -550,25 +550,25 @@ public class DatetimeUtils {
     }
 
     if (timestampPrecision.equals("us")) {
-      if (unit.equals(DurationUnit.ns.toString())) {
+      if (unit.equals(DurationUnit.NS.toString())) {
         return value / 1000;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.US.toString())) {
         return value;
       } else {
         return res * 1000;
       }
     } else if (timestampPrecision.equals("ns")) {
-      if (unit.equals(DurationUnit.ns.toString())) {
+      if (unit.equals(DurationUnit.NS.toString())) {
         return value;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.US.toString())) {
         return value * 1000;
       } else {
         return res * 1000_000;
       }
     } else {
-      if (unit.equals(DurationUnit.ns.toString())) {
+      if (unit.equals(DurationUnit.NS.toString())) {
         return value / 1000_000;
-      } else if (unit.equals(DurationUnit.us.toString())) {
+      } else if (unit.equals(DurationUnit.US.toString())) {
         return value / 1000;
       } else {
         return res;
@@ -586,6 +586,6 @@ public class DatetimeUtils {
   }
 
   public enum DurationUnit {
-    y, mo, w, d, h, m, s, ms, us, ns
+    Y, MO, W, D, H, M, S, MS, US, NS
   }
 }
