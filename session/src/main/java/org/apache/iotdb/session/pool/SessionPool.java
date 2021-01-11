@@ -421,6 +421,61 @@ public class SessionPool {
     }
   }
 
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want
+   * improve your performance, please see insertTablet method
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertOneDeviceRecords(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert data that belong to the same device in batch format, which can reduce the overhead of
+   * network. This method is just like jdbc batch insert, we pack some insert request in batch and
+   * send them to server If you want
+   * improve your performance, please see insertTablet method
+   * @param  haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertOneDeviceRecords(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
 
   /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
@@ -730,6 +785,32 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.deleteData(paths, time);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("deleteData failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * delete data >= startTime and data <= endTime in multiple timeseries
+   *
+   * @param paths     data in which time series to delete
+   * @param startTime delete range start time
+   * @param endTime   delete range end time
+   */
+  public void deleteData(List<String> paths, long startTime, long endTime)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deleteData(paths, startTime, endTime);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

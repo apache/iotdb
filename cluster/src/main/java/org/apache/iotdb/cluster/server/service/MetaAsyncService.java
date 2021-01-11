@@ -199,4 +199,10 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     metaGroupMember.applyRemoveNode(metaGroupMember.getThisNode());
     resultHandler.onComplete(null);
   }
+
+  @Override
+  public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
+    metaGroupMember.handleHandshake(sender);
+    resultHandler.onComplete(null);
+  }
 }

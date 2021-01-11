@@ -37,6 +37,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
@@ -85,10 +86,14 @@ public class ClientServer extends TSServiceImpl {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientServer.class);
   /**
-   * The MetaGroupMember of the local node. Through this node ClientServer queries data and meta
-   * from the cluster and performs data manipulations to the cluster.
+   * The Coordinator of the local node. Through this node ClientServer queries data and meta from
+   * the cluster and performs data manipulations to the cluster.
    */
-  private MetaGroupMember metaGroupMember;
+  private Coordinator coordinator;
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
+  }
 
   /**
    * The single thread pool that runs poolServer to unblock the main thread.
@@ -114,7 +119,6 @@ public class ClientServer extends TSServiceImpl {
 
   public ClientServer(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
-    this.metaGroupMember = metaGroupMember;
     this.processor = new ClusterPlanner();
     this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
@@ -190,7 +194,7 @@ public class ClientServer extends TSServiceImpl {
 
 
   /**
-   * Redirect the plan to the local MetaGroupMember so that it will be processed cluster-wide.
+   * Redirect the plan to the local Coordinator so that it will be processed cluster-wide.
    *
    * @param plan
    * @return
@@ -203,7 +207,7 @@ public class ClientServer extends TSServiceImpl {
       logger.warn("Illegal plan detected： {}", plan);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
-    return metaGroupMember.executeNonQueryPlan(plan);
+    return coordinator.executeNonQueryPlan(plan);
   }
 
 
@@ -302,15 +306,13 @@ public class ClientServer extends TSServiceImpl {
           GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-              AsyncDataClient client = metaGroupMember
-                  .getClientProvider().getAsyncDataClient(queriedNode,
-                      RaftServer.getReadOperationTimeoutMS());
-              client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
+              AsyncDataClient client = coordinator.getAsyncDataClient(queriedNode,
+                  RaftServer.getReadOperationTimeoutMS());
+              client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
-              SyncDataClient syncDataClient = metaGroupMember
-                  .getClientProvider().getSyncDataClient(queriedNode,
-                      RaftServer.getReadOperationTimeoutMS());
-              syncDataClient.endQuery(header, metaGroupMember.getThisNode(), queryId);
+              SyncDataClient syncDataClient = coordinator.getSyncDataClient(queriedNode,
+                  RaftServer.getReadOperationTimeoutMS());
+              syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);

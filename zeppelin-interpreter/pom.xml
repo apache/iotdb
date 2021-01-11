@@ -54,7 +54,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-session</artifactId>
+            <artifactId>iotdb-jdbc</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

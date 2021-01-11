@@ -59,22 +59,26 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
-    ClusterFillExecutor fillExecutor;
-    QueryDataSet queryDataSet;
-    long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
-    Object[][] answers = new Object[][]{
-        new Object[]{null},
-        new Object[]{0.0},
-        new Object[]{0.0},
-        new Object[]{10.0},
-        new Object[]{10.0},
-    };
-    for (int i = 0; i < queryTimes.length; i++) {
-      fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
-          plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
-      queryDataSet = fillExecutor.execute(context, plan);
-      checkDoubleDataset(queryDataSet, answers[i]);
-      assertFalse(queryDataSet.hasNext());
+    try {
+      ClusterFillExecutor fillExecutor;
+      QueryDataSet queryDataSet;
+      long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
+      Object[][] answers = new Object[][]{
+          new Object[]{null},
+          new Object[]{0.0},
+          new Object[]{0.0},
+          new Object[]{10.0},
+          new Object[]{10.0},
+      };
+      for (int i = 0; i < queryTimes.length; i++) {
+        fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
+            plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
+        queryDataSet = fillExecutor.execute(context, plan);
+        checkDoubleDataset(queryDataSet, answers[i]);
+        assertFalse(queryDataSet.hasNext());
+      }
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
   }
 
@@ -94,22 +98,26 @@ public class ClusterFillExecutorTest extends BaseQueryTest {
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
 
-    ClusterFillExecutor fillExecutor;
-    QueryDataSet queryDataSet;
-    long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
-    Object[][] answers = new Object[][]{
-        new Object[]{null},
-        new Object[]{0.0},
-        new Object[]{5.0},
-        new Object[]{10.0},
-        new Object[]{null},
-    };
-    for (int i = 0; i < queryTimes.length; i++) {
-      fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
-          plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
-      queryDataSet = fillExecutor.execute(context, plan);
-      checkDoubleDataset(queryDataSet, answers[i]);
-      assertFalse(queryDataSet.hasNext());
+    try {
+      ClusterFillExecutor fillExecutor;
+      QueryDataSet queryDataSet;
+      long[] queryTimes = new long[] {-1, 0, 5, 10, 20};
+      Object[][] answers = new Object[][]{
+          new Object[]{null},
+          new Object[]{0.0},
+          new Object[]{5.0},
+          new Object[]{10.0},
+          new Object[]{null},
+      };
+      for (int i = 0; i < queryTimes.length; i++) {
+        fillExecutor = new ClusterFillExecutor(plan.getDeduplicatedPaths(),
+            plan.getDeduplicatedDataTypes(), queryTimes[i], plan.getFillType(), testMetaMember);
+        queryDataSet = fillExecutor.execute(context, plan);
+        checkDoubleDataset(queryDataSet, answers[i]);
+        assertFalse(queryDataSet.hasNext());
+      }
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
   }
 }
