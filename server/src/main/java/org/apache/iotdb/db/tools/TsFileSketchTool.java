@@ -109,15 +109,6 @@ public class TsFileSketchTool {
                   .getNumberOfChunks());
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
-          /*if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
-            printlnBoth(pw,
-                    String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize())
-                            + "|\t[Version Info]");
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
-            printlnBoth(pw,
-                    String.format("%20s", "") + "|\t\t[version] "
-                            + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
-          }*/
         }
 
         // metadata begins

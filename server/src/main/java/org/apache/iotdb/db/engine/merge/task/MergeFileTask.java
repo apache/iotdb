@@ -157,7 +157,7 @@ class MergeFileTask {
         }
 
         fileWriter.startChunkGroup(path.getDevice());
-        long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
+        writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
 
         if (Thread.interrupted()) {
