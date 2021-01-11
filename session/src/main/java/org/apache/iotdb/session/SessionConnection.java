@@ -67,6 +67,9 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
+  //TestOnly
+  public SessionConnection(){}
+
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
