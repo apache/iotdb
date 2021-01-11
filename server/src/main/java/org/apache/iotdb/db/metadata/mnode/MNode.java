@@ -261,6 +261,7 @@ public class MNode implements Serializable {
     Map<String, MNode> children = child.getChildren();
     //newChildNode builds parent-child relationship
     newChildNode.setChildren(children);
+    children.forEach((name, childNode) -> childNode.setParent(newChildNode));
     newChildNode.setParent(this);
 
     this.deleteChild(measurement);
