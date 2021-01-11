@@ -44,8 +44,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
    * InsertTabletPlan is split to multi sub InsertTabletPlans. if the InsertTabletPlan have no
    * parent plan, the value is zero;
    * <p>
-   * suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the initial
-   * InsertMultiTabletPlan would have the following two attributes:
+   * suppose we originally have three InsertTabletPlans in one InsertMultiTabletPlan, then the
+   * initial InsertMultiTabletPlan would have the following two attributes:
    * <p>
    * insertTabletPlanList={InsertTabletPlan_1,InsertTabletPlan_2,InsertTabletPlan_3}
    * <p>
@@ -84,7 +84,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
    * this is usually used to back-propagate exceptions to the parent plan without losing their
    * proper positions.
    */
-  List<Integer> parentInsetTablePlanIndexList;
+  List<Integer> parentInsertTabletPlanIndexList;
 
   /**
    * the InsertTabletPlan list
@@ -100,33 +100,33 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = new ArrayList<>();
-    this.parentInsetTablePlanIndexList = new ArrayList<>();
+    this.parentInsertTabletPlanIndexList = new ArrayList<>();
   }
 
   public InsertMultiTabletPlan(List<InsertTabletPlan> insertTabletPlanList) {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = insertTabletPlanList;
-    this.parentInsetTablePlanIndexList = new ArrayList<>();
+    this.parentInsertTabletPlanIndexList = new ArrayList<>();
   }
 
   public InsertMultiTabletPlan(List<InsertTabletPlan> insertTabletPlanList,
-      List<Integer> parentInsetTablePlanIndexList) {
+      List<Integer> parentInsertTabletPlanIndexList) {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = insertTabletPlanList;
-    this.parentInsetTablePlanIndexList = parentInsetTablePlanIndexList;
+    this.parentInsertTabletPlanIndexList = parentInsertTabletPlanIndexList;
   }
 
   public void addInsertTabletPlan(InsertTabletPlan plan, Integer parentIndex) {
     insertTabletPlanList.add(plan);
-    parentInsetTablePlanIndexList.add(parentIndex);
+    parentInsertTabletPlanIndexList.add(parentIndex);
   }
 
   public List<InsertTabletPlan> getInsertTabletPlanList() {
     return insertTabletPlanList;
   }
 
-  public List<Integer> getParentInsetTablePlanIndexList() {
-    return parentInsetTablePlanIndexList;
+  public List<Integer> getParentInsertTabletPlanIndexList() {
+    return parentInsertTabletPlanIndexList;
   }
 
 
@@ -153,8 +153,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public long getMaxTime() {
     long maxTime = Long.MIN_VALUE;
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      if (maxTime < insertTabletPlan.getMinTime()) {
-        maxTime = insertTabletPlan.getMinTime();
+      if (maxTime < insertTabletPlan.getMaxTime()) {
+        maxTime = insertTabletPlan.getMaxTime();
       }
     }
     return maxTime;
@@ -180,7 +180,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
   }
 
   /**
-   * Gets the number of rows in the InsertTabletPlan of the index
+   * Gets the number of rows in the InsertTabletPlan of the index, zero will be returned if the
+   * index is out of bound.
    *
    * @param index the index of the insertTabletPlanList
    * @return the total row count of the insertTabletPlanList.get(i)
@@ -208,10 +209,10 @@ public class InsertMultiTabletPlan extends InsertPlan {
    * @return the parent's index in the parent InsertMultiTabletPlan
    */
   public int getParentIndex(int index) {
-    if (index >= parentInsetTablePlanIndexList.size() || index < 0) {
+    if (index >= parentInsertTabletPlanIndexList.size() || index < 0) {
       return -1;
     }
-    return parentInsetTablePlanIndexList.get(index);
+    return parentInsertTabletPlanIndexList.get(index);
   }
 
   @Override
@@ -221,8 +222,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
   }
 
-  public void setParentInsetTablePlanIndexList(List<Integer> parentInsetTablePlanIndexList) {
-    this.parentInsetTablePlanIndexList = parentInsetTablePlanIndexList;
+  public void setParentInsertTabletPlanIndexList(List<Integer> parentInsertTabletPlanIndexList) {
+    this.parentInsertTabletPlanIndexList = parentInsertTabletPlanIndexList;
   }
 
   public void setInsertTabletPlanList(List<InsertTabletPlan> insertTabletPlanList) {
@@ -250,8 +251,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
       insertTabletPlan.subSerialize(buffer);
     }
 
-    buffer.putInt(parentInsetTablePlanIndexList.size());
-    for (Integer index : parentInsetTablePlanIndexList) {
+    buffer.putInt(parentInsertTabletPlanIndexList.size());
+    for (Integer index : parentInsertTabletPlanIndexList) {
       buffer.putInt(index);
     }
   }
@@ -265,8 +266,8 @@ public class InsertMultiTabletPlan extends InsertPlan {
       insertTabletPlan.subSerialize(stream);
     }
 
-    stream.writeInt(parentInsetTablePlanIndexList.size());
-    for (Integer index : parentInsetTablePlanIndexList) {
+    stream.writeInt(parentInsertTabletPlanIndexList.size());
+    for (Integer index : parentInsertTabletPlanIndexList) {
       stream.writeInt(index);
     }
   }
@@ -282,9 +283,9 @@ public class InsertMultiTabletPlan extends InsertPlan {
     }
 
     int tmpParentInsetTablePlanIndexListSize = buffer.getInt();
-    this.parentInsetTablePlanIndexList = new ArrayList<>(tmpParentInsetTablePlanIndexListSize);
+    this.parentInsertTabletPlanIndexList = new ArrayList<>(tmpParentInsetTablePlanIndexListSize);
     for (int i = 0; i < tmpParentInsetTablePlanIndexListSize; i++) {
-      this.parentInsetTablePlanIndexList.add(buffer.getInt());
+      this.parentInsertTabletPlanIndexList.add(buffer.getInt());
     }
   }
 
@@ -292,7 +293,7 @@ public class InsertMultiTabletPlan extends InsertPlan {
   public String toString() {
     return "InsertMultiTabletPlan{"
         + " insertTabletPlanList=" + insertTabletPlanList
-        + ", parentInsetTablePlanIndexList=" + parentInsetTablePlanIndexList
+        + ", parentInsetTablePlanIndexList=" + parentInsertTabletPlanIndexList
         + "}";
   }
 
@@ -310,13 +311,13 @@ public class InsertMultiTabletPlan extends InsertPlan {
     if (!Objects.equals(insertTabletPlanList, that.insertTabletPlanList)) {
       return false;
     }
-    return Objects.equals(parentInsetTablePlanIndexList, that.parentInsetTablePlanIndexList);
+    return Objects.equals(parentInsertTabletPlanIndexList, that.parentInsertTabletPlanIndexList);
   }
 
   @Override
   public int hashCode() {
     int result = insertTabletPlanList != null ? insertTabletPlanList.hashCode() : 0;
-    result = 31 * result + (parentInsetTablePlanIndexList != null ? parentInsetTablePlanIndexList
+    result = 31 * result + (parentInsertTabletPlanIndexList != null ? parentInsertTabletPlanIndexList
         .hashCode() : 0);
     return result;
   }

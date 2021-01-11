@@ -1539,7 +1539,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      return insertTabletsInternalV2(req);
+      return insertTabletsInternal(req);
     } catch (NullPointerException e) {
       logger.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1568,36 +1568,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * process the TSInsertTabletsReq by Split it into many InsertTabletPlan
-   */
-  public TSStatus insertTabletsInternalV1(TSInsertTabletsReq req) throws IllegalPathException {
-    List<TSStatus> statusList = new ArrayList<>();
-    for (int i = 0; i < req.deviceIds.size(); i++) {
-      InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
-      TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
-      if (status == null) {
-        status = executeNonQueryPlan(insertTabletPlan);
-      }
-      statusList.add(status);
-    }
-
-    boolean isAllSuccessful = true;
-    for (TSStatus subStatus : statusList) {
-      isAllSuccessful =
-          ((subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-              && isAllSuccessful);
-    }
-
-    if (!isAllSuccessful) {
-      return RpcUtils.getStatus(statusList);
-    }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-  }
-
-  /**
    * construct one InsertMultiTabletPlan and process it
    */
-  public TSStatus insertTabletsInternalV2(TSInsertTabletsReq req)
+  public TSStatus insertTabletsInternal(TSInsertTabletsReq req)
       throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
