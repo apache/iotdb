@@ -169,7 +169,6 @@ public class IoTDB implements IoTDBMBean {
 
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
-    IoTDB.metaManager.clear();
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
       TracingManager.getInstance().close();
     }

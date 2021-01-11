@@ -43,7 +43,7 @@ public class RegisterManager {
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
-        logger.info("{} has already been registered. skip", service.getID().getName());
+        logger.debug("{} has already been registered. skip", service.getID().getName());
         return;
       }
     }
@@ -60,7 +60,7 @@ public class RegisterManager {
     for (IService service : iServices) {
       try {
         service.waitAndStop(deregisterTimeOut);
-        logger.info("{} deregistered", service.getID());
+        logger.debug("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }
@@ -68,7 +68,7 @@ public class RegisterManager {
     iServices.clear();
     logger.info("deregister all service.");
   }
-  
+
   /**
    * stop all service and clear iService list.
    */

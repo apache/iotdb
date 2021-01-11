@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.integration;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -69,7 +68,7 @@ public class SingleNodeTest extends BaseSingleNodeTest {
       session.insertRecords(deviceIds, timestamps, allMeasurements, allValues);
       fail("Exception expected");
     } catch (StatementExecutionException e) {
-      assertEquals("root..ln1 is not a legal path;root..ln1 is not a legal path;", e.getMessage());
+      assertTrue(e.getMessage().contains("root..ln1 is not a legal path"));
     }
 
     List<String> legalDevices = Arrays.asList("root.sg.ln1", "root.sg3.ln1");
