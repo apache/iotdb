@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -174,7 +175,7 @@ public class IoTDBConfig {
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /**
    * Is the write ahead log enable.
    */
@@ -249,6 +250,17 @@ public class IoTDBConfig {
   private String queryDir = DEFAULT_BASE_DIR + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /**
+   * External lib directory, stores user-uploaded JAR files
+   */
+  private String extDir = IoTDBConstant.EXT_FOLDER_NAME;
+
+  /**
+   * External lib directory for UDF, stores user-uploaded JAR files
+   */
+  private String udfDir = IoTDBConstant.EXT_FOLDER_NAME + File.separator
+      + IoTDBConstant.UDF_FOLDER_NAME;
+
+  /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
   private String[] dataDirs = {"data" + File.separator + "data"};
@@ -262,6 +274,11 @@ public class IoTDBConfig {
    * Wal directory.
    */
   private String walDir = DEFAULT_BASE_DIR + File.separator + "wal";
+
+  /**
+   * Maximum MemTable number. Invalid when enableMemControl is true.
+   */
+  private int maxMemtableNumber = 0;
 
   /**
    * The amount of data iterate each time in server
@@ -748,6 +765,12 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
+  /**
+   * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
+   * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
+   */
+  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
@@ -928,6 +951,14 @@ public class IoTDBConfig {
     this.partitionInterval = partitionInterval;
   }
 
+  public TimeIndexLevel getTimeIndexLevel() {
+    return timeIndexLevel;
+  }
+
+  public void setTimeIndexLevel(String timeIndexLevel) {
+    this.timeIndexLevel = TimeIndexLevel.valueOf(timeIndexLevel);
+  }
+
   void updatePath() {
     formulateFolders();
     confirmMultiDirStrategy();
@@ -943,6 +974,8 @@ public class IoTDBConfig {
     tracingDir = addHomeDir(tracingDir);
     walDir = addHomeDir(walDir);
     indexRootFolder = addHomeDir(indexRootFolder);
+    extDir = addHomeDir(extDir);
+    udfDir = addHomeDir(udfDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -1147,6 +1180,22 @@ public class IoTDBConfig {
     this.walDir = walDir;
   }
 
+  public String getExtDir() {
+    return extDir;
+  }
+
+  public void setExtDir(String extDir) {
+    this.extDir = extDir;
+  }
+
+  public String getUdfDir() {
+    return udfDir;
+  }
+
+  public void setUdfDir(String udfDir) {
+    this.udfDir = udfDir;
+  }
+
   public String getMultiDirStrategyClassName() {
     return multiDirStrategyClassName;
   }
@@ -1161,6 +1210,14 @@ public class IoTDBConfig {
 
   void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public int getMaxMemtableNumber() {
+    return maxMemtableNumber;
+  }
+
+  public void setMaxMemtableNumber(int maxMemtableNumber) {
+    this.maxMemtableNumber = maxMemtableNumber;
   }
 
   public int getConcurrentFlushThread() {
@@ -1298,7 +1355,7 @@ public class IoTDBConfig {
   public void setEstimatedSeriesSize(int estimatedSeriesSize) {
     this.estimatedSeriesSize = estimatedSeriesSize;
   }
-  
+
   public boolean isChunkBufferPoolEnable() {
     return chunkBufferPoolEnable;
   }

@@ -27,6 +27,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_CLASS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
@@ -36,10 +37,16 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -83,6 +90,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
@@ -96,6 +104,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -201,6 +210,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);
+        return true;
+      case BATCH_INSERT_ONE_DEVICE:
+        insert((InsertRowsOfOneDevicePlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -690,28 +702,78 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan) {
+  private QueryDataSet processShowFunctions(ShowFunctionsPlan showPlan)
+      throws QueryProcessException {
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(
             new PartialPath(COLUMN_FUNCTION_NAME, false),
+            new PartialPath(COLUMN_FUNCTION_TYPE, false),
             new PartialPath(COLUMN_FUNCTION_CLASS, false)
         ),
         Arrays.asList(
             TSDataType.TEXT,
+            TSDataType.TEXT,
             TSDataType.TEXT
         )
     );
+
+    appendUDFs(listDataSet, showPlan);
+    appendNativeFunctions(listDataSet, showPlan);
+
+    listDataSet.sort((r1, r2) -> String.CASE_INSENSITIVE_ORDER
+        .compare(r1.getFields().get(0).getStringValue(), r2.getFields().get(0).getStringValue()));
+    return listDataSet;
+  }
+
+  @SuppressWarnings("squid:S3776")
+  private void appendUDFs(ListDataSet listDataSet, ShowFunctionsPlan showPlan)
+      throws QueryProcessException {
     for (UDFRegistrationInformation info : UDFRegistrationService.getInstance()
         .getRegistrationInformation()) {
       if (showPlan.showTemporary() && !info.isTemporary()) {
         continue;
       }
+
       RowRecord rowRecord = new RowRecord(0); // ignore timestamp
       rowRecord.addField(Binary.valueOf(info.getFunctionName()), TSDataType.TEXT);
+      String functionType = "";
+      try {
+        if (info.isBuiltin()) {
+          if (info.isUDTF()) {
+            functionType = FUNCTION_TYPE_BUILTIN_UDTF;
+          } else if (info.isUDAF()) {
+            functionType = FUNCTION_TYPE_BUILTIN_UDAF;
+          }
+        } else {
+          if (info.isUDTF()) {
+            functionType = FUNCTION_TYPE_EXTERNAL_UDTF;
+          } else if (info.isUDAF()) {
+            functionType = FUNCTION_TYPE_EXTERNAL_UDAF;
+          }
+        }
+      } catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
+        throw new QueryProcessException(e.toString());
+      }
+      rowRecord.addField(Binary.valueOf(functionType), TSDataType.TEXT);
       rowRecord.addField(Binary.valueOf(info.getClassName()), TSDataType.TEXT);
       listDataSet.putRecord(rowRecord);
     }
-    return listDataSet;
+  }
+
+  private void appendNativeFunctions(ListDataSet listDataSet, ShowFunctionsPlan showPlan) {
+    if (showPlan.showTemporary()) {
+      return;
+    }
+
+    final Binary functionType = Binary.valueOf(FUNCTION_TYPE_NATIVE);
+    final Binary className = Binary.valueOf("");
+    for (String functionName : SQLConstant.getNativeFunctionNames()) {
+      RowRecord rowRecord = new RowRecord(0); // ignore timestamp
+      rowRecord.addField(Binary.valueOf(functionName.toUpperCase()), TSDataType.TEXT);
+      rowRecord.addField(functionType, TSDataType.TEXT);
+      rowRecord.addField(className, TSDataType.TEXT);
+      listDataSet.putRecord(rowRecord);
+    }
   }
 
   private void addRowRecordForShowQuery(
@@ -935,10 +997,65 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
+  public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws QueryProcessException {
+    try {
+      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+        plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
+        // check whether types are match
+        getSeriesSchemas(plan);
+        //we do not need to infer data type for insertRowsOfOneDevicePlan
+      }
+      //ok, we can begin to write data into the engine..
+      StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
+
+      List<String> notExistedPaths = null;
+      List<String> failedMeasurements = null;
+      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+        if (plan.getFailedMeasurements() != null) {
+          if (notExistedPaths == null) {
+            notExistedPaths = new ArrayList<>();
+            failedMeasurements = new ArrayList<>();
+          }
+          // check if all path not exist exceptions
+          List<String> failedPaths = plan.getFailedMeasurements();
+          List<Exception> exceptions = plan.getFailedExceptions();
+          boolean isPathNotExistException = true;
+          for (Exception e : exceptions) {
+            Throwable curException = e;
+            while (curException.getCause() != null) {
+              curException = curException.getCause();
+            }
+            if (!(curException instanceof PathNotExistException)) {
+              isPathNotExistException = false;
+              break;
+            }
+          }
+          if (isPathNotExistException) {
+            notExistedPaths.addAll(failedPaths);
+          } else {
+            failedMeasurements.addAll(plan.getFailedMeasurements());
+          }
+        }
+      }
+      if (notExistedPaths != null && !notExistedPaths.isEmpty()) {
+        throw new PathNotExistException(notExistedPaths);
+      } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
+        throw new StorageEngineException(
+            "failed to insert points " + failedMeasurements);
+      }
+
+    } catch (StorageEngineException | MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
       insertRowPlan
           .setMeasurementMNodes(new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+      // check whether types are match
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);

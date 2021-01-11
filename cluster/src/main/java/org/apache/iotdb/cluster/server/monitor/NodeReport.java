@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.monitor;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.rpc.RpcStat;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 

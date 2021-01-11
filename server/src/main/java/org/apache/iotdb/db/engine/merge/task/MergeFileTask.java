@@ -109,7 +109,7 @@ class MergeFileTask {
   }
 
   private void logProgress() {
-    if (logger.isInfoEnabled()) {
+    if (logger.isDebugEnabled()) {
       logger.debug("{} has merged {}, processed {}/{} files", taskName, currMergeFile,
           currentMergeIndex + 1, unmergedFiles.size());
     }

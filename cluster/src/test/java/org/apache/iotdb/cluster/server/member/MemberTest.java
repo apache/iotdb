@@ -30,7 +30,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -40,6 +42,7 @@ import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
@@ -77,16 +80,18 @@ public class MemberTest {
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
+  protected Coordinator coordinator;
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
-  ExecutorService testThreadPool;
+  protected ExecutorService testThreadPool;
 
   private List<String> prevUrls;
   private long prevLeaderWait;
   private boolean prevUseAsyncServer;
   private int preLogBufferSize;
   private boolean prevUseAsyncApplier;
+  private boolean prevEnableWAL;
 
   @Before
   public void setUp() throws Exception {
@@ -98,6 +103,8 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(4096);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
+    prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
     allNodes = new PartitionGroup();
@@ -112,6 +119,9 @@ public class MemberTest {
     metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
 
+    coordinator = new Coordinator(testMetaMember);
+    testMetaMember.setCoordinator(coordinator);
+
     for (Node node : allNodes) {
       // pre-create data members
       getDataGroupMember(node);
@@ -119,6 +129,7 @@ public class MemberTest {
 
     IoTDB.setMetaManager(CMManager.getInstance());
     CMManager.getInstance().setMetaGroupMember(testMetaMember);
+    CMManager.getInstance().setCoordinator(coordinator);
 
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -140,6 +151,7 @@ public class MemberTest {
       }
     }
     planExecutor = new PlanExecutor();
+
     testMetaMember.setPartitionTable(partitionTable);
     MetaPuller.getInstance().init(testMetaMember);
   }
@@ -158,6 +170,7 @@ public class MemberTest {
       member.closeLogManager();
     }
     metaGroupMemberMap.clear();
+    RegisterManager.setDeregisterTimeOut(100);
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
@@ -167,6 +180,7 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
     ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(preLogBufferSize);
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -188,6 +202,15 @@ public class MemberTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
+        try {
+          return new TestAsyncDataClient(node, dataGroupMemberMap);
+        } catch (IOException e) {
+          return null;
+        }
+      }
+
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {
@@ -260,6 +283,7 @@ public class MemberTest {
       }
     };
     ret.setThisNode(node);
+    ret.setCoordinator(new Coordinator());
     ret.setPartitionTable(partitionTable);
     ret.setAllNodes(allNodes);
     ret.setLogManager(metaLogManager);

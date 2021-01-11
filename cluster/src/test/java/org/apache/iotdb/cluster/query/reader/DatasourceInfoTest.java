@@ -32,6 +32,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -59,7 +61,7 @@ public class DatasourceInfoTest {
   }
 
   @Test
-  public void testFailedAll() {
+  public void testFailedAll() throws StorageEngineException {
     PartitionGroup group = new PartitionGroup();
     group.add(TestUtils.getNode(0));
     group.add(TestUtils.getNode(1));
@@ -68,10 +70,14 @@ public class DatasourceInfoTest {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     RemoteQueryContext context = new RemoteQueryContext(1);
 
-    DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-      request, context, metaGroupMember, group);
-    boolean hasClient = sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
+    try {
+      DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
+        request, context, metaGroupMember, group);
+      boolean hasClient = sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
 
-    assertFalse(hasClient);
+      assertFalse(hasClient);
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
   }
 }

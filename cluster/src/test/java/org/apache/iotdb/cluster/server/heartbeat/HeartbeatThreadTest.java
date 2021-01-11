@@ -27,7 +27,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -78,6 +79,11 @@ public class HeartbeatThreadTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
+        return getClient(node);
+      }
+
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
         return getClient(node);
       }
 
@@ -138,6 +144,8 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() throws Exception {
+    ClusterConstant.setElectionLeastTimeOutMs(20);
+    ClusterConstant.setElectionRandomTimeOutMs(30);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     logManager = new TestLogManager(1);
