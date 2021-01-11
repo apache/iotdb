@@ -227,12 +227,10 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         throw new SnapshotInstallationException(e);
       }
 
-      for (FileSnapshot value : snapshotMap.values()) {
-        installFileSnapshotSchema(value);
-      }
-
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
+        FileSnapshot snapshot = integerSnapshotEntry.getValue();
+        installFileSnapshotSchema(snapshot);
         SlotStatus status = slotManager.getStatus(slot);
         if (status == SlotStatus.PULLING) {
           // as schemas are set, writes can proceed

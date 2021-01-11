@@ -95,6 +95,12 @@ public interface PartitionTable {
   List<PartitionGroup> getGlobalGroups();
 
   /**
+   * Judge whether the data of slot is held by node
+   * @param node target node
+   */
+  boolean judgeHoldSlot(Node node, int slot);
+
+  /**
    * @param path      can be an incomplete path (but should contain a storage group name) e.g., if
    *                  "root.sg" is a storage group, then path can not be "root".
    * @param timestamp

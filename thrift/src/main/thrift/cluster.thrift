@@ -315,7 +315,6 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header, 2:int raftId)
 
-
   /**
   * Read a chunk of a file from the client. If the remaining of the file does not have enough
   * bytes, only the remaining will be returned.

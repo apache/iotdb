@@ -249,6 +249,8 @@ public abstract class RaftMember {
    */
   private LogDispatcher logDispatcher;
 
+  protected StopStatus stopStatus;
+
   protected RaftMember() {
   }
 
@@ -260,6 +262,7 @@ public abstract class RaftMember {
     this.asyncHeartbeatClientPool = asyncHeartbeatPool;
     this.syncHeartbeatClientPool = syncHeartbeatPool;
     this.asyncSendLogClientPool = asyncClientPool;
+    this.stopStatus = new StopStatus();
   }
 
   protected RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool,
@@ -365,9 +368,11 @@ public abstract class RaftMember {
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
+    leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
     heartBeatService = null;
     appendLogThreadPool = null;
+    stopStatus.setStop(true);
     logger.info("Member {} stopped", name);
   }
 
@@ -801,6 +806,9 @@ public abstract class RaftMember {
    * Wait until the leader of this node becomes known or time out.
    */
   public void waitLeader() {
+    if (stopStatus.isStop()) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     while (leader.get() == null || ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       synchronized (waitLeaderCondition) {
@@ -1874,6 +1882,33 @@ public abstract class RaftMember {
 
   enum AppendLogResult {
     OK, TIME_OUT, LEADERSHIP_STALE
+  }
+
+  public class StopStatus {
+
+    boolean stop;
+
+    boolean syncSuccess;
+
+    public boolean isStop() {
+      return stop;
+    }
+
+    public void setStop(boolean stop) {
+      this.stop = stop;
+    }
+
+    public boolean isSyncSuccess() {
+      return syncSuccess;
+    }
+
+    public void setSyncSuccess(boolean syncSuccess) {
+      this.syncSuccess = syncSuccess;
+    }
+  }
+
+  public StopStatus getStopStatus() {
+    return stopStatus;
   }
 
 }

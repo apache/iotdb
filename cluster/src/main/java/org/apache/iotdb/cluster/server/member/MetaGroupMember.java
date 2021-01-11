@@ -382,7 +382,6 @@ public class MetaGroupMember extends RaftMember {
         logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
       }
     }
-
     logger.info("{}: stopped", name);
   }
 

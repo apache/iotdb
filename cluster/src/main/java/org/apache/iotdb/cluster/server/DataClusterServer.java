@@ -526,9 +526,15 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
   }
 
+  /**
+   * Make sure the group will not receive new raft logs
+   * @param header
+   * @param dataGroupMember
+   */
   private void removeMember(RaftNode header, DataGroupMember dataGroupMember) {
-    dataGroupMember.syncLeader();
+    dataGroupMember.getStopStatus().setSyncSuccess(dataGroupMember.syncLeader());
     dataGroupMember.setReadOnly();
+    dataGroupMember.waitFollowersToSync();
     dataGroupMember.stop();
     stoppedMemberManager.put(header, dataGroupMember);
   }
@@ -578,8 +584,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   /**
    * Try removing a node from the groups of each DataGroupMember. If the node is the header of some
    * group, set the member to read only so that it can still provide data for other nodes that has
-   * not yet pulled its data. If the node is the local node, remove all members whose group is not
-   * headed by this node. Otherwise, just change the node list of the member and pull new data. And
+   * not yet pulled its data. Otherwise, just change the node list of the member and pull new data. And
    * create a new DataGroupMember if this node should join a new group because of this removal.
    *
    * @param node
@@ -591,25 +596,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       while (entryIterator.hasNext()) {
         Entry<RaftNode, DataGroupMember> entry = entryIterator.next();
         DataGroupMember dataGroupMember = entry.getValue();
-        if (dataGroupMember.getHeader().equals(node)) {
-          // the group is removed as the node is removed, so new writes should be rejected as
-          // they belong to the new holder, but the member is kept alive for other nodes to pull
-          // snapshots
+        if (dataGroupMember.getHeader().equals(node) || node.equals(thisNode)) {
           entryIterator.remove();
           removeMember(entry.getKey(), entry.getValue());
         } else {
-          if (node.equals(thisNode)) {
-            // this node is removed, it is no more replica of other groups
-            List<Integer> nodeSlots =
-                ((SlotPartitionTable) partitionTable)
-                    .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
-            dataGroupMember.removeLocalData(nodeSlots);
-            entryIterator.remove();
-            dataGroupMember.stop();
-          } else {
-            // the group should be updated and pull new slots from the removed node
-            dataGroupMember.removeNode(node, removalResult);
-          }
+          // the group should be updated and pull new slots from the removed node
+          dataGroupMember.removeNode(node, removalResult);
         }
       }
       for (PartitionGroup newGroup : removalResult.getNewGroupList()) {

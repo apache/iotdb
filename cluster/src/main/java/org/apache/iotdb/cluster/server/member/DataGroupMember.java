@@ -402,14 +402,25 @@ public class DataGroupMember extends RaftMember {
    * @param request
    */
   public PullSnapshotResp getSnapshot(PullSnapshotRequest request) throws IOException {
-    waitLeader();
-    if (character != NodeCharacter.LEADER && !readOnly) {
-      return null;
-    }
     // if the requester pulls the snapshots because the header of the group is removed, then the
     // member should no longer receive new data
     if (request.isRequireReadOnly()) {
       setReadOnly();
+    }
+
+    boolean canGetSnapshot;
+    /**
+     * There are two conditions that can get snapshot:
+     * 1. The raft member is stopped and sync status is successful which means it has synced leader successfully before stop.
+     * 2. The raft member is not stopped and syncing leader is successful.
+     */
+    if (stopStatus.stop) {
+      canGetSnapshot = stopStatus.syncSuccess;
+    } else {
+      canGetSnapshot = syncLeader();
+    }
+    if (!canGetSnapshot) {
+      return null;
     }
 
     List<Integer> requiredSlots = request.getRequiredSlots();
@@ -467,28 +478,26 @@ public class DataGroupMember extends RaftMember {
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot<Snapshot> snapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Map<Integer, RaftNode> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
+      Map<Integer, PartitionGroup> prevHolders = ((SlotPartitionTable) metaGroupMember.getPartitionTable())
           .getPreviousNodeMap(new RaftNode(newNode, getRaftGroupId()));
 
       // group the slots by their owners
-      Map<RaftNode, List<Integer>> holderSlotsMap = new HashMap<>();
+      Map<PartitionGroup, List<Integer>> holderSlotsMap = new HashMap<>();
       for (int slot : slots) {
         // skip the slot if the corresponding data is already replicated locally
         if (snapshot.getSnapshot(slot) == null) {
-          RaftNode raftNode = prevHolders.get(slot);
-          if (raftNode != null) {
-            holderSlotsMap.computeIfAbsent(raftNode, n -> new ArrayList<>()).add(slot);
+          PartitionGroup group = prevHolders.get(slot);
+          if (group != null) {
+            holderSlotsMap.computeIfAbsent(group, n -> new ArrayList<>()).add(slot);
           }
         }
       }
 
       // pull snapshots from each owner's data group
-      for (Entry<RaftNode, List<Integer>> entry : holderSlotsMap.entrySet()) {
-        RaftNode raftNode = entry.getKey();
+      for (Entry<PartitionGroup, List<Integer>> entry : holderSlotsMap.entrySet()) {
         List<Integer> nodeSlots = entry.getValue();
         PullSnapshotTaskDescriptor taskDescriptor =
-            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable()
-                .getHeaderGroup(raftNode), nodeSlots, false);
+            new PullSnapshotTaskDescriptor(entry.getKey(), nodeSlots, false);
         pullFileSnapshot(taskDescriptor, null);
       }
     }
@@ -760,6 +769,27 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
+  public void waitFollowersToSync() {
+    if (character != NodeCharacter.LEADER) {
+      return;
+    }
+    for (Map.Entry<Node, Peer> entry: peerMap.entrySet()) {
+      Node node = entry.getKey();
+      Peer peer = entry.getValue();
+      while (peer.getMatchIndex() < logManager.getCommitLogIndex()) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("{}: Unexpected interruption when waiting follower {} to sync, raft id is {}",
+              name, node, getRaftGroupId());
+        }
+      }
+      logger.info("{}: Follower {} has synced with leader, raft id is {}", name, node,
+          getRaftGroupId());
+    }
+  }
+
   /**
    * Generate a report containing the character, leader, term, last log term, last log index, header
    * and readOnly or not of this member.
@@ -800,6 +830,12 @@ public class DataGroupMember extends RaftMember {
   public boolean onSnapshotInstalled(List<Integer> slots) {
     List<Integer> removableSlots = new ArrayList<>();
     for (Integer slot : slots) {
+      /**
+       * If this slot is just held by different raft groups in the same node, it should keep the data of slot.
+       */
+      if (metaGroupMember.getPartitionTable().judgeHoldSlot(thisNode, slot)) {
+        continue;
+      }
       int sentReplicaNum = slotManager.sentOneReplication(slot);
       if (sentReplicaNum >= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
         removableSlots.add(slot);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,10 +27,10 @@ import java.util.List;
  */
 public class NodeRemovalResult {
 
-  private List<PartitionGroup> removedGroupList;
+  private List<PartitionGroup> removedGroupList = new ArrayList<>();
   // if the removed group contains the local node, the local node should join a new group to
   // preserve the replication number
-  private List<PartitionGroup> newGroupList;
+  private List<PartitionGroup> newGroupList = new ArrayList<>();
 
   public PartitionGroup getRemovedGroup(int raftId) {
     for (PartitionGroup group : removedGroupList) {

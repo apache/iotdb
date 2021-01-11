@@ -106,6 +106,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     public List<PartitionGroup> getGlobalGroups() {
       return null;
     }
+
+    @Override
+    public boolean judgeHoldSlot(Node node, int slot) {
+      return true;
+    }
   };
 
   @Override
