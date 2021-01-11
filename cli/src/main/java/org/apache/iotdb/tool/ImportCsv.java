@@ -18,22 +18,32 @@
  */
 package org.apache.iotdb.tool;
 
-import jline.console.ConsoleReader;
-import me.tongfei.progressbar.ProgressBar;
-import org.apache.commons.cli.*;
-import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import jline.console.ConsoleReader;
+import me.tongfei.progressbar.ProgressBar;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,17 +124,24 @@ public class ImportCsv extends AbstractCsvTool {
         splitColToDeviceAndMeasurement(cols[i], devicesToPositions, devicesToMeasurements, i);
       }
 
+      SimpleDateFormat timeFormatter = null;
+      boolean useFormatter = false;
+
       int lineNumber = 0;
       String line;
       while ((line = br.readLine()) != null) {
         cols = splitCsvLine(line);
         lineNumber++;
+        if (lineNumber == 1) {
+          timeFormatter = formatterInit(cols[0]);
+          useFormatter = (timeFormatter != null);
+        }
         for (Entry<String, List<Integer>> deviceToPositions : devicesToPositions
             .entrySet()) {
           String device = deviceToPositions.getKey();
           devices.add(device);
 
-          times.add(parseTime(cols[0]));
+          times.add(parseTime(cols[0], useFormatter, timeFormatter));
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
@@ -136,6 +153,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
         if (lineNumber % 10000 == 0) {
           session.insertRecords(devices, times, measurementsList, valuesList);
+          pb.stepTo(lineNumber + 1);
           devices = new ArrayList<>();
           times = new ArrayList<>();
           measurementsList = new ArrayList<>();
@@ -208,37 +226,52 @@ public class ImportCsv extends AbstractCsvTool {
     }
   }
 
-  private static long parseTime(String str) {
+  private static long parseTime(String str, boolean useFormatter, SimpleDateFormat timeFormatter) {
+    try {
+      if (useFormatter) {
+        return timeFormatter.parse(str).getTime();
+      } else {
+        return Long.parseLong(str);
+      }
+    } catch (Exception e){
+      throw new IllegalArgumentException("Input time format " + str
+          + "error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or yyyy-MM-ddTHH:mm:ss.SSSZ");
+    }
+  }
 
+  private static SimpleDateFormat formatterInit(String time) {
     SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
     SimpleDateFormat format2 = new SimpleDateFormat("yyy-MM-dd HH:mm:ss");
     SimpleDateFormat format3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
     try {
-      return Long.parseLong(str);
+      Long.parseLong(time);
+      return null;
     } catch (Exception ignored) {
-      logger.debug("It isn't a long time type");
+      // do nothing
     }
 
     try {
-      return format1.parse(str).getTime();
+      format1.parse(time).getTime();
+      return format1;
     } catch (java.text.ParseException ignored) {
-      logger.debug(TIME_TYPE, format1.toPattern());
+      // do nothing
     }
 
     try {
-      return format2.parse(str).getTime();
+      format2.parse(time).getTime();
+      return format2;
     } catch (java.text.ParseException ignored) {
-      logger.debug(TIME_TYPE, format2.toPattern());
+      // do nothing
     }
 
     try {
-      return format3.parse(str).getTime();
+      format3.parse(time).getTime();
+      return format3;
     } catch (java.text.ParseException ignored) {
-      logger.debug(TIME_TYPE, format3.toPattern());
+      // do nothing
     }
-
-    throw new IllegalArgumentException("Input time format " + str + "error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or yyyy-MM-ddTHH:mm:ss.SSSZ");
+    return null;
   }
 
   private static void parseSpecialParams(CommandLine commandLine) {
