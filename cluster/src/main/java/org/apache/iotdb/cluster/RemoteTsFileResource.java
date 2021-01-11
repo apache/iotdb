@@ -23,10 +23,9 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
@@ -46,11 +45,7 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public RemoteTsFileResource() {
     setClosed(true);
-    this.deviceToIndex = new ConcurrentHashMap<>();
-    this.startTimes = new long[INIT_ARRAY_SIZE];
-    this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes, Long.MAX_VALUE);
-    initTimes(endTimes, Long.MIN_VALUE);
+    this.timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
   }
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
@@ -92,20 +87,7 @@ public class RemoteTsFileResource extends TsFileResource {
       // if it is absolute
       SerializeUtils.serialize(getTsFile().getPath(), dataOutputStream);
 
-      int deviceNum = deviceToIndex.size();
-      dataOutputStream.writeInt(deviceNum);
-      for (int i = 0; i < deviceNum; i++) {
-        dataOutputStream.writeLong(startTimes[i]);
-        dataOutputStream.writeLong(endTimes[i]);
-      }
-
-      for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
-        String deviceName = stringIntegerEntry.getKey();
-        int index = stringIntegerEntry.getValue();
-        SerializeUtils.serialize(deviceName, dataOutputStream);
-        dataOutputStream.writeInt(index);
-      }
-
+      timeIndex.serialize(dataOutputStream);
       dataOutputStream.writeBoolean(withModification);
 
       dataOutputStream.writeLong(maxPlanIndex);
@@ -122,21 +104,8 @@ public class RemoteTsFileResource extends TsFileResource {
     SerializeUtils.deserialize(source, buffer);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
-    int deviceNum = buffer.getInt();
-    startTimes = new long[deviceNum];
-    endTimes = new long[deviceNum];
-    deviceToIndex = new ConcurrentHashMap<>(deviceNum);
-
-    for (int i = 0; i < deviceNum; i++) {
-      startTimes[i] = buffer.getLong();
-      endTimes[i] = buffer.getLong();
-    }
-
-    for (int i = 0; i < deviceNum; i++) {
-      String deviceName = SerializeUtils.deserializeString(buffer);
-      int index = buffer.getInt();
-      deviceToIndex.put(deviceName, index);
-    }
+    timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex()
+        .deserialize(buffer);
 
     withModification = buffer.get() == 1;
 

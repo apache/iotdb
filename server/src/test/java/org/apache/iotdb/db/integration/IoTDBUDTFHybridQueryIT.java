@@ -105,7 +105,6 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(throwable.getMessage()
           .contains("User-defined and built-in hybrid aggregation is not supported."));
     }
@@ -123,7 +122,6 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(
           throwable.getMessage().contains("Fill functions are not supported in UDF queries."));
     }
@@ -141,8 +139,7 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
-      assertTrue(throwable.getMessage().contains("meet error while parsing SQL to physical plan"));
+      assertTrue(throwable.getMessage().contains("parsing SQL to physical plan"));
     }
   }
 
@@ -158,7 +155,6 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       assertTrue(throwable.getMessage()
           .contains("ALIGN BY DEVICE clause is not supported in UDF queries."));
     }
