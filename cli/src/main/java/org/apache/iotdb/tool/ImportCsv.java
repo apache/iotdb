@@ -153,7 +153,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
         if (lineNumber % 10000 == 0) {
           session.insertRecords(devices, times, measurementsList, valuesList);
-          pb.stepTo(lineNumber + 1);
+          pb.stepTo(lineNumber + 1L);
           devices = new ArrayList<>();
           times = new ArrayList<>();
           measurementsList = new ArrayList<>();
