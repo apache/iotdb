@@ -80,8 +80,9 @@ public class LastPointReader {
         && resultPoint.getTimestamp() <= sortedChunkMetatdataList.peek().getEndTime()) {
       ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
       TimeValuePair chunkLastPoint = getChunkLastPoint(chunkMetadata);
-      if (chunkLastPoint.getTimestamp() >= resultPoint.getTimestamp() &&
-              (cachedLastChunk == null || shouldUpdate(cachedLastChunk, chunkMetadata))) {
+      if (chunkLastPoint.getTimestamp() > resultPoint.getTimestamp() ||
+              (chunkLastPoint.getTimestamp() == resultPoint.getTimestamp() &&
+              (cachedLastChunk == null || shouldUpdate(cachedLastChunk, chunkMetadata)))) {
         cachedLastChunk = chunkMetadata;
         resultPoint = chunkLastPoint;
       }
