@@ -507,6 +507,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // level is numbered from 0
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to seq file
+            isSeqMerging = false;
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {
             CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,

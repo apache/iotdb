@@ -312,6 +312,7 @@ class MergeFileTask {
         ChunkCache.getInstance().clear();
         ChunkMetadataCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
+        FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       }
       seqFile.writeUnlock();
     }

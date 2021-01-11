@@ -582,11 +582,6 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
     processor.merge(true);
     System.out.println("waiting for isUnseqMerging");
     while (processor.getTsFileManagement().isUnseqMerging) {
