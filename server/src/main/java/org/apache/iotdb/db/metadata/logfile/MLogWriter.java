@@ -29,6 +29,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -181,6 +182,18 @@ public class MLogWriter implements AutoCloseable {
         LOG_TOO_LARGE_INFO, e);
     }
   }
+
+  public synchronized void alterTimeSeriesBasicInfo(PartialPath path,
+      TSDataType dataType, TSEncoding encodingType, CompressionType compressionType) throws IOException {
+    try {
+      AlterTimeSeriesBasicInfoPlan plan = new AlterTimeSeriesBasicInfoPlan(path, dataType, encodingType, compressionType);
+      putLog(plan);
+    } catch (BufferOverflowException e) {
+      throw new IOException(
+          LOG_TOO_LARGE_INFO, e);
+    }
+  }
+
 
   public synchronized void serializeMNode(MNode node) throws IOException {
     try {

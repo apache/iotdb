@@ -57,9 +57,11 @@ public class MNode implements Serializable {
   /**
    * use in Measurement Node so it's protected
    * suppress warnings reason: volatile for double synchronized check
+   *
+   * This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile ConcurrentMap<String, MNode> children = null;
+  protected transient volatile Map<String, MNode> children = null;
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -224,7 +226,7 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public void setChildren(ConcurrentMap<String, MNode> children) {
+  public void setChildren(Map<String, MNode> children) {
     this.children = children;
   }
 
@@ -250,4 +252,19 @@ public class MNode implements Serializable {
       entry.getValue().serializeTo(logWriter);
     }
   }
+
+  public void replaceChild(String measurement, MNode newChildNode) {
+    MNode child = this.getChild(measurement);
+    if (child == null) {
+      return;
+    }
+    Map<String, MNode> children = child.getChildren();
+    //newChildNode builds parent-child relationship
+    newChildNode.setChildren(children);
+    newChildNode.setParent(this);
+
+    this.deleteChild(measurement);
+    this.addChild(newChildNode.getName(), newChildNode);
+  }
+
 }

@@ -1259,7 +1259,6 @@ public class CMManager extends MManager {
     }
   }
 
-  @Override
   protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
     MNode child;
     child = deviceMNode.getChild(measurement);

@@ -43,7 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -70,6 +69,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -365,9 +365,32 @@ public class MManager {
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
+      case ALTER_TIMESERIES_BASIC_INFO:
+        AlterTimeSeriesBasicInfoPlan alterTimeSeriesBasicInfoPlan = (AlterTimeSeriesBasicInfoPlan) plan;
+        changeTimeSeriesBasicInfo(alterTimeSeriesBasicInfoPlan.getPath(),
+            alterTimeSeriesBasicInfoPlan.getDataType(), alterTimeSeriesBasicInfoPlan.getEncodingType(),
+            alterTimeSeriesBasicInfoPlan.getCompressor());
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
+  }
+
+  private void changeTimeSeriesBasicInfo(PartialPath path,
+      TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws MetadataException {
+    MeasurementMNode leafMNode;
+    MNode nodeByPath = mtree.getNodeByPath(path);
+    if (nodeByPath instanceof MeasurementMNode) {
+      leafMNode = (MeasurementMNode) nodeByPath;
+      leafMNode.setSchema(new MeasurementSchema(leafMNode.getName(), dataType, encoding, compressor, null));
+    } else {
+      MNode parent = nodeByPath.getParent();
+      MeasurementMNode newNode = new MeasurementMNode(parent, nodeByPath.getName(), null,
+          dataType, getDefaultEncoding(dataType),
+          compressor, null);
+      parent.replaceChild(newNode.getName(), newNode);
+    }
+
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
@@ -962,8 +985,17 @@ public class MManager {
 
   }
 
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    return (MeasurementMNode) deviceMNode.getChild(measurement);
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement, TSDataType dataType, CompressionType compressionType) {
+    MNode child = deviceMNode.getChild(measurement);  //可能会有不一致的问题，即写入文件的元数据中root.a.b.c.d,b不是measurement节点，然后内存中是，则需要修改文件中的
+    if (child instanceof MeasurementMNode) {
+      return (MeasurementMNode) child;
+    } else {
+      MeasurementMNode measurementMNode = new MeasurementMNode(deviceMNode, child.getName(), null,
+          dataType, getDefaultEncoding(dataType),
+          compressionType, null);
+      deviceMNode.replaceChild(child.getName(), measurementMNode);
+      return measurementMNode;
+    }
   }
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1748,28 +1780,35 @@ public class MManager {
     MNode deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
 
     // 2. get schema of each measurement
+    // if do not has measurement
+    MeasurementMNode measurementMNode;
+    TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
       try {
-        // if do not has measurement
-        MeasurementMNode measurementMNode;
+        dataType = getTypeInLoc(plan, i);
         if (!deviceMNode.hasChild(measurementList[i])) {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
             // but measurement not in MTree and cannot auto-create, try the cache
-            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType, TSFileDescriptor.getInstance().getConfig().getCompressor());
             if (measurementMNode == null) {
               throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
             }
           } else {
-            // create it
-
-            TSDataType dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
-            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);   // TODO: 2021/1/7 在这里自动创建时间序列，有默认编码（注意，只有measurement的node有编码的属性，在这创建：org/apache/iotdb/db/metadata/MTree.java:225）
             measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
           }
         } else {
-          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i]);
+          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType, TSFileDescriptor.getInstance().getConfig().getCompressor());
+
+          // persist to meta log
+          try {
+            logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
+                dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+          } catch (IOException e) {
+            throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
+          }
         }
 
         // check type is match
@@ -1831,7 +1870,7 @@ public class MManager {
           getDefaultEncoding(dataType),
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {   // TODO: 2021/1/7 这个exception不会抛出来
       if (logger.isDebugEnabled()) {
         logger.debug(
             "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
