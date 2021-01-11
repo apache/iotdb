@@ -132,10 +132,7 @@ public class AsyncDataLogApplier implements LogApplier {
 
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
-    if (plan instanceof InsertMultiTabletPlan) {
-      PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
-      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
-    } else if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {
