@@ -975,11 +975,7 @@ public class MTree implements Serializable {
     offset.set(plan.getOffset());
     curOffset.set(-1);
     count.set(0);
-    if (offset.get() != 0 || limit.get() != 0) {
-      findPath(root, nodes, 1, res, true, false, null);
-    } else {
-      findPath(root, nodes, 1, res, false, false, null);
-    }
+    findPath(root, nodes, 1, res, offset.get() != 0 || limit.get() != 0, false, null);
     // avoid memory leaks
     limit.remove();
     offset.remove();
@@ -1134,11 +1130,7 @@ public class MTree implements Serializable {
     offset.set(plan.getOffset());
     curOffset.set(-1);
     count.set(0);
-    if (offset.get() != 0 || limit.get() != 0) {
-      findDevices(root, nodes, 1, devices, true);
-    } else {
-      findDevices(root, nodes, 1, devices, false);
-    }
+    findDevices(root, nodes, 1, devices, offset.get() != 0 || limit.get() != 0);
     // avoid memory leaks
     limit.remove();
     offset.remove();

@@ -247,10 +247,13 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
-                showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
-                showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
-                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat(), fetchSize);
+            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
+                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset(), fetchSize);
+            showTimeSeriesPlan.setIsContains(showTimeSeriesOperator.isContains());
+            showTimeSeriesPlan.setKey(showTimeSeriesOperator.getKey());
+            showTimeSeriesPlan.setValue(showTimeSeriesOperator.getValue());
+            showTimeSeriesPlan.setOrderByHeat(showTimeSeriesOperator.isOrderByHeat());
+            return showTimeSeriesPlan;
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());

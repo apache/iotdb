@@ -26,8 +26,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
-  // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
-  // * wildcard can only match one level, otherwise it can match to the tail.
   private boolean isContains;
   private String key;
   private String value;
@@ -35,18 +33,24 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
-
   public ShowTimeSeriesPlan(PartialPath path) {
     super(ShowContentType.TIMESERIES, path);
   }
 
   public ShowTimeSeriesPlan(PartialPath path, boolean isContains, String key, String value, int limit,
-      int offset, boolean orderByHeat, int fetchSize) {
-    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
+      int offset, boolean orderByHeat) {
+    super(ShowContentType.TIMESERIES);
+    this.path = path;
     this.isContains = isContains;
     this.key = key;
     this.value = value;
+    this.limit = limit;
+    this.offset = offset;
     this.orderByHeat = orderByHeat;
+  }
+
+  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset, int fetchSize) {
+    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
   }
 
   public ShowTimeSeriesPlan() {
@@ -57,12 +61,24 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     return isContains;
   }
 
+  public void setIsContains(boolean isContains) {
+    this.isContains = isContains;
+  }
+
   public String getKey() {
     return key;
   }
 
+  public void setKey(String key) {
+    this.key = key;
+  }
+
   public String getValue() {
     return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
   }
 
   public boolean isOrderByHeat() {
@@ -72,8 +88,6 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   public void setOrderByHeat(boolean orderByHeat) {
     this.orderByHeat = orderByHeat;
   }
-
-
 
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {

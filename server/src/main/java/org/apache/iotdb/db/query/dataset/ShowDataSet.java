@@ -37,7 +37,7 @@ public abstract class ShowDataSet extends QueryDataSet {
   private int index = 0;
   protected boolean hasLimit;
 
-  public ShowDataSet(List<Path> paths, List<TSDataType> dataTypes) {
+  protected ShowDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     super(paths, dataTypes);
   }
 
