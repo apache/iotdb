@@ -275,14 +275,6 @@ public class IoTDBMultiSeriesIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TestConstant.TIMESTAMP_STR)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s0)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s2)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s3)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s4)
-                  + "," + resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s5);
           cnt++;
         }
         assertEquals(23400, cnt);
@@ -373,7 +365,8 @@ public class IoTDBMultiSeriesIT {
         while (resultSet.next()) {
           long time = Long.parseLong(resultSet.getString(
               TestConstant.TIMESTAMP_STR));
-          String value = resultSet.getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1);
+          String value = resultSet
+              .getString(TestConstant.d0 + IoTDBConstant.PATH_SEPARATOR + TestConstant.s1);
           if (time > 200900) {
             assertEquals("7777", value);
           }
@@ -421,7 +414,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "411: Meet error in query process: Filter has some time series don't correspond to any known time series",
+          "411: Error occurred in query process: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -439,7 +432,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "411: Meet error in query process: Path [root.vehicle.d0.s10] does not exist",
+          "411: Error occurred in query process: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }
@@ -447,10 +440,11 @@ public class IoTDBMultiSeriesIT {
   @Test
   public void testCreateTimeSeriesWithoutEncoding() throws SQLException {
     try (Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.name WITH DATATYPE=TEXT");
-      statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE");
+      statement
+          .execute("CREATE TIMESERIES root.ln.wf01.wt01.age WITH DATATYPE=INT32, ENCODING=RLE");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.salary WITH DATATYPE=INT64");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.score WITH DATATYPE=FLOAT");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.grade WITH DATATYPE=DOUBLE");
