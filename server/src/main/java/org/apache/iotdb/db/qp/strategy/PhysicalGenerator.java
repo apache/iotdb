@@ -216,7 +216,7 @@ public class PhysicalGenerator {
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
-        return new TracingPlan(tracingOperator.isTracingon());
+        return new TracingPlan(tracingOperator.isTracingOn());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);

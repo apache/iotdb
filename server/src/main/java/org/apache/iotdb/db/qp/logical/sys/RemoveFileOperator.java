@@ -32,11 +32,6 @@ public class RemoveFileOperator extends RootOperator {
     this.operatorType = OperatorType.REMOVE_FILE;
   }
 
-  public RemoveFileOperator(int tokenIntType, File file) {
-    super(tokenIntType);
-    this.file = file;
-  }
-
   public File getFile() {
     return file;
   }
