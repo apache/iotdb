@@ -27,7 +27,6 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,18 +40,10 @@ public class QueryTimeManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
 
   /**
-   * the key of queryStartTimeMap is the query id and the value of queryStartTimeMap is the start
-   * time and the sql of this query.
+   * the key of queryInfoMap is the query id and the value of queryInfoMap is the start
+   * time, the statement and executing thread of this query.
    */
-  private Map<Long, Pair<Long, String>> queryInfoMap;
-  /**
-   * the key of queryThreadMap is the query id and the value of queryThreadMap is the executing
-   * thread of this query.
-   * Only main thread is put in this map since the sub threads are maintained by the thread pool.
-   * The thread allocated for readTask will change every time, so we have to access this map
-   * frequently, which will lead to big performance cost.
-   */
-  private Map<Long, Thread> queryThreadMap;
+  private Map<Long, QueryInfo> queryInfoMap;
 
   private ScheduledExecutorService executorService;
 
@@ -60,7 +51,6 @@ public class QueryTimeManager implements IService {
 
   private QueryTimeManager() {
     queryInfoMap = new ConcurrentHashMap<>();
-    queryThreadMap = new ConcurrentHashMap<>();
     queryScheduledTaskMap = new ConcurrentHashMap<>();
     executorService = IoTDBThreadPoolFactory.newScheduledThreadPool(1,
         "query-time-manager");
@@ -68,11 +58,10 @@ public class QueryTimeManager implements IService {
 
   public void registerQuery(long queryId, long startTime, String sql, long timeout,
       Thread queryThread) {
-    queryInfoMap.put(queryId, new Pair<>(startTime, sql));
-    queryThreadMap.put(queryId, queryThread);
+    queryInfoMap.put(queryId, new QueryInfo(startTime, sql, queryThread));
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
-      queryThreadMap.computeIfPresent(queryId, (k, v) -> {
+      queryInfoMap.computeIfPresent(queryId, (k, v) -> {
         killQuery(k);
         logger.error(String.format("Query is time out with queryId %d", queryId));
         return null;
@@ -82,10 +71,10 @@ public class QueryTimeManager implements IService {
   }
 
   public void killQuery(long queryId) {
-    if (queryThreadMap.get(queryId) == null) {
+    if (queryInfoMap.get(queryId) == null) {
       return;
     }
-    queryThreadMap.get(queryId).interrupt();
+    queryInfoMap.get(queryId).getThread().interrupt();
     unRegisterQuery(queryId);
   }
 
@@ -94,22 +83,20 @@ public class QueryTimeManager implements IService {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
+    if (queryInfoMap.get(queryId) == null) {
+      return;
+    }
     queryInfoMap.remove(queryId);
-    queryThreadMap.remove(queryId);
     queryScheduledTaskMap.get(queryId).cancel(false);
     queryScheduledTaskMap.remove(queryId);
   }
 
   public boolean isQueryInterrupted(long queryId) {
-    return queryThreadMap.get(queryId).isInterrupted();
+    return queryInfoMap.get(queryId).getThread().isInterrupted();
   }
 
-  public Map<Long, Pair<Long, String>> getQueryInfoMap() {
+  public Map<Long, QueryInfo> getQueryInfoMap() {
     return queryInfoMap;
-  }
-
-  public Map<Long, Thread> getQueryThreadMap() {
-    return queryThreadMap;
   }
 
   public static QueryTimeManager getInstance() {
@@ -139,6 +126,48 @@ public class QueryTimeManager implements IService {
     private static final QueryTimeManager INSTANCE = new QueryTimeManager();
 
     private QueryTimeManagerHelper() {
+    }
+  }
+
+  public class QueryInfo {
+
+    /**
+     *  To reduce the cost of memory, we only keep the a certain size statement.
+     *  For statement whose length is over this, we keep its head and tail.
+     */
+    private static final int MAX_STATEMENT_LENGTH = 64;
+
+    private final long startTime;
+    private final String statement;
+    /**
+     *  Only main thread is put in this structure since the sub threads are maintained
+     *  by the thread pool. The thread allocated for readTask will change every time,
+     *  so we have to access this map frequently, which will lead to big performance cost.
+     */
+    private final Thread thread;
+
+
+    public QueryInfo(long startTime, String statement, Thread thread) {
+      this.startTime = startTime;
+      this.thread = thread;
+      if (statement.length() <= 64) {
+        this.statement = statement;
+      } else {
+        this.statement = statement.substring(0, MAX_STATEMENT_LENGTH / 2) + "..." + statement
+            .substring(statement.length() - MAX_STATEMENT_LENGTH / 2);
+      }
+    }
+
+    public long getStartTime() {
+      return startTime;
+    }
+
+    public String getStatement() {
+      return statement;
+    }
+
+    public Thread getThread() {
+      return thread;
     }
   }
 }
