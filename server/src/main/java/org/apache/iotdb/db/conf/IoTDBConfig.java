@@ -843,12 +843,7 @@ public class IoTDBConfig {
   /**
    * the size of ioTaskQueue
    */
-  private int ioTaskQueueSizeForFlushing = Integer.MAX_VALUE;
-
-  /**
-   * the size of encodingTaskQueue
-   */
-  private int encodingTaskQueueSizeForFlushing = Integer.MAX_VALUE;
+  private int ioTaskQueueSizeForFlushing = 10;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2252,14 +2247,6 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
-  }
-
-  public int getEncodingTaskQueueSizeForFlushing() {
-    return encodingTaskQueueSizeForFlushing;
-  }
-
-  public void setEncodingTaskQueueSizeForFlushing(int encodingTaskQueueSizeForFlushing) {
-    this.encodingTaskQueueSizeForFlushing = encodingTaskQueueSizeForFlushing;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

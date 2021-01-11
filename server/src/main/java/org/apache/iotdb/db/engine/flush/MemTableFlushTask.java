@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -49,14 +50,18 @@ public class MemTableFlushTask {
   private final Future<?> ioTaskFuture;
   private RestorableTsFileIOWriter writer;
 
-  private final LinkedBlockingQueue<Object> ioTaskQueue =
-      new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing());
-  private final LinkedBlockingQueue<Object> encodingTaskQueue = 
-      new LinkedBlockingQueue<>(config.getEncodingTaskQueueSizeForFlushing());
+  private final LinkedBlockingQueue<Object> encodingTaskQueue = new LinkedBlockingQueue<>();
+  private final LinkedBlockingQueue<Object> ioTaskQueue = (config.isEnableMemControl()
+      && SystemInfo.getInstance().isEncodingFasterThanIo())
+          ? new LinkedBlockingQueue<>(config.getIoTaskQueueSizeForFlushing())
+          : new LinkedBlockingQueue<>();
+
   private String storageGroup;
 
   private IMemTable memTable;
 
+  private long memSerializeTime = 0L;
+  private long ioTime = 0L;
 
   /**
    * @param memTable the memTable to flush
@@ -83,24 +88,31 @@ public class MemTableFlushTask {
         storageGroup,
         memTable.memSize(),
         memTable.getTotalPointsNum() / memTable.getSeriesNumber());
-    long start = System.currentTimeMillis();
+
+    long estimatedTemporaryMemSize = 0L;
+    if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
+      estimatedTemporaryMemSize = memTable.memSize() / memTable.getSeriesNumber()
+          * config.getIoTaskQueueSizeForFlushing();
+      SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
+    }
+    long start = System.nanoTime();
     long sortTime = 0;
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
       for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVListForFlush();
-        sortTime += System.currentTimeMillis() - startTime;
+        sortTime += System.nanoTime() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
       }
       encodingTaskQueue.put(new EndChunkGroupIoTask());
     }
     encodingTaskQueue.put(new TaskEnd());
     logger.debug(
-        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
+        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ns.",
         storageGroup, memTable.getVersion(), sortTime);
 
     try {
@@ -119,9 +131,16 @@ public class MemTableFlushTask {
       throw new ExecutionException(e);
     }
 
+    if (config.isEnableMemControl()) {
+      if (estimatedTemporaryMemSize != 0) {
+        SystemInfo.getInstance().releaseTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
+      }
+      SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
+    }
+
     logger.info(
-        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
-        storageGroup, memTable, System.currentTimeMillis() - start);
+        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ns",
+        storageGroup, memTable, System.nanoTime() - start);
   }
 
   private Runnable encodingTask = new Runnable() {
@@ -165,7 +184,6 @@ public class MemTableFlushTask {
     @SuppressWarnings("squid:S135")
     @Override
     public void run() {
-      long memSerializeTime = 0;
       logger.debug("Storage group {} memtable {}, starts to encoding data.", storageGroup,
           memTable.getVersion());
       while (true) {
@@ -189,7 +207,7 @@ public class MemTableFlushTask {
         } else if (task instanceof TaskEnd) {
           break;
         } else {
-          long starTime = System.currentTimeMillis();
+          long starTime = System.nanoTime();
           Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
           writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
@@ -201,7 +219,7 @@ public class MemTableFlushTask {
             logger.error("Put task into ioTaskQueue Interrupted");
             Thread.currentThread().interrupt();
           }
-          memSerializeTime += System.currentTimeMillis() - starTime;
+          memSerializeTime += System.nanoTime() - starTime;
         }
       }
       try {
@@ -210,15 +228,15 @@ public class MemTableFlushTask {
         logger.error("Put task into ioTaskQueue Interrupted");
         Thread.currentThread().interrupt();
       }
+      
       logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
-              + "{} ms.",
+              + "{} ns.",
           storageGroup, memTable.getVersion(), memSerializeTime);
     }
   };
 
   @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
-    long ioTime = 0;
     logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
     while (true) {
       Object ioMessage = null;
@@ -229,7 +247,7 @@ public class MemTableFlushTask {
         Thread.currentThread().interrupt();
         break;
       }
-      long starTime = System.currentTimeMillis();
+      long starTime = System.nanoTime();
       try {
         if (ioMessage instanceof StartFlushGroupIOTask) {
           this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
@@ -248,9 +266,9 @@ public class MemTableFlushTask {
             memTable.getVersion(), e);
         throw new FlushRunTimeException(e);
       }
-      ioTime += System.currentTimeMillis() - starTime;
+      ioTime += System.nanoTime() - starTime;
     }
-    logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
+    logger.debug("flushing a memtable {} in storage group {}, io cost {}ns", memTable.getVersion(),
         storageGroup, ioTime);
   };
 

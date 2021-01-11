@@ -292,10 +292,6 @@ public class IoTDBDescriptor {
           .getProperty("io_task_queue_size_for_flushing",
               Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
-      conf.setEncodingTaskQueueSizeForFlushing(Integer.parseInt(properties
-          .getProperty("encoding_task_queue_size_for_flushing",
-              Integer.toString(conf.getEncodingTaskQueueSizeForFlushing()))));
-
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
