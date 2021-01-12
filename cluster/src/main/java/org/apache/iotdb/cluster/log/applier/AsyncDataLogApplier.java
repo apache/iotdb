@@ -130,9 +130,19 @@ public class AsyncDataLogApplier implements LogApplier {
     return getPlanSG(plan);
   }
 
+  /**
+   * We can sure that the SG of all InsertTabletPlans in InsertMultiTabletPlan are the same. this is
+   * done in {@link org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
+   *
+   * @return the sg that the plan belongs to
+   * @throws StorageGroupNotSetException if no sg found
+   */
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
-    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
+    if (plan instanceof InsertMultiTabletPlan) {
+      PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {

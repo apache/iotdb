@@ -153,7 +153,6 @@ public class InsertTabletPlan extends InsertPlan {
     writeValues(stream);
   }
 
-
   private void writeMeasurements(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
