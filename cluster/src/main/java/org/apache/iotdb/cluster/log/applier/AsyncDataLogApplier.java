@@ -131,7 +131,7 @@ public class AsyncDataLogApplier implements LogApplier {
   }
 
   /**
-   * We can sure that the SG of all InsertTabletPlans in InsertMultiTabletPlan are the same. this is
+   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletPlan are the same. this is
    * done in {@link org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
    *
    * @return the sg that the plan belongs to

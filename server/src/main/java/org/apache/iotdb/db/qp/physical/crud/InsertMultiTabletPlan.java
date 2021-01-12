@@ -317,8 +317,9 @@ public class InsertMultiTabletPlan extends InsertPlan {
   @Override
   public int hashCode() {
     int result = insertTabletPlanList != null ? insertTabletPlanList.hashCode() : 0;
-    result = 31 * result + (parentInsertTabletPlanIndexList != null ? parentInsertTabletPlanIndexList
-        .hashCode() : 0);
+    result =
+        31 * result + (parentInsertTabletPlanIndexList != null ? parentInsertTabletPlanIndexList
+            .hashCode() : 0);
     return result;
   }
 }

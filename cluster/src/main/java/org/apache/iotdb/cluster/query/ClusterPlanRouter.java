@@ -194,7 +194,7 @@ public class ClusterPlanRouter {
           sgPathPlanMap = new HashMap<>();
           sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
 
-          // 2.2 put the sgPathPlanMap to the pgSgPathPlanMap
+          // 2.3 put the sgPathPlanMap to the pgSgPathPlanMap
           pgSgPathPlanMap.put(tmpPg, sgPathPlanMap);
         } else {
           InsertMultiTabletPlan insertMultiTabletPlan = sgPathPlanMap.get(tmpSgPath);
@@ -206,11 +206,11 @@ public class ClusterPlanRouter {
             insertMultiTabletPlan = new InsertMultiTabletPlan(
                 insertTabletPlanList, parentInsetTablePlanIndexList);
 
-            // 2.3 put the sgPathPlanMap to the pgSgPathPlanMap
+            // 2.4 put the sgPathPlanMap to the pgSgPathPlanMap
             sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
             pgSgPathPlanMap.put(tmpPg, sgPathPlanMap);
           } else {
-            // 2.4 just add the tmpPlan to the insertMultiTabletPlan
+            // 2.5 just add the tmpPlan to the insertMultiTabletPlan
             insertMultiTabletPlan.addInsertTabletPlan(tmpPlan, i);
           }
         }
