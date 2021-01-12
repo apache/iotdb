@@ -56,4 +56,8 @@ public class MetadataException extends IoTDBException {
   public MetadataException(String message, int errorCode) {
     super(message, errorCode);
   }
+
+  public MetadataException(String message, int errorCode, boolean isUserException) {
+    super(message, errorCode, isUserException);
+  }
 }

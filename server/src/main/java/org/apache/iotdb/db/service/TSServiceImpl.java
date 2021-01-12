@@ -78,9 +78,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -1612,13 +1612,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSStatus tryCatchNonQueryException(Exception e) {
-    String message = "Exception occurred while processing non-query. {}";
+    String message = "Exception occurred while processing non-query. ";
     if (e instanceof BatchProcessException) {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
     } else if (e instanceof IoTDBException) {
       if (((IoTDBException) e).isUserException()) {
-        LOGGER.warn(message, e.getMessage());
+        LOGGER.warn(message + e.getMessage());
       } else {
         LOGGER.warn(message, e);
       }
@@ -1633,6 +1633,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         .format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
+    } else if (e instanceof UnSupportedDataTypeException) {
+      LOGGER.warn(e.getMessage());
     } else {
       LOGGER.warn(message, e);
     }

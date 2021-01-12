@@ -660,7 +660,7 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains(
-            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Unsupported data type in aggregation AVG : TEXT"));
+            "Unsupported data type in aggregation AVG : TEXT"));
       }
       try {
         statement.execute("SELECT sum(s3)" +
@@ -671,7 +671,7 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains(
-            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Unsupported data type in aggregation SUM : TEXT"));
+            "Unsupported data type in aggregation SUM : TEXT"));
       }
       try {
         statement.execute("SELECT avg(s4)" +
@@ -682,7 +682,7 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains(
-            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Unsupported data type in aggregation AVG : BOOLEAN"));
+            "Unsupported data type in aggregation AVG : BOOLEAN"));
       }
       try {
         statement.execute("SELECT sum(s4)" +
@@ -693,7 +693,7 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains(
-            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Unsupported data type in aggregation SUM : BOOLEAN"));
+            "Unsupported data type in aggregation SUM : BOOLEAN"));
       }
       try {
         statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
@@ -703,7 +703,7 @@ public class IoTDBAggregationIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains(
-            "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Boolean statistics does not support: avg"));
+            "Boolean statistics does not support: avg"));
       }
     } catch (Exception e) {
       e.printStackTrace();
