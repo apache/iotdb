@@ -131,8 +131,8 @@ public class ElasticSerializableRowRecordList {
 
   private void checkExpansion() {
     if (size % internalRowRecordListCapacity == 0) {
-      rowRecordLists
-          .add(SerializableRowRecordList.newSerializableRowRecordList(dataTypes, queryId));
+      rowRecordLists.add(SerializableRowRecordList
+          .newSerializableRowRecordList(queryId, dataTypes, internalRowRecordListCapacity));
     }
   }
 

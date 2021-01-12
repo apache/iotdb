@@ -39,10 +39,10 @@ public class SerializableRowRecordList implements SerializableList {
   protected static final int MIN_OBJECT_HEADER_SIZE = 8;
   protected static final int MIN_ARRAY_HEADER_SIZE = MIN_OBJECT_HEADER_SIZE + 4;
 
-  public static SerializableRowRecordList newSerializableRowRecordList(TSDataType[] dataTypes,
-      long queryId) {
+  public static SerializableRowRecordList newSerializableRowRecordList(long queryId,
+      TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     SerializationRecorder recorder = new SerializationRecorder(queryId);
-    return new SerializableRowRecordList(dataTypes, recorder);
+    return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
   }
 
   protected static int calculateCapacity(TSDataType[] dataTypes, float memoryLimitInMB,
@@ -81,15 +81,17 @@ public class SerializableRowRecordList implements SerializableList {
     return size;
   }
 
-  private final TSDataType[] dataTypes;
   private final SerializationRecorder serializationRecorder;
+  private final TSDataType[] dataTypes;
+  private final int internalRowRecordListCapacity;
 
   private List<RowRecord> rowRecords;
 
-  private SerializableRowRecordList(TSDataType[] dataTypes,
-      SerializationRecorder serializationRecorder) {
-    this.dataTypes = dataTypes;
+  private SerializableRowRecordList(SerializationRecorder serializationRecorder,
+      TSDataType[] dataTypes, int internalRowRecordListCapacity) {
     this.serializationRecorder = serializationRecorder;
+    this.dataTypes = dataTypes;
+    this.internalRowRecordListCapacity = internalRowRecordListCapacity;
     init();
   }
 
@@ -120,7 +122,7 @@ public class SerializableRowRecordList implements SerializableList {
 
   @Override
   public void init() {
-    rowRecords = new ArrayList<>();
+    rowRecords = new ArrayList<>(internalRowRecordListCapacity);
   }
 
   @Override
