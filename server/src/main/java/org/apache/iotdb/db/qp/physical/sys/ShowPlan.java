@@ -125,8 +125,9 @@ public class ShowPlan extends PhysicalPlan {
           return COUNT_TIMESERIES;
         case SQLConstant.TOK_CHILD_PATHS:
           return CHILD_PATH;
+        default:
+          return null;
       }
-      return null;
     }
   }
 }
