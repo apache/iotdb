@@ -23,9 +23,9 @@ import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITI
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -208,23 +208,16 @@ public class ElasticSerializableRowRecordList {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  /**
-   * <b>Note: It's not thread safe.</b>
-   */
-  private class LRUCache {
-
-    private final int capacity;
-    private final LinkedList<Integer> cache;
+  private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
-      this.capacity = capacity;
-      cache = new LinkedList<>();
+      super(capacity);
     }
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
-      if (!cache.removeFirstOccurrence(targetIndex)) {
-        if (capacity <= cache.size()) {
-          int lastIndex = cache.removeLast();
+      if (!removeFirstOccurrence(targetIndex)) {
+        if (cacheCapacity <= cacheSize) {
+          int lastIndex = removeLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);
           } else {
@@ -233,7 +226,7 @@ public class ElasticSerializableRowRecordList {
         }
         rowRecordLists.get(targetIndex).deserialize();
       }
-      cache.addFirst(targetIndex);
+      addFirst(targetIndex);
       return rowRecordLists.get(targetIndex);
     }
   }
