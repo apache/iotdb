@@ -985,8 +985,14 @@ public class MManager {
 
   }
 
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement, TSDataType dataType, CompressionType compressionType) {
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement,
+      TSDataType dataType, CompressionType compressionType) throws MetadataException {
     MNode child = deviceMNode.getChild(measurement);  //可能会有不一致的问题，即写入文件的元数据中root.a.b.c.d,b不是measurement节点，然后内存中是，则需要修改文件中的
+
+    if (child == null) {
+      return null;
+    }
+
     if (child instanceof MeasurementMNode) {
       return (MeasurementMNode) child;
     } else {
@@ -994,6 +1000,15 @@ public class MManager {
           dataType, getDefaultEncoding(dataType),
           compressionType, null);
       deviceMNode.replaceChild(child.getName(), measurementMNode);
+
+      // persist to meta log
+      try {
+        logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
+            dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+      } catch (IOException e) {
+        throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
+      }
+
       return measurementMNode;
     }
   }
@@ -1801,14 +1816,6 @@ public class MManager {
           }
         } else {
           measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType, TSFileDescriptor.getInstance().getConfig().getCompressor());
-
-          // persist to meta log
-          try {
-            logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
-                dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
-          } catch (IOException e) {
-            throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
-          }
         }
 
         // check type is match
