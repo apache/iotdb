@@ -303,7 +303,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     if (!checkLogin(req.getSessionId())) {
-      AUDIT_LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
@@ -993,7 +992,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private boolean checkLogin(long sessionId) {
     boolean isLoggedIn = sessionIdUsernameMap.get(sessionId) != null;
-    LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    if (!isLoggedIn) {
+      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    }
     return isLoggedIn;
   }
 
