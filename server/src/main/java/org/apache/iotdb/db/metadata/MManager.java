@@ -77,6 +77,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -717,6 +718,10 @@ public class MManager {
    */
   public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
     return mtree.getDevices(prefixPath);
+  }
+
+  public Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    return mtree.getDevices(plan);
   }
 
   /**
