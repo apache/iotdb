@@ -146,7 +146,6 @@ public class QueryTimeManager implements IService {
      */
     private final Thread thread;
 
-
     public QueryInfo(long startTime, String statement, Thread thread) {
       this.startTime = startTime;
       this.thread = thread;
