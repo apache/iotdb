@@ -128,7 +128,7 @@ public class InputLayer {
     private RowRecord cachedRowRecord;
 
     InputLayerPointReader(int columnIndex) {
-      this.safetyPile = safetyLine.addSafetyPile();
+      safetyPile = safetyLine.addSafetyPile();
 
       this.columnIndex = columnIndex;
       currentRowIndex = -1;
@@ -220,9 +220,9 @@ public class InputLayer {
 
   private class InputLayerRowReader implements LayerRowReader {
 
-    private final int[] columnIndexes;
-    private final SafetyPile[] safetyPiles;
+    private final SafetyPile safetyPile;
 
+    private final int[] columnIndexes;
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
@@ -231,12 +231,9 @@ public class InputLayer {
     private final RowImpl row;
 
     public InputLayerRowReader(int[] columnIndexes) {
-      this.columnIndexes = columnIndexes;
-      safetyPiles = new SafetyPile[columnIndexes.length];
-      for (int i = 0; i < safetyPiles.length; ++i) {
-        safetyPiles[i] = safetyLine.addSafetyPile();
-      }
+      safetyPile = safetyLine.addSafetyPile();
 
+      this.columnIndexes = columnIndexes;
       currentRowIndex = -1;
 
       hasCachedRowRecord = false;
@@ -282,9 +279,7 @@ public class InputLayer {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(currentRowIndex + 1);
-      }
+      safetyPile.moveForwardTo(currentRowIndex + 1);
     }
 
     @Override
@@ -305,9 +300,10 @@ public class InputLayer {
 
   private class InputLayerRowSlidingSizeWindowReader implements LayerRowWindowReader {
 
+    private final SafetyPile safetyPile;
+
     private final int[] columnIndexes;
     private final TSDataType[] columnDataTypes;
-    private final SafetyPile[] safetyPiles;
 
     private final int windowSize;
     private final IntList rowIndexes;
@@ -320,12 +316,12 @@ public class InputLayer {
     private InputLayerRowSlidingSizeWindowReader(int[] columnIndexes,
         SlidingSizeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
         throws QueryProcessException {
+      safetyPile = safetyLine.addSafetyPile();
+
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
-      safetyPiles = new SafetyPile[columnIndexes.length];
       for (int i = 0; i < columnIndexes.length; ++i) {
         columnDataTypes[i] = dataTypes[columnIndexes[i]];
-        safetyPiles[i] = safetyLine.addSafetyPile();
       }
 
       windowSize = accessStrategy.getWindowSize();
@@ -376,9 +372,7 @@ public class InputLayer {
     public void readyForNext() throws IOException, QueryProcessException {
       updateMaxIndexForLastWindow();
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(maxIndexInLastWindow + 1);
-      }
+      safetyPile.moveForwardTo(maxIndexInLastWindow + 1);
 
       rowIndexes.clear();
     }
@@ -433,9 +427,10 @@ public class InputLayer {
 
   private class InputLayerRowSlidingTimeWindowReader implements LayerRowWindowReader {
 
+    private final SafetyPile safetyPile;
+
     private final int[] columnIndexes;
     private final TSDataType[] columnDataTypes;
-    private final SafetyPile[] safetyPiles;
 
     private final long timeInterval;
     private final long slidingStep;
@@ -452,12 +447,12 @@ public class InputLayer {
     private InputLayerRowSlidingTimeWindowReader(int[] columnIndexes,
         SlidingTimeWindowAccessStrategy accessStrategy, float memoryBudgetInMB)
         throws QueryProcessException, IOException {
+      safetyPile = safetyLine.addSafetyPile();
+
       this.columnIndexes = columnIndexes;
       columnDataTypes = new TSDataType[columnIndexes.length];
-      safetyPiles = new SafetyPile[columnIndexes.length];
       for (int i = 0; i < columnIndexes.length; ++i) {
         columnDataTypes[i] = dataTypes[columnIndexes[i]];
-        safetyPiles[i] = safetyLine.addSafetyPile();
       }
 
       timeInterval = accessStrategy.getTimeInterval();
@@ -532,9 +527,7 @@ public class InputLayer {
     public void readyForNext() {
       nextWindowTimeBegin += slidingStep;
 
-      for (SafetyPile safetyPile : safetyPiles) {
-        safetyPile.moveForwardTo(nextIndexBegin);
-      }
+      safetyPile.moveForwardTo(nextIndexBegin);
 
       rowIndexes.clear();
     }
