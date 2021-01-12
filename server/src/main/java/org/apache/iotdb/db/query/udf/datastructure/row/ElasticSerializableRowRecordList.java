@@ -71,11 +71,12 @@ public class ElasticSerializableRowRecordList {
     size = 0;
     evictionUpperBound = 0;
 
-    disableMemoryControl = false;
+    disableMemoryControl = true;
     indexListOfTextFields = new ArrayList<>();
     for (int i = 0; i < dataTypes.length; ++i) {
       if (dataTypes[i].equals(TSDataType.TEXT)) {
         indexListOfTextFields.add(i);
+        disableMemoryControl = false;
       }
     }
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
