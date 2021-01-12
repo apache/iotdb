@@ -237,7 +237,7 @@ public class IoTDBMetadataFetchIT {
       String[] sqls = new String[]{"show devices root.ln",
           "show devices root.ln.wf01.wt01.temperature"};
       Set<String>[] standards = new Set[]{
-          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt01.status,")),
+          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,root.ln.wf01.wt01,", "root.ln.wf01.wt01.status,root.ln.wf01.wt01,")),
           new HashSet<>(Collections.singletonList(""))};
 
       for (int n = 0; n < sqls.length; n++) {
@@ -253,6 +253,7 @@ public class IoTDBMetadataFetchIT {
                 for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
+                System.out.println(builder.toString());
                 Assert.assertTrue(standard.contains(builder.toString()));
               }
             }

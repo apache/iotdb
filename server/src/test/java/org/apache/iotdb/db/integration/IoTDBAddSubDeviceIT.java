@@ -77,8 +77,8 @@ public class IoTDBAddSubDeviceIT {
   @Test
   public void showDevices() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "root.sg1.d1,",
-        "root.sg1.d1.s1,",
+        "root.sg1.d1,root.sg1,",
+        "root.sg1.d1.s1,root.sg1,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -94,7 +94,7 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("devices,", header.toString());
+        Assert.assertEquals("devices,storage group,", header.toString());
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
 
         int cnt = 0;

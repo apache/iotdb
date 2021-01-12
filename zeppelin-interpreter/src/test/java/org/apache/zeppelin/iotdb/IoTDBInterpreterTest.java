@@ -314,11 +314,12 @@ public class IoTDBInterpreterTest {
   public void testShowDevices() {
     InterpreterResult actual = interpreter
         .internalInterpret("show devices", null);
-    String gt = "devices\n"
-        + "root.test.wf01.wt01\n"
-        + "root.test.wf02.wt02";
+    String gt = "devices\tstorage group\n"
+        + "root.test.wf01.wt01\troot.test.wf01\n"
+        + "root.test.wf02.wt02\troot.test.wf02";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
+    System.out.println(actual.message().get(0).getData());
     Assert.assertEquals(gt, actual.message().get(0).getData());
   }
 

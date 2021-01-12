@@ -226,7 +226,7 @@ public class IoTDBSessionIteratorIT {
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
       sessionDataSet.setFetchSize(1024);
-      assertEquals(1, sessionDataSet.getColumnNames().size());
+      assertEquals(2, sessionDataSet.getColumnNames().size());
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
