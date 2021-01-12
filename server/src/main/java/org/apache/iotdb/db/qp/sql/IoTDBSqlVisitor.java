@@ -779,13 +779,18 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowDevices(ShowDevicesContext ctx) {
+    ShowDevicesOperator showDevicesOperator;
     if (ctx.prefixPath() != null) {
-      return new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
+      showDevicesOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
           parsePrefixPath(ctx.prefixPath()));
     } else {
-      return new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
+      showDevicesOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
           new PartialPath(SQLConstant.getSingleRootArray()));
     }
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), showDevicesOperator);
+    }
+    return showDevicesOperator;
   }
 
   @Override
@@ -1261,6 +1266,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
     if (operator instanceof ShowTimeSeriesOperator) {
       ((ShowTimeSeriesOperator) operator).setLimit(limit);
+    } else if (operator instanceof ShowDevicesOperator) {
+      ((ShowDevicesOperator) operator).setLimit(limit);
     } else {
       ((QueryOperator) operator).setRowLimit(limit);
     }
@@ -1282,6 +1289,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
     if (operator instanceof ShowTimeSeriesOperator) {
       ((ShowTimeSeriesOperator) operator).setOffset(offset);
+    } else if (operator instanceof ShowDevicesOperator) {
+      ((ShowDevicesOperator) operator).setOffset(offset);
     } else {
       ((QueryOperator) operator).setRowOffset(offset);
     }

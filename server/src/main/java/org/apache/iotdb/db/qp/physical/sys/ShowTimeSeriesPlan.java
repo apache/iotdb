@@ -26,22 +26,15 @@ import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
-  // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
-  // * wildcard can only match one level, otherwise it can match to the tail.
-  private PartialPath path;
   private boolean isContains;
   private String key;
   private String value;
-  private int limit = 0;
-  private int offset = 0;
+
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
-  private boolean hasLimit;
-
   public ShowTimeSeriesPlan(PartialPath path) {
-    super(ShowContentType.TIMESERIES);
-    this.path = path;
+    super(ShowContentType.TIMESERIES, path);
   }
 
   public ShowTimeSeriesPlan(PartialPath path, boolean isContains, String key, String value, int limit,
@@ -56,40 +49,36 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.orderByHeat = orderByHeat;
   }
 
-  public ShowTimeSeriesPlan() {
-    super(ShowContentType.TIMESERIES);
+  public ShowTimeSeriesPlan(PartialPath path, int limit, int offset, int fetchSize) {
+    super(ShowContentType.TIMESERIES, path, limit, offset, fetchSize);
   }
 
-  public PartialPath getPath() {
-    return this.path;
+  public ShowTimeSeriesPlan() {
+    super(ShowContentType.TIMESERIES);
   }
 
   public boolean isContains() {
     return isContains;
   }
 
+  public void setIsContains(boolean isContains) {
+    this.isContains = isContains;
+  }
+
   public String getKey() {
     return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
   }
 
   public String getValue() {
     return value;
   }
 
-  public int getLimit() {
-    return limit;
-  }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public int getOffset() {
-    return offset;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
+  public void setValue(String value) {
+    this.value = value;
   }
 
   public boolean isOrderByHeat() {
@@ -98,14 +87,6 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public void setOrderByHeat(boolean orderByHeat) {
     this.orderByHeat = orderByHeat;
-  }
-
-  public boolean hasLimit() {
-    return hasLimit;
-  }
-
-  public void setHasLimit(boolean hasLimit) {
-    this.hasLimit = hasLimit;
   }
 
   @Override

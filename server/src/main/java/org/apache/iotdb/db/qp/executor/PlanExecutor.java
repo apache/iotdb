@@ -144,6 +144,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
@@ -603,13 +604,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowDevices(ShowDevicesPlan showDevicesPlan)
       throws MetadataException {
-    ListDataSet listDataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_DEVICES, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    Set<PartialPath> devices = getDevices(showDevicesPlan.getPath());
-    addToDataSet(devices, listDataSet);
-    return listDataSet;
+    return new ShowDevicesDataSet(showDevicesPlan);
   }
 
   protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
