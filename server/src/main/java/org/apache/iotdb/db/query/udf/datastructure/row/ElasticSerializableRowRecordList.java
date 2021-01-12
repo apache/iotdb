@@ -119,7 +119,8 @@ public class ElasticSerializableRowRecordList {
     ++size;
 
     if (!disableMemoryControl) {
-      totalByteArrayLengthLimit += (long) indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
+      totalByteArrayLengthLimit +=
+          (long) indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
       List<Field> fields = rowRecord.getFields();
       for (Integer indexListOfTextField : indexListOfTextFields) {
         totalByteArrayLength += fields.get(indexListOfTextField).getBinaryV().getLength();
@@ -198,6 +199,11 @@ public class ElasticSerializableRowRecordList {
         (long) size * indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
   }
 
+  /**
+   * @param evictionUpperBound the index of the first element that cannot be evicted. in other
+   *                           words, elements whose index are <b>less than</b> the
+   *                           evictionUpperBound can be evicted.
+   */
   public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
   }
