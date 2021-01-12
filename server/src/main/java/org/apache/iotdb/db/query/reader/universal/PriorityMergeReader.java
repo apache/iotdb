@@ -205,5 +205,4 @@ public class PriorityMergeReader implements IPointReader {
       return Objects.hash(version, offset);
     }
   }
-
 }

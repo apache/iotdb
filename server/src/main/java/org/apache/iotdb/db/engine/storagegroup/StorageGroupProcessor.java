@@ -1535,6 +1535,10 @@ public class StorageGroupProcessor {
       }
 
       deletion.setFileOffset(tsFileResource.getTsFileSize());
+      // write deletion into modification file
+      tsFileResource.getModFile().write(deletion);
+      // remember to close mod file
+      tsFileResource.getModFile().close();
 
       tsFileResource.updatePlanIndexes(planIndex);
 
@@ -1543,10 +1547,6 @@ public class StorageGroupProcessor {
         TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
-      // write deletion into modification file
-      tsFileResource.getModFile().write(deletion);
-      // remember to close mod file
-      tsFileResource.getModFile().close();
 
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());
