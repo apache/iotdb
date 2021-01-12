@@ -59,10 +59,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBufferWorking = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-  private ByteBuffer logBufferIdle = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+  private ByteBuffer logBufferWorking;
+  private ByteBuffer logBufferIdle;
   private ByteBuffer logBufferFlushing;
 
   private final Object switchBufferCondition = new Object();
@@ -83,10 +81,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    *
    * @param identifier ExclusiveWriteLogNode identifier
    */
-  public ExclusiveWriteLogNode(String identifier) {
+  public ExclusiveWriteLogNode(String identifier, ByteBuffer[] byteBuffers) {
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
+    this.logBufferWorking = byteBuffers[0];
+    this.logBufferIdle = byteBuffers[1];
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
@@ -197,12 +197,24 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void delete() throws IOException {
+  public ByteBuffer[] delete() throws IOException {
     lock.lock();
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
       deleted = true;
+      ByteBuffer[] res = new ByteBuffer[2];
+      int index = 0;
+      if (logBufferWorking != null) {
+        res[index++] = logBufferWorking;
+      }
+      if (logBufferIdle != null) {
+        res[index++] = logBufferIdle;
+      }
+      if (logBufferFlushing != null) {
+        res[index] = logBufferFlushing;
+      }
+      return res;
     } finally {
       lock.unlock();
     }

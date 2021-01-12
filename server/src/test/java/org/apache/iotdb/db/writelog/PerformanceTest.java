@@ -20,6 +20,8 @@ package org.apache.iotdb.db.writelog;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -82,13 +85,20 @@ public class PerformanceTest {
         tempRestore.createNewFile();
         tempProcessorStore.createNewFile();
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+        byteBuffers[0] = ByteBuffer
+            .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        byteBuffers[1] = ByteBuffer
+            .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", byteBuffers);
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
           InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("logTestDevice"), 100,
               new String[]{"s1", "s2", "s3", "s4"},
-              new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
+              new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT,
+                  TSDataType.BOOLEAN},
               new String[]{"1.0", "15", "str", "false"});
           DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
               new PartialPath("root.logTestDevice.s1"));
@@ -102,7 +112,10 @@ public class PerformanceTest {
             3000000 + " logs use " + (System.currentTimeMillis() - time) + " ms at batch size "
                 + config.getFlushWalThreshold());
 
-        logNode.delete();
+        ByteBuffer[] array = logNode.delete();
+        for (ByteBuffer byteBuffer : array) {
+          MmapUtil.clean((MappedByteBuffer) byteBuffer);
+        }
         tempRestore.delete();
         tempProcessorStore.delete();
         tempRestore.getParentFile().delete();
@@ -130,25 +143,37 @@ public class PerformanceTest {
     } catch (MetadataException ignored) {
     }
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.logTestDevice.s1"), TSDataType.DOUBLE, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.logTestDevice.s1"), TSDataType.DOUBLE,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.logTestDevice.s2"), TSDataType.INT32, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.logTestDevice.s2"), TSDataType.INT32,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.logTestDevice.s3"), TSDataType.TEXT, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.logTestDevice.s3"), TSDataType.TEXT,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.logTestDevice.s4"), TSDataType.BOOLEAN, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.logTestDevice.s4"), TSDataType.BOOLEAN,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
+
+    ByteBuffer[] byteBuffers = new ByteBuffer[2];
+    byteBuffers[0] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    byteBuffers[1] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", byteBuffers);
 
     for (int i = 0; i < 1000000; i++) {
       InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice"), 100,
           new String[]{"s1", "s2", "s3", "s4"},
-          new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
+          new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT,
+              TSDataType.BOOLEAN},
           new String[]{"1.0", "15", "str", "false"});
-      DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
+      DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
+          new PartialPath("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
       logNode.write(deletePlan);
@@ -159,7 +184,10 @@ public class PerformanceTest {
       System.out.println(
           3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering ");
     } finally {
-      logNode.delete();
+      ByteBuffer[] array = logNode.delete();
+      for (ByteBuffer byteBuffer : array) {
+        MmapUtil.clean((MappedByteBuffer) byteBuffer);
+      }
       tempRestore.delete();
       tempProcessorStore.delete();
       tempRestore.getParentFile().delete();

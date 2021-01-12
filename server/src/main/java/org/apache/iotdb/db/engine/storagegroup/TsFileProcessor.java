@@ -177,8 +177,7 @@ public class TsFileProcessor {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
         MemTableManager.getInstance().addMemtableNumber();
-      }
-      else {
+      } else {
         workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
@@ -226,8 +225,7 @@ public class TsFileProcessor {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
         MemTableManager.getInstance().addMemtableNumber();
-      }
-      else {
+      } else {
         workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
@@ -871,7 +869,8 @@ public class TsFileProcessor {
   public WriteLogNode getLogNode() {
     if (logNode == null) {
       logNode = MultiFileLogNodeManager.getInstance()
-          .getNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
+          .getNode(storageGroupName + "-" + tsFileResource.getTsFile().getName(),
+              storageGroupInfo.getWalSupplier());
     }
     return logNode;
   }
@@ -881,7 +880,8 @@ public class TsFileProcessor {
       // when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
+          .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName(),
+              storageGroupInfo.getWalConsumer());
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
