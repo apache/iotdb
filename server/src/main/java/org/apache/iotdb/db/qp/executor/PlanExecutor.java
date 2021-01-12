@@ -1303,7 +1303,7 @@ public class PlanExecutor implements IPlanExecutor {
         List<PartialPath> allRelatedStorageGroupPath = IoTDB.metaManager
             .getStorageGroupPaths(storageGroupPath);
         if (allRelatedStorageGroupPath.isEmpty()) {
-          throw new PathNotExistException(storageGroupPath.getFullPath());
+          throw new PathNotExistException(storageGroupPath.getFullPath(), true);
         }
         for (PartialPath path : allRelatedStorageGroupPath) {
           StorageEngine.getInstance().deleteStorageGroup(path);
