@@ -32,10 +32,15 @@ public class SafetyLine {
     safetyPiles = new ArrayList<>();
   }
 
+  /**
+   * @return the index of the first element that cannot be evicted. in other words, elements whose
+   * index are <b>less than</b> the return value can be evicted.
+   */
   public int getSafetyLine() {
-    int min = INITIAL_PILE_POSITION;
-    for (int safetyPile : safetyPiles) {
-      min = Math.min(safetyPile, min);
+    final int size = safetyPiles.size();
+    int min = safetyPiles.get(0);
+    for (int i = 1; i < size; ++i) {
+      min = Math.min(safetyPiles.get(i), min);
     }
     return min;
   }
@@ -53,6 +58,11 @@ public class SafetyLine {
       this.safetyPileIndex = safetyPileIndex;
     }
 
+    /**
+     * @param safetyPilePosition the index of the first element that cannot be evicted. in other
+     *                           words, elements whose index are <b>less than</b> the
+     *                           safetyPilePosition can be evicted.
+     */
     public void moveForwardTo(int safetyPilePosition) {
       safetyPiles.set(safetyPileIndex, safetyPilePosition);
     }
