@@ -19,7 +19,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 
 public class ShowTimeSeriesOperator extends ShowOperator {
 
@@ -84,5 +87,16 @@ public class ShowTimeSeriesOperator extends ShowOperator {
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(getPath(), getLimit(),
+        getOffset(), fetchSize);
+    showTimeSeriesPlan.setIsContains(isContains());
+    showTimeSeriesPlan.setKey(getKey());
+    showTimeSeriesPlan.setValue(getValue());
+    showTimeSeriesPlan.setOrderByHeat(isOrderByHeat());
+    return showTimeSeriesPlan;
   }
 }

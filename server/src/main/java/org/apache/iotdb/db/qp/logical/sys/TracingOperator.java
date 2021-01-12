@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 
 public class TracingOperator extends RootOperator {
 
@@ -32,5 +35,10 @@ public class TracingOperator extends RootOperator {
 
   public boolean isTracingOn() {
     return isTracingOn;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new TracingPlan(isTracingOn());
   }
 }

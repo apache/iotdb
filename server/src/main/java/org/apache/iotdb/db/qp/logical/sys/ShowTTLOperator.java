@@ -21,8 +21,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 
 public class ShowTTLOperator extends ShowOperator {
 
@@ -35,5 +38,10 @@ public class ShowTTLOperator extends ShowOperator {
 
   public List<PartialPath> getStorageGroups() {
     return storageGroups;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new ShowTTLPlan(getStorageGroups());
   }
 }

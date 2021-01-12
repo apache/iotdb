@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -44,5 +47,10 @@ public class LoadDataOperator extends RootOperator {
 
   public String getMeasureType() {
     return measureType;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new LoadDataPlan(getInputFilePath(), getMeasureType());
   }
 }

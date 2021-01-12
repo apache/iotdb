@@ -26,97 +26,35 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
-import org.apache.iotdb.db.qp.logical.sys.CountOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
-import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
-import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
-import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
-import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
-import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
-import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
-import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -129,191 +67,21 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class PhysicalGenerator {
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
       throws QueryProcessException {
-    List<PartialPath> paths;
+    if (!(operator instanceof RootOperator)) {
+      throw new LogicalOperatorException(operator.getType().toString(), "");
+    }
     switch (operator.getType()) {
-      case AUTHOR:
-        AuthorOperator author = (AuthorOperator) operator;
-        try {
-          return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
-              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
-              author.getNodeName());
-        } catch (AuthException e) {
-          throw new QueryProcessException(e.getMessage());
-        }
-      case GRANT_WATERMARK_EMBEDDING:
-      case REVOKE_WATERMARK_EMBEDDING:
-        DataAuthOperator dataAuthOperator = (DataAuthOperator) operator;
-        return new DataAuthPlan(dataAuthOperator.getType(), dataAuthOperator.getUsers());
-      case LOADDATA:
-        LoadDataOperator loadData = (LoadDataOperator) operator;
-        return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());
-      case METADATA:
-      case SET_STORAGE_GROUP:
-        SetStorageGroupOperator setStorageGroup = (SetStorageGroupOperator) operator;
-        return new SetStorageGroupPlan(setStorageGroup.getPath());
-      case DELETE_STORAGE_GROUP:
-        DeleteStorageGroupOperator deleteStorageGroup = (DeleteStorageGroupOperator) operator;
-        return new DeleteStorageGroupPlan(deleteStorageGroup.getDeletePathList());
-      case CREATE_TIMESERIES:
-        CreateTimeSeriesOperator createOperator = (CreateTimeSeriesOperator) operator;
-        if (createOperator.getTags() != null && !createOperator.getTags().isEmpty()
-            && createOperator.getAttributes() != null && !createOperator.getAttributes()
-            .isEmpty()) {
-          for (String tagKey : createOperator.getTags().keySet()) {
-            if (createOperator.getAttributes().containsKey(tagKey)) {
-              throw new QueryProcessException(
-                  String.format(
-                      "Tag and attribute shouldn't have the same property key [%s]", tagKey));
-            }
-          }
-        }
-        return new CreateTimeSeriesPlan(createOperator.getPath(), createOperator.getDataType(),
-            createOperator.getEncoding(), createOperator.getCompressor(), createOperator.getProps(),
-            createOperator.getTags(), createOperator.getAttributes(), createOperator.getAlias());
-      case DELETE_TIMESERIES:
-        DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
-        return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
-      case CREATE_INDEX:
-        CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
-        return new CreateIndexPlan(createIndexOp.getSelectedPaths(), createIndexOp.getProps(),
-            createIndexOp.getTime(), createIndexOp.getIndexType());
-      case DROP_INDEX:
-        DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
-        return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
-      case ALTER_TIMESERIES:
-        AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
-        return new AlterTimeSeriesPlan(alterTimeSeriesOperator.getPath(),
-            alterTimeSeriesOperator.getAlterType(), alterTimeSeriesOperator.getAlterMap(),
-            alterTimeSeriesOperator.getAlias(), alterTimeSeriesOperator.getTagsMap(),
-            alterTimeSeriesOperator.getAttributesMap());
-      case DELETE:
-        DeleteDataOperator delete = (DeleteDataOperator) operator;
-        paths = delete.getSelectedPaths();
-        return new DeletePlan(delete.getStartTime(), delete.getEndTime(), paths);
-      case INSERT:
-        InsertOperator insert = (InsertOperator) operator;
-        paths = insert.getSelectedPaths();
-        if (insert.getMeasurementList().length != insert.getValueList().length) {
-          throw new SQLParserException(
-              String.format(
-                  "the measurementList's size %d is not consistent with the valueList's size %d",
-                  insert.getMeasurementList().length, insert.getValueList().length));
-        }
-
-        return new InsertRowPlan(paths.get(0), insert.getTime(),
-            insert.getMeasurementList(), insert.getValueList());
-      case MERGE:
-        if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
-          return new MergePlan(OperatorType.FULL_MERGE);
-        } else {
-          return new MergePlan();
-        }
-      case FLUSH:
-        FlushOperator flushOperator = (FlushOperator) operator;
-        return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
-      case TRACING:
-        TracingOperator tracingOperator = (TracingOperator) operator;
-        return new TracingPlan(tracingOperator.isTracingOn());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
-      case TTL:
-        switch (operator.getTokenIntType()) {
-          case SQLConstant.TOK_SET:
-            SetTTLOperator setTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(setTTLOperator.getStorageGroup(), setTTLOperator.getDataTTL());
-          case SQLConstant.TOK_UNSET:
-            SetTTLOperator unsetTTLOperator = (SetTTLOperator) operator;
-            return new SetTTLPlan(unsetTTLOperator.getStorageGroup());
-          case SQLConstant.TOK_SHOW:
-            ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
-            return new ShowTTLPlan(showTTLOperator.getStorageGroups());
-          default:
-            throw new LogicalOperatorException(String
-                .format("not supported operator type %s in ttl operation.", operator.getType()));
-        }
       case LOAD_CONFIGURATION:
         LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
             .getLoadConfigurationOperatorType();
         return generateLoadConfigurationPlan(type);
-      case SHOW:
-        switch (operator.getTokenIntType()) {
-          case SQLConstant.TOK_FLUSH_TASK_INFO:
-            return new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
-          case SQLConstant.TOK_VERSION:
-            return new ShowPlan(ShowContentType.VERSION);
-          case SQLConstant.TOK_TIMESERIES:
-            ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
-                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset(), fetchSize);
-            showTimeSeriesPlan.setIsContains(showTimeSeriesOperator.isContains());
-            showTimeSeriesPlan.setKey(showTimeSeriesOperator.getKey());
-            showTimeSeriesPlan.setValue(showTimeSeriesOperator.getValue());
-            showTimeSeriesPlan.setOrderByHeat(showTimeSeriesOperator.isOrderByHeat());
-            return showTimeSeriesPlan;
-          case SQLConstant.TOK_STORAGE_GROUP:
-            return new ShowStorageGroupPlan(
-                ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
-          case SQLConstant.TOK_DEVICES:
-            ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
-            return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
-                  showDevicesOperator.getOffset(), fetchSize);
-          case SQLConstant.TOK_COUNT_DEVICES:
-            return new CountPlan(
-                ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
-          case SQLConstant.TOK_COUNT_STORAGE_GROUP:
-            return new CountPlan(
-                ShowContentType.COUNT_STORAGE_GROUP, ((CountOperator) operator).getPath());
-          case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
-            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
-                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
-          case SQLConstant.TOK_COUNT_NODES:
-            return new CountPlan(ShowContentType.COUNT_NODES, ((CountOperator) operator).getPath(),
-                ((CountOperator) operator).getLevel());
-          case SQLConstant.TOK_COUNT_TIMESERIES:
-            return new CountPlan(
-                ShowContentType.COUNT_TIMESERIES, ((CountOperator) operator).getPath());
-          case SQLConstant.TOK_CHILD_PATHS:
-            return new ShowChildPathsPlan(
-                ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
-          case SQLConstant.TOK_SHOW_FUNCTIONS:
-            return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
-          default:
-            throw new LogicalOperatorException(
-                String.format(
-                    "not supported operator type %s in show operation.", operator.getType()));
-        }
-      case LOAD_FILES:
-        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
-            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
-            ((LoadFilesOperator) operator).getSgLevel());
-      case REMOVE_FILE:
-        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
-            OperatorType.REMOVE_FILE);
-      case MOVE_FILE:
-        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
-            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
-      case CLEAR_CACHE:
-        return new ClearCachePlan();
-      case SHOW_MERGE_STATUS:
-        return new ShowMergeStatusPlan();
-      case DELETE_PARTITION:
-        DeletePartitionOperator op = (DeletePartitionOperator) operator;
-        return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
-      case CREATE_SCHEMA_SNAPSHOT:
-        return new CreateSnapshotPlan();
-      case CREATE_FUNCTION:
-        CreateFunctionOperator createFunctionOperator = (CreateFunctionOperator) operator;
-        return new CreateFunctionPlan(createFunctionOperator.isTemporary(),
-            createFunctionOperator.getUdfName(), createFunctionOperator.getClassName());
-      case DROP_FUNCTION:
-        DropFunctionOperator dropFunctionOperator = (DropFunctionOperator) operator;
-        return new DropFunctionPlan(dropFunctionOperator.getUdfName());
       default:
-        throw new LogicalOperatorException(operator.getType().toString(), "");
+        return ((RootOperator) operator).convert(fetchSize);
     }
   }
 
@@ -328,7 +96,6 @@ public class PhysicalGenerator {
         throw new QueryProcessException(
             String.format("Unrecognized load configuration operator type, %s", type.name()));
     }
-
   }
 
   /**

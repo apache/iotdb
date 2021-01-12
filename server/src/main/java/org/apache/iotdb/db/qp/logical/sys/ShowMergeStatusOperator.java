@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 
 public class ShowMergeStatusOperator extends RootOperator {
 
   public ShowMergeStatusOperator(int tokenIntType) {
     super(tokenIntType);
     setOperatorType(OperatorType.SHOW_MERGE_STATUS);
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new ShowMergeStatusPlan();
   }
 }

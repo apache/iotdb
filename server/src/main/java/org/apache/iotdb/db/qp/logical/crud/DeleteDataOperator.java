@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 
 /**
  * this class extends {@code RootOperator} and process delete statement.
@@ -31,6 +34,11 @@ public class DeleteDataOperator extends SFWOperator {
   public DeleteDataOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.DELETE;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new DeletePlan(getStartTime(), getEndTime(), getSelectedPaths());
   }
 
   public long getStartTime() {

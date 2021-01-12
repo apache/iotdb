@@ -19,12 +19,29 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 
 public class ShowOperator extends RootOperator {
 
   public ShowOperator(int tokenIntType) {
     this(tokenIntType, OperatorType.SHOW);
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    ShowContentType contentType = ShowContentType.getFromOperatorType(tokenIntType);
+    if (contentType == null) {
+      throw new LogicalOperatorException(String.format(
+          "not supported operator type %s in show operation.", getType()));
+    }
+
+    return new ShowPlan(contentType);
+
   }
 
   public ShowOperator(int tokenIntType, OperatorType operatorType) {

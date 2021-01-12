@@ -20,8 +20,13 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 
 public class SetTTLOperator extends RootOperator {
 
@@ -31,6 +36,19 @@ public class SetTTLOperator extends RootOperator {
   public SetTTLOperator(int tokenIntType) {
     super(tokenIntType);
     this.operatorType = OperatorType.TTL;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    switch (getTokenIntType()) {
+      case SQLConstant.TOK_SET:
+        return new SetTTLPlan(getStorageGroup(), getDataTTL());
+      case SQLConstant.TOK_UNSET:
+        return new SetTTLPlan(getStorageGroup());
+      default:
+        throw new LogicalOperatorException(String
+            .format("not supported operator type %s in ttl operation.", getType()));
+    }
   }
 
   public PartialPath getStorageGroup() {

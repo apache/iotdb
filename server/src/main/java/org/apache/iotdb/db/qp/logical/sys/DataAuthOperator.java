@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 
 public class DataAuthOperator extends RootOperator {
 
@@ -40,4 +43,8 @@ public class DataAuthOperator extends RootOperator {
     return users;
   }
 
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new DataAuthPlan(getType(), getUsers());
+  }
 }

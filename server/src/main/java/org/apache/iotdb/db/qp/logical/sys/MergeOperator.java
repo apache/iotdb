@@ -18,12 +18,25 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 
 public class MergeOperator extends RootOperator {
 
   public MergeOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.MERGE;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    if (getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
+      return new MergePlan(OperatorType.FULL_MERGE);
+    } else {
+      return new MergePlan();
+    }
   }
 }

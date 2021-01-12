@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+
 /**
  * this class extends {@code RootOperator} and process insert statement.
  */
@@ -30,6 +35,19 @@ public class InsertOperator extends SFWOperator {
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.INSERT;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    if (getMeasurementList().length != getValueList().length) {
+      throw new SQLParserException(
+          String.format(
+              "the measurementList's size %d is not consistent with the valueList's size %d",
+              getMeasurementList().length, getValueList().length));
+    }
+
+    return new InsertRowPlan(getSelectedPaths().get(0), getTime(), getMeasurementList(),
+        getValueList());
   }
 
   public String[] getMeasurementList() {

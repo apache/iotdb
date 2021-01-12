@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.Set;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 
 public class DeletePartitionOperator extends RootOperator {
 
@@ -31,6 +34,11 @@ public class DeletePartitionOperator extends RootOperator {
   public DeletePartitionOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_PARTITION;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new DeletePartitionPlan(getStorageGroupName(), getPartitionId());
   }
 
   public void setStorageGroupName(PartialPath storageGroupName) {

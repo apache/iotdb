@@ -18,21 +18,27 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 
 /**
  * CountOperator is used to count time-series and count nodes.
  */
-public class CountOperator extends ShowOperator{
+public class CountOperator extends ShowOperator {
+
   private PartialPath path;
   private int level;
 
-  public CountOperator(int tokenIntType, PartialPath path){
+  public CountOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
     this.path = path;
   }
 
-  public CountOperator(int tokenIntType, PartialPath path, int level){
+  public CountOperator(int tokenIntType, PartialPath path, int level) {
     super(tokenIntType);
     this.path = path;
     this.level = level;
@@ -44,5 +50,15 @@ public class CountOperator extends ShowOperator{
 
   public int getLevel() {
     return this.level;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    ShowContentType contentType = ShowContentType.getFromOperatorType(tokenIntType);
+    if (contentType == null) {
+      throw new LogicalOperatorException(String.format(
+          "not supported operator type %s in show operation.", getType()));
+    }
+    return new CountPlan(contentType, getPath(), getLevel());
   }
 }

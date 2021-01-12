@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -44,7 +45,8 @@ public class ShowPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
+  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset,
+      int fetchSize) {
     this(showContentType, path);
     this.limit = limit;
     this.offset = offset;
@@ -101,6 +103,30 @@ public class ShowPlan extends PhysicalPlan {
   public enum ShowContentType {
     FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
     COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, FUNCTIONS, COUNT_DEVICES,
-    COUNT_STORAGE_GROUP
+    COUNT_STORAGE_GROUP;
+
+    public static ShowContentType getFromOperatorType(int type) {
+      switch (type) {
+        case SQLConstant.TOK_FLUSH_TASK_INFO:
+          return FLUSH_TASK_INFO;
+        case SQLConstant.TOK_VERSION:
+          return VERSION;
+        case SQLConstant.TOK_STORAGE_GROUP:
+          return STORAGE_GROUP;
+        case SQLConstant.TOK_COUNT_DEVICES:
+          return COUNT_DEVICES;
+        case SQLConstant.TOK_COUNT_STORAGE_GROUP:
+          return COUNT_STORAGE_GROUP;
+        case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
+          return COUNT_NODE_TIMESERIES;
+        case SQLConstant.TOK_COUNT_NODES:
+          return COUNT_NODES;
+        case SQLConstant.TOK_COUNT_TIMESERIES:
+          return COUNT_TIMESERIES;
+        case SQLConstant.TOK_CHILD_PATHS:
+          return CHILD_PATH;
+      }
+      return null;
+    }
   }
 }

@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 
 public class FlushOperator extends RootOperator {
 
@@ -48,5 +51,10 @@ public class FlushOperator extends RootOperator {
   public FlushOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.FLUSH;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new FlushPlan(isSeq(), getStorageGroupList());
   }
 }

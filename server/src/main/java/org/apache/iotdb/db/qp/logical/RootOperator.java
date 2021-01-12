@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 /**
  * RootOperator indicates the operator that could be executed as a entire command. RootOperator
  * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
@@ -27,4 +30,7 @@ public abstract class RootOperator extends Operator {
   public RootOperator(int tokenIntType) {
     super(tokenIntType);
   }
+
+
+  public abstract PhysicalPlan convert(int fetchSize) throws QueryProcessException;
 }

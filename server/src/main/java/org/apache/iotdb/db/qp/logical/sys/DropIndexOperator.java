@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 
 /**
  * this operator is to drop a certain index on some time series.
@@ -31,6 +34,11 @@ public class DropIndexOperator extends SFWOperator {
   public DropIndexOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DROP_INDEX;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new DropIndexPlan(getSelectedPaths(), getIndexType());
   }
 
   public IndexType getIndexType() {

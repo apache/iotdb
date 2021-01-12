@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.Map;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 
 /**
  * this operator is to create a certain index on some time series.
@@ -34,6 +37,11 @@ public class CreateIndexOperator extends SFWOperator {
   public CreateIndexOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.CREATE_INDEX;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new CreateIndexPlan(getSelectedPaths(), getProps(), getTime(), getIndexType());
   }
 
   public long getTime() {

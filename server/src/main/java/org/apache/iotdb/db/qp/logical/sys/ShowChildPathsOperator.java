@@ -19,7 +19,11 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 
 public class ShowChildPathsOperator extends ShowOperator {
 
@@ -32,5 +36,10 @@ public class ShowChildPathsOperator extends ShowOperator {
 
   public PartialPath getPath() {
     return path;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new ShowChildPathsPlan(ShowContentType.CHILD_PATH, getPath());
   }
 }

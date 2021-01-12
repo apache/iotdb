@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Map;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -66,6 +68,12 @@ public class QueryOperator extends SFWOperator {
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    throw new UnsupportedOperationException(
+        "The convert method from Query to PhysicalPlan has not been implemented so far");
   }
 
   public Map<String, Object> getProps() {

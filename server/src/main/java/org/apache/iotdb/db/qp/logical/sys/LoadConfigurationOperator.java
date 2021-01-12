@@ -19,8 +19,12 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 
 public class LoadConfigurationOperator extends RootOperator {
 
@@ -36,7 +40,13 @@ public class LoadConfigurationOperator extends RootOperator {
     return loadConfigurationOperatorType;
   }
 
-  public enum LoadConfigurationOperatorType{
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    throw new UnsupportedOperationException(
+        "The convert method from LoadConfiguration to PhysicalPlan has not been implemented so far");
+  }
+
+  public enum LoadConfigurationOperatorType {
     LOCAL, GLOBAL
   }
 }

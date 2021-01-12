@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 
 public class DeleteStorageGroupOperator extends RootOperator {
 
@@ -30,7 +33,12 @@ public class DeleteStorageGroupOperator extends RootOperator {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_STORAGE_GROUP;
   }
-  
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new DeleteStorageGroupPlan(getDeletePathList());
+  }
+
   public List<PartialPath> getDeletePathList() {
     return deletePathList;
   }

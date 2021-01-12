@@ -19,7 +19,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 
 public class ShowDevicesOperator extends ShowOperator {
 
@@ -50,5 +53,10 @@ public class ShowDevicesOperator extends ShowOperator {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new ShowDevicesPlan(getPath(), getLimit(), getOffset(), fetchSize);
   }
 }

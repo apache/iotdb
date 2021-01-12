@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import java.util.Map;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 
 public class AlterTimeSeriesOperator extends RootOperator {
 
@@ -44,6 +47,12 @@ public class AlterTimeSeriesOperator extends RootOperator {
   public AlterTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.ALTER_TIMESERIES;
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new AlterTimeSeriesPlan(getPath(), getAlterType(), getAlterMap(), getAlias(),
+        getTagsMap(), getAttributesMap());
   }
 
   public PartialPath getPath() {
