@@ -253,8 +253,6 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }

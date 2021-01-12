@@ -21,8 +21,12 @@ package org.apache.iotdb.db.qp;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -32,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,40 +61,52 @@ public class PlannerTest {
     EnvironmentUtils.envSetUp();
     mManager.setStorageGroup(new PartialPath("root.vehicle"));
     mManager.setStorageGroup(new PartialPath("root.vehicle1"));
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor1"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor1"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor2"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor2"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor3"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device1.sensor3"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor1"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor1"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor2"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor2"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor3"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle.device2.sensor3"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor1"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor1"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor2"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor2"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor3"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device1.sensor3"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor1"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor1"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor2"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor2"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
-    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor3"), TSDataType.valueOf("INT32"),
+    mManager.createTimeseries(new PartialPath("root.vehicle1.device2.sensor3"),
+        TSDataType.valueOf("INT32"),
         TSEncoding.valueOf("RLE"), compressionType, Collections
             .emptyMap());
   }
@@ -174,5 +191,23 @@ public class PlannerTest {
     assertEquals("NaN", ((InsertRowPlan) physicalPlan).getValues()[0]);
     // Later we will use Double.parseDouble so we have to ensure that it is parsed right
     assertEquals(Double.NaN, Double.parseDouble("NaN"), 1e-15);
+  }
+
+  @Test
+  public void rawDataQueryReqToPhysicalPlanTest()
+      throws QueryProcessException, IllegalPathException {
+    TSRawDataQueryReq tsRawDataQueryReq = new TSRawDataQueryReq();
+    List<String> paths = new ArrayList<>();
+    paths.add("root.vehicle.device1.sensor1");
+    paths.add("root.vehicle.device1.sensor2");
+    tsRawDataQueryReq.setPaths(paths);
+    tsRawDataQueryReq.setStartTime(0);
+    tsRawDataQueryReq.setEndTime(100);
+    tsRawDataQueryReq.setFetchSize(1000);
+    PhysicalPlan physicalPlan = processor
+        .rawDataQueryReqToPhysicalPlan(tsRawDataQueryReq, ZoneId.of("Asia/Shanghai"));
+    assertEquals(OperatorType.QUERY, physicalPlan.getOperatorType());
+    assertEquals(paths.get(0), physicalPlan.getPaths().get(0).getFullPath());
+    assertEquals(paths.get(1), physicalPlan.getPaths().get(1).getFullPath());
   }
 }
