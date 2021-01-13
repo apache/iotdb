@@ -18,13 +18,10 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -32,10 +29,13 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
@@ -47,6 +47,7 @@ public class IoTDBInsertNaNIT {
 
   private static final String CREATE_TEMPLATE_SQL = "CREATE TIMESERIES root.vehicle.%s.%s WITH DATATYPE=%s, ENCODING=%s, MAX_POINT_NUMBER=%d";
   private static final String INSERT_TEMPLATE_SQL = "insert into root.vehicle.%s(timestamp,%s) values(%d,%s)";
+  private static final String INSERT_BRAND_NEW_TEMPLATE_SQL = "insert into root.cycle.%s(timestamp,%s) values(%d,%s)";
   private static List<String> sqls = new ArrayList<>();
   private static final int TIMESTAMP = 10;
   private static final String VALUE = "NaN";
@@ -130,6 +131,29 @@ public class IoTDBInsertNaNIT {
         }
         Assert.assertEquals(1, cnt);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testNaNValue() {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(String.format(INSERT_BRAND_NEW_TEMPLATE_SQL, "d0", "s0"+"2f", TIMESTAMP, VALUE));
+      boolean hasResultSet = statement.execute("show timeseries");
+      Assert.assertTrue(hasResultSet);
+      boolean exist = false;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          if ((resultSet.getString("timeseries")).contains("root.cycle.d0.s0")) {
+            exist = true;
+          }
+        }
+      }
+      assertTrue(exist);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
