@@ -114,7 +114,7 @@ public class ListDataSetTest {
             "show devices");
     QueryDataSet dataSet = queryExecutor
         .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertTrue(dataSet instanceof ListDataSet);
+    Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
     Assert.assertEquals("[devices]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
