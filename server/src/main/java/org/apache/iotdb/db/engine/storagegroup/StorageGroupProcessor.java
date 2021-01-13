@@ -1272,6 +1272,15 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void releaseWalDirectByteBufferPool() {
+    synchronized (walByteBufferPool) {
+      while (!walByteBufferPool.isEmpty()) {
+        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeFirst());
+        currentWalPoolSize--;
+      }
+    }
+  }
+
   public void syncDeleteDataFiles() {
     logger.info("{} will close all files for deleting data files", storageGroupName);
     writeLock();

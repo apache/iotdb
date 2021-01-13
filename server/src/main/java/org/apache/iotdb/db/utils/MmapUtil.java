@@ -27,12 +27,15 @@ import java.security.PrivilegedAction;
 public class MmapUtil {
 
   public static void clean(MappedByteBuffer mappedByteBuffer) {
-    if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity()== 0)
+    if (mappedByteBuffer == null || !mappedByteBuffer.isDirect()
+        || mappedByteBuffer.capacity() == 0) {
       return;
+    }
     invoke(invoke(viewed(mappedByteBuffer), "cleaner"), "clean");
   }
 
-  private static Object invoke(final Object target, final String methodName, final Class<?>... args) {
+  private static Object invoke(final Object target, final String methodName,
+      final Class<?>... args) {
     return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
       try {
         Method method = method(target, methodName, args);
@@ -63,9 +66,10 @@ public class MmapUtil {
       }
     }
     ByteBuffer viewedBuffer = (ByteBuffer) invoke(buffer, methodName);
-    if (viewedBuffer == null)
+    if (viewedBuffer == null) {
       return buffer;
-    else
+    } else {
       return viewed(viewedBuffer);
+    }
   }
 }

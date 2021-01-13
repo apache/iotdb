@@ -292,6 +292,9 @@ public class StorageEngine implements IService {
             + "recoverAllSgThreadPool.", e);
       }
     }
+    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
+    }
     this.reset();
   }
 
@@ -655,6 +658,15 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * release all the allocated non-heap
+   */
+  public void releaseWalDirectByteBufferPoolInOneStorageGroup(PartialPath storageGroupPath) {
+    if (processorMap.containsKey(storageGroupPath)) {
+      processorMap.get(storageGroupPath).releaseWalDirectByteBufferPool();
+    }
+  }
+
+  /**
    * delete all data of storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
@@ -673,6 +685,7 @@ public class StorageEngine implements IService {
 
   public void deleteStorageGroup(PartialPath storageGroupPath) {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
+    releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupProcessor processor = processorMap.remove(storageGroupPath);
     if (processor != null) {
       processor.deleteFolder(systemDir);
