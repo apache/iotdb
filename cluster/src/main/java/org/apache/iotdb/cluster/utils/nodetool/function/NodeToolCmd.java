@@ -38,8 +38,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 
+@SuppressWarnings("squid:S2068")
 public abstract class NodeToolCmd implements Runnable {
 
   @Option(type = OptionType.GLOBAL, name = {"-h",
@@ -52,11 +52,11 @@ public abstract class NodeToolCmd implements Runnable {
 
   @Option(type = OptionType.GLOBAL, name = {"-u",
       "--user"}, description = "The username to access the remote jmx")
-  private String user = IoTDBConstant.JMX_USERNAME;
+  private String user = "iotdb";
 
   @Option(type = OptionType.GLOBAL, name = {"-pw",
       "--password"}, description = "The password to access the remote jmx")
-  private String password = IoTDBConstant.JMX_PASSWORD;
+  private String password = "passw!d";
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
