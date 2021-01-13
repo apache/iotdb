@@ -84,7 +84,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.debug("{} [compaction] mergeUnseq starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
       logger
@@ -93,7 +93,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   private void deleteLevelFilesInList(long timePartitionId, Collection<TsFileResource> mergeTsFiles) {
-    logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
+    logger.debug("{} [compaction] mergeUnseq starts to delete file list", storageGroupName);
     for (int i = 0; i < seqLevelNum; i++) {
       if (sequenceTsFileResources.containsKey(timePartitionId)) {
         if (sequenceTsFileResources.get(timePartitionId).size() > i) {
@@ -453,7 +453,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @SuppressWarnings("squid:S3776")
   private void merge(List<List<TsFileResource>> mergeResources, boolean sequence,
       long timePartition, int currMaxLevel, int currMaxFileNumInEachLevel) {
-    // wait until unseq merge has finished
+    // wait until unseq mergeUnseq has finished
     while (isUnseqMerging) {
       try {
         Thread.sleep(200);
@@ -470,7 +470,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         if (currMaxFileNumInEachLevel <= mergeResources.get(i).size()) {
           // level is numbered from 0
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
-            // do not merge current unseq file level to upper level and just merge all of them to seq file
+            // do not mergeUnseq current unseq file level to upper level and just mergeUnseq all of them to seq file
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {
             CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
@@ -483,10 +483,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
             List<TsFileResource> toMergeTsFiles = mergeResources.get(i);
-            logger.info("{} [Compaction] merge level-{}'s {} TsFiles to next level",
+            logger.info("{} [Compaction] mergeUnseq level-{}'s {} TsFiles to next level",
                 storageGroupName, i, toMergeTsFiles.size());
             for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.info("{} [Compaction] start to merge TsFile {}", storageGroupName,
+              logger.info("{} [Compaction] start to mergeUnseq TsFile {}", storageGroupName,
                   toMergeTsFile);
             }
 
@@ -525,8 +525,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } catch (Exception e) {
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
-      // reset the merge working state to false
-      logger.info("{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
+      // reset the mergeUnseq working state to false
+      logger.info("{} [Compaction] mergeUnseq end time isSeq = {}, consumption: {} ms",
           storageGroupName, sequence,
           System.currentTimeMillis() - startTimeMillis);
     }
@@ -562,13 +562,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       newUnSequenceTsFileResources.add(new CopyOnWriteArrayList<>());
     }
     return newUnSequenceTsFileResources;
-  }
-
-  public static int getMergeLevel(File file) {
-    String mergeLevelStr = file.getPath()
-        .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
-        .replaceAll(TSFILE_SUFFIX, "");
-    return Integer.parseInt(mergeLevelStr);
   }
 
   private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {

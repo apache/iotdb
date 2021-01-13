@@ -70,7 +70,7 @@ public class IoTDBSensorUpdateIT {
       }
       statement.execute("merge");
       Thread.sleep(1000);
-      // before merge completes
+      // before mergeUnseq completes
       try (ResultSet set = statement.executeQuery("SELECT * FROM root")) {
         int cnt = 0;
         while (set.next()) {
@@ -80,7 +80,7 @@ public class IoTDBSensorUpdateIT {
         assertEquals(1, cnt);
       }
 
-      // after merge completes
+      // after mergeUnseq completes
       statement.execute("DELETE FROM root.demo.d1");
     }
   }

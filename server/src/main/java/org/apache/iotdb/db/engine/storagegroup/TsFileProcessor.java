@@ -30,7 +30,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,6 +52,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -85,6 +85,7 @@ public class TsFileProcessor {
   private final boolean enableMemControl = config.isEnableMemControl();
   private final int waitingTimeWhenInsertBlocked = config.getWaitingTimeWhenInsertBlocked();
   private final int maxWaitingTimeWhenInsertBlocked = config.getMaxWaitingTimeWhenInsertBlocked();
+  private final boolean enableStatMonitor = config.isEnableStatMonitor();
   private StorageGroupInfo storageGroupInfo;
   private TsFileProcessorInfo tsFileProcessorInfo;
 
@@ -125,6 +126,8 @@ public class TsFileProcessor {
   private List<CloseFileListener> closeFileListeners = new ArrayList<>();
   private List<FlushListener> flushListeners = new ArrayList<>();
 
+  private long startWriteTime = 0;
+
   TsFileProcessor(String storageGroupName, File tsfile,
       StorageGroupInfo storageGroupInfo,
       VersionController versionController,
@@ -148,7 +151,8 @@ public class TsFileProcessor {
     closeFileListeners.add(closeTsFileCallback);
   }
 
-  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo, TsFileResource tsFileResource,
+  public TsFileProcessor(String storageGroupName, StorageGroupInfo storageGroupInfo,
+      TsFileResource tsFileResource,
       VersionController versionController, CloseFileListener closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
@@ -254,7 +258,8 @@ public class TsFileProcessor {
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan) throws WriteProcessException {
+  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
+      throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
@@ -272,8 +277,7 @@ public class TsFileProcessor {
         chunkMetadataIncrement += ChunkMetadata.calculateRamSize(insertRowPlan.getMeasurements()[i],
             insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
-      }
-      else {
+      } else {
         // here currentChunkPointNum >= 1
         int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId,
             insertRowPlan.getMeasurements()[i]);
@@ -327,15 +331,13 @@ public class TsFileProcessor {
         chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurement, dataType);
         memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
             * TVList.tvListArrayMemSize(dataType);
-      }
-      else {
+      } else {
         int currentChunkPointNum = workMemTable
             .getCurrentChunkPointNum(deviceId, measurement);
         if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
           memTableIncrement += ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemSize(dataType);
-        }
-        else {
+        } else {
           int acquireArray =
               (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                   / PrimitiveArrayManager.ARRAY_SIZE;
@@ -373,7 +375,8 @@ public class TsFileProcessor {
       try {
         TimeUnit.MILLISECONDS.sleep(waitingTimeWhenInsertBlocked);
         if (System.currentTimeMillis() - startTime > maxWaitingTimeWhenInsertBlocked) {
-          throw new WriteProcessException("System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
+          throw new WriteProcessException(
+              "System rejected over " + maxWaitingTimeWhenInsertBlocked + "ms");
         }
       } catch (InterruptedException e) {
         logger.error("Failed when waiting for getting memory for insertion ", e);
@@ -684,8 +687,8 @@ public class TsFileProcessor {
         storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
         if (logger.isDebugEnabled()) {
           logger.debug("[mem control] {}: {} flush finished, try to reset system memcost, "
-              + "flushing memtable list size: {}", storageGroupName,
-          tsFileResource.getTsFile().getName(), flushingMemTables.size());
+                  + "flushing memtable list size: {}", storageGroupName,
+              tsFileResource.getTsFile().getName(), flushingMemTables.size());
         }
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo, true);
@@ -718,7 +721,8 @@ public class TsFileProcessor {
     if (!memTableToFlush.isSignalMemTable()) {
       try {
         writer.mark();
-        MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
+        MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
+            storageGroupName);
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
@@ -826,6 +830,14 @@ public class TsFileProcessor {
       tsFileProcessorInfo.clear();
       storageGroupInfo.closeTsFileProcessorAndReportToSystem(this);
     }
+    if (enableStatMonitor) {
+      double writeSpeed =
+          tsFileResource.getTsFileSize() / (System.currentTimeMillis() - startWriteTime);
+      StatMonitor.getInstance().setWriteSpeed(writeSpeed);
+      if (logger.isInfoEnabled()) {
+        logger.info("Storage group {} write file speed {} bytes/ms", storageGroupName, writeSpeed);
+      }
+    }
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "
@@ -892,8 +904,9 @@ public class TsFileProcessor {
       Map<String, String> props, QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery) throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
-          tsFileResource.getTsFile().getName());
+      logger
+          .debug("{}: {} get flushQueryLock and hotCompactionMergeLock read lock", storageGroupName,
+              tsFileResource.getTsFile().getName());
     }
     flushQueryLock.readLock().lock();
     try {
