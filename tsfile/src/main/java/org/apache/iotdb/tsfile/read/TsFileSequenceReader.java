@@ -71,6 +71,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSequenceReader.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  private static final String METADATA_INDEX_NODE_DESERIALIZE_ERROR = "Something error happened while deserializing MetadataIndexNode of file {}";
   protected String file;
   protected TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -249,7 +250,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             .deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
       }
     } catch (BufferOverflowException e) {
-      logger.error("Something error happened while reading file metadata of file {}", file, e);
+      logger.error("Something error happened while reading file metadata of file {}", file);
       throw e;
     }
     return tsFileMetaData;
@@ -325,8 +326,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       try {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       } catch (BufferOverflowException e) {
-        logger.error("Something error happened while deserializing MetadataIndexNode of file {}",
-            file, e);
+        logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
       metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
@@ -342,7 +342,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer));
       } catch (BufferOverflowException e) {
         logger.error("Something error happened while deserializing TimeseriesMetadata of file {}",
-            file, e);
+            file);
         throw e;
       }
     }
@@ -371,8 +371,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       try {
         metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       } catch (BufferOverflowException e) {
-        logger.error("Something error happened while deserializing MetadataIndexNode of file {}",
-            file, e);
+        logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
         throw e;
       }
       metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
@@ -389,7 +388,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer);
       } catch (BufferOverflowException e) {
         logger.error("Something error happened while deserializing TimeseriesMetadata of file {}",
-            file, e);
+            file);
         throw e;
       }
       if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
@@ -423,8 +422,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         try {
           metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         } catch (BufferOverflowException e) {
-          logger.error("Something error happened while deserializing MetadataIndexNode of file {}",
-              file, e);
+          logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
           throw e;
         }
         measurementMetadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
@@ -440,7 +438,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer));
         } catch (BufferOverflowException e) {
           logger.error("Something error happened while deserializing TimeseriesMetadata of file {}",
-              file, e);
+              file);
           throw e;
         }
       }
@@ -658,7 +656,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           break;
       }
     } catch (BufferOverflowException e) {
-      logger.error("Something error happened while generating MetadataIndex of file {}", file, e);
+      logger.error("Something error happened while generating MetadataIndex of file {}", file);
       throw e;
     }
   }
@@ -730,8 +728,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             false);
       }
     } catch (BufferOverflowException e) {
-      logger
-          .error("Something error happened while deserializing MetadataIndex of file {}", file, e);
+      logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
       throw e;
     }
   }
@@ -1153,7 +1150,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       chunkMetadataList.trimToSize();
       return chunkMetadataList;
     } catch (BufferOverflowException e) {
-      logger.error("Something error happened while reading ChunkMetaDataList of file {}", file, e);
+      logger.error("Something error happened while reading ChunkMetaDataList of file {}", file);
       throw e;
     }
   }
