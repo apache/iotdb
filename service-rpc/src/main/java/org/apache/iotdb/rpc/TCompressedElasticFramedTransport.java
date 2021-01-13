@@ -30,10 +30,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
 
-  private static final long MIN_SHRINK_INTERVAL = 60_000L;
-  private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
   private long lastShrinkTime;
-  private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+  private int bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
 
   protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
       int softMaxLength) {
@@ -74,7 +72,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     if (size > RpcUtils.FRAME_HARD_MAX_LENGTH) {
       close();
       throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Frame size (" + size + ") larger than protect max length (" + RpcUtils.FRAME_HARD_MAX_LENGTH
+          "Frame size (" + size + ") larger than protect max length ("
+              + RpcUtils.FRAME_HARD_MAX_LENGTH
               + ")!");
     }
 
@@ -85,14 +84,14 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       int growCapacity = currentCapacity + (currentCapacity >> 1);
       int newCapacity = Math.max(growCapacity, size);
       byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCapacity));
-      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     } else if (currentCapacity > softMaxLength && currentCapacity * loadFactor > size
         && bufTooLargeCounter-- <= 0
-        && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
+        && System.currentTimeMillis() - lastShrinkTime > RpcUtils.MIN_SHRINK_INTERVAL) {
       // do not shrink beneath the initial size and do not shrink too often
       byteBuffer = new TByteBuffer(ByteBuffer.allocate(size + (currentCapacity - size) / 2));
       lastShrinkTime = System.currentTimeMillis();
-      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+      bufTooLargeCounter = RpcUtils.MAX_BUFFER_OVERSIZE_TIME;
     }
     return byteBuffer;
   }
