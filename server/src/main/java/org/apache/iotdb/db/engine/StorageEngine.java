@@ -518,7 +518,7 @@ public class StorageEngine implements IService {
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath(), true);
     }
 
     logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
@@ -884,8 +884,9 @@ public class StorageEngine implements IService {
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
+          throw new WriteProcessRejectException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

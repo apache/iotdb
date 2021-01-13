@@ -28,7 +28,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSI
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,20 +39,12 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
-public class ShowTimeseriesDataSet extends QueryDataSet {
+public class ShowTimeseriesDataSet extends ShowDataSet {
 
-  private final ShowTimeSeriesPlan plan;
-  private List<RowRecord> result = new ArrayList<>();
-  private int index = 0;
   private final QueryContext context;
-
-  public boolean hasLimit;
 
   private static final Path[] resourcePaths = {new PartialPath(COLUMN_TIMESERIES, false),
       new PartialPath(COLUMN_TIMESERIES_ALIAS, false),
@@ -76,7 +67,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   public List<RowRecord> getQueryDataSet() throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = IoTDB.metaManager.showTimeseries(plan, context);
+    List<ShowTimeSeriesResult> timeseriesList = IoTDB.metaManager.showTimeseries((ShowTimeSeriesPlan) plan, context);
     List<RowRecord> records = new ArrayList<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
@@ -100,38 +91,5 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
         .collect(Collectors.joining(","));
 
     updateRecord(record, text.length() == 0 ? null : "{" + text + "}");
-  }
-
-  private void updateRecord(RowRecord record, String s) {
-    if (s == null) {
-      record.addField(null);
-      return;
-    }
-    Field field = new Field(TSDataType.TEXT);
-    field.setBinaryV(new Binary(s));
-    record.addField(field);
-  }
-
-  @Override
-  public boolean hasNextWithoutConstraint() throws IOException {
-    if (index == result.size() && !hasLimit && result.size() == plan.getLimit()) {
-      plan.setOffset(plan.getOffset() + plan.getLimit());
-      try {
-        result = getQueryDataSet();
-        index = 0;
-      } catch (MetadataException e) {
-        throw new IOException(e);
-      }
-    }
-    return index < result.size();
-  }
-
-  @Override
-  public RowRecord nextWithoutConstraint() {
-    return result.get(index++);
-  }
-
-  private void putRecord(RowRecord newRecord) {
-    result.add(newRecord);
   }
 }

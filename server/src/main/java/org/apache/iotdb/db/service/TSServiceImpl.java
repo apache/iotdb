@@ -78,9 +78,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -88,7 +88,6 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -303,7 +302,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     if (!checkLogin(req.getSessionId())) {
-      AUDIT_LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
@@ -541,15 +539,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         fetchSize = DEFAULT_FETCH_SIZE;
       }
 
-      if (plan instanceof ShowTimeSeriesPlan) {
-        //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
-        if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
-          ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
-          ((ShowTimeSeriesPlan) plan).setHasLimit(false);
-        } else {
-          ((ShowTimeSeriesPlan) plan).setHasLimit(true);
-        }
-      }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
@@ -993,7 +982,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private boolean checkLogin(long sessionId) {
     boolean isLoggedIn = sessionIdUsernameMap.get(sessionId) != null;
-    LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    if (!isLoggedIn) {
+      LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    }
     return isLoggedIn;
   }
 
@@ -1617,7 +1608,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      LOGGER.warn(message, e);
+      if (((IoTDBException) e).isUserException()) {
+        LOGGER.warn(message + e.getMessage());
+      } else {
+        LOGGER.warn(message, e);
+      }
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
     return null;
@@ -1629,6 +1624,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         .format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
+    } else if (e instanceof UnSupportedDataTypeException) {
+      LOGGER.warn(e.getMessage());
     } else {
       LOGGER.warn(message, e);
     }
