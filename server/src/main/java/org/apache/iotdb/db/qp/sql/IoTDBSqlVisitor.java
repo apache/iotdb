@@ -22,7 +22,6 @@ import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_QUERY;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -46,8 +45,12 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FillQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByFillQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByLevelQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
@@ -892,10 +895,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitSelectStatement(SelectStatementContext ctx) {
+    queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     if (ctx.specialClause() != null) {
-      queryOp = (QueryOperator) visit(ctx.specialClause());
-    } else {
-      queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+      visit(ctx.specialClause());
     }
     SelectOperator selectOp = (SelectOperator) visit(ctx.selectElements());
     queryOp.setSelectOperator(selectOp);
@@ -1013,65 +1015,59 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLimitStatement(LimitStatementContext ctx) {
-    QueryOperator op = new QueryOperator(TOK_QUERY);
-    parseLimitClause(ctx.limitClause(), op);
+    parseLimitClause(ctx.limitClause(), queryOp);
     if (ctx.slimitClause() != null) {
-      parseSlimitClause(ctx.slimitClause(), op);
+      parseSlimitClause(ctx.slimitClause(), queryOp);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
       if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(op);
+        parseAlignByDeviceClause(queryOp);
       } else {
-        parseDisableAlign(op);
+        parseDisableAlign(queryOp);
       }
     }
-    return op;
+    return queryOp;
   }
 
   @Override
   public Operator visitSlimitStatement(SlimitStatementContext ctx) {
-    QueryOperator op = new QueryOperator(TOK_QUERY);
-
-    parseSlimitClause(ctx.slimitClause(), op);
+    parseSlimitClause(ctx.slimitClause(), queryOp);
     if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), op);
+      parseLimitClause(ctx.limitClause(), queryOp);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
       if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(op);
+        parseAlignByDeviceClause(queryOp);
       } else {
-        parseDisableAlign(op);
+        parseDisableAlign(queryOp);
       }
     }
-    return op;
+    return queryOp;
   }
 
   @Override
   public Operator visitAlignByDeviceClauseOrDisableAlignInSpecialLimit(
       AlignByDeviceClauseOrDisableAlignInSpecialLimitContext ctx) {
-    QueryOperator op = new QueryOperator(TOK_QUERY);
-
     if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-      parseAlignByDeviceClause(op);
+      parseAlignByDeviceClause(queryOp);
     } else {
-      parseDisableAlign(op);
+      parseDisableAlign(queryOp);
     }
-    return op;
+    return queryOp;
   }
 
   @Override
   public Operator visitOrderByTimeStatement(OrderByTimeStatementContext ctx) {
-    QueryOperator op = new QueryOperator(TOK_QUERY);
-    parseOrderByTimeClause(ctx.orderByTimeClause(), op);
+    parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
     }
-    return op;
+    return queryOp;
   }
 
   @Override
   public Operator visitGroupByTimeStatement(GroupByTimeStatementContext ctx) {
-    parseGroupByTimeClause(ctx.groupByTimeClause(), queryOp);
+    queryOp = parseGroupByTimeClause(ctx.groupByTimeClause());
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     }
@@ -1083,7 +1079,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitGroupByFillStatement(GroupByFillStatementContext ctx) {
-    parseGroupByFillClause(ctx.groupByFillClause(), queryOp);
+    queryOp = new GroupByFillQueryOperator();
+    parseGroupByFillClause(ctx.groupByFillClause(), (GroupByFillQueryOperator) queryOp);
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     }
@@ -1095,7 +1092,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitFillStatement(FillStatementContext ctx) {
-    parseFillClause(ctx.fillClause(), queryOp);
+    queryOp = new FillQueryOperator();
+    parseFillClause(ctx.fillClause(), (FillQueryOperator) queryOp);
     if (ctx.slimitClause() != null) {
       parseSlimitClause(ctx.slimitClause(), queryOp);
     }
@@ -1122,7 +1120,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitGroupByLevelStatement(GroupByLevelStatementContext ctx) {
-    parseGroupByLevelClause(ctx.groupByLevelClause(), queryOp);
+    queryOp = new GroupByLevelQueryOperator();
+    parseGroupByLevelClause(ctx.groupByLevelClause(), (GroupByLevelQueryOperator) queryOp);
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     }
@@ -1224,12 +1223,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     return sequence;
   }
 
-  public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, QueryOperator queryOp) {
-    queryOp.setGroupByLevel(true);
-    queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
+  public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, GroupByLevelQueryOperator op) {
+    op.setLevel(Integer.parseInt(ctx.INT().getText()));
   }
 
-  public void parseFillClause(FillClauseContext ctx, QueryOperator queryOp) {
+  public void parseFillClause(FillClauseContext ctx, FillQueryOperator queryOp) {
     FilterOperator filterOperator = queryOp.getFilterOperator();
     if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
       throw new SQLParserException("Only \"=\" can be used in fill function");
@@ -1237,9 +1235,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
-      parseTypeClause(typeClause, fillTypes);
+      parseTypeClause(typeClause, fillTypes, queryOp);
     }
-    queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
   }
 
@@ -1317,41 +1314,41 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     queryOp.setSeriesOffset(soffset);
   }
 
-  private void parseGroupByTimeClause(GroupByTimeClauseContext ctx, QueryOperator queryOp) {
-    queryOp.setGroupByTime(true);
-    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+  private GroupByQueryOperator parseGroupByTimeClause(GroupByTimeClauseContext ctx) {
+    GroupByQueryOperator op;
+    if (ctx.INT() != null) {
+      op = new GroupByLevelQueryOperator();
+      ((GroupByLevelQueryOperator) op).setLevel(Integer.parseInt(ctx.INT().getText()));
+    } else {
+      op = new GroupByQueryOperator();
+    }
+    op.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
     // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
-    queryOp.setSlidingStep(queryOp.getUnit());
+    op.setUnit(parseDuration(ctx.DURATION(0).getText(), op));
+    op.setSlidingStep(op.getUnit());
     // parse sliding step
     if (ctx.DURATION().size() == 2) {
       isParsingSlidingStep = true;
-      queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+      op.setSlidingStep(parseDuration(ctx.DURATION(1).getText(), op));
       isParsingSlidingStep = false;
-      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+      if (op.getSlidingStep() < op.getUnit()) {
         throw new SQLParserException(
             "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
       }
     }
 
-    parseTimeInterval(ctx.timeInterval(), queryOp);
-
-    if (ctx.INT() != null) {
-      queryOp.setGroupByLevel(true);
-      queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
-    }
+    parseTimeInterval(ctx.timeInterval(), op);
+    return op;
   }
 
-  private void parseGroupByFillClause(GroupByFillClauseContext ctx, QueryOperator queryOp) {
-    queryOp.setGroupByTime(true);
-    queryOp.setFill(true);
-    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+  private void parseGroupByFillClause(GroupByFillClauseContext ctx, GroupByFillQueryOperator op) {
+    op.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
     // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
-    queryOp.setSlidingStep(queryOp.getUnit());
+    op.setUnit(parseDuration(ctx.DURATION().getText(), op));
+    op.setSlidingStep(op.getUnit());
 
-    parseTimeInterval(ctx.timeInterval(), queryOp);
+    parseTimeInterval(ctx.timeInterval(), op);
 
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
@@ -1366,7 +1363,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         if (typeClause.previousUntilLastClause() != null) {
           long preRange;
           if (typeClause.previousUntilLastClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousUntilLastClause().DURATION().getText());
+            preRange = parseDuration(typeClause.previousUntilLastClause().DURATION().getText(), op);
           } else {
             preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
           }
@@ -1374,7 +1371,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         } else {
           long preRange;
           if (typeClause.previousClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousClause().DURATION().getText());
+            preRange = parseDuration(typeClause.previousClause().DURATION().getText(), op);
           } else {
             preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
           }
@@ -1385,14 +1382,14 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         }
         break;
       } else {
-        parseTypeClause(typeClause, fillTypes);
+        parseTypeClause(typeClause, fillTypes, op);
       }
     }
-    queryOp.setFill(true);
-    queryOp.setFillTypes(fillTypes);
+    op.setFillTypes(fillTypes);
   }
 
-  private void parseTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+  private void parseTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes,
+      QueryOperator op) {
     TSDataType dataType = parseType(ctx.dataType().getText());
     if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(String.format("type %s cannot use %s fill function"
@@ -1403,22 +1400,22 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     if (ctx.linearClause() != null) {  // linear
       if (ctx.linearClause().DURATION(0) != null) {
-        long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
-        long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());
+        long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText(), op);
+        long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText(), op);
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
         fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else if (ctx.previousClause() != null) { // previous
       if (ctx.previousClause().DURATION() != null) {
-        long preRange = parseDuration(ctx.previousClause().DURATION().getText());
+        long preRange = parseDuration(ctx.previousClause().DURATION().getText(), op);
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
-        long preRange = parseDuration(ctx.previousUntilLastClause().DURATION().getText());
+        long preRange = parseDuration(ctx.previousUntilLastClause().DURATION().getText(), op);
         fillTypes.put(dataType, new PreviousFill(preRange, true));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval, true));
@@ -1470,14 +1467,14 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression());
+      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), queryOp);
     } else {
       startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
     }
     if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
     } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression());
+      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), queryOp);
     } else {
       endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
     }
@@ -1667,7 +1664,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         if (!path.equals(TIME_PATH)) {
           throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
         }
-        values.add(Long.toString(parseDateExpression(constant.dateExpression())));
+        values.add(Long.toString(parseDateExpression(constant.dateExpression(), queryOp)));
       } else {
         values.add(constant.getText());
       }
@@ -1682,7 +1679,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         throw new SQLParserException(path.getFullPath(), "Date can only be used to time");
       }
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
-          Long.toString(parseDateExpression(ctx.constant().dateExpression())));
+          Long.toString(parseDateExpression(ctx.constant().dateExpression(), queryOp)));
     } else {
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
           ctx.constant().getText());
@@ -1694,14 +1691,14 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
    * parse time expression, which is addition and subtraction expression of duration time, now() or
    * DataTimeFormat time. <p> eg. now() + 1d - 2h </p>
    */
-  private Long parseDateExpression(DateExpressionContext ctx) {
+  private Long parseDateExpression(DateExpressionContext ctx, QueryOperator queryOp) {
     long time;
     time = parseTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if (ctx.getChild(i).getText().equals("+")) {
-        time += parseDuration(ctx.getChild(i + 1).getText());
+        time += parseDuration(ctx.getChild(i + 1).getText(), queryOp);
       } else {
-        time -= parseDuration(ctx.getChild(i + 1).getText());
+        time -= parseDuration(ctx.getChild(i + 1).getText(), queryOp);
       }
     }
     return time;
@@ -1713,7 +1710,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
    * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
-  private Long parseDuration(String durationStr) {
+  private Long parseDuration(String durationStr, QueryOperator queryOp) {
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 
     long total = 0;

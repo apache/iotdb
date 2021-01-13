@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByLevelQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -86,7 +87,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     checkAggrOfSelectOperator(select);
-    if (((QueryOperator) operator).isGroupByLevel()) {
+    if (operator instanceof GroupByLevelQueryOperator) {
       checkAggrOfGroupByLevel(select);
     }
 

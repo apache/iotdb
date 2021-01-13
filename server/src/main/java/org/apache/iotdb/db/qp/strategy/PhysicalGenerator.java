@@ -134,69 +134,8 @@ public class PhysicalGenerator {
         throw new QueryProcessException(
             "User-defined and built-in hybrid aggregation is not supported.");
       }
-      if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
-        queryPlan = new GroupByTimeFillPlan();
-      } else if (queryOperator.isGroupByTime()) {
-        queryPlan = new GroupByTimePlan();
-      } else {
-        queryPlan = new AggregationPlan();
-      }
-      ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregations());
-
-      if (queryOperator.isGroupByTime()) {
-        ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
-        ((GroupByTimePlan) queryPlan).setIntervalByMonth(queryOperator.isIntervalByMonth());
-        ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-        ((GroupByTimePlan) queryPlan).setSlidingStepByMonth(queryOperator.isSlidingStepByMonth());
-        ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
-        if (!queryOperator.isLeftCRightO()) {
-          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
-        } else {
-          ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
-          ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
-        }
-      }
-      if (queryOperator.isFill()) {
-        ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-        for (String aggregation : queryPlan.getAggregations()) {
-          if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
-            throw new QueryProcessException("Group By Fill only support last_value function");
-          }
-        }
-      } else if (queryOperator.isGroupByLevel()) {
-        ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
-        try {
-          if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
-            throw new QueryProcessException("Aggregate among unmatched data types");
-          }
-        } catch (MetadataException e) {
-          throw new QueryProcessException(e);
-        }
-      }
-    } else if (queryOperator.isFill()) {
-      if (queryOperator.hasUdf()) {
-        throw new QueryProcessException("Fill functions are not supported in UDF queries.");
-      }
-      queryPlan = new FillQueryPlan();
-      FilterOperator timeFilter = queryOperator.getFilterOperator();
-      if (!timeFilter.isSingle()) {
-        throw new QueryProcessException("Slice query must select a single time point");
-      }
-      long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
-      ((FillQueryPlan) queryPlan).setQueryTime(time);
-      ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.isLastQuery()) {
-      queryPlan = new LastQueryPlan();
-    } else if (queryOperator.getIndexType() != null) {
-      queryPlan = new QueryIndexPlan();
-    } else if (queryOperator.hasUdf()) {
-      queryPlan = new UDTFPlan(queryOperator.getSelectOperator().getZoneId());
-      ((UDTFPlan) queryPlan).constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());
-    } else {
-      queryPlan = new RawDataQueryPlan();
     }
+    queryPlan = (QueryPlan) queryOperator.convert(fetchSize);
 
     if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic

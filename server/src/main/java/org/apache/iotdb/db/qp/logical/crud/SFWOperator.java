@@ -19,8 +19,11 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 /**
  * SFWOperator(select-from-where) includes four subclass: INSERT,DELETE,UPDATE,QUERY. All of these
@@ -34,6 +37,8 @@ public abstract class SFWOperator extends RootOperator {
   private boolean hasAggregation = false;
   private boolean hasUdf = false;
   private boolean lastQuery = false;
+
+  private boolean isClusterModel = false;
 
   public SFWOperator(int tokenIntType) {
     super(tokenIntType);
@@ -95,5 +100,12 @@ public abstract class SFWOperator extends RootOperator {
 
   public boolean isLastQuery() {
     return lastQuery;
+  }
+
+  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+    if (!isClusterModel) {
+      return SchemaUtils.getSeriesTypesByPaths(paths);
+    }
+    return null;
   }
 }
