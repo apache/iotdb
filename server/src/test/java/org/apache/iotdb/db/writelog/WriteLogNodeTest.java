@@ -76,7 +76,8 @@ public class WriteLogNodeTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier, byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
+    logNode.initBuffer(byteBuffers);
 
     InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -147,7 +148,8 @@ public class WriteLogNodeTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier, byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
+    logNode.initBuffer(byteBuffers);
 
     InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath(identifier), 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -192,7 +194,8 @@ public class WriteLogNodeTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
+    logNode.initBuffer(byteBuffers);
 
     InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice"), 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -231,7 +234,8 @@ public class WriteLogNodeTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
+    logNode.initBuffer(byteBuffers);
 
     InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("logTestDevice"), 100,
         new String[]{"s1", "s2", "s3", "s4"},
@@ -268,7 +272,8 @@ public class WriteLogNodeTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize", byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
+    logNode.initBuffer(byteBuffers);
 
     InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice.oversize"),
         100,

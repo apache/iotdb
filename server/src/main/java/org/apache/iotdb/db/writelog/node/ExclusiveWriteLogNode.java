@@ -81,15 +81,18 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
    *
    * @param identifier ExclusiveWriteLogNode identifier
    */
-  public ExclusiveWriteLogNode(String identifier, ByteBuffer[] byteBuffers) {
+  public ExclusiveWriteLogNode(String identifier) {
     this.identifier = identifier;
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
-    this.logBufferWorking = byteBuffers[0];
-    this.logBufferIdle = byteBuffers[1];
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
+  }
+
+  public void initBuffer(ByteBuffer[] byteBuffers) {
+    this.logBufferWorking = byteBuffers[0];
+    this.logBufferIdle = byteBuffers[1];
   }
 
   @Override

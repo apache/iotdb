@@ -79,8 +79,17 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   @Override
   public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
-    return nodeMap
-        .computeIfAbsent(identifier, key -> new ExclusiveWriteLogNode(key, supplier.get()));
+    WriteLogNode node = nodeMap.get(identifier);
+    if (node == null) {
+      node = new ExclusiveWriteLogNode(identifier);
+      WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
+      if (oldNode != null) {
+        return oldNode;
+      } else {
+        node.initBuffer(supplier.get());
+      }
+    }
+    return node;
   }
 
   @Override

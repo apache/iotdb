@@ -85,4 +85,9 @@ public interface WriteLogNode {
    */
   ILogReader getLogReader();
 
+  /**
+   * init the buffers, this should be called after this node being created.
+   */
+  void initBuffer(ByteBuffer[] byteBuffers);
+
 }

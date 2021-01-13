@@ -91,7 +91,8 @@ public class PerformanceTest {
         byteBuffers[1] = ByteBuffer
             .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
 
-        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode", byteBuffers);
+        WriteLogNode logNode = new ExclusiveWriteLogNode("root.testLogNode");
+        logNode.initBuffer(byteBuffers);
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
@@ -164,7 +165,8 @@ public class PerformanceTest {
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     byteBuffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice", byteBuffers);
+    WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
+    logNode.initBuffer(byteBuffers);
 
     for (int i = 0; i < 1000000; i++) {
       InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("root.logTestDevice"), 100,
