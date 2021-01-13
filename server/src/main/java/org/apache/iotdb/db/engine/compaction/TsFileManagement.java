@@ -206,7 +206,7 @@ public abstract class TsFileManagement {
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
-        wait(200);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();
