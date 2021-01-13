@@ -642,9 +642,7 @@ public class BytesUtils {
       return null;
     }
     byte[] result = new byte[length];
-    for (int i = 0; i < length; i++) {
-      result[i] = src[start + i];
-    }
+    System.arraycopy(src, start, result, 0, length);
     return result;
   }
 

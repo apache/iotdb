@@ -90,6 +90,18 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = true;
   }
 
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
+      ByteBuffer  values) throws QueryProcessException {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurementList.length];
+    this.values = new Object[measurementList.length];
+    this.fillValues(values);
+    isNeedInferType = false;
+  }
+
   @TestOnly
   public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurements,
       TSDataType[] dataTypes, String[] insertValues) {
@@ -256,7 +268,10 @@ public class InsertRowPlan extends InsertPlan {
     stream.writeLong(time);
 
     putString(stream, deviceId.getFullPath());
+    serializeMeasurementsAndValues(stream);
+  }
 
+  void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -280,72 +295,76 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, outputStream);
         ReadWriteIOUtils.write((String) values[i], outputStream);
-        continue;
-      }
-
-      ReadWriteIOUtils.write(dataTypes[i], outputStream);
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values[i], outputStream);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values[i], outputStream);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values[i], outputStream);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values[i], outputStream);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values[i], outputStream);
-          break;
-        case TEXT:
-          ReadWriteIOUtils.write((Binary) values[i], outputStream);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+      } else {
+        ReadWriteIOUtils.write(dataTypes[i], outputStream);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], outputStream);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], outputStream);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], outputStream);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], outputStream);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], outputStream);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], outputStream);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+        }
       }
     }
   }
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (dataTypes == null || dataTypes[i] == null) {
         ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
         ReadWriteIOUtils.write((String) values[i], buffer);
-        continue;
-      }
-
-      ReadWriteIOUtils.write(dataTypes[i], buffer);
-      switch (dataTypes[i]) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values[i], buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values[i], buffer);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values[i], buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values[i], buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values[i], buffer);
-          break;
-        case TEXT:
-          ReadWriteIOUtils.write((Binary) values[i], buffer);
-          break;
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+      } else {
+        ReadWriteIOUtils.write(dataTypes[i], buffer);
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], buffer);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], buffer);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], buffer);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], buffer);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], buffer);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], buffer);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
+        }
       }
     }
   }
@@ -396,7 +415,10 @@ public class InsertRowPlan extends InsertPlan {
     buffer.putLong(time);
 
     putString(buffer, deviceId.getFullPath());
+    serializeMeasurementsAndValues(buffer);
+  }
 
+  void serializeMeasurementsAndValues(ByteBuffer buffer) {
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -421,7 +443,10 @@ public class InsertRowPlan extends InsertPlan {
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.time = buffer.getLong();
     this.deviceId = new PartialPath(readString(buffer));
+    deserializeMeasurementsAndValues(buffer);
+  }
 
+  void deserializeMeasurementsAndValues(ByteBuffer buffer) {
     int measurementSize = buffer.getInt();
 
     this.measurements = new String[measurementSize];
@@ -447,6 +472,10 @@ public class InsertRowPlan extends InsertPlan {
         .toString(measurements) + ", values: " + Arrays.toString(values);
   }
 
+  boolean hasFailedValues() {
+    return failedValues != null && !failedValues.isEmpty();
+  }
+
   public TimeValuePair composeTimeValuePair(int measurementIndex) {
     if (measurementIndex >= values.length) {
       return null;
@@ -465,6 +494,21 @@ public class InsertRowPlan extends InsertPlan {
     values = failedValues.toArray(new Object[0]);
     failedValues = null;
     return this;
+  }
+
+  @Override
+  public void recoverFromFailure() {
+    if (failedMeasurements == null) {
+      return;
+    }
+
+    for (int i = 0; i < failedMeasurements.size(); i++) {
+      int index = failedIndices.get(i);
+      values[index] = failedValues.get(i);
+    }
+    super.recoverFromFailure();
+
+    failedValues = null;
   }
 
   @Override

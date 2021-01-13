@@ -39,7 +39,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.monitor.MonitorConstants.StatMeasurementConstants;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
@@ -81,7 +80,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     return StatMonitorHolder.INSTANCE;
   }
 
-  private void initMonitorSeriesInfo() {
+  public void initMonitorSeriesInfo() {
     String[] globalMonitorSeries = MonitorConstants.STAT_GLOBAL_ARRAY;
     for (int i = 0; i < StatMeasurementConstants.values().length; i++) {
       PartialPath globalMonitorPath = new PartialPath(globalMonitorSeries)
@@ -160,7 +159,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
           .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
               Collections.singletonList(TSDataType.INT64),
               new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-              null, new LastQueryPlan()).get(0).right;
+              null, Collections.singletonMap(monitorSeries.getDevice(),
+                  Collections.singleton(monitorSeries.getMeasurement()))).get(0).right;
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }
@@ -194,6 +194,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   public void close() {
     config.setEnableStatMonitor(false);
+    config.setEnableMonitorSeriesWrite(false);
   }
 
   // implements methods of StatMonitorMean from here

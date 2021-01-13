@@ -153,7 +153,7 @@ public class IoTDBSessionComplexIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
+      Assert.assertEquals("root.sg1.d1,'11',0,'11',", sb.toString());
     }
     Assert.assertEquals(100, count);
     sessionDataSet.closeOperationHandle();
@@ -566,7 +566,6 @@ public class IoTDBSessionComplexIT {
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;
-    System.out.println(sessionDataSet.getColumnNames());
     while (sessionDataSet.hasNext()) {
       count++;
       StringBuilder sb = new StringBuilder();
@@ -574,7 +573,7 @@ public class IoTDBSessionComplexIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      System.out.println(sb.toString());
+      Assert.assertEquals("3,1,2,1,2,", sb.toString());
     }
     Assert.assertEquals(50, count);
     sessionDataSet.closeOperationHandle();

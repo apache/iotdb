@@ -111,7 +111,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
     List<Pair<Boolean, TimeValuePair>> lastValueContainer =
             LastQueryExecutor.calculateLastPairForSeriesLocally(
-                    seriesPaths, dataTypes, context, null, groupByFillPlan);
+                    seriesPaths, dataTypes, context, null, groupByFillPlan.getDeviceToMeasurements());
     for (int i = 0; i < lastValueContainer.size(); i++) {
       if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
         lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();
@@ -120,13 +120,13 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
+  public boolean hasNextWithoutConstraint() {
     return groupByEngineDataSet.hasNextWithoutConstraint();
   }
 
   @Override
   @SuppressWarnings("squid:S3776")
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
 
     for (int i = 0; i < paths.size(); i++) {

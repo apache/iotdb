@@ -25,6 +25,9 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 public class FlinkIoTDBSink {
     public static void main(String[] args) throws Exception {
@@ -37,19 +40,25 @@ public class FlinkIoTDBSink {
         options.setUser("root");
         options.setPassword("root");
         options.setStorageGroup("root.sg");
-        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.d1.s1")));
+
+        //If the server enables auto_create_schema, then we do not need to register all timeseries here.
+        options.setTimeseriesOptionList(
+            Lists.newArrayList(new IoTDBOptions.TimeseriesOption(
+                "root.sg.d1.s1", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY
+                )));
 
         IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();
         IoTDBSink ioTDBSink = new IoTDBSink(options, serializationSchema)
                 // enable batching
-                .withBatchSize(10);
+                .withBatchSize(10)
+                // how many connectons to the server will be created for each parallelism
+                .withSessionPoolSize(3);
 
         env.addSource(new SensorSource())
                 .name("sensor-source")
                 .setParallelism(1)
                 .addSink(ioTDBSink)
-                .name("iotdb-sink")
-                .setParallelism(1);
+                .name("iotdb-sink");
 
         env.execute("iotdb-flink-example");
     }

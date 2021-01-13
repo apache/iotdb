@@ -143,8 +143,8 @@ public class IoTDBQuotedPathIT {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.\"ln\"");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("315: org.apache.iotdb.db.exception.metadata.IllegalPathException: "
-              + "The storage group name can only be characters, numbers and underscores. root.\"ln\" is not a legal path",
+      Assert.assertEquals(
+          "315: The storage group name can only be characters, numbers and underscores. root.\"ln\" is not a legal path",
           e.getMessage());
     }
   }

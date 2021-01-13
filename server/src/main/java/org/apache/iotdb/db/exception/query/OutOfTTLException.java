@@ -31,6 +31,6 @@ public class OutOfTTLException extends WriteProcessException {
   public OutOfTTLException(long insertionTime, long timeLowerBound) {
     super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
         new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode());
+        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), true);
   }
 }

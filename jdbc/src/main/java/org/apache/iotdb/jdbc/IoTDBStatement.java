@@ -48,7 +48,11 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
-  private int queryTimeout = 10;
+
+  /**
+   * query timeout with seconds unit
+   */
+  private int queryTimeout = 60;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
@@ -192,8 +196,8 @@ public class IoTDBStatement implements Statement {
         throw new SQLException(String.format("Fail to execute %s", sql), e);
       } else {
         throw new SQLException(String
-                .format("Fail to reconnect to server when executing %s. please check server status",
-                        sql), e);
+            .format("Fail to reconnect to server when executing %s. please check server status",
+                sql), e);
       }
     }
   }
@@ -215,6 +219,7 @@ public class IoTDBStatement implements Statement {
 
   /**
    * There are two kinds of sql here: (1) query sql (2) update sql.
+   * <p>
    * (1) return IoTDBJDBCResultSet or IoTDBNonAlignJDBCResultSet
    * (2) simply get executed
    */
@@ -222,6 +227,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
+    execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -234,13 +240,12 @@ public class IoTDBStatement implements Statement {
       queryId = execResp.getQueryId();
       if (execResp.queryDataSet == null) {
         this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
-            execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-            sessionId, execResp.nonAlignQueryDataSet);
-      }
-      else {
+            execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp,
+            client, sql, queryId, sessionId, execResp.nonAlignQueryDataSet, execReq.timeout);
+      } else {
         this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
-            execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-            sessionId, execResp.queryDataSet);
+            execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp,
+            client, sql, queryId, sessionId, execResp.queryDataSet, execReq.timeout);
       }
       return true;
     }
@@ -278,13 +283,15 @@ public class IoTDBStatement implements Statement {
     for (int i = 0; i < result.length; i++) {
       if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
         result[i] = execResp.getSubStatus().get(i).code;
-        if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && result[i] != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           allSuccess = false;
           message = execResp.getSubStatus().get(i).message;
         }
       } else {
         allSuccess =
-            allSuccess && execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+            allSuccess && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
         result[i] = execResp.getCode();
         message = execResp.getMessage();
       }
@@ -297,14 +304,21 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
+    return this.executeQuery(sql, (long) this.queryTimeout * 1000);
+  }
+
+  public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
+    if (timeoutInMS <= 0) {
+      throw new SQLException("Timeout must be over 0, please check and try again.");
+    }
     isClosed = false;
     try {
-      return executeQuerySQL(sql);
+      return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
       if (reConnect()) {
         try {
-          return executeQuerySQL(sql);
+          return executeQuerySQL(sql, timeoutInMS);
         } catch (TException e2) {
           throw new SQLException(
               "Fail to executeQuery " + sql + "after reconnecting. please check server status", e2);
@@ -317,10 +331,11 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
+  private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
+    execReq.setTimeout(timeoutInMS);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
@@ -335,12 +350,12 @@ public class IoTDBStatement implements Statement {
 
     if (execResp.queryDataSet == null) {
       this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
-          execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.nonAlignQueryDataSet);
+          execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client,
+          sql, queryId, sessionId, execResp.nonAlignQueryDataSet, execReq.timeout);
     } else {
       this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
-          execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
-          sessionId, execResp.queryDataSet);
+          execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client,
+          sql, queryId, sessionId, execResp.queryDataSet, execReq.timeout);
     }
     return resultSet;
   }
@@ -362,14 +377,14 @@ public class IoTDBStatement implements Statement {
     }
 
     final List<ByteBuffer> valueList = nonAlignDataSet.valueList
-            .stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
+        .stream()
+        .map(ReadWriteIOUtils::clone)
+        .collect(Collectors.toList());
 
     final List<ByteBuffer> timeList = nonAlignDataSet.timeList
-            .stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
+        .stream()
+        .map(ReadWriteIOUtils::clone)
+        .collect(Collectors.toList());
 
     nonAlignDataSet.setTimeList(timeList);
     nonAlignDataSet.setValueList(valueList);
@@ -378,14 +393,14 @@ public class IoTDBStatement implements Statement {
   private void deepCopyTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
     final ByteBuffer time = ReadWriteIOUtils.clone(tsQueryDataSet.time);
     final List<ByteBuffer> valueList = tsQueryDataSet.valueList
-            .stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
+        .stream()
+        .map(ReadWriteIOUtils::clone)
+        .collect(Collectors.toList());
 
     final List<ByteBuffer> bitmapList = tsQueryDataSet.bitmapList
-            .stream()
-            .map(ReadWriteIOUtils::clone)
-            .collect(Collectors.toList());
+        .stream()
+        .map(ReadWriteIOUtils::clone)
+        .collect(Collectors.toList());
 
     tsQueryDataSet.setBitmapList(bitmapList);
     tsQueryDataSet.setValueList(valueList);

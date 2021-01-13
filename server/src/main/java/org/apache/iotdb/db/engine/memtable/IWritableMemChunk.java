@@ -63,12 +63,28 @@ public interface IWritableMemChunk {
 
   /**
    * served for query requests.
+   * <p>
+   * if tv list has been sorted, just return reference of it
+   * <p>
+   * if tv list hasn't been sorted and has no reference, sort and return reference of it
+   * <p>
+   * if tv list hasn't been sorted and has reference we should copy and sort it, then return ths
+   * list
+   * <p>
+   * the mechanism is just like copy on write
    *
-   * @return
+   * @return sorted tv list
    */
-  default TVList getSortedTVList() {
-    return null;
-  }
+  TVList getSortedTVListForQuery();
+
+
+  /**
+   * served for flush requests.
+   * The logic is just same as getSortedTVListForQuery, but without add reference count
+   *
+   * @return sorted tv list
+   */
+  TVList getSortedTVListForFlush();
 
   default TVList getTVList() {
     return null;

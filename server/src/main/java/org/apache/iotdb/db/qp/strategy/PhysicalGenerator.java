@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -45,14 +45,17 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
+import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -63,6 +66,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
@@ -81,18 +85,22 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -102,26 +110,27 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-
 /**
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
-
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
@@ -173,7 +182,7 @@ public class PhysicalGenerator {
       case CREATE_INDEX:
         CreateIndexOperator createIndexOp = (CreateIndexOperator) operator;
         return new CreateIndexPlan(createIndexOp.getSelectedPaths(), createIndexOp.getProps(),
-            createIndexOp.getTime(),createIndexOp.getIndexType());
+            createIndexOp.getTime(), createIndexOp.getIndexType());
       case DROP_INDEX:
         DropIndexOperator dropIndexOp = (DropIndexOperator) operator;
         return new DropIndexPlan(dropIndexOp.getSelectedPaths(), dropIndexOp.getIndexType());
@@ -210,7 +219,7 @@ public class PhysicalGenerator {
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
-        return new TracingPlan(tracingOperator.isTracingon());
+        return new TracingPlan(tracingOperator.isTracingOn());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
@@ -241,16 +250,20 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
-                showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
-                showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
-                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
+            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
+                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset(), fetchSize);
+            showTimeSeriesPlan.setIsContains(showTimeSeriesOperator.isContains());
+            showTimeSeriesPlan.setKey(showTimeSeriesOperator.getKey());
+            showTimeSeriesPlan.setValue(showTimeSeriesOperator.getValue());
+            showTimeSeriesPlan.setOrderByHeat(showTimeSeriesOperator.isOrderByHeat());
+            return showTimeSeriesPlan;
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
-            return new ShowDevicesPlan(
-                ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+            ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
+            return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
+                  showDevicesOperator.getOffset(), fetchSize);
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
@@ -269,6 +282,10 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(
                 ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_QUERY_PROCESSLIST:
+            return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
+          case SQLConstant.TOK_SHOW_FUNCTIONS:
+            return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
           default:
             throw new LogicalOperatorException(
                 String.format(
@@ -293,6 +310,15 @@ public class PhysicalGenerator {
         return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
+      case KILL:
+        return new KillQueryPlan(((KillQueryOperator) operator).getQueryId());
+      case CREATE_FUNCTION:
+        CreateFunctionOperator createFunctionOperator = (CreateFunctionOperator) operator;
+        return new CreateFunctionPlan(createFunctionOperator.isTemporary(),
+            createFunctionOperator.getUdfName(), createFunctionOperator.getClassName());
+      case DROP_FUNCTION:
+        DropFunctionOperator dropFunctionOperator = (DropFunctionOperator) operator;
+        return new DropFunctionPlan(dropFunctionOperator.getUdfName());
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -334,7 +360,7 @@ public class PhysicalGenerator {
   }
 
   protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPath(paths);
+    return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
 
@@ -344,6 +370,10 @@ public class PhysicalGenerator {
     QueryPlan queryPlan;
 
     if (queryOperator.hasAggregation()) {
+      if (queryOperator.hasUdf()) {
+        throw new QueryProcessException(
+            "User-defined and built-in hybrid aggregation is not supported.");
+      }
       if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
         queryPlan = new GroupByTimeFillPlan();
       } else if (queryOperator.isGroupByTime()) {
@@ -356,7 +386,9 @@ public class PhysicalGenerator {
 
       if (queryOperator.isGroupByTime()) {
         ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
+        ((GroupByTimePlan) queryPlan).setIntervalByMonth(queryOperator.isIntervalByMonth());
         ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+        ((GroupByTimePlan) queryPlan).setSlidingStepByMonth(queryOperator.isSlidingStepByMonth());
         ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
         if (!queryOperator.isLeftCRightO()) {
           ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
@@ -384,6 +416,9 @@ public class PhysicalGenerator {
         }
       }
     } else if (queryOperator.isFill()) {
+      if (queryOperator.hasUdf()) {
+        throw new QueryProcessException("Fill functions are not supported in UDF queries.");
+      }
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
@@ -396,6 +431,9 @@ public class PhysicalGenerator {
       queryPlan = new LastQueryPlan();
     } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
+    } else if (queryOperator.hasUdf()) {
+      queryPlan = new UDTFPlan(queryOperator.getSelectOperator().getZoneId());
+      ((UDTFPlan) queryPlan).constructUdfExecutors(queryOperator.getSelectOperator().getUdfList());
     } else {
       queryPlan = new RawDataQueryPlan();
     }
@@ -451,7 +489,7 @@ public class PhysicalGenerator {
           try {
             // remove stars in SELECT to get actual paths
             List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-            if (suffixPath.getTsAlias() != null) {
+            if (suffixPath.isTsAliasExists()) {
               if (actualPaths.size() == 1) {
                 String columnName = actualPaths.get(0).getMeasurement();
                 if (originAggregations != null && !originAggregations.isEmpty()) {
@@ -577,8 +615,7 @@ public class PhysicalGenerator {
 
       queryPlan = alignByDevicePlan;
     } else {
-      List<PartialPath> paths = queryOperator.getSelectedPaths();
-      queryPlan.setPaths(paths);
+      queryPlan.setPaths(queryOperator.getSelectedPaths());
       // Last query result set will not be affected by alignment
       if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
         throw new QueryProcessException("Disable align cannot be applied to LAST query.");
@@ -604,8 +641,9 @@ public class PhysicalGenerator {
         }
       }
     }
-    if(queryOperator.getIndexType() != null) {
-      if(queryPlan instanceof QueryIndexPlan) {
+
+    if (queryOperator.getIndexType() != null) {
+      if (queryPlan instanceof QueryIndexPlan) {
         ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
         ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
       }
@@ -718,21 +756,22 @@ public class PhysicalGenerator {
     }
 
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-    Set<String> columnSet = new HashSet<>();
+    Set<String> columnForReaderSet = new HashSet<>();
     // if it's a last query, no need to sort by device
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = paths.get(i);
-        String column = path.getTsAlias();
-        if (column == null) {
-          column =
-              path.getMeasurementAlias() != null ? path.getFullPathWithAlias() : path.toString();
+        String column;
+        if (path.isTsAliasExists()) {
+          column = path.getTsAlias();
+        } else {
+          column = path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
         }
-        if (!columnSet.contains(column)) {
+        if (!columnForReaderSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
           rawDataQueryPlan.addDeduplicatedPaths(path);
           rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-          columnSet.add(column);
+          columnForReaderSet.add(column);
         }
       }
       return;
@@ -741,44 +780,79 @@ public class PhysicalGenerator {
     // sort path by device
     List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      indexedPaths.add(new Pair<>(paths.get(i), i));
+      PartialPath path = paths.get(i);
+      if (path != null) { // non-udf
+        indexedPaths.add(new Pair<>(paths.get(i), i));
+      } else { // udf
+        UDFContext context = ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i)
+            .getContext();
+        for (PartialPath udfPath : context.getPaths()) {
+          indexedPaths.add(new Pair<>(udfPath, i));
+        }
+      }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
     int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
         .getMaxDeduplicatedPathNum(fetchSize);
-    int deduplicatedPathNum = 0;
-    int index = 0;
+    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+    Set<String> columnForDisplaySet = new HashSet<>();
+
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
-      String column = indexedPath.left.getTsAlias();
-      if (column == null) {
-        column =
-            indexedPath.left.getMeasurementAlias() != null ? indexedPath.left.getFullPathWithAlias()
-                : indexedPath.left.toString();
+      PartialPath originalPath = indexedPath.left;
+      Integer originalIndex = indexedPath.right;
+
+      String columnForReader = originalPath.isTsAliasExists() ? originalPath.getTsAlias() : null;
+      if (columnForReader == null) {
+        columnForReader = originalPath.isMeasurementAliasExists() ?
+            originalPath.getFullPathWithAlias() : originalPath.toString();
         if (queryPlan instanceof AggregationPlan) {
-          column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
+          columnForReader =
+              queryPlan.getAggregations().get(originalIndex) + "(" + columnForReader + ")";
         }
       }
-      if (!columnSet.contains(column)) {
-        TSDataType seriesType = dataTypes.get(indexedPath.right);
-        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
-        rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-        deduplicatedPathNum++;
-        if (deduplicatedPathNum > maxDeduplicatedPathNum) {
-          throw new PathNumOverLimitException(maxDeduplicatedPathNum, deduplicatedPathNum);
-        }
-        columnSet.add(column);
-        rawDataQueryPlan.addPathToIndex(column, index++);
+
+      boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
+
+      if (!columnForReaderSet.contains(columnForReader)) {
+        rawDataQueryPlan.addDeduplicatedPaths(originalPath);
+        rawDataQueryPlan.addDeduplicatedDataTypes(isUdf
+            ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
+        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (queryPlan instanceof AggregationPlan) {
           ((AggregationPlan) queryPlan)
-              .addDeduplicatedAggregations(queryPlan.getAggregations().get(indexedPath.right));
+              .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
+        }
+        columnForReaderSet.add(columnForReader);
+        if (maxDeduplicatedPathNum < columnForReaderSet.size()) {
+          throw new PathNumOverLimitException(maxDeduplicatedPathNum, columnForReaderSet.size());
         }
       }
+
+      String columnForDisplay = isUdf
+          ? ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(originalIndex)
+          .getContext().getColumnName()
+          : columnForReader;
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
+        if (queryPlan instanceof UDTFPlan) {
+          if (isUdf) {
+            ((UDTFPlan) queryPlan).addUdfOutputColumn(columnForDisplay);
+          } else {
+            ((UDTFPlan) queryPlan).addRawQueryOutputColumn(columnForDisplay);
+          }
+        }
+        columnForDisplaySet.add(columnForDisplay);
+      }
+    }
+
+    if (queryPlan instanceof UDTFPlan) {
+      ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
     }
   }
 
-  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
-      throws QueryProcessException {
+  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit,
+      int seriesOffset) throws QueryProcessException {
     int size = columnList.size();
 
     // check parameter range
@@ -797,7 +871,7 @@ public class PhysicalGenerator {
   }
 
   private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
-      throws MetadataException{
+      throws MetadataException {
     List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
     if (aggregations.isEmpty()) {
       return true;
@@ -816,7 +890,7 @@ public class PhysicalGenerator {
         return true;
     }
   }
-  
+
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
