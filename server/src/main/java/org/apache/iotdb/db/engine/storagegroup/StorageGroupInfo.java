@@ -123,7 +123,7 @@ public class StorageGroupInfo {
     ByteBuffer[] buffers = new ByteBuffer[2];
     buffers[0] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    buffers[0] = ByteBuffer
+    buffers[1] = ByteBuffer
         .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     return buffers;
   }
