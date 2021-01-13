@@ -78,9 +78,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -1608,7 +1608,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      LOGGER.warn(message, e);
+      if (((IoTDBException) e).isUserException()) {
+        LOGGER.warn(message + e.getMessage());
+      } else {
+        LOGGER.warn(message, e);
+      }
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
     return null;
@@ -1620,6 +1624,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         .format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
+    } else if (e instanceof UnSupportedDataTypeException) {
+      LOGGER.warn(e.getMessage());
     } else {
       LOGGER.warn(message, e);
     }

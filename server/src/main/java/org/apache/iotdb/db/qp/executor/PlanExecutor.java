@@ -349,7 +349,7 @@ public class PlanExecutor implements IPlanExecutor {
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         throw new StorageGroupNotSetException(
-            sb.subSequence(0, sb.length() - 1).toString());
+            sb.subSequence(0, sb.length() - 1).toString(), true);
       }
     }
   }
@@ -1148,7 +1148,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new QueryProcessException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new QueryProcessException(e.getMessage(), true);
     }
     return true;
   }
@@ -1298,7 +1298,7 @@ public class PlanExecutor implements IPlanExecutor {
         List<PartialPath> allRelatedStorageGroupPath = IoTDB.metaManager
             .getStorageGroupPaths(storageGroupPath);
         if (allRelatedStorageGroupPath.isEmpty()) {
-          throw new PathNotExistException(storageGroupPath.getFullPath());
+          throw new PathNotExistException(storageGroupPath.getFullPath(), true);
         }
         for (PartialPath path : allRelatedStorageGroupPath) {
           StorageEngine.getInstance().deleteStorageGroup(path);
