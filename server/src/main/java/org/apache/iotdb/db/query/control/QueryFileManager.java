@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+
 /**
  * <p>
  * QueryFileManager records the paths of files that every query uses for QueryResourceManager.
@@ -121,4 +122,5 @@ public class QueryFileManager {
       FileReaderManager.getInstance().increaseFileReaderReference(tsFile, isClosed);
     }
   }
+
 }

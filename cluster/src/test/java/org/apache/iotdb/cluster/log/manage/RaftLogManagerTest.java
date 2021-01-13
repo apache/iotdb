@@ -86,13 +86,12 @@ public class RaftLogManagerTest {
   private LogApplier logApplier = new TestLogApplier() {
     @Override
     public void apply(Log log) {
-      new Thread(() -> {
-        while (blocked) {
-          // stuck
-        }
-        appliedLogs.put(log.getCurrLogIndex(), log);
-        log.setApplied(true);
-      }).start();
+      if (blocked) {
+        return;
+      }
+      // make sure the log is applied when not blocked
+      appliedLogs.put(log.getCurrLogIndex(), log);
+      log.setApplied(true);
     }
   };
   private int testIdentifier = 1;
@@ -157,7 +156,7 @@ public class RaftLogManagerTest {
       blocked = true;
       instance.setBlockAppliedCommitIndex(99);
       instance.append(logs.subList(50, 100));
-      instance.commitTo(99);
+      instance.commitTo(98);
 
       try {
         // applier is blocked, so this should time out
@@ -167,6 +166,7 @@ public class RaftLogManagerTest {
         assertEquals("wait all log applied time out", e.getMessage());
       }
       blocked = false;
+      instance.commitTo(99);
       // applier is unblocked, BlockAppliedCommitIndex should be soon reached
       ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(60_000);
       instance.takeSnapshot();
@@ -1342,7 +1342,6 @@ public class RaftLogManagerTest {
     } finally {
       raftLogManager.close();
     }
-
   }
 
   @Test

@@ -605,7 +605,8 @@ public abstract class RaftLogManager {
       if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
         logger.debug("There are too many unapplied logs [{}], wait for a while to avoid memory "
             + "overflow", unappliedLogSize);
-        Thread.sleep(unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+        Thread.sleep(
+            unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       }
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
@@ -648,6 +649,8 @@ public abstract class RaftLogManager {
         logApplier.apply(entry);
       } catch (Exception e) {
         entry.setException(e);
+      } finally {
+        entry.setApplied(true);
       }
     }
   }

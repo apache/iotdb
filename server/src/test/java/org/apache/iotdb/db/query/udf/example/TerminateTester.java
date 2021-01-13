@@ -26,14 +26,19 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TerminateTester implements UDTF {
+
+  private static final Logger logger = LoggerFactory.getLogger(TerminateTester.class);
 
   private Long maxTime;
   private int count;
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    logger.debug("TerminateTester#beforeStart");
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new RowByRowAccessStrategy());
@@ -54,5 +59,10 @@ public class TerminateTester implements UDTF {
     if (maxTime != null) {
       collector.putInt(maxTime + 1, count);
     }
+  }
+
+  @Override
+  public void beforeDestroy() {
+    logger.debug("TerminateTester#beforeDestroy");
   }
 }
