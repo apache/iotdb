@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v1.file.metadata.ChunkGroupMetaDataV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataIndexV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsFileMetadataV1;

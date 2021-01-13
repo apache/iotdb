@@ -909,9 +909,14 @@ public class TsFileProcessor {
 
   private List<Modification> getModificationsForMemtable(IMemTable memTable) {
     List<Modification> modifications = new ArrayList<>();
+    boolean foundMemtable = false;
     for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+      if (foundMemtable && !entry.right.equals(memTable)) {
+        break;
+      }
+      modifications.add(entry.left);
       if (entry.right.equals(memTable)) {
-        modifications.add(entry.left);
+        foundMemtable = true;
       }
     }
     return modifications;
