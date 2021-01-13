@@ -418,16 +418,14 @@ suffixPath
     ;
 
 nodeName
-    : ID
+    : ID STAR?
     | STAR
     | DOUBLE_QUOTE_STRING_LITERAL
-    | ID STAR
     | DURATION
     | encoding
     | dataType
     | dateExpression
-    | MINUS? EXPONENT
-    | MINUS? INT
+    | MINUS? (EXPONENT | INT)
     | booleanClause
     | CREATE
     | INSERT
@@ -523,7 +521,7 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -538,8 +536,7 @@ nodeNameWithoutStar
     | encoding
     | dataType
     | dateExpression
-    | MINUS? EXPONENT
-    | MINUS? INT
+    | MINUS? ( EXPONENT | INT)
     | booleanClause
     | CREATE
     | INSERT
@@ -635,7 +632,7 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
