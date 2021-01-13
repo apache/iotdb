@@ -83,7 +83,7 @@ public abstract class NodeToolCmd implements Runnable {
     try {
       String jmxURL = String.format(JMX_URL_FORMAT, host, port);
       JMXServiceURL serviceURL = new JMXServiceURL(jmxURL);
-      Map<String, Object> environment = new HashMap<>();
+      Map<String, Object> environment = new HashMap<>(1);
       environment.put(JMXConnector.CREDENTIALS, new String[]{user, password});
       JMXConnector connector = JMXConnectorFactory.connect(serviceURL, environment);
       mbsc = connector.getMBeanServerConnection();
