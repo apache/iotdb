@@ -2178,7 +2178,7 @@ public class StorageGroupProcessor {
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.
    */
-  private boolean loadTsFileByType(LoadTsFileType type, File syncedTsFile,
+  private boolean loadTsFileByType(LoadTsFileType type, File tsFileToLoad,
       TsFileResource tsFileResource, long filePartitionId)
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile;
@@ -2195,7 +2195,7 @@ public class StorageGroupProcessor {
         }
         tsFileManagement.add(tsFileResource, false);
         logger.info("Load tsfile in unsequence list, move file from {} to {}",
-            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
+            tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
       case LOAD_SEQUENCE:
         targetFile =
@@ -2209,7 +2209,7 @@ public class StorageGroupProcessor {
         }
         tsFileManagement.add(tsFileResource, true);
         logger.info("Load tsfile in sequence list, move file from {} to {}",
-            syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath());
+            tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath());
         break;
       default:
         throw new LoadFileException(
@@ -2221,29 +2221,47 @@ public class StorageGroupProcessor {
       targetFile.getParentFile().mkdirs();
     }
     try {
-      FileUtils.moveFile(syncedTsFile, targetFile);
+      FileUtils.moveFile(tsFileToLoad, targetFile);
     } catch (IOException e) {
       logger.error("File renaming failed when loading tsfile. Origin: {}, Target: {}",
-          syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e);
+          tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e);
       throw new LoadFileException(String.format(
           "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-          syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
+          tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
     }
 
-    File syncedResourceFile = fsFactory.getFile(
-        syncedTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFileToLoad = fsFactory.getFile(
+        tsFileToLoad.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File targetResourceFile = fsFactory.getFile(
         targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     try {
-      FileUtils.moveFile(syncedResourceFile, targetResourceFile);
+      FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
     } catch (IOException e) {
       logger.error("File renaming failed when loading .resource file. Origin: {}, Target: {}",
-          syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(), e);
+          resourceFileToLoad.getAbsolutePath(), targetResourceFile.getAbsolutePath(), e);
       throw new LoadFileException(String.format(
           "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
-          syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
+          resourceFileToLoad.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
+
+    File modFileToLoad = fsFactory.getFile(
+        tsFileToLoad.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    if (modFileToLoad.exists()) {
+      File targetModFile = fsFactory.getFile(
+          targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+      try {
+        FileUtils.moveFile(modFileToLoad, targetModFile);
+      } catch (IOException e) {
+        logger.error("File renaming failed when loading .mod file. Origin: {}, Target: {}",
+            resourceFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e);
+        throw new LoadFileException(String.format(
+            "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
+            resourceFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(),
+            e.getMessage()));
+      }
+    }
+
     return true;
   }
 

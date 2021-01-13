@@ -29,12 +29,9 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DataClientProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataClientProvider.class);
   /**
    * dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
    * nodes

@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -62,6 +66,23 @@ public class PartitionGroup extends ArrayList<Node> {
     PartitionGroup group = (PartitionGroup) o;
     return Objects.equals(id, group.getId()) &&
         super.equals(group);
+  }
+
+  public void serialize(DataOutputStream dataOutputStream)
+      throws IOException {
+    dataOutputStream.writeInt(getId());
+    dataOutputStream.writeInt(size());
+    for (Node node : this) {
+      dataOutputStream.writeInt(node.getNodeIdentifier());
+    }
+  }
+
+  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
+    id = buffer.getInt();
+    int nodeNum = buffer.getInt();
+    for (int i2 = 0; i2 < nodeNum; i2++) {
+      add(idNodeMap.get(buffer.getInt()));
+    }
   }
 
   @Override

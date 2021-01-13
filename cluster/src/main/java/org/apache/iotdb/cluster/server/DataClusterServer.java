@@ -33,6 +33,8 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -490,6 +492,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     return "DataServerThread-";
   }
 
+  public void preAddNodeForDataGroup(AddNodeLog log, DataGroupMember targetDataGroupMember) {
+    // Make sure the previous add/remove node log has applied
+    metaGroupMember.syncLeader();
+
+    // Check the validity of the partition table
+    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+      return;
+    }
+
+    targetDataGroupMember.preAddNode(log.getNewNode());
+  }
+
   /**
    * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
    * longer stays in that group, also remove and stop it. If the new group contains this node, also
@@ -499,6 +513,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @param result
    */
   public void addNode(Node node, NodeAdditionResult result) {
+    // If the node executed adding itself to the cluster, it's unnecessary to add new groups because they already exist.
+    if (node.equals(thisNode)) {
+      return;
+    }
     Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
@@ -581,6 +599,18 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     logger.info("Data group members are ready");
   }
 
+  public void preRemoveNodeForDataGroup(RemoveNodeLog log, DataGroupMember targetDataGroupMember) {
+    // Make sure the previous add/remove node log has applied
+    metaGroupMember.syncLeader();
+
+    // Check the validity of the partition table
+    if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
+      return;
+    }
+
+    targetDataGroupMember.preRemoveNode(log.getRemovedNode());
+  }
+
   /**
    * Try removing a node from the groups of each DataGroupMember. If the node is the header of some
    * group, set the member to read only so that it can still provide data for other nodes that has
@@ -624,6 +654,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
+   * When the node joins a cluster, it also creates a new data group and a corresponding member
    * When the node joins a cluster, it also creates a new data group and a corresponding member
    * which has no data. This is to make that member pull data from other nodes.
    */

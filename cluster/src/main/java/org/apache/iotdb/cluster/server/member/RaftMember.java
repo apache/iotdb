@@ -93,6 +93,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -899,13 +900,23 @@ public abstract class RaftMember {
       return StatusUtils.NODE_READ_ONLY;
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
-    PhysicalPlanLog log = new PhysicalPlanLog();
+    Log log;
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
+      }
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog)log).setPlan(plan);
+    }
     // assign term and index to the new log and append it
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
       logManager.append(log);
     }
@@ -1404,7 +1415,7 @@ public abstract class RaftMember {
   }
 
   private TSStatus handleLogExecutionException(
-      PhysicalPlanLog log, LogExecutionException e) {
+      Log log, LogExecutionException e) {
     Throwable cause = IOUtils.getRootCause(e);
     if (cause instanceof BatchProcessException) {
       return RpcUtils
@@ -1536,7 +1547,7 @@ public abstract class RaftMember {
         logger.debug("Has lose leadership, so need not to send log");
         return false;
       }
-      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      AppendLogResult result = sendLogToFollowers(log);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
       switch (result) {
         case OK:
@@ -1568,10 +1579,11 @@ public abstract class RaftMember {
    *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  protected AppendLogResult sendLogToFollowers(Log log) {
+    int requiredQuorum = allNodes.size() / 2;
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum
-      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
+      return sendLogToFollowers(log, new AtomicInteger(requiredQuorum));
     } else {
       // make sure quorum does not exceed the number of members - 1
       return sendLogToFollowers(log, new AtomicInteger(Math.min(requiredQuorum,

@@ -42,6 +42,7 @@ public class LogParserTest {
   public void testAddNodeLog() throws UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(TestUtils.getNode(5));
+    log.setPartitionTable(TestUtils.seralizePartitionTable);
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
 
@@ -78,6 +79,7 @@ public class LogParserTest {
   @Test
   public void testRemoveNodeLog() throws UnknownLogTypeException {
     RemoveNodeLog log = new RemoveNodeLog();
+    log.setPartitionTable(TestUtils.seralizePartitionTable);
     log.setRemovedNode(TestUtils.getNode(0));
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);

@@ -898,8 +898,8 @@ public class DataGroupMemberTest extends MemberTest {
   public void testRemoveLeader() {
     System.out.println("Start testRemoveLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
-    SlotNodeRemovalResult nodeRemovalResult = (SlotNodeRemovalResult) testMetaMember.getPartitionTable()
-        .removeNode(nodeToRemove);
+    testMetaMember.getPartitionTable().removeNode(nodeToRemove);
+    SlotNodeRemovalResult nodeRemovalResult = (SlotNodeRemovalResult) testMetaMember.getPartitionTable().getNodeRemovalResult();
     dataGroupMember.setLeader(nodeToRemove);
     dataGroupMember.start();
 
@@ -926,8 +926,9 @@ public class DataGroupMemberTest extends MemberTest {
   public void testRemoveNonLeader() {
     System.out.println("Start testRemoveNonLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
-    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
+    testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
+    NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable().getNodeRemovalResult();
     dataGroupMember.setLeader(TestUtils.getNode(20));
     dataGroupMember.start();
 

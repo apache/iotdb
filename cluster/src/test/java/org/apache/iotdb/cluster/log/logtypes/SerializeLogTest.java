@@ -87,6 +87,7 @@ public class SerializeLogTest {
   @Test
   public void testAddNodeLog() throws UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog();
+    log.setPartitionTable(TestUtils.seralizePartitionTable);
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     log.setNewNode(new Node("apache.iotdb.com", 1234, 1, 4321, 55560));
@@ -110,6 +111,7 @@ public class SerializeLogTest {
   @Test
   public void testRemoveNodeLog() throws UnknownLogTypeException {
     RemoveNodeLog log = new RemoveNodeLog();
+    log.setPartitionTable(TestUtils.seralizePartitionTable);
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     log.setRemovedNode(TestUtils.getNode(0));

@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.common;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -65,6 +66,8 @@ public class TestUtils {
 
   public static long TEST_TIME_OUT_MS = 200;
 
+  public static ByteBuffer seralizePartitionTable = new SlotPartitionTable(getNode(0)).serialize();
+
   private TestUtils() {
     // util class
   }
@@ -83,6 +86,7 @@ public class TestUtils {
     for (int i = 0; i < logNum; i++) {
       AddNodeLog log = new AddNodeLog();
       log.setNewNode(getNode(i));
+      log.setPartitionTable(seralizePartitionTable);
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
       logList.add(log);

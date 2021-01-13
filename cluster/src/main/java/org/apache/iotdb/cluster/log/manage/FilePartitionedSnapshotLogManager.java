@@ -28,7 +28,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -201,5 +204,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       }
     }
     return true;
+  }
+
+  @Override
+  public long append(Log entry) {
+    long lastLogIndex = super.append(entry);
+    if (lastLogIndex != -1 && (entry instanceof AddNodeLog || entry instanceof RemoveNodeLog)) {
+      logApplier.apply(entry);
+    }
+    return lastLogIndex;
   }
 }

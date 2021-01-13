@@ -166,6 +166,9 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
   public Void call() {
     // If this node is the member of previous holder, it's unnecessary to pull data again
     if (descriptor.getPreviousHolders().contains(newMember.getThisNode())) {
+      for (Integer slot: descriptor.getSlots()) {
+        newMember.getSlotManager().setToNull(slot);
+      }
       // inform the previous holders that one member has successfully pulled snapshot directly
       newMember.registerPullSnapshotHint(descriptor);
     } else {
@@ -176,7 +179,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       request.setRequireReadOnly(descriptor.isRequireReadOnly());
 
       boolean finished = false;
-      int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode());
+      int nodeIndex = ((PartitionGroup) newMember.getAllNodes()).indexOf(newMember.getThisNode()) - 1;
       while (!finished) {
         try {
           // sequentially pick up a node that may have this slot

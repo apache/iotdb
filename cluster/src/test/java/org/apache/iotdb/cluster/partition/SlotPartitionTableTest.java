@@ -499,7 +499,8 @@ public class SlotPartitionTableTest {
   @Test
   public void testRemoveNode() {
     List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0), raftId);
-    NodeRemovalResult nodeRemovalResult = localTable.removeNode(getNode(0));
+    localTable.removeNode(getNode(0));
+    NodeRemovalResult nodeRemovalResult = localTable.getNodeRemovalResult();
     assertFalse(localTable.getAllNodes().contains(getNode(0)));
     PartitionGroup removedGroup = nodeRemovalResult.getRemovedGroup(0);
     for (int i = 0; i < 5; i++) {

@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.cluster.partition.slot;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 
 /**
@@ -29,7 +35,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
  */
 public class SlotNodeRemovalResult extends NodeRemovalResult {
 
-  private Map<RaftNode, List<Integer>> newSlotOwners;
+  private Map<RaftNode, List<Integer>> newSlotOwners = new HashMap<>();
 
   public Map<RaftNode, List<Integer>> getNewSlotOwners() {
     return newSlotOwners;
@@ -37,5 +43,35 @@ public class SlotNodeRemovalResult extends NodeRemovalResult {
 
   public void addNewSlotOwners(Map<RaftNode, List<Integer>> newSlotOwners) {
     this.newSlotOwners = newSlotOwners;
+  }
+
+  @Override
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    super.serialize(dataOutputStream);
+    dataOutputStream.writeInt(newSlotOwners.size());
+    for (Map.Entry<RaftNode, List<Integer>> entry: newSlotOwners.entrySet()) {
+      RaftNode raftNode = entry.getKey();
+      dataOutputStream.writeInt(raftNode.getNode().nodeIdentifier);
+      dataOutputStream.writeInt(raftNode.getRaftId());
+      dataOutputStream.writeInt(entry.getValue().size());
+      for (Integer slot: entry.getValue()) {
+        dataOutputStream.writeInt(slot);
+      }
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
+    super.deserialize(buffer, idNodeMap);
+    int size = buffer.getInt();
+    for (int i = 0 ; i < size; i++) {
+      RaftNode raftNode = new RaftNode(idNodeMap.get(buffer.getInt()), buffer.getInt());
+      List<Integer> slots = new ArrayList<>();
+      int slotSize = buffer.getInt();
+      for (int j = 0 ; j < slotSize; j++) {
+        slots.add(buffer.getInt());
+      }
+      newSlotOwners.put(raftNode, slots);
+    }
   }
 }

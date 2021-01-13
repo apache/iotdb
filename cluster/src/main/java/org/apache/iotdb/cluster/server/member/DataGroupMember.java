@@ -261,33 +261,10 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
-  /**
-   * Try to add a Node into the group to which the member belongs.
-   *
-   * @param node
-   * @return true if this node should leave the group because of the addition of the node, false
-   * otherwise
-   */
-  public synchronized boolean addNode(Node node, NodeAdditionResult result) {
-    // when a new node is added, start an election instantly to avoid the stale leader still
-    // taking the leadership, which guarantees the valid leader will not have the stale
-    // partition table
-    synchronized (term) {
-      term.incrementAndGet();
-      setLeader(ClusterConstant.EMPTY_NODE);
-      setVoteFor(thisNode);
-      updateHardState(term.get(), getVoteFor());
-      setLastHeartbeatReceivedTime(System.currentTimeMillis());
-      setCharacter(NodeCharacter.ELECTOR);
+  public void preAddNode(Node node) {
+    if (allNodes.contains(node)) {
+      return;
     }
-
-    // mark slots that do not belong to this group any more
-    Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
-        .getOrDefault(new RaftNode(getHeader(), getRaftGroupId()), Collections.emptySet());
-    for (Integer lostSlot : lostSlots) {
-      slotManager.setToSending(lostSlot);
-    }
-
     synchronized (allNodes) {
       int insertIndex = -1;
       // find the position to insert the new node, the nodes are ordered by their identifiers
@@ -307,12 +284,41 @@ public class DataGroupMember extends RaftMember {
       if (insertIndex > 0) {
         allNodes.add(insertIndex, node);
         peerMap.putIfAbsent(node, new Peer(logManager.getLastLogIndex()));
-        // remove the last node because the group size is fixed to replication number
-        Node removedNode = allNodes.remove(allNodes.size() - 1);
-        peerMap.remove(removedNode);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
         logger.debug("{}: Node {} is inserted into the data group {}", name, node, allNodes);
+      }
+    }
+  }
+
+  /**
+   * Try to add a Node into the group to which the member belongs.
+   *
+   * @param node
+   * @return true if this node should leave the group because of the addition of the node, false
+   * otherwise
+   */
+  public boolean addNode(Node node, NodeAdditionResult result) {
+
+    // mark slots that do not belong to this group any more
+    Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
+        .getOrDefault(new RaftNode(getHeader(), getRaftGroupId()), Collections.emptySet());
+    for (Integer lostSlot : lostSlots) {
+      slotManager.setToSending(lostSlot);
+    }
+
+    synchronized (allNodes) {
+      if (allNodes.contains(node) && allNodes.size() > config.getReplicationNum()) {
+        // remove the last node because the group size is fixed to replication number
+        Node removedNode = allNodes.remove(allNodes.size() - 1);
+        peerMap.remove(removedNode);
+        if (removedNode.equals(leader.get())) {
+          // if the leader is removed, also start an election immediately
+          synchronized (term) {
+            setCharacter(NodeCharacter.ELECTOR);
+            setLastHeartbeatReceivedTime(Long.MIN_VALUE);
+          }
+        }
         return removedNode.equals(thisNode);
       }
       return false;
@@ -737,6 +743,18 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
+  public void preRemoveNode(Node removedNode) {
+    synchronized (allNodes) {
+      if (allNodes.contains(removedNode)) {
+        // update the group if the deleted node was in it
+        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
+        Node newNodeToGroup = newGroup.get(newGroup.size() - 1);
+        allNodes.add(newNodeToGroup);
+        peerMap.putIfAbsent(newNodeToGroup, new Peer(logManager.getLastLogIndex()));
+      }
+    }
+  }
+
   /**
    * When a node is removed and IT IS NOT THE HEADER of the group, the member should take over some
    * slots from the removed group, and add a new node to the group the removed node was in the
@@ -747,8 +765,8 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
-        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
-        initPeerMap();
+        allNodes.remove(removedNode);
+        peerMap.remove(removedNode);
         if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
@@ -837,7 +855,7 @@ public class DataGroupMember extends RaftMember {
         continue;
       }
       int sentReplicaNum = slotManager.sentOneReplication(slot);
-      if (sentReplicaNum >= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
+      if (sentReplicaNum >= config.getReplicationNum()) {
         removableSlots.add(slot);
       }
     }

@@ -20,11 +20,15 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -80,5 +84,20 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     snapshot.setLastLogIndex(commitIndex);
     snapshot.setLastLogTerm(term);
     return snapshot;
+  }
+
+  @Override
+  void applyEntries(List<Log> entries) {
+    for (Log entry : entries) {
+      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
+        blockedUnappliedLogList.add(entry);
+        continue;
+      }
+      try {
+        ((MetaLogApplier)logApplier).apply(entry, metaGroupMember.getCharacter() == NodeCharacter.LEADER);
+      } catch (Exception e) {
+        entry.setException(e);
+      }
+    }
   }
 }

@@ -335,7 +335,6 @@ service RaftService {
 }
 
 
-
 service TSDataService extends RaftService {
 
   /**
@@ -468,7 +467,7 @@ service TSMetaService extends RaftService {
   * the commit command by heartbeat since it has been removed, so the leader should tell it
   * directly that it is no longer in the cluster.
   **/
-  void exile()
+  void exile(binary removeNodeLog)
 
   TNodeStatus queryNodeStatus()
 

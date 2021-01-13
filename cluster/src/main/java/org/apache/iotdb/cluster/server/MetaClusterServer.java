@@ -248,8 +248,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void exile(AsyncMethodCallback<Void> resultHandler) {
-    asyncService.exile(resultHandler);
+  public void exile(ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.exile(removeNodeLog, resultHandler);
   }
 
   @Override
@@ -274,8 +274,8 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void exile() {
-    syncService.exile();
+  public void exile(ByteBuffer removeNodeLog) {
+    syncService.exile(removeNodeLog);
   }
 
   @Override

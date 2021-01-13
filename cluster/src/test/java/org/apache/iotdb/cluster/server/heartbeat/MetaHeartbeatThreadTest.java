@@ -63,12 +63,22 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public NodeAdditionResult addNode(Node node) {
+    public void addNode(Node node) {
+      return;
+    }
+
+    @Override
+    public NodeAdditionResult getNodeAdditionResult(Node node) {
       return null;
     }
 
     @Override
-    public NodeRemovalResult removeNode(Node node) {
+    public void removeNode(Node node) {
+      return;
+    }
+
+    @Override
+    public NodeRemovalResult getNodeRemovalResult() {
       return null;
     }
 
@@ -93,8 +103,8 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public void deserialize(ByteBuffer buffer) {
-
+    public boolean deserialize(ByteBuffer buffer) {
+      return true;
     }
 
     @Override
@@ -108,8 +118,13 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
+    public List<PartitionGroup> calculateGlobalGroups(List<Node> nodeRing) {
+      return null;
+    }
+
+    @Override
     public boolean judgeHoldSlot(Node node, int slot) {
-      return true;
+      return false;
     }
   };
 

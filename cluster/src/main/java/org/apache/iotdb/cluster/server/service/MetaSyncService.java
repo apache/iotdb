@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -188,7 +190,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
    * must tell it directly.
    */
   @Override
-  public void exile() {
-    metaGroupMember.applyRemoveNode(metaGroupMember.getThisNode());
+  public void exile(ByteBuffer removeNodeLogBuffer) {
+    RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+    removeNodeLog.deserialize(removeNodeLogBuffer);
+    metaGroupMember.applyRemoveNode(removeNodeLog);
   }
 }

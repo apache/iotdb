@@ -16,19 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.exception;
 
 /**
- * Raised when check consistency failed, now only happens if there is a strong-consistency and
- * syncLeader failed
+ * Raised when add/remove membership log can not be sent to all data groups
  */
-public class CheckConsistencyException extends Exception {
+public class ChangeMembershipException extends Exception {
 
-  public CheckConsistencyException(String errMsg) {
-    super(String.format("check consistency failed, error message=%s ", errMsg));
+  public ChangeMembershipException(String errMsg) {
+    super(String.format("change membership fail, error message=%s ", errMsg));
   }
-
-  public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =
-      new CheckConsistencyException(
-      "strong consistency, sync with leader failed");
 }

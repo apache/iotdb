@@ -82,10 +82,10 @@ public abstract class RaftLogManager {
    * The committed log whose index is larger than blockAppliedCommitIndex will be blocked. if
    * blockAppliedCommitIndex < 0(default is -1), will not block any operation.
    */
-  private volatile long blockAppliedCommitIndex;
+  protected volatile long blockAppliedCommitIndex;
 
 
-  private LogApplier logApplier;
+  protected LogApplier logApplier;
 
   /**
    * to distinguish managers of different members
@@ -116,7 +116,7 @@ public abstract class RaftLogManager {
    */
   private final Object logUpdateCondition = new Object();
 
-  private List<Log> blockedUnappliedLogList;
+  protected List<Log> blockedUnappliedLogList;
 
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;

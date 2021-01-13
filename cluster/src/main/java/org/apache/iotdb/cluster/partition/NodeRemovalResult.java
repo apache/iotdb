@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.cluster.partition;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 /**
  * NodeRemovalResult stores the removed partition group.
@@ -60,5 +65,32 @@ public class NodeRemovalResult {
       }
     }
     return null;
+  }
+
+  public void serialize(DataOutputStream dataOutputStream) throws IOException {
+    dataOutputStream.writeInt(removedGroupList.size());
+    for (PartitionGroup group: removedGroupList) {
+      group.serialize(dataOutputStream);
+    }
+    dataOutputStream.writeInt(newGroupList.size());
+    for (PartitionGroup group: newGroupList) {
+      group.serialize(dataOutputStream);
+    }
+  }
+
+  public void deserialize(ByteBuffer buffer, Map<Integer, Node> idNodeMap) {
+    int removedGroupListSize = buffer.getInt();
+    for (int i = 0 ; i < removedGroupListSize; i++) {
+      PartitionGroup group = new PartitionGroup();
+      group.deserialize(buffer, idNodeMap);
+      removedGroupList.add(group);
+    }
+
+    int newGroupListSize = buffer.getInt();
+    for (int i = 0 ; i < newGroupListSize; i++) {
+      PartitionGroup group = new PartitionGroup();
+      group.deserialize(buffer, idNodeMap);
+      newGroupList.add(group);
+    }
   }
 }

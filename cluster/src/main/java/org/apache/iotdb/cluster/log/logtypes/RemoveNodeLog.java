@@ -19,69 +19,101 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class RemoveNodeLog extends Log {
 
-    private Node removedNode;
+  private ByteBuffer partitionTable;
 
-    @Override
-    public ByteBuffer serialize() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-            dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
-            dataOutputStream.writeLong(getCurrLogIndex());
-            dataOutputStream.writeLong(getCurrLogTerm());
+  private Node removedNode;
 
-            SerializeUtils.serialize(removedNode, dataOutputStream);
-        } catch (IOException e) {
-            // ignored
-        }
-        return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  public RemoveNodeLog(ByteBuffer partitionTable,
+      Node removedNode) {
+    this.partitionTable = partitionTable;
+    this.removedNode = removedNode;
+  }
+
+  public RemoveNodeLog() {
+  }
+
+  public ByteBuffer getPartitionTable() {
+    return partitionTable;
+  }
+
+  public void setPartitionTable(ByteBuffer partitionTable) {
+    this.partitionTable = partitionTable;
+  }
+
+  @Override
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
+      dataOutputStream.writeLong(getCurrLogIndex());
+      dataOutputStream.writeLong(getCurrLogTerm());
+
+      SerializeUtils.serialize(removedNode, dataOutputStream);
+
+      dataOutputStream.write(partitionTable.array().length);
+      dataOutputStream.write(partitionTable.array());
+    } catch (IOException e) {
+      // ignored
     }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) {
-        setCurrLogIndex(buffer.getLong());
-        setCurrLogTerm(buffer.getLong());
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    setCurrLogIndex(buffer.getLong());
+    setCurrLogTerm(buffer.getLong());
 
-        removedNode = new Node();
-        SerializeUtils.deserialize(removedNode, buffer);
+    removedNode = new Node();
+    SerializeUtils.deserialize(removedNode, buffer);
+
+    int len = buffer.getInt();
+    partitionTable = ByteBuffer.wrap(buffer.array(), buffer.position(), len);
+  }
+
+  public Node getRemovedNode() {
+    return removedNode;
+  }
+
+  public void setRemovedNode(Node removedNode) {
+    this.removedNode = removedNode;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-
-    public Node getRemovedNode() {
-        return removedNode;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
-
-    public void setRemovedNode(Node removedNode) {
-        this.removedNode = removedNode;
+    if (!super.equals(o)) {
+      return false;
     }
+    RemoveNodeLog that = (RemoveNodeLog) o;
+    return Objects.equals(removedNode, that.removedNode) && Objects
+        .equals(partitionTable, that.partitionTable);
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        RemoveNodeLog that = (RemoveNodeLog) o;
-        return Objects.equals(removedNode, that.removedNode);
-    }
+  @Override
+  public String toString() {
+    return "RemoveNodeLog{" +
+        "removedNode=" + removedNode +
+        '}';
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), removedNode);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), removedNode, partitionTable);
+  }
 }

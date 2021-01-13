@@ -45,6 +45,7 @@ public class StatusUtils {
   public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
   public static final TSStatus TIMESERIES_NOT_EXIST_ERROR = getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
   public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
+  public static final TSStatus PARSE_LOG_ERROR = getStatus(TSStatusCode.PARSE_LOG_ERROR);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
@@ -196,6 +197,9 @@ public class StatusUtils {
         break;
       case NO_CONNECTION:
         status.setMessage("Node cannot be reached.");
+        break;
+      case PARSE_LOG_ERROR:
+        status.setMessage("Parse log error.");
         break;
       default:
         status.setMessage("");

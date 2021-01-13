@@ -60,7 +60,9 @@ import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -423,7 +425,7 @@ public class MetaGroupMemberTest extends MemberTest {
             }
 
             @Override
-            public void exile(AsyncMethodCallback<Void> resultHandler) {
+            public void exile(ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
               System.out.printf("%s was exiled%n", node);
               exiledNode = node;
             }
@@ -431,7 +433,7 @@ public class MetaGroupMemberTest extends MemberTest {
             @Override
             public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
               new Thread(() -> {
-                testMetaMember.applyRemoveNode(node);
+                testMetaMember.applyRemoveNode(new RemoveNodeLog(TestUtils.seralizePartitionTable, node));
                 resultHandler.onComplete(Response.RESPONSE_AGREE);
               }).start();
             }
@@ -554,7 +556,7 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testAddNode()");
     Node newNode = TestUtils.getNode(10);
     testMetaMember.onElectionWins();
-    testMetaMember.applyAddNode(newNode);
+    testMetaMember.applyAddNode(new AddNodeLog(TestUtils.seralizePartitionTable, newNode));
     assertTrue(partitionTable.getAllNodes().contains(newNode));
   }
 

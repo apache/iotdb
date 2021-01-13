@@ -21,12 +21,19 @@ package org.apache.iotdb.cluster.query;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -41,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.service.IoTDB;
@@ -108,7 +116,7 @@ public class ClusterPlanRouter {
   }
 
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, MetadataException {
+      throws UnsupportedPlanException, MetadataException, UnknownLogTypeException {
     if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
     } else if (plan instanceof CountPlan) {
@@ -121,6 +129,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     } else if (plan instanceof CreateMultiTimeSeriesPlan) {
       return splitAndRoutePlan((CreateMultiTimeSeriesPlan) plan);
+    } else if (plan instanceof LogPlan) {
+      return splitAndRoutePlan((LogPlan)plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -132,6 +142,25 @@ public class ClusterPlanRouter {
       logger.error("{} cannot be split. Please call routePlan", plan);
     }
     throw new UnsupportedPlanException(plan);
+  }
+
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(LogPlan plan)
+      throws UnknownLogTypeException, UnsupportedPlanException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Log log = LogParser.getINSTANCE().parse(plan.getLog());
+    List<Node> oldRing = new ArrayList<>(partitionTable.getAllNodes());
+    if (log instanceof AddNodeLog) {
+      oldRing.remove(((AddNodeLog) log).getNewNode());
+    } else if (log instanceof RemoveNodeLog) {
+      oldRing.add(((RemoveNodeLog) log).getRemovedNode());
+      oldRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    } else {
+      throw new UnsupportedPlanException(plan);
+    }
+    for (PartitionGroup partitionGroup: partitionTable.calculateGlobalGroups(oldRing)) {
+      result.put(plan, partitionGroup);
+    }
+    return result;
   }
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)

@@ -33,14 +33,32 @@ import org.apache.iotdb.db.utils.SerializeUtils;
  */
 public class AddNodeLog extends Log {
 
+  private ByteBuffer partitionTable;
+
   private Node newNode;
+
+  public AddNodeLog(ByteBuffer partitionTable, Node newNode) {
+    this.partitionTable = partitionTable;
+    this.newNode = newNode;
+  }
+
+  public AddNodeLog() {
+  }
+
+  public void setPartitionTable(ByteBuffer partitionTable) {
+    this.partitionTable = partitionTable;
+  }
+
+  public void setNewNode(Node newNode) {
+    this.newNode = newNode;
+  }
 
   public Node getNewNode() {
     return newNode;
   }
 
-  public void setNewNode(Node newNode) {
-    this.newNode = newNode;
+  public ByteBuffer getPartitionTable() {
+    return partitionTable;
   }
 
   @Override
@@ -52,6 +70,9 @@ public class AddNodeLog extends Log {
       dataOutputStream.writeLong(getCurrLogTerm());
 
       SerializeUtils.serialize(newNode, dataOutputStream);
+
+      dataOutputStream.write(partitionTable.array().length);
+      dataOutputStream.write(partitionTable.array());
     } catch (IOException e) {
       // ignored
     }
@@ -69,6 +90,9 @@ public class AddNodeLog extends Log {
 
     newNode = new Node();
     SerializeUtils.deserialize(newNode, buffer);
+
+    int len = buffer.getInt();
+    partitionTable = ByteBuffer.wrap(buffer.array(), buffer.position(), len);
   }
 
   @Override
@@ -83,11 +107,19 @@ public class AddNodeLog extends Log {
       return false;
     }
     AddNodeLog that = (AddNodeLog) o;
-    return Objects.equals(newNode, that.newNode);
+    return Objects.equals(newNode, that.newNode) && Objects
+        .equals(partitionTable, that.partitionTable);
+  }
+
+  @Override
+  public String toString() {
+    return "AddNodeLog{" +
+        "newNode=" + newNode +
+        '}';
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), newNode);
+    return Objects.hash(super.hashCode(), newNode, partitionTable);
   }
 }
