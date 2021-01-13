@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
@@ -92,10 +92,14 @@ public class FlushManager implements FlushManagerMBean, IService {
     @Override
     public void runMayThrow() {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
+      if (null == tsFileProcessor) {
+        return;
+      }
+
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Flush Thread re-register TSProcessor {} to the queue.",
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Flush Thread re-register TSProcessor {} to the queue.",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
@@ -104,7 +108,7 @@ public class FlushManager implements FlushManagerMBean, IService {
         try {
           StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
         } catch (StorageEngineException | MetadataException e) {
-          logger.error("Inserting monitor series data error.", e);
+          LOGGER.error("Inserting monitor series data error.", e);
         }
       }
     }
@@ -119,24 +123,26 @@ public class FlushManager implements FlushManagerMBean, IService {
       if (!tsFileProcessor.isManagedByFlushManager()
           && tsFileProcessor.getFlushingMemTableSize() > 0) {
         tsFileProcessorQueue.add(tsFileProcessor);
-        if (logger.isDebugEnabled()) {
-          logger.debug(
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
               "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
         }
         tsFileProcessor.setManagedByFlushManager(true);
         flushPool.submit(new FlushThread());
-      } else if (logger.isDebugEnabled()) {
+      }
+
+      if (LOGGER.isDebugEnabled()) {
         if (tsFileProcessor.isManagedByFlushManager()) {
-          logger.debug(
+          LOGGER.debug(
               "{} is already in the flushPool, the first one: {}, the given processor flushMemtable number = {}",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessorQueue.isEmpty() ? "empty now"
                   : tsFileProcessorQueue.getFirst().getStorageGroupName(),
               tsFileProcessor.getFlushingMemTableSize());
         } else {
-          logger.debug("No flushing memetable to do, register TsProcessor {} failed.",
+          LOGGER.debug("No flushing memetable to do, register TsProcessor {} failed.",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
         }
       }

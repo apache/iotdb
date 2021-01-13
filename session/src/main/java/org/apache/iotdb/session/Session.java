@@ -640,19 +640,17 @@ public class Session {
     } else {
       //sort
       Integer[] index = new Integer[times.size()];
-      Integer[] index2 = new Integer[times.size()];
       for (int i = 0; i < times.size(); i++) {
-        index2[i] = index[i] = i;
+        index[i] = i;
       }
       Arrays.sort(index, Comparator.comparingLong(times::get));
-      Arrays.sort(index2, Comparator.comparingInt(x -> index[x]));
       times.sort(Long::compareTo);
       //sort measurementList
-      measurementsList = sortList(measurementsList, index2);
+      measurementsList = sortList(measurementsList, index);
       //sort typesList
-      typesList = sortList(typesList, index2);
+      typesList = sortList(typesList, index);
       //sort values
-      valuesList = sortList(valuesList, index2);
+      valuesList = sortList(valuesList, index);
     }
 
     TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
@@ -668,7 +666,7 @@ public class Session {
   private List sortList(List source, Integer[] index) {
     Object[] result = new Object[source.size()];
     for (int i = 0; i < index.length; i++) {
-      result[index[i]] = source.get(i);
+      result[i] = source.get(index[i]);
     }
     return Arrays.asList(result);
   }

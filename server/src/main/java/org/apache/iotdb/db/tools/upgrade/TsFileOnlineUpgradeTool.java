@@ -570,27 +570,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     return true;
   }
 
-  private Map<Long, Long> getVersionInfo() throws IOException {
-    Map<Long, Long> versionInfo = new HashMap<>();
-    TsFileMetadataV1 fileMetadata = readFileMetadata();
-    List<TsDeviceMetadataV1> oldDeviceMetadataList = new ArrayList<>();
-    for (TsDeviceMetadataIndexV1 index : fileMetadata.getDeviceMap().values()) {
-      TsDeviceMetadataV1 oldDeviceMetadata = readTsDeviceMetaData(index);
-      oldDeviceMetadataList.add(oldDeviceMetadata);
-    }
-
-    for (TsDeviceMetadataV1 oldTsDeviceMetadata : oldDeviceMetadataList) {
-      for (ChunkGroupMetaDataV1 oldChunkGroupMetadata : oldTsDeviceMetadata
-          .getChunkGroupMetaDataList()) {
-        long version = oldChunkGroupMetadata.getVersion();
-        long offsetOfChunkGroup = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
-        // get version informations
-        versionInfo.put(offsetOfChunkGroup, version);
-      }
-    }
-    return versionInfo;
-  }
-
   private TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
       throws IOException {
     tsFileIOWriter.endFile();
