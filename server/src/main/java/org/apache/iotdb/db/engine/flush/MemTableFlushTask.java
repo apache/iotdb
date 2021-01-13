@@ -20,10 +20,14 @@ package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -71,6 +75,59 @@ public class MemTableFlushTask {
     LOGGER.debug("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
+
+  public void syncSerialFlushMemTable() throws ExecutionException, InterruptedException {
+    LOGGER.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
+        storageGroup,
+        memTable.memSize(),
+        memTable.getTotalPointsNum() / memTable.getSeriesNumber());
+    long start = System.currentTimeMillis();
+    AtomicLong sortTime = new AtomicLong();
+    AtomicLong memSerializeTime = new AtomicLong();
+
+    CompletableFuture.runAsync(() -> {
+      Set<Entry<String, Map<String, IWritableMemChunk>>> ite = memTable.getMemTableMap().entrySet();
+      try {
+        for (Entry<String, Map<String, IWritableMemChunk>> memTableEntry : ite) {
+          //start flush io
+          this.writer.startChunkGroup(memTableEntry.getKey());
+          final Map<String, IWritableMemChunk> value = memTableEntry.getValue();
+          for (Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
+            long startTime = System.currentTimeMillis();
+            IWritableMemChunk series = iWritableMemChunkEntry.getValue();
+            MeasurementSchema desc = series.getSchema();
+            TVList tvList = series.getSortedTVListForFlush();
+            sortTime.addAndGet(System.currentTimeMillis() - startTime);
+
+            //start flush
+            long starTime = System.currentTimeMillis();
+            IChunkWriter seriesWriter = new ChunkWriterImpl(desc);
+            writeOneSeries(tvList, seriesWriter, desc.getType());
+            seriesWriter.writeToFileWriter(this.writer);
+            memSerializeTime.addAndGet(System.currentTimeMillis() - starTime);
+          }
+          this.writer.setMinPlanIndex(memTable.getMinPlanIndex());
+          this.writer.setMaxPlanIndex(memTable.getMaxPlanIndex());
+          this.writer.endChunkGroup();
+        }
+
+        writer.writeVersion(memTable.getVersion());
+        writer.writePlanIndices();
+      } catch (IOException e) {
+        LOGGER.error("Storage group {} memtable {}, io task meets error.", storageGroup,
+            memTable.getVersion(), e);
+        throw new FlushRunTimeException(e);
+      }
+    }).get();
+    noMoreEncodingTask = true;
+    LOGGER.debug(
+        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
+        storageGroup, memTable.getVersion(), sortTime);
+    LOGGER.info(
+        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        storageGroup, memTable, System.currentTimeMillis() - start);
+  }
+
 
   /**
    * the function for flushing memtable.
@@ -129,44 +186,45 @@ public class MemTableFlushTask {
         storageGroup, memTable, System.currentTimeMillis() - start);
   }
 
-  private Runnable encodingTask = new Runnable() {
-    private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
-        TSDataType dataType) {
-      for (int i = 0; i < tvPairs.size(); i++) {
-        long time = tvPairs.getTime(i);
 
-        // skip duplicated data
-        if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
-          continue;
-        }
+  private void writeOneSeries(TVList tvPairs, IChunkWriter seriesWriterImpl,
+      TSDataType dataType) {
+    for (int i = 0; i < tvPairs.size(); i++) {
+      long time = tvPairs.getTime(i);
 
-        switch (dataType) {
-          case BOOLEAN:
-            seriesWriterImpl.write(time, tvPairs.getBoolean(i));
-            break;
-          case INT32:
-            seriesWriterImpl.write(time, tvPairs.getInt(i));
-            break;
-          case INT64:
-            seriesWriterImpl.write(time, tvPairs.getLong(i));
-            break;
-          case FLOAT:
-            seriesWriterImpl.write(time, tvPairs.getFloat(i));
-            break;
-          case DOUBLE:
-            seriesWriterImpl.write(time, tvPairs.getDouble(i));
-            break;
-          case TEXT:
-            seriesWriterImpl.write(time, tvPairs.getBinary(i));
-            break;
-          default:
-            LOGGER.error("Storage group {} does not support data type: {}", storageGroup,
-                dataType);
-            break;
-        }
+      // skip duplicated data
+      if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
+        continue;
+      }
+
+      switch (dataType) {
+        case BOOLEAN:
+          seriesWriterImpl.write(time, tvPairs.getBoolean(i));
+          break;
+        case INT32:
+          seriesWriterImpl.write(time, tvPairs.getInt(i));
+          break;
+        case INT64:
+          seriesWriterImpl.write(time, tvPairs.getLong(i));
+          break;
+        case FLOAT:
+          seriesWriterImpl.write(time, tvPairs.getFloat(i));
+          break;
+        case DOUBLE:
+          seriesWriterImpl.write(time, tvPairs.getDouble(i));
+          break;
+        case TEXT:
+          seriesWriterImpl.write(time, tvPairs.getBinary(i));
+          break;
+        default:
+          LOGGER.error("Storage group {} does not support data type: {}", storageGroup,
+              dataType);
+          break;
       }
     }
+  }
 
+  private Runnable encodingTask = new Runnable() {
     @SuppressWarnings("squid:S135")
     @Override
     public void run() {

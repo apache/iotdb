@@ -727,7 +727,7 @@ public class TsFileProcessor {
         writer.mark();
         MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
             storageGroupName);
-        flushTask.syncFlushMemTable();
+        flushTask.syncSerialFlushMemTable();
       } catch (Exception e) {
         if (writer == null) {
           logger.info("{}: {} is closed during flush, abandon flush task",
