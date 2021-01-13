@@ -1608,7 +1608,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.error(e.getMessage(), e);
       // just recover the state of thread here
       if (Thread.interrupted()) {
-        DETAILED_FAILURE_QUERY_TRACE_LOGGER.error("Recover the state of the thread interrupted", e);
+        DETAILED_FAILURE_QUERY_TRACE_LOGGER.error("Recover the state of the thread interrupted");
       }
       return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
     } else if (e instanceof ParseCancellationException) {
