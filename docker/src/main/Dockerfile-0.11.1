@@ -21,10 +21,10 @@ FROM openjdk:11-jre-slim
 RUN apt update \
   # procps is for `free` command
   && apt install wget unzip lsof procps -y \
-  && wget https://archive.apache.org/dist/iotdb/0.10.1-incubating/apache-iotdb-0.10.1-incubating-bin.zip \
-  && unzip apache-iotdb-0.10.1-incubating-bin.zip \
-  && rm apache-iotdb-0.10.1-incubating-bin.zip \
-  && mv apache-iotdb-0.10.1-incubating /iotdb \
+  && wget https://archive.apache.org/dist/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip \
+  && unzip apache-iotdb-0.11.1-bin.zip \
+  && rm apache-iotdb-0.11.1-bin.zip \
+  && mv apache-iotdb-0.11.1 /iotdb \
   && apt remove wget unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
