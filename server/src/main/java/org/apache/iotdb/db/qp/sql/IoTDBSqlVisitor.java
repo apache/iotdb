@@ -22,6 +22,7 @@ import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_QUERY;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -891,7 +892,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitSelectStatement(SelectStatementContext ctx) {
-    queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    if (ctx.specialClause() != null) {
+      queryOp = (QueryOperator) visit(ctx.specialClause());
+    } else {
+      queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    }
     SelectOperator selectOp = (SelectOperator) visit(ctx.selectElements());
     queryOp.setSelectOperator(selectOp);
     FromOperator fromOp = (FromOperator) visit(ctx.fromClause());
@@ -911,9 +916,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         FilterOperator whereOp = (FilterOperator) operator;
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
       }
-    }
-    if (ctx.specialClause() != null) {
-      visit(ctx.specialClause());
     }
     return queryOp;
   }
@@ -1011,54 +1013,60 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLimitStatement(LimitStatementContext ctx) {
-    parseLimitClause(ctx.limitClause(), queryOp);
+    QueryOperator op = new QueryOperator(TOK_QUERY);
+    parseLimitClause(ctx.limitClause(), op);
     if (ctx.slimitClause() != null) {
-      parseSlimitClause(ctx.slimitClause(), queryOp);
+      parseSlimitClause(ctx.slimitClause(), op);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
       if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(queryOp);
+        parseAlignByDeviceClause(op);
       } else {
-        parseDisableAlign(queryOp);
+        parseDisableAlign(op);
       }
     }
-    return queryOp;
+    return op;
   }
 
   @Override
   public Operator visitSlimitStatement(SlimitStatementContext ctx) {
-    parseSlimitClause(ctx.slimitClause(), queryOp);
+    QueryOperator op = new QueryOperator(TOK_QUERY);
+
+    parseSlimitClause(ctx.slimitClause(), op);
     if (ctx.limitClause() != null) {
-      parseLimitClause(ctx.limitClause(), queryOp);
+      parseLimitClause(ctx.limitClause(), op);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
       if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(queryOp);
+        parseAlignByDeviceClause(op);
       } else {
-        parseDisableAlign(queryOp);
+        parseDisableAlign(op);
       }
     }
-    return queryOp;
+    return op;
   }
 
   @Override
   public Operator visitAlignByDeviceClauseOrDisableAlignInSpecialLimit(
       AlignByDeviceClauseOrDisableAlignInSpecialLimitContext ctx) {
+    QueryOperator op = new QueryOperator(TOK_QUERY);
+
     if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-      parseAlignByDeviceClause(queryOp);
+      parseAlignByDeviceClause(op);
     } else {
-      parseDisableAlign(queryOp);
+      parseDisableAlign(op);
     }
-    return queryOp;
+    return op;
   }
 
   @Override
   public Operator visitOrderByTimeStatement(OrderByTimeStatementContext ctx) {
-    parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
+    QueryOperator op = new QueryOperator(TOK_QUERY);
+    parseOrderByTimeClause(ctx.orderByTimeClause(), op);
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
     }
-    return queryOp;
+    return op;
   }
 
   @Override
