@@ -26,7 +26,7 @@ docker build -t THE_DOCKER_IMAGE_NAME:THE_VERSION -f THE_DOCKER_FILE_NAME
 e.g.,
 
 ```
-docker build -t my-iotdb:0.9.1 -f Dockerfile-0.9.1
+docker build -t my-iotdb:<version> -f Dockerfile-<version>
 ```
 
 # How to run IoTDB server 
@@ -35,7 +35,7 @@ Actually, we maintain a repo on dockerhub, so that you can get the docker image 
 
 For example,
 ```
-docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb:0.9.1
+docker run -d -p 6667:6667 -p 31999:31999 -p 8181:8181 -p 5555:5555 apache/iotdb:<version>
 ```
 
 ## How to configure docker volumes
@@ -45,7 +45,7 @@ iotdb_data and iotdb_logs respectively.
 
 `/D/docker/iotdb_data` and `/D/docker/iotdb_logs` can be changed to any local directory of your own host.
 ```
-docker run -it -v /D/docker/iotdb_data:/iotdb/data -v /D/docker/iotdb_logs:/iotdb/logs --name 123 apache/iotdb:0.9.0
+docker run -it -v /D/docker/iotdb_data:/iotdb/data -v /D/docker/iotdb_logs:/iotdb/logs --name 123 apache/iotdb:<version>
 ```
 
 # How to run IoTDB client
@@ -57,13 +57,13 @@ e.g.,
 ```
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                                                                                NAMES
-c82321c70137        apache/iotdb:0.9.1  "/iotdb/sbin/start-s…"   12 minutes ago      Up 12 minutes       0.0.0.0:6667->6667/tcp, 0.0.0.0:8181->8181/tcp, 5555/tcp, 0.0.0.0:31999->31999/tcp   elegant_germain
+c82321c70137        apache/iotdb:<version>  "/iotdb/sbin/start-s…"   12 minutes ago      Up 12 minutes       0.0.0.0:6667->6667/tcp, 0.0.0.0:8181->8181/tcp, 5555/tcp, 0.0.0.0:31999->31999/tcp   elegant_germain
 ```
 2. Use `docker exec` to attach the container:
 ```
 docker exec -it c82321c70137 /bin/bash
 ```
 
-Then, run `start-client.sh`
+Then, for the latest version (or, >=0.10.x), run `start-cli.sh`, for version 0.9.x and 0.8.1, run `start-client.sh`.
 
 Enjoy it!

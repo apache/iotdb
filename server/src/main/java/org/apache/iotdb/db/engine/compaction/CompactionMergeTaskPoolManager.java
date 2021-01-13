@@ -19,21 +19,25 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+
+import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction
- * tasks.
+ * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks.
  */
 public class CompactionMergeTaskPoolManager implements IService {
 
@@ -75,6 +79,26 @@ public class CompactionMergeTaskPoolManager implements IService {
     }
   }
 
+  @TestOnly
+  public void waitAllCompactionFinish() {
+    if (pool != null) {
+      File sgDir = FSFactoryProducer.getFSFactory().getFile(
+          FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
+              + "storage_groups");
+      File[] subDirList = sgDir.listFiles();
+      if (subDirList != null) {
+        for (File subDir : subDirList) {
+          while (FSFactoryProducer.getFSFactory().getFile(
+              subDir.getAbsoluteFile() + File.separator + subDir.getName() + COMPACTION_LOG_NAME)
+              .exists()) {
+            // wait
+          }
+        }
+      }
+      logger.info("All compaction task finish");
+    }
+  }
+
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!pool.isTerminated()) {
@@ -112,7 +136,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public void submitTask(CompactionMergeTask compactionMergeTask)
+  public void submitTask(Runnable compactionMergeTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       pool.submit(compactionMergeTask);

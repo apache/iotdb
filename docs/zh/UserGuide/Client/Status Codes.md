@@ -80,6 +80,8 @@ try {
 |410|PATH_ERROR|路径相关错误|
 |411|QUERY_PROCESS_ERROR|查询处理相关错误|
 |412|WRITE_PROCESS_ERROR|写入相关错误|
+|413|WRITE_PROCESS_REJECT|写入拒绝错误|
+|414|QUERY_ID_NOT_EXIST|Query id 不存在|
 |500|INTERNAL_SERVER_ERROR|服务器内部错误|
 |501|CLOSE_OPERATION_ERROR|关闭操作错误|
 |502|READ_ONLY_SYSTEM_ERROR|系统只读|
@@ -91,6 +93,13 @@ try {
 |601|NOT_LOGIN_ERROR|没有登录|
 |602|NO_PERMISSION_ERROR|没有操作权限|
 |603|UNINITIALIZED_AUTH_ERROR|授权人未初始化|
-
+|700|PARTITION_NOT_READY|分区表未准备好|
+|701|TIME_OUT|操作超时|
+|702|NO_LEADER|Leader找不到|
+|703|UNSUPPORTED_OPERATION|不支持的操作|
+|704|NODE_READ_ONLY|节点只读|
+|705|CONSISTENCY_FAILURE|一致性检查失败|
+|706|NO_CONNECTION|连接获取失败|
+|707|NEED_REDIRECTION|需要重定向|
 > 在最新版本中，我们重构了IoTDB的异常类。通过将错误信息统一提取到异常类中，并为所有异常添加不同的错误代码，从而当捕获到异常并引发更高级别的异常时，错误代码将保留并传递，以便用户了解详细的错误原因。
 除此之外，我们添加了一个基础异常类“ProcessException”，由所有异常扩展。

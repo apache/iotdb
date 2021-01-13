@@ -29,5 +29,6 @@ public class AliasAlreadyExistException extends MetadataException {
   public AliasAlreadyExistException(String path, String alias) {
     super(String.format("Alias [%s] for Path [%s] already exist", alias, path),
             TSStatusCode.ALIAS_ALREADY_EXIST_ERROR.getStatusCode());
+    this.isUserException = true;
   }
 }

@@ -59,12 +59,12 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
     public static final String OPENID_USER_PREFIX = "openid-";
 
-    private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    private RSAPublicKey providerKey;
+    private final RSAPublicKey providerKey;
 
     /** Stores all claims to the respective user */
-    private Map<String, Claims> loggedClaims = new HashMap<>();
+    private final Map<String, Claims> loggedClaims = new HashMap<>();
 
     public OpenIdAuthorizer() throws AuthException, ParseException, IOException, URISyntaxException {
         this(config.getOpenIdProviderUrl());
@@ -82,10 +82,10 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     }
 
     OpenIdAuthorizer(String providerUrl) throws AuthException, URISyntaxException, ParseException, IOException {
-        this(getJWKfromProvider(providerUrl));
+        this(getJWKFromProvider(providerUrl));
     }
 
-    private static JSONObject getJWKfromProvider(String providerUrl) throws URISyntaxException, IOException, ParseException, AuthException {
+    private static JSONObject getJWKFromProvider(String providerUrl) throws URISyntaxException, IOException, ParseException, AuthException {
         if (providerUrl == null) {
             throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
         }

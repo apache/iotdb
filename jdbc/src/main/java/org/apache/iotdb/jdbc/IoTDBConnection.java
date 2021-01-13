@@ -38,13 +38,20 @@ import java.time.ZoneId;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -78,10 +85,9 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if(Config.rpcThriftCompressionEnable) {
+    if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
-    }
-    else {
+    } else {
       setClient(new TSIService.Client(new TBinaryProtocol(transport)));
     }
     // open client session
@@ -120,7 +126,8 @@ public class IoTDBConnection implements Connection {
     try {
       getClient().closeSession(req);
     } catch (TException e) {
-      throw new SQLException("Error occurs when closing session at server. Maybe server is down.", e);
+      throw new SQLException("Error occurs when closing session at server. Maybe server is down.",
+          e);
     } finally {
       isClosed = true;
       if (transport != null) {
@@ -407,8 +414,11 @@ public class IoTDBConnection implements Connection {
   }
 
   private void openTransport() throws TTransportException {
-    transport = new TFastFramedTransport(new TSocket(params.getHost(), params.getPort(),
-        Config.connectionTimeoutInMs));
+    RpcTransportFactory.setInitialBufferCapacity(params.getInitialBufferCapacity());
+    RpcTransportFactory.setMaxLength(params.getMaxFrameSize());
+    transport = RpcTransportFactory.INSTANCE
+        .getTransport(new TSocket(params.getHost(), params.getPort(),
+            Config.connectionTimeoutInMs));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -463,10 +473,9 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if(Config.rpcThriftCompressionEnable) {
+          if (Config.rpcThriftCompressionEnable) {
             setClient(new TSIService.Client(new TCompactProtocol(transport)));
-          }
-          else {
+          } else {
             setClient(new TSIService.Client(new TBinaryProtocol(transport)));
           }
           openSession();

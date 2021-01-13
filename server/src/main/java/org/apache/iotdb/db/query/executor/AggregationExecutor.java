@@ -59,6 +59,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
 
   private List<PartialPath> selectedSeries;
@@ -388,10 +389,10 @@ public class AggregationExecutor {
     if (((AggregationPlan) plan).getLevel() >= 0) {
       Map<Integer, String> pathIndex = new HashMap<>();
       Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(
-              (AggregationPlan) plan, pathIndex);
+          (AggregationPlan) plan, pathIndex);
 
       List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
-              aggregateResultList, finalPaths, pathIndex);
+          aggregateResultList, finalPaths, pathIndex);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();

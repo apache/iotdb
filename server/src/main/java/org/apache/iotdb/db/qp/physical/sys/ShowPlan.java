@@ -28,11 +28,32 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 public class ShowPlan extends PhysicalPlan {
 
   private ShowContentType showContentType;
+  protected int limit = 0;
+  protected int offset = 0;
+  protected PartialPath path;
+  private boolean hasLimit;
 
-  public ShowPlan(ShowContentType showContentType){
+  public ShowPlan(ShowContentType showContentType) {
     super(true);
     this.showContentType = showContentType;
     setOperatorType(OperatorType.SHOW);
+  }
+
+  public ShowPlan(ShowContentType showContentType, PartialPath path) {
+    this(showContentType);
+    this.path = path;
+  }
+
+  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
+    this(showContentType, path);
+    this.limit = limit;
+    this.offset = offset;
+    if (limit == 0) {
+      this.limit = fetchSize;
+      this.hasLimit = false;
+    } else {
+      this.hasLimit = true;
+    }
   }
 
   @Override
@@ -44,6 +65,34 @@ public class ShowPlan extends PhysicalPlan {
     return showContentType;
   }
 
+  public PartialPath getPath() {
+    return this.path;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public boolean hasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
+  }
+
   @Override
   public String toString() {
     return String.format("%s %s", getOperatorType().toString(), showContentType);
@@ -51,7 +100,7 @@ public class ShowPlan extends PhysicalPlan {
 
   public enum ShowContentType {
     FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
-    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, COUNT_DEVICES, COUNT_STORAGE_GROUP
+    COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, FUNCTIONS, COUNT_DEVICES,
+    COUNT_STORAGE_GROUP, QUERY_PROCESSLIST
   }
-
 }

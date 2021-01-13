@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiPredicate;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,10 +48,9 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
  * while (batchData.hasCurrent()) { long time = batchData.currentTime(); Object value =
  * batchData.currentValue(); batchData.next(); }
  */
-public class BatchData implements Serializable {
+public class BatchData {
 
-  private static final long serialVersionUID = -4620310601188394839L;
-  private static final int capacityThreshold = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
+  public static final int CAPACITY_THRESHOLD = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
   protected TSDataType dataType;
@@ -69,15 +66,15 @@ public class BatchData implements Serializable {
   protected int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  private int count;
+  protected int count;
 
-  private List<long[]> timeRet;
-  private List<boolean[]> booleanRet;
-  private List<int[]> intRet;
-  private List<long[]> longRet;
-  private List<float[]> floatRet;
-  private List<double[]> doubleRet;
-  private List<Binary[]> binaryRet;
+  protected List<long[]> timeRet;
+  protected List<boolean[]> booleanRet;
+  protected List<int[]> intRet;
+  protected List<long[]> longRet;
+  protected List<float[]> floatRet;
+  protected List<double[]> doubleRet;
+  protected List<Binary[]> binaryRet;
 
   public BatchData() {
     dataType = null;
@@ -217,7 +214,7 @@ public class BatchData implements Serializable {
    */
   public void putBoolean(long t, boolean v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         booleanRet.add(new boolean[capacity]);
         writeCurListIndex++;
@@ -252,7 +249,7 @@ public class BatchData implements Serializable {
    */
   public void putInt(long t, int v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         intRet.add(new int[capacity]);
         writeCurListIndex++;
@@ -287,7 +284,7 @@ public class BatchData implements Serializable {
    */
   public void putLong(long t, long v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         longRet.add(new long[capacity]);
         writeCurListIndex++;
@@ -322,7 +319,7 @@ public class BatchData implements Serializable {
    */
   public void putFloat(long t, float v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         floatRet.add(new float[capacity]);
         writeCurListIndex++;
@@ -357,7 +354,7 @@ public class BatchData implements Serializable {
    */
   public void putDouble(long t, double v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         doubleRet.add(new double[capacity]);
         writeCurListIndex++;
@@ -391,7 +388,7 @@ public class BatchData implements Serializable {
    */
   public void putBinary(long t, Binary v) {
     if (writeCurArrayIndex == capacity) {
-      if (capacity >= capacityThreshold) {
+      if (capacity >= CAPACITY_THRESHOLD) {
         timeRet.add(new long[capacity]);
         binaryRet.add(new Binary[capacity]);
         writeCurListIndex++;

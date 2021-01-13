@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.control;
 
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,11 +38,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
+import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * <p>
@@ -97,7 +96,7 @@ public class QueryResourceManager {
   }
 
   public int getMaxDeduplicatedPathNum(int fetchSize) {
-    return Math.min((int) ((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE),
+    return (int) Math.min(((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE),
         CONFIG.getMaxQueryDeduplicatedPathNum());
   }
 
@@ -206,6 +205,12 @@ public class QueryResourceManager {
 
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForQuery(queryId);
+
+    // close and delete UDF temp files
+    TemporaryQueryDataFileService.getInstance().deregister(queryId);
+
+    // remove query info in QueryTimeManager
+    QueryTimeManager.getInstance().unRegisterQuery(queryId);
   }
 
   private static class QueryTokenManagerHelper {

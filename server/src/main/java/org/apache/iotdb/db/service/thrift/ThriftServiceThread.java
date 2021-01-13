@@ -25,6 +25,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -32,8 +33,8 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
 public class ThriftServiceThread extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(ThriftServiceThread.class);
-  private TServerSocket serverTransport;
+  private TServerTransport serverTransport;
   private TServer poolServer;
   private CountDownLatch threadStopLatch;
 
@@ -63,7 +64,7 @@ public class ThriftServiceThread extends Thread {
     this.serviceName = serviceName;
 
     try {
-      serverTransport = new TServerSocket(new InetSocketAddress(bindAddress, port));
+      serverTransport = openTransport(bindAddress, port);
       poolArgs = new TThreadPoolServer.Args(serverTransport)
           .maxWorkerThreads(maxWorkerThreads)
           .minWorkerThreads(CommonUtils.getCpuCores())
@@ -72,7 +73,7 @@ public class ThriftServiceThread extends Thread {
           threadsName);
       poolArgs.processor(processor);
       poolArgs.protocolFactory(protocolFactory);
-      poolArgs.transportFactory(new TFastFramedTransport.Factory());
+      poolArgs.transportFactory(RpcTransportFactory.INSTANCE);
       poolServer = new TThreadPoolServer(poolArgs);
       poolServer.setServerEventHandler(serverEventHandler);
     } catch (TTransportException e) {
@@ -91,6 +92,28 @@ public class ThriftServiceThread extends Thread {
           IoTDBConstant.GLOBAL_DB_NAME, serviceName), e);
     }
   }
+
+  @SuppressWarnings("java:S2259")
+  public TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
+    int maxRetry = 5;
+    long retryIntervalMS = 5000;
+    TTransportException lastExp = null;
+    for (int i = 0; i < maxRetry; i++) {
+      try {
+        return new TServerSocket(new InetSocketAddress(bindAddress, port));
+      } catch (TTransportException e) {
+        lastExp = e;
+        try {
+          Thread.sleep(retryIntervalMS);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+    throw lastExp;
+  }
+
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {
     this.threadStopLatch = threadStopLatch;

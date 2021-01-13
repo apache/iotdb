@@ -127,9 +127,11 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
-        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
-        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
+        tsFileResource.updateStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.updateEndTime(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.setMaxPlanIndex(j);
+        tsFileResource.setMinPlanIndex(j);
+
         tsFileResource.serialize();
       }
     }
@@ -225,9 +227,10 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
-        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
-        tsFileResource.setHistoricalVersions(Collections.singleton((long) j));
+        tsFileResource.updateStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.updateEndTime(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.setMinPlanIndex(j);
+        tsFileResource.setMaxPlanIndex(j);
         tsFileResource.serialize();
       }
     }

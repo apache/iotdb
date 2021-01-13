@@ -91,6 +91,11 @@ public class TsFileIOWriter {
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
+  // the two longs marks the index range of operations in current MemTable
+  // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
+  private long minPlanIndex;
+  private long maxPlanIndex;
+
   /**
    * empty construct function.
    */
@@ -201,7 +206,7 @@ public class TsFileIOWriter {
     out.write(chunk.getData());
     endCurrentChunk();
     if (logger.isDebugEnabled()) {
-      logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetadata,
+      logger.debug("end flushing a chunk:{}, totalvalue:{}", chunkHeader.getMeasurementID(),
           chunkMetadata.getNumOfPoints());
     }
   }
@@ -425,6 +430,12 @@ public class TsFileIOWriter {
     versionInfo.add(new Pair<>(getPos(), version));
   }
 
+  public void writePlanIndices() throws IOException {
+    ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
+    ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
+    ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
+  }
+
   public void setDefaultVersionPair() {
     // only happen when using tsfile module write api
     if (versionInfo.isEmpty()) {
@@ -448,5 +459,21 @@ public class TsFileIOWriter {
    */
   public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
     return deviceTimeseriesMetadataMap;
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public void setMinPlanIndex(long minPlanIndex) {
+    this.minPlanIndex = minPlanIndex;
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  public void setMaxPlanIndex(long maxPlanIndex) {
+    this.maxPlanIndex = maxPlanIndex;
   }
 }

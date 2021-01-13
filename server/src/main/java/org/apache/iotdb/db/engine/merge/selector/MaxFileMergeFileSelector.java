@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -213,16 +212,14 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
 
     int tmpSelectedNum = 0;
-    for (Entry<String, Integer> deviceStartTimeEntry : unseqFile.getDeviceToIndexMap().entrySet()) {
-      String deviceId = deviceStartTimeEntry.getKey();
-      int deviceIndex = deviceStartTimeEntry.getValue();
-      long unseqStartTime = unseqFile.getStartTime(deviceIndex);
-      long unseqEndTime = unseqFile.getEndTime(deviceIndex);
+    for (String deviceId : unseqFile.getDevices()) {
+      long unseqStartTime = unseqFile.getStartTime(deviceId);
+      long unseqEndTime = unseqFile.getEndTime(deviceId);
 
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || !seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
+        if (seqSelected[i] || !seqFile.getDevices().contains(deviceId)) {
           continue;
         }
         long seqEndTime = seqFile.getEndTime(deviceId);

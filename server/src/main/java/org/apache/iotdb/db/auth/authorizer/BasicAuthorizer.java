@@ -81,7 +81,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     private static IAuthorizer instance;
 
     static {
-        Class<BasicAuthorizer> c = null;
+        Class<BasicAuthorizer> c;
         try {
           c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
           logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());

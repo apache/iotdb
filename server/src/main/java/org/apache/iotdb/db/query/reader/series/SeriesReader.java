@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -173,6 +174,10 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
+    if (Thread.interrupted()) {
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -232,6 +237,11 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
+    if (Thread.interrupted()) {
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
+
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
@@ -351,6 +361,10 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
+    if (Thread.interrupted()) {
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
 
     /*
      * has overlapped data before
@@ -578,7 +592,8 @@ public class SeriesReader {
 
       if (mergeReader.hasNextTimeValuePair()) {
 
-        cachedBatchData = BatchDataFactory.createBatchData(dataType);
+        cachedBatchData = BatchDataFactory
+            .createBatchData(dataType, orderUtils.getAscending(), true);
         long currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
         if (firstPageReader != null) {
           currentPageEndPointTime = orderUtils
@@ -653,6 +668,7 @@ public class SeriesReader {
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
         }
+        cachedBatchData.flip();
         hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
         /*
          * if current overlapped page has valid data, return, otherwise read next overlapped page

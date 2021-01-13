@@ -165,7 +165,7 @@ public class DatabaseConnectController {
     for (TimeValues tv : timeValues) {
       JsonArray value = new JsonArray();
       value.add(tv.getTime());
-      values.add(GSON.toJsonTree(tv.getValue()));
+      value.add(GSON.toJsonTree(tv.getValue()));
       values.add(value);
     }
 
@@ -182,8 +182,8 @@ public class DatabaseConnectController {
       long time = tv.getTime();
       Object value = tv.getValue();
       JsonArray jsonArray = new JsonArray();
-      jsonArray.add(time);
       jsonArray.add(GSON.toJsonTree(value));
+      jsonArray.add(time);
       dataPoints.add(jsonArray);
     }
     obj.add("datapoints", dataPoints);

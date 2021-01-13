@@ -227,6 +227,25 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 6667 |
 |Effective|After restart system|
 
+* rpc\_thrift\_compression\_enable
+
+|Name| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+* rpc\_advanced\_compression\_enable
+
+|Name| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's advanced compression.|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+
 * time\_zone
 
 |Name| time\_zone |
@@ -564,6 +583,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
+* thrift\_max\_frame\_size
+
+|Name| thrift\_max\_frame\_size |
+|:---:|:---|
+|Description| the max bytes in a RPC request/response|
+|Type| long |
+|Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Effective|After restart system|
+
+
 ## Automatic Schema Creation and Type Inference
 
 * enable\_auto\_create\_schema
@@ -618,6 +647,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type a floating number string like "6.7" in a query should be resolved|
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
+|Effective|After restart system|
+
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| whether enable data partition. If disabled, all data belongs to partition 0|
+|Type| BOOLEAN |
+|Default|false |
+|Effective|After restart system|
+
+* partition\_interval
+
+|Name| partition\_interval |
+|:---:|:---|
+|Description| time range for partitioning data inside each storage group, the unit is second|
+|Type| LONG |
+|Default| 604800 |
 |Effective|After restart system|
 
 ## Enable GC log

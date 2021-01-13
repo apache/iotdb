@@ -79,7 +79,8 @@ public class MergeOverLapTest extends MergeTest {
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) i));
+      tsFileResource.setMinPlanIndex(i);
+      tsFileResource.setMaxPlanIndex(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0);
     }
@@ -91,7 +92,8 @@ public class MergeOverLapTest extends MergeTest {
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) (i + seqFileNum)));
+      tsFileResource.setMaxPlanIndex(i + seqFileNum);
+      tsFileResource.setMinPlanIndex(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
@@ -102,7 +104,8 @@ public class MergeOverLapTest extends MergeTest {
             + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
-    tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
+    tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
+    tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareUnseqFile(tsFileResource, 0, ptNum * unseqFileNum, 20000);
   }
