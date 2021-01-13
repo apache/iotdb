@@ -1605,10 +1605,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSStatus tryCatchQueryException(Exception e) {
     if (e instanceof QueryTimeoutRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.error(e.getMessage(), e);
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
       // just recover the state of thread here
       if (Thread.interrupted()) {
-        DETAILED_FAILURE_QUERY_TRACE_LOGGER.error("Recover the state of the thread interrupted");
+        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn("Recover the state of the thread interrupted");
       }
       return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
     } else if (e instanceof ParseCancellationException) {

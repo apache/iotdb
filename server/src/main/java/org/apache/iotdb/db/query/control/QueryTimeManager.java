@@ -63,7 +63,7 @@ public class QueryTimeManager implements IService {
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       queryInfoMap.computeIfPresent(queryId, (k, v) -> {
         killQuery(k);
-        logger.error(String.format("Query is time out with queryId %d", queryId));
+        logger.warn(String.format("Query is time out with queryId %d", queryId));
         return null;
       });
     }, timeout, TimeUnit.MILLISECONDS);
