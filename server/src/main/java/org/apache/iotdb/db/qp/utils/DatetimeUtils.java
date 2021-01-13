@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.constant;
+package org.apache.iotdb.db.qp.utils;
 
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -525,19 +525,19 @@ public class DatetimeUtils {
     long res = value;
     switch (durationUnit) {
       case y:
-        res *= 365 * 86400_000L;
+        res *= 365 * 86_400_000L;
         break;
       case mo:
-        res *= 30 * 86400_000L;
+        res *= 30 * 86_400_000L;
         break;
       case w:
-        res *= 7 * 86400_000L;
+        res *= 7 * 86_400_000L;
         break;
       case d:
-        res *= 86400_000L;
+        res *= 86_400_000L;
         break;
       case h:
-        res *= 3600_000L;
+        res *= 3_600_000L;
         break;
       case m:
         res *= 60_000L;

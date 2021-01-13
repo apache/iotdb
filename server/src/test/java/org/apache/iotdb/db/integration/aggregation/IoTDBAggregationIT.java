@@ -659,7 +659,8 @@ public class IoTDBAggregationIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation AVG : TEXT", e.getMessage());
+        Assert.assertTrue(e.getMessage().contains(
+            "Unsupported data type in aggregation AVG : TEXT"));
       }
       try {
         statement.execute("SELECT sum(s3)" +
@@ -669,7 +670,8 @@ public class IoTDBAggregationIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation SUM : TEXT", e.getMessage());
+        Assert.assertTrue(e.getMessage().contains(
+            "Unsupported data type in aggregation SUM : TEXT"));
       }
       try {
         statement.execute("SELECT avg(s4)" +
@@ -679,8 +681,8 @@ public class IoTDBAggregationIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation AVG : BOOLEAN",
-            e.getMessage());
+        Assert.assertTrue(e.getMessage().contains(
+            "Unsupported data type in aggregation AVG : BOOLEAN"));
       }
       try {
         statement.execute("SELECT sum(s4)" +
@@ -690,8 +692,8 @@ public class IoTDBAggregationIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN",
-            e.getMessage());
+        Assert.assertTrue(e.getMessage().contains(
+            "Unsupported data type in aggregation SUM : BOOLEAN"));
       }
       try {
         statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
@@ -700,8 +702,8 @@ public class IoTDBAggregationIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertEquals("500: Boolean statistics does not support: avg",
-            e.getMessage());
+        Assert.assertTrue(e.getMessage().contains(
+            "Boolean statistics does not support: avg"));
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -802,14 +804,16 @@ public class IoTDBAggregationIT {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("SELECT max_time(s1) FROM root.sg.d1 where time < 15");
+      boolean hasResultSet = statement
+          .execute("SELECT max_time(s1) FROM root.sg.d1 where time < 15");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(max_time("root.sg.d1.s1"));
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+                  .getString(max_time("root.sg.d1.s1"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

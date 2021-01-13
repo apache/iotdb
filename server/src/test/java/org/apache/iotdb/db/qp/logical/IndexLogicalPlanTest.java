@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.plan;
+package org.apache.iotdb.db.qp.logical;
 
 import static org.apache.iotdb.db.index.common.IndexConstant.BLOCK_SIZE;
 import static org.apache.iotdb.db.index.common.IndexConstant.PAA_DIM;

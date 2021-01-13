@@ -580,9 +580,13 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
-          recoverPerformer.recover(false);
-          tsFileResource.setClosed(true);
-          tsFileManagement.add(tsFileResource, isSeq);
+          writer = recoverPerformer.recover(false);
+          if (writer.hasCrashed()) {
+            tsFileManagement.addRecover(tsFileResource, isSeq);
+          } else {
+            tsFileResource.setClosed(true);
+            tsFileManagement.add(tsFileResource, isSeq);
+          }
           continue;
         } else {
           writer = recoverPerformer.recover(true);

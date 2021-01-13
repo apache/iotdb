@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.LineNumberReader;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * read a CSV formatted data File and insert all the data into IoTDB.
@@ -52,6 +55,8 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
   private static final String FILE_SUFFIX = "csv";
+  private static final Logger logger = LoggerFactory.getLogger(ImportCsv.class);
+  private static final String TIME_TYPE = "It isn't a {} time type";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
@@ -119,17 +124,24 @@ public class ImportCsv extends AbstractCsvTool {
         splitColToDeviceAndMeasurement(cols[i], devicesToPositions, devicesToMeasurements, i);
       }
 
+      SimpleDateFormat timeFormatter = null;
+      boolean useFormatter = false;
+
       int lineNumber = 0;
       String line;
       while ((line = br.readLine()) != null) {
         cols = splitCsvLine(line);
         lineNumber++;
+        if (lineNumber == 1) {
+          timeFormatter = formatterInit(cols[0]);
+          useFormatter = (timeFormatter != null);
+        }
         for (Entry<String, List<Integer>> deviceToPositions : devicesToPositions
             .entrySet()) {
           String device = deviceToPositions.getKey();
           devices.add(device);
 
-          times.add(Long.parseLong(cols[0]));
+          times.add(parseTime(cols[0], useFormatter, timeFormatter));
 
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
@@ -141,6 +153,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
         if (lineNumber % 10000 == 0) {
           session.insertRecords(devices, times, measurementsList, valuesList);
+          pb.stepTo(lineNumber + 1L);
           devices = new ArrayList<>();
           times = new ArrayList<>();
           measurementsList = new ArrayList<>();
@@ -211,6 +224,54 @@ public class ImportCsv extends AbstractCsvTool {
     } finally {
       reader.close();
     }
+  }
+
+  private static long parseTime(String str, boolean useFormatter, SimpleDateFormat timeFormatter) {
+    try {
+      if (useFormatter) {
+        return timeFormatter.parse(str).getTime();
+      } else {
+        return Long.parseLong(str);
+      }
+    } catch (Exception e){
+      throw new IllegalArgumentException("Input time format " + str
+          + "error. Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or yyyy-MM-ddTHH:mm:ss.SSSZ");
+    }
+  }
+
+  private static SimpleDateFormat formatterInit(String time) {
+    SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+    SimpleDateFormat format2 = new SimpleDateFormat("yyy-MM-dd HH:mm:ss");
+    SimpleDateFormat format3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+
+    try {
+      Long.parseLong(time);
+      return null;
+    } catch (Exception ignored) {
+      // do nothing
+    }
+
+    try {
+      format1.parse(time).getTime();
+      return format1;
+    } catch (java.text.ParseException ignored) {
+      // do nothing
+    }
+
+    try {
+      format2.parse(time).getTime();
+      return format2;
+    } catch (java.text.ParseException ignored) {
+      // do nothing
+    }
+
+    try {
+      format3.parse(time).getTime();
+      return format3;
+    } catch (java.text.ParseException ignored) {
+      // do nothing
+    }
+    return null;
   }
 
   private static void parseSpecialParams(CommandLine commandLine) {

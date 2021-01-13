@@ -216,7 +216,7 @@ public class PhysicalGenerator {
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
-        return new TracingPlan(tracingOperator.isTracingon());
+        return new TracingPlan(tracingOperator.isTracingOn());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
@@ -247,16 +247,20 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
-                showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
-                showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
-                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
+            ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
+                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset(), fetchSize);
+            showTimeSeriesPlan.setIsContains(showTimeSeriesOperator.isContains());
+            showTimeSeriesPlan.setKey(showTimeSeriesOperator.getKey());
+            showTimeSeriesPlan.setValue(showTimeSeriesOperator.getValue());
+            showTimeSeriesPlan.setOrderByHeat(showTimeSeriesOperator.isOrderByHeat());
+            return showTimeSeriesPlan;
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
-            return new ShowDevicesPlan(
-                ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+            ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
+            return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
+                  showDevicesOperator.getOffset(), fetchSize);
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
