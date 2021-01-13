@@ -329,13 +329,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       return;
     }
 
-    // ChunkGroupOffset -> version
-    Map<Long, Long> oldVersionInfo = getVersionInfo();
-
     // start to scan chunks and chunkGroups
-    long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
-    long versionOfChunkGroup = 0;
     int chunkGroupCount = 0;
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
@@ -349,8 +344,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             // this is the first chunk of a new ChunkGroup.
             if (newChunkGroup) {
               newChunkGroup = false;
-              startOffsetOfChunkGroup = this.position() - 1;
-              versionOfChunkGroup = oldVersionInfo.get(startOffsetOfChunkGroup);
             }
             ChunkHeader header = this.readChunkHeader();
             MeasurementSchema measurementSchema = new MeasurementSchema(header.getMeasurementID(),
