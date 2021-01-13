@@ -758,7 +758,6 @@ public class RaftLogManagerTest {
       instance.append(logs.subList(10, 20));
       instance.commitTo(20);
       while (instance.getMaxHaveAppliedCommitIndex() < 9) {
-//        System.out.println(instance.getMaxHaveAppliedCommitIndex());
         // wait until [0, 10) are applied
       }
       Thread.sleep(200);
