@@ -53,6 +53,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
       RpcStat.readBytes.addAndGet(uncompressedLength);
       readCompressBuffer.resizeIfNecessary(uncompressedLength);
       uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getBuffer(), 0);
+      readCompressBuffer.limit(uncompressedLength);
+      readCompressBuffer.position(0);
       readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
