@@ -380,7 +380,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             rewrite(oldTsFile, deviceID, measurementSchemaList, pageHeadersInChunkGroup,
-                pageDataInChunkGroup, versionOfChunkGroup, pagePartitionInfoInChunkGroup);
+                pageDataInChunkGroup, pagePartitionInfoInChunkGroup);
 
             pageHeadersInChunkGroup.clear();
             pageDataInChunkGroup.clear();
@@ -422,7 +422,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    */
   private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas,
       List<List<PageHeader>> pageHeadersInChunkGroup, List<List<ByteBuffer>> dataInChunkGroup,
-      long versionOfChunkGroup, List<List<Boolean>> pagePartitionInfoInChunkGroup)
+                       List<List<Boolean>> pagePartitionInfoInChunkGroup)
       throws IOException, PageException {
     Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
     for (int i = 0; i < schemas.size(); i++) {
