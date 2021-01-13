@@ -19,21 +19,21 @@
 
 -->
 
-## »·¾³
-* Ö§³ÖµÄIoTDB°æ±¾ : V0.12+
-* Ö§³ÖµÄPrometheus°æ±¾ : V2.23+
-* Ö§³ÖµÄGo°æ±¾ : V1.13+
+## ç¯å¢ƒ
+* æ”¯æŒçš„IoTDBç‰ˆæœ¬ : V0.12+
+* æ”¯æŒçš„Prometheusç‰ˆæœ¬ : V2.23+
+* æ”¯æŒçš„Goç‰ˆæœ¬ : V1.13+
 
-## Æô¶¯IoTDB
+## å¯åŠ¨IoTDB
 
-²Î¼ûhttps://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html
+å‚è§https://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html
 
 ## Join Prometheus
 
-³ıÁËÖ§³Ösession,jdbc,cliĞ´ÈëÊı¾İÍâ, IoTDB»¹Ö§³ÖÍ¨¹ıAPI·şÎñ³ÌĞòÀ´½ÓÈëPrometheusµÄÊı¾İ. ½öĞèÔÚPrometheusÌí¼ÓÏà¹ØÅäÖÃ.
-¼´¿É½«Êı¾İÖ±½ÓĞ´ÈëIoTDB, ²¢°´¹æÔò×Ô¶¯´´½¨Ê±Ğò, ÎŞĞèÈÎºÎ´úÂë£¬ÒÔ¼°ÌáÇ°ÔÚIoTDB×öÈÎºÎÅäÖÃ.
+é™¤äº†æ”¯æŒsession,jdbc,cliå†™å…¥æ•°æ®å¤–, IoTDBè¿˜æ”¯æŒé€šè¿‡APIæœåŠ¡ç¨‹åºæ¥æ¥å…¥Prometheusçš„æ•°æ®. ä»…éœ€åœ¨Prometheusæ·»åŠ ç›¸å…³é…ç½®.
+å³å¯å°†æ•°æ®ç›´æ¥å†™å…¥IoTDB, å¹¶æŒ‰è§„åˆ™è‡ªåŠ¨åˆ›å»ºæ—¶åº, æ— éœ€ä»»ä½•ä»£ç ï¼Œä»¥åŠæå‰åœ¨IoTDBåšä»»ä½•é…ç½®.
 
-## Ê¹ÓÃprometheus-connector (´ÓÔ´Âë±àÒë)
+## ä½¿ç”¨prometheus-connector (ä»æºç ç¼–è¯‘)
 
 ```
 git clone https://github.com/apache/iotdb.git
@@ -45,25 +45,25 @@ run write_adaptor.go
 
 ## Prometheus
 
-Prometheus×÷ÎªCloud Native Computing Fundation±ÏÒµµÄÏîÄ¿£¬ÔÚĞÔÄÜ¼à¿ØÒÔ¼°K8SĞÔÄÜ¼à¿ØÁìÓòÓĞ×Å·Ç³£¹ã·ºµÄÓ¦ÓÃ¡£IoTDB¿ÉÒÔÍ¨¹ıprometheus-connector·şÎñ³ÌĞòÊµÏÖÎŞ´úÂëµÄ¿ìËÙ½ÓÈë£¬¸ßĞ§µÄ½«Êı¾İĞ´ÈëIoTDBÖĞ¡£²¢Í¨¹ıGrafanaÀ´²éÑ¯IoTDBÖĞµÄÊı¾İ
+Prometheusä½œä¸ºCloud Native Computing Fundationæ¯•ä¸šçš„é¡¹ç›®ï¼Œåœ¨æ€§èƒ½ç›‘æ§ä»¥åŠK8Sæ€§èƒ½ç›‘æ§é¢†åŸŸæœ‰ç€éå¸¸å¹¿æ³›çš„åº”ç”¨ã€‚IoTDBå¯ä»¥é€šè¿‡prometheus-connectoræœåŠ¡ç¨‹åºå®ç°æ— ä»£ç çš„å¿«é€Ÿæ¥å…¥ï¼Œé«˜æ•ˆçš„å°†æ•°æ®å†™å…¥IoTDBä¸­ã€‚å¹¶é€šè¿‡Grafanaæ¥æŸ¥è¯¢IoTDBä¸­çš„æ•°æ®
 
-### °²×° prometheus
+### å®‰è£… prometheus
 
-Í¨¹ıPrometheusµÄ¹ÙÍøÏÂÔØ°²×° https://prometheus.io/download/
+é€šè¿‡Prometheusçš„å®˜ç½‘ä¸‹è½½å®‰è£… https://prometheus.io/download/
 
-### ÅäÖÃ prometheus
+### é…ç½® prometheus
 
-²Î¿¼prometheus[ÅäÖÃÎÄ¼ş](https://prometheus.io/docs/prometheus/latest/configuration/configuration/), add the following configuration in prometheus.yml
-(ip,¶Ë¿ÚºÅºÍ´æ´¢×éÊıÁ¿¿ÉÒÔÔÚconf.yamlÅäÖÃ)
+å‚è€ƒprometheus[é…ç½®æ–‡ä»¶](https://prometheus.io/docs/prometheus/latest/configuration/configuration/), add the following configuration in prometheus.yml
+(ip,ç«¯å£å·å’Œå­˜å‚¨ç»„æ•°é‡å¯ä»¥åœ¨conf.yamlé…ç½®)
 
 ```
 remote_write: 
       - url: "http://localhost:12345/receive"
 ```
 
-### Æô¶¯ prometheus
+### å¯åŠ¨ prometheus
 
-## ²é¿´Êı¾İ
+## æŸ¥çœ‹æ•°æ®
 
 ```
 select * from root.system_p_sg1
