@@ -198,31 +198,23 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
     if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-      try {
-        metadataIndexNode = MetadataIndexNodeV2.deserializeFrom(buffer);
-      } catch (BufferOverflowException e) {
-        throw e;
-      }
+      metadataIndexNode = MetadataIndexNodeV2.deserializeFrom(buffer);
       metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
           path.getMeasurement(), false, false);
     }
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetadata;
-      try {
-        timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
-      } catch (BufferOverflowException e) {
-        throw e;
-      }
+      timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
       if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
         timeseriesMetadataList.add(timeseriesMetadata);
       }
