@@ -1,5 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements.  See the NOTICE file distributed with this work for additional information regarding copyright ownership.  The ASF licenses this file to you under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.  You may obtain a copy of the License at      http://www.apache.org/licenses/LICENSE-2.0  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the License for the specific language governing permissions and limitations under the License.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iotdb.cluster.partition.slot;
@@ -27,6 +42,8 @@ import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.balancer.DefaultSlotBalancer;
+import org.apache.iotdb.cluster.partition.balancer.SlotBalancer;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
@@ -78,6 +95,8 @@ public class SlotPartitionTable implements PartitionTable {
   // last log index that modifies the partition table
   private long lastLogIndex = -1;
 
+  private SlotBalancer slotBalancer = new DefaultSlotBalancer(this);
+
   /**
    * only used for deserialize.
    *
@@ -103,6 +122,14 @@ public class SlotPartitionTable implements PartitionTable {
 
   public static void setSlotStrategy(SlotStrategy slotStrategy) {
     SlotPartitionTable.slotStrategy = slotStrategy;
+  }
+
+  public SlotBalancer getLoadBalancer() {
+    return slotBalancer;
+  }
+
+  public void setLoadBalancer(SlotBalancer slotBalancer) {
+    this.slotBalancer = slotBalancer;
   }
 
   private void init(Collection<Node> nodes) {
@@ -167,7 +194,7 @@ public class SlotPartitionTable implements PartitionTable {
     return ret;
   }
 
-  private PartitionGroup getHeaderGroup(RaftNode raftNode, List<Node> nodeRing) {
+  public PartitionGroup getHeaderGroup(RaftNode raftNode, List<Node> nodeRing) {
     PartitionGroup ret = new PartitionGroup(raftNode.getRaftId());
 
     // assuming the nodes are [1,2,3,4,5]
@@ -284,7 +311,7 @@ public class SlotPartitionTable implements PartitionTable {
 
     // the slots movement is only done logically, the new node itself will pull data from the
     // old node
-    moveSlotsToNew(node, oldRing);
+    slotBalancer.moveSlotsToNew(node, oldRing);
 
   }
 
@@ -302,55 +329,6 @@ public class SlotPartitionTable implements PartitionTable {
     }
     result.setLostSlots(lostSlotsMap);
     return result;
-  }
-
-
-  /**
-   * Move last slots from each group whose slot number is bigger than the new average to the new
-   * node.
-   *
-   * @param newNode
-   */
-  private void moveSlotsToNew(Node newNode, List<Node> oldRing) {
-    // as a node is added, the average slots for each node decrease
-    // move the slots to the new node if any previous node have more slots than the new average
-    int newAvg = totalSlotNumbers / nodeRing.size() / multiRaftFactor;
-    int raftId = 0;
-    for (int i = 0; i < multiRaftFactor; i++) {
-      RaftNode raftNode = new RaftNode(newNode, i);
-      nodeSlotMap.putIfAbsent(raftNode, new ArrayList<>());
-      previousNodeMap.putIfAbsent(raftNode, new HashMap<>());
-    }
-    for (Entry<RaftNode, List<Integer>> entry : nodeSlotMap.entrySet()) {
-      List<Integer> slots = entry.getValue();
-      int transferNum = slots.size() - newAvg;
-      if (transferNum > 0) {
-        RaftNode curNode = new RaftNode(newNode, raftId);
-        int numToMove = transferNum;
-        if (raftId != multiRaftFactor - 1) {
-          numToMove = Math.min(numToMove, newAvg - nodeSlotMap.get(curNode).size());
-        }
-        List<Integer> slotsToMove = slots
-            .subList(slots.size() - transferNum, slots.size() - transferNum + numToMove);
-        nodeSlotMap.get(curNode).addAll(slotsToMove);
-        for (Integer slot : slotsToMove) {
-          // record what node previously hold the integer
-          previousNodeMap.get(curNode).put(slot, getHeaderGroup(entry.getKey(), oldRing));
-          slotNodes[slot] = curNode;
-        }
-        transferNum -= numToMove;
-        if (transferNum > 0) {
-          curNode = new RaftNode(newNode, ++raftId);
-          slotsToMove = slots.subList(slots.size() - transferNum, slots.size());
-          nodeSlotMap.get(curNode).addAll(slotsToMove);
-          for (Integer slot : slotsToMove) {
-            // record what node previously hold the integer
-            previousNodeMap.get(curNode).put(slot, getHeaderGroup(entry.getKey(), oldRing));
-            slotNodes[slot] = curNode;
-          }
-        }
-      }
-    }
   }
 
   @Override
@@ -381,8 +359,8 @@ public class SlotPartitionTable implements PartitionTable {
         Map<Integer, PartitionGroup> prevHolders = nodeMapEntry.getValue();
         dataOutputStream.writeInt(prevHolders.size());
         for (Entry<Integer, PartitionGroup> integerNodeEntry : prevHolders.entrySet()) {
-          dataOutputStream.writeInt(integerNodeEntry.getKey());
           integerNodeEntry.getValue().serialize(dataOutputStream);
+          dataOutputStream.writeInt(integerNodeEntry.getKey());
         }
       }
 
@@ -398,7 +376,7 @@ public class SlotPartitionTable implements PartitionTable {
     long newLastLogIndex = buffer.getLong();
 
     // judge whether the partition table of byte buffer is out of date
-    if (lastLogIndex >= newLastLogIndex) {
+    if (lastLogIndex != -1 && lastLogIndex >= newLastLogIndex) {
       return lastLogIndex <= newLastLogIndex;
     }
     lastLogIndex = newLastLogIndex;
@@ -455,6 +433,10 @@ public class SlotPartitionTable implements PartitionTable {
     return nodeRing;
   }
 
+  public Map<RaftNode, Map<Integer, PartitionGroup>> getPreviousNodeMap() {
+    return previousNodeMap;
+  }
+
   public Map<Integer, PartitionGroup> getPreviousNodeMap(RaftNode raftNode) {
     return previousNodeMap.get(raftNode);
   }
@@ -488,7 +470,8 @@ public class SlotPartitionTable implements PartitionTable {
         Objects.equals(nodeRing, that.nodeRing) &&
         Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
         Arrays.equals(slotNodes, that.slotNodes) &&
-        Objects.equals(previousNodeMap, that.previousNodeMap);
+        Objects.equals(previousNodeMap, that.previousNodeMap) &&
+        lastLogIndex == that.lastLogIndex;
   }
 
   @Override
@@ -548,7 +531,7 @@ public class SlotPartitionTable implements PartitionTable {
 
       // the slots movement is only done logically, the new node itself will pull data from the
       // old node
-      Map<RaftNode, List<Integer>> raftNodeListMap = retrieveSlots(target);
+      Map<RaftNode, List<Integer>> raftNodeListMap = slotBalancer.retrieveSlots(target);
       result.addNewSlotOwners(raftNodeListMap);
       this.nodeRemovalResult = result;
     }
@@ -557,22 +540,6 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public NodeRemovalResult getNodeRemovalResult() {
     return nodeRemovalResult;
-  }
-
-  private Map<RaftNode, List<Integer>> retrieveSlots(Node target) {
-    Map<RaftNode, List<Integer>> newHolderSlotMap = new HashMap<>();
-    for(int raftId = 0 ; raftId < multiRaftFactor; raftId++) {
-      RaftNode raftNode = new RaftNode(target, raftId);
-      List<Integer> slots = nodeSlotMap.remove(raftNode);
-      for (int i = 0; i < slots.size(); i++) {
-        int slot = slots.get(i);
-        RaftNode newHolder = new RaftNode(nodeRing.get(i % nodeRing.size()), raftId);
-        slotNodes[slot] = newHolder;
-        nodeSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
-        newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
-      }
-    }
-    return newHolderSlotMap;
   }
 
   @Override
@@ -608,5 +575,9 @@ public class SlotPartitionTable implements PartitionTable {
 
   public synchronized void setLastLogIndex(long lastLogIndex) {
     this.lastLogIndex = Math.max(this.lastLogIndex, lastLogIndex);
+  }
+
+  public RaftNode[] getSlotNodes() {
+    return slotNodes;
   }
 }

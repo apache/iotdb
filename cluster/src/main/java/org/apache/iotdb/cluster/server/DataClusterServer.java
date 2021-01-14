@@ -494,7 +494,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public void preAddNodeForDataGroup(AddNodeLog log, DataGroupMember targetDataGroupMember) {
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.syncLeader();
+    metaGroupMember.waitUtil(log.getMetaLogIndex() - 1);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
@@ -601,7 +601,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public void preRemoveNodeForDataGroup(RemoveNodeLog log, DataGroupMember targetDataGroupMember) {
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.syncLeader();
+    metaGroupMember.waitUtil(log.getMetaLogIndex() - 1);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {

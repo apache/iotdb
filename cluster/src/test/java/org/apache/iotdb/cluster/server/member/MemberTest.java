@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.member;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +51,10 @@ import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -60,6 +63,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -73,7 +78,7 @@ public class MemberTest {
 
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
-  Map<Node, DataGroupMember> dataGroupMemberMap;
+  Map<RaftNode, DataGroupMember> dataGroupMemberMap;
   private Map<Node, MetaGroupMember> metaGroupMemberMap;
   PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
@@ -95,7 +100,6 @@ public class MemberTest {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(4096);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     RaftMember.setWaitLeaderTimeMs(10);
@@ -105,7 +109,12 @@ public class MemberTest {
       allNodes.add(TestUtils.getNode(i));
     }
 
-    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0)) {
+      @Override
+      public RaftNode routeToHeaderByTime(String storageGroupName, long timestamp) {
+        return new RaftNode(TestUtils.getNode(0), 0);
+      }
+    };
 
     dataGroupMemberMap = new HashMap<>();
     metaGroupMemberMap = new HashMap<>();
@@ -170,11 +179,15 @@ public class MemberTest {
   }
 
   DataGroupMember getDataGroupMember(Node node) {
+    return getDataGroupMember(new RaftNode(node, 0));
+  }
+
+  DataGroupMember getDataGroupMember(RaftNode node) {
     return dataGroupMemberMap.computeIfAbsent(node, this::newDataGroupMember);
   }
 
-  private DataGroupMember newDataGroupMember(Node node) {
-    DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+  private DataGroupMember newDataGroupMember(RaftNode raftNode) {
+    DataGroupMember newMember = new TestDataGroupMember(raftNode.getNode(), partitionTable.getHeaderGroup(raftNode)) {
 
       @Override
       public boolean syncLeader() {
@@ -200,9 +213,9 @@ public class MemberTest {
         return getAsyncClient(node);
       }
     };
-    newMember.setThisNode(node);
+    newMember.setThisNode(raftNode.getNode());
     newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(node);
+    newMember.setLeader(raftNode.getNode());
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember
         .setLogManager(
@@ -232,11 +245,16 @@ public class MemberTest {
       @Override
       public DataGroupMember getLocalDataMember(Node header, int raftId,
           Object request) {
-        return getDataGroupMember(header);
+        return getDataGroupMember(new RaftNode(header, raftId));
       }
 
       @Override
       public DataGroupMember getLocalDataMember(Node header, int raftId) {
+        return getDataGroupMember(new RaftNode(header, raftId));
+      }
+
+      @Override
+      public DataGroupMember getLocalDataMember(RaftNode header) {
         return getDataGroupMember(header);
       }
 

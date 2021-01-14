@@ -261,9 +261,9 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
-  public void preAddNode(Node node) {
+  public boolean preAddNode(Node node) {
     if (allNodes.contains(node)) {
-      return;
+      return false;
     }
     synchronized (allNodes) {
       int insertIndex = -1;
@@ -288,6 +288,7 @@ public class DataGroupMember extends RaftMember {
         // the group
         logger.debug("{}: Node {} is inserted into the data group {}", name, node, allNodes);
       }
+      return insertIndex > 0;
     }
   }
 
@@ -299,6 +300,7 @@ public class DataGroupMember extends RaftMember {
    * otherwise
    */
   public boolean addNode(Node node, NodeAdditionResult result) {
+    syncLeader();
 
     // mark slots that do not belong to this group any more
     Set<Integer> lostSlots = ((SlotNodeAdditionResult) result).getLostSlots()
@@ -604,9 +606,9 @@ public class DataGroupMember extends RaftMember {
    * @param partitionId
    * @param isSeq
    */
-  void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+  boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
     if (character != NodeCharacter.LEADER) {
-      return;
+      return false;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
     synchronized (logManager) {
@@ -618,10 +620,11 @@ public class DataGroupMember extends RaftMember {
       logger.info("Send the close file request of {} to other nodes", log);
     }
     try {
-      appendLogInGroup(log);
+      return appendLogInGroup(log);
     } catch (LogExecutionException e) {
       logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
     }
+    return false;
   }
 
   public boolean flushFileWhenDoSnapshot(
@@ -762,6 +765,8 @@ public class DataGroupMember extends RaftMember {
    */
   @SuppressWarnings("java:S2445") // the reference of allNodes is unchanged
   public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
+    syncLeader();
+
     synchronized (allNodes) {
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it

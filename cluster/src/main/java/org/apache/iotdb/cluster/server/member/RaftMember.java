@@ -275,6 +275,7 @@ public abstract class RaftMember {
     this.asyncHeartbeatClientPool = asyncHeartbeatPool;
     this.syncHeartbeatClientPool = syncHeartbeatPool;
     this.asyncSendLogClientPool = asyncSendLogClientPool;
+    this.stopStatus = new StopStatus();
   }
 
   /**
@@ -836,8 +837,6 @@ public abstract class RaftMember {
    * @return true if this node has caught up before timeout, false otherwise
    */
   private boolean waitUntilCatchUp() {
-    long startTime = System.currentTimeMillis();
-    long waitedTime = 0;
     long leaderCommitId;
     try {
       leaderCommitId = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() ?
@@ -854,16 +853,25 @@ public abstract class RaftMember {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       return false;
     }
+    logger.debug("Start to sync with leader, leader commit id is {}", leaderCommitId);
+    return waitUtil(leaderCommitId);
+  }
 
+  /**
+   * Wait until local commit index becomes not less than target log index
+   */
+  public boolean waitUtil(long targetLogIndex) {
+    long startTime = System.currentTimeMillis();
+    long waitedTime = 0;
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
         long localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
-        logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, leaderCommitId);
-        if (leaderCommitId <= localAppliedId) {
+        logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, targetLogIndex);
+        if (targetLogIndex <= localAppliedId) {
           // this node has caught up
           if (logger.isDebugEnabled()) {
             waitedTime = System.currentTimeMillis() - startTime;
-            logger.debug("{}: synchronized with the leader after {}ms", name, waitedTime);
+            logger.debug("{}: synchronized to target index {} after {}ms", name, targetLogIndex, waitedTime);
           }
           return true;
         }
@@ -879,7 +887,7 @@ public abstract class RaftMember {
         logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
       }
     }
-    logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
+    logger.warn("{}: Failed to synchronize to target index {} after {}ms", name, targetLogIndex, waitedTime);
     return false;
   }
 
@@ -911,13 +919,13 @@ public abstract class RaftMember {
     } else {
       log = new PhysicalPlanLog();
       ((PhysicalPlanLog)log).setPlan(plan);
+      plan.setIndex(log.getCurrLogIndex());
     }
     // assign term and index to the new log and append it
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      plan.setIndex(log.getCurrLogIndex());
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);

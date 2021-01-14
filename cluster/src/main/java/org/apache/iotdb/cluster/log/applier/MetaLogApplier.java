@@ -82,7 +82,7 @@ public class MetaLogApplier extends BaseApplier {
     LogPlan plan = new LogPlan(log.serialize());
     TSStatus status = member.executeNonQueryPlan(plan);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ChangeMembershipException(String.format("apply %s failed", log));
+      throw new ChangeMembershipException(String.format("apply %s failed with status {%s}", log, status));
     }
   }
 }

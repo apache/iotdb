@@ -302,18 +302,22 @@ public class MetaGroupMember extends RaftMember {
    * closed by the method.
    *
    */
-  public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
     RaftNode raftNode = partitionTable.routeToHeaderByTime(storageGroupName,
         partitionId * StorageEngine.getTimePartitionInterval());
     DataGroupMember localDataMember = getLocalDataMember(raftNode);
     if (localDataMember == null || localDataMember.getCharacter() != NodeCharacter.LEADER) {
-      return;
+      return false;
     }
-    localDataMember.closePartition(storageGroupName, partitionId, isSeq);
+    return localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
   public DataClusterServer getDataClusterServer() {
     return dataClusterServer;
+  }
+
+  public void setDataClusterServer(DataClusterServer dataClusterServer) {
+    this.dataClusterServer = dataClusterServer;
   }
 
   public DataHeartbeatServer getDataHeartbeatServer() {
@@ -864,6 +868,7 @@ public class MetaGroupMember extends RaftMember {
       addNodeLog.setPartitionTable(partitionTable.serialize());
       addNodeLog.setCurrLogTerm(getTerm().get());
       addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+      addNodeLog.setMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       addNodeLog.setNewNode(node);
 
@@ -1061,120 +1066,6 @@ public class MetaGroupMember extends RaftMember {
     }
     return null;
   }
-
-  /**
-   * Send the log the all data groups and return a success only when each group's quorum has
-   * accepted this log.
-   */
-//  private AppendLogResult sendLogToAllGroups(Log log) {
-//    List<Node> nodeRing = partitionTable.getAllNodes();
-//
-//    AtomicLong newLeaderTerm = new AtomicLong(term.get());
-//    AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-//    AppendEntryRequest request = buildAppendEntryRequest(log, true);
-//
-//    // ask for votes from each node
-//    int[] groupRemainings = askGroupVotes(nodeRing, request, leaderShipStale, log, newLeaderTerm);
-//
-//    if (!leaderShipStale.get()) {
-//      // if all quorums of all groups have received this log, it is considered succeeded.
-//      for (int remaining : groupRemainings) {
-//        if (remaining > 0) {
-//          return AppendLogResult.TIME_OUT;
-//        }
-//      }
-//    } else {
-//      return AppendLogResult.LEADERSHIP_STALE;
-//    }
-//
-//    return AppendLogResult.OK;
-//  }
-
-  /**
-   * Send "request" to each node in "nodeRing" and when a node returns a success, decrease all
-   * counters of the groups it is in of "groupRemainings"
-   *
-   * @return a int array indicating how many votes are left in each group to make an agreement
-   */
-  @SuppressWarnings({"java:S2445", "java:S2274"})
-  // groupRemaining is shared with the handlers,
-  // and we do not wait infinitely to enable timeouts
-//  private int[] askGroupVotes(List<Node> nodeRing,
-//      AppendEntryRequest request, AtomicBoolean leaderShipStale, Log log,
-//      AtomicLong newLeaderTerm) {
-//    // each node will be the header of a group, we use the node to represent the group
-//    int nodeSize = nodeRing.size();
-//    // the decreasing counters of how many nodes in a group has received the log, each time a
-//    // node receive the log, the counters of all groups it is in will decrease by 1
-//    int[] groupRemainings = new int[nodeSize];
-//    // a group is considered successfully received the log if such members receive the log
-//    int groupQuorum = REPLICATION_NUM / 2 + 1;
-//    Arrays.fill(groupRemainings, groupQuorum);
-//
-//    synchronized (groupRemainings) {
-//      // ask a vote from every node
-//      for (int i = 0; i < nodeSize; i++) {
-//        Node node = nodeRing.get(i);
-//        if (node.equals(thisNode)) {
-//          // this node automatically gives an agreement, decrease counters of all groups the local
-//          // node is in
-//          for (int j = 0; j < REPLICATION_NUM; j++) {
-//            int groupIndex = i - j;
-//            if (groupIndex < 0) {
-//              groupIndex += groupRemainings.length;
-//            }
-//            groupRemainings[groupIndex]--;
-//          }
-//        } else {
-//          askRemoteGroupVote(node, groupRemainings, i, leaderShipStale, log, newLeaderTerm,
-//              request);
-//        }
-//      }
-//
-//      try {
-//        groupRemainings.wait(RaftServer.getWriteOperationTimeoutMS());
-//      } catch (InterruptedException e) {
-//        Thread.currentThread().interrupt();
-//        logger.error("Unexpected interruption when waiting for the group votes", e);
-//      }
-//    }
-//    return groupRemainings;
-//  }
-
-  private void askRemoteGroupVote(Node node, int[] groupRemainings, int nodeIndex,
-      AtomicBoolean leaderShipStale, Log log,
-      AtomicLong newLeaderTerm, AppendEntryRequest request) {
-    AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupRemainings,
-        nodeIndex, node, leaderShipStale, log, newLeaderTerm, this);
-    if (config.isUseAsyncServer()) {
-      AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
-      try {
-        if (client != null) {
-          client.appendEntry(request, handler);
-        }
-      } catch (TException e) {
-        logger.error("Cannot send log to node {}", node, e);
-      }
-    } else {
-      SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
-      if (client == null) {
-        logger.error("No available client for {}", node);
-        return;
-      }
-      getSerialToParallelPool().submit(() -> {
-        try {
-          handler.onComplete(client.appendEntry(request));
-        } catch (TException e) {
-          client.getInputProtocol().getTransport().close();
-          handler.onError(e);
-        } finally {
-          ClientUtils.putBackSyncClient(client);
-        }
-      });
-    }
-
-  }
-
 
   public Set<Node> getIdConflictNodes() {
     return idConflictNodes;
@@ -1519,7 +1410,7 @@ public class MetaGroupMember extends RaftMember {
    *
    * @param planGroupMap sub-plan -> belong data group pairs
    */
-  private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
+  public TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
@@ -2009,6 +1900,7 @@ public class MetaGroupMember extends RaftMember {
       removeNodeLog.setPartitionTable(partitionTable.serialize());
       removeNodeLog.setCurrLogTerm(getTerm().get());
       removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+      removeNodeLog.setMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       removeNodeLog.setRemovedNode(target);
 
@@ -2202,5 +2094,9 @@ public class MetaGroupMember extends RaftMember {
   @TestOnly
   public void setClientProvider(DataClientProvider dataClientProvider) {
     this.dataClientProvider = dataClientProvider;
+  }
+
+  public void setRouter(ClusterPlanRouter router) {
+    this.router = router;
   }
 }

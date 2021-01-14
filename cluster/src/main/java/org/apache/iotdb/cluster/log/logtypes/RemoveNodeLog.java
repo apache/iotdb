@@ -34,6 +34,8 @@ public class RemoveNodeLog extends Log {
 
   private Node removedNode;
 
+  private long metaLogIndex;
+
   public RemoveNodeLog(ByteBuffer partitionTable,
       Node removedNode) {
     this.partitionTable = partitionTable;
@@ -41,6 +43,14 @@ public class RemoveNodeLog extends Log {
   }
 
   public RemoveNodeLog() {
+  }
+
+  public long getMetaLogIndex() {
+    return metaLogIndex;
+  }
+
+  public void setMetaLogIndex(long metaLogIndex) {
+    this.metaLogIndex = metaLogIndex;
   }
 
   public ByteBuffer getPartitionTable() {
@@ -58,10 +68,11 @@ public class RemoveNodeLog extends Log {
       dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getMetaLogIndex());
 
       SerializeUtils.serialize(removedNode, dataOutputStream);
 
-      dataOutputStream.write(partitionTable.array().length);
+      dataOutputStream.writeInt(partitionTable.array().length);
       dataOutputStream.write(partitionTable.array());
     } catch (IOException e) {
       // ignored
@@ -73,6 +84,7 @@ public class RemoveNodeLog extends Log {
   public void deserialize(ByteBuffer buffer) {
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setMetaLogIndex(buffer.getLong());
 
     removedNode = new Node();
     SerializeUtils.deserialize(removedNode, buffer);

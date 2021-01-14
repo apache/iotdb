@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeAdditionResult;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
@@ -71,6 +72,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
@@ -165,9 +167,9 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
-  DataGroupMember getDataGroupMember(Node node) {
-    PartitionGroup nodes = partitionTable.getHeaderGroup(node);
-    return dataGroupMemberMap.computeIfAbsent(node, n -> getDataGroupMember(n, nodes));
+  DataGroupMember getDataGroupMember(RaftNode raftNode) {
+    PartitionGroup nodes = partitionTable.getHeaderGroup(raftNode.getNode());
+    return dataGroupMemberMap.computeIfAbsent(raftNode, n -> getDataGroupMember(n.getNode(), nodes));
   }
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
@@ -176,6 +178,11 @@ public class DataGroupMemberTest extends MemberTest {
       @Override
       public boolean syncLeader() {
         return true;
+      }
+
+      @Override
+      public long appendEntry(AppendEntryRequest request) {
+        return Response.RESPONSE_AGREE;
       }
 
       @Override
@@ -267,16 +274,25 @@ public class DataGroupMemberTest extends MemberTest {
 
     try {
       Node newNodeBeforeGroup = TestUtils.getNode(-5);
+      assertFalse(firstMember.preAddNode(newNodeBeforeGroup));
+      assertFalse(midMember.preAddNode(newNodeBeforeGroup));
+      assertFalse(lastMember.preAddNode(newNodeBeforeGroup));
       assertFalse(firstMember.addNode(newNodeBeforeGroup, result));
       assertFalse(midMember.addNode(newNodeBeforeGroup, result));
       assertFalse(lastMember.addNode(newNodeBeforeGroup, result));
 
       Node newNodeInGroup = TestUtils.getNode(66);
+      assertTrue(firstMember.preAddNode(newNodeInGroup));
+      assertTrue(midMember.preAddNode(newNodeInGroup));
+      assertTrue(lastMember.preAddNode(newNodeInGroup));
       assertFalse(firstMember.addNode(newNodeInGroup, result));
       assertFalse(midMember.addNode(newNodeInGroup, result));
       assertTrue(lastMember.addNode(newNodeInGroup, result));
 
       Node newNodeAfterGroup = TestUtils.getNode(101);
+      assertFalse(firstMember.preAddNode(newNodeAfterGroup));
+      assertFalse(midMember.preAddNode(newNodeAfterGroup));
+      assertFalse(lastMember.preAddNode(newNodeAfterGroup));
       assertFalse(firstMember.addNode(newNodeAfterGroup, result));
       assertFalse(midMember.addNode(newNodeAfterGroup, result));
     } finally {
@@ -480,6 +496,7 @@ public class DataGroupMemberTest extends MemberTest {
   @Test
   public void testForwardPullSnapshot() {
     System.out.println("Start testForwardPullSnapshot()");
+    hasInitialSnapshots = true;
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     PullSnapshotRequest request = new PullSnapshotRequest();
@@ -904,13 +921,15 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
 
     try {
+      dataGroupMember.preRemoveNode(nodeToRemove);
       dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
       assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
-      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
+      List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners()
+          .get(new RaftNode(TestUtils.getNode(0), raftId));
       while (newSlots.size() != pulledSnapshots.size()) {
 
       }
@@ -933,13 +952,14 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
 
     try {
+      dataGroupMember.preRemoveNode(nodeToRemove);
       dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
 
       assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots =
-          ((SlotNodeRemovalResult) nodeRemovalResult).getNewSlotOwners().get(TestUtils.getNode(0));
+          ((SlotNodeRemovalResult) nodeRemovalResult).getNewSlotOwners().get(new RaftNode(TestUtils.getNode(0), 0));
       while (newSlots.size() != pulledSnapshots.size()) {
 
       }

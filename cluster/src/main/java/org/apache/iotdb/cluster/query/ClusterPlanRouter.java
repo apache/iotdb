@@ -144,7 +144,7 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(LogPlan plan)
+  protected Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(LogPlan plan)
       throws UnknownLogTypeException, UnsupportedPlanException {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     Log log = LogParser.getINSTANCE().parse(plan.getLog());

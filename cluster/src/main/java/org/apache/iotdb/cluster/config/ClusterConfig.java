@@ -46,7 +46,7 @@ public class ClusterConfig {
   private int replicationNum = 2;
 
   @ClusterConsistent
-  private int multiRaftFactor = 2;
+  private int multiRaftFactor = 1;
 
   @ClusterConsistent
   private String clusterName = "default";

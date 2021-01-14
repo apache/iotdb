@@ -44,6 +44,7 @@ public class LogPlan extends PhysicalPlan {
   }
 
   public ByteBuffer getLog() {
+    log.clear();
     return log;
   }
 

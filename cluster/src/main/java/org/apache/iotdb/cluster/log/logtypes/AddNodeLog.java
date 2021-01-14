@@ -37,12 +37,22 @@ public class AddNodeLog extends Log {
 
   private Node newNode;
 
+  private long metaLogIndex;
+
   public AddNodeLog(ByteBuffer partitionTable, Node newNode) {
     this.partitionTable = partitionTable;
     this.newNode = newNode;
   }
 
   public AddNodeLog() {
+  }
+
+  public long getMetaLogIndex() {
+    return metaLogIndex;
+  }
+
+  public void setMetaLogIndex(long metaLogIndex) {
+    this.metaLogIndex = metaLogIndex;
   }
 
   public void setPartitionTable(ByteBuffer partitionTable) {
@@ -68,10 +78,11 @@ public class AddNodeLog extends Log {
       dataOutputStream.writeByte(Types.ADD_NODE.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
+      dataOutputStream.writeLong(getMetaLogIndex());
 
       SerializeUtils.serialize(newNode, dataOutputStream);
 
-      dataOutputStream.write(partitionTable.array().length);
+      dataOutputStream.writeInt(partitionTable.array().length);
       dataOutputStream.write(partitionTable.array());
     } catch (IOException e) {
       // ignored
@@ -87,6 +98,7 @@ public class AddNodeLog extends Log {
     // ipLength(int), inBytes(byte[]), port(int), identifier(int), dataPort(int)
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
+    setMetaLogIndex(buffer.getLong());
 
     newNode = new Node();
     SerializeUtils.deserialize(newNode, buffer);

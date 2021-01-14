@@ -946,4 +946,8 @@ public abstract class RaftLogManager {
   public long getBlockAppliedCommitIndex() {
     return blockAppliedCommitIndex;
   }
+
+  public RaftLogManager(LogApplier logApplier) {
+    this.logApplier = logApplier;
+  }
 }

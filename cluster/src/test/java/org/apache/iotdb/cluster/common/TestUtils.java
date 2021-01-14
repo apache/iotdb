@@ -103,6 +103,8 @@ public class TestUtils {
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     startUpStatus
         .setClusterName(ClusterDescriptor.getInstance().getConfig().getClusterName());
+    startUpStatus
+        .setMultiRaftFactor(ClusterDescriptor.getInstance().getConfig().getMultiRaftFactor());
     List<Node> seedNodeList = new ArrayList<>();
     for (int i = 0; i < 100; i += 10) {
       seedNodeList.add(getNode(i));
