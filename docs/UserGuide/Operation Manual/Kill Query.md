@@ -51,7 +51,7 @@ KILL QUERY <queryId>
 
 You can abort the specified query by specifying `queryId`. If `queryId` is not specified, all executing queries will be killed.
 
-To get the executing `queryId`，you can the `show query processlist`  command，which will show the list of all executing queries，with the following result set：
+To get the executing `queryId`，you can use the `show query processlist` command，which will show the list of all executing queries，with the following result set：
 
 | Time | queryId | statement |
 | ---- | ------- | --------- |

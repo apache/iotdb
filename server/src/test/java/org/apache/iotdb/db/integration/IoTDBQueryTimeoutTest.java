@@ -120,7 +120,7 @@ public class IoTDBQueryTimeoutTest {
       statement.setFetchSize(20000);
       try {
         ((IoTDBStatement) statement)
-            .executeQuery("select count(*) from root group by ([1, 20000), 2ms)", 1);
+            .executeQuery("select count(*) from root group by ([1, 40000), 2ms)", 1);
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(e.getMessage().contains("Current query is time out"));
       }
