@@ -39,9 +39,11 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
+import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -77,6 +79,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -123,6 +126,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
@@ -137,6 +141,8 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
@@ -300,6 +306,13 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException("Create index hasn't been supported yet");
       case DROP_INDEX:
         throw new QueryProcessException("Drop index hasn't been supported yet");
+      case KILL:
+        try {
+          operateKillQuery((KillQueryPlan) plan);
+        } catch (QueryIdNotExsitException e) {
+          throw new QueryProcessException(e.getMessage());
+        }
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -336,6 +349,32 @@ public class PlanExecutor implements IPlanExecutor {
     IoTDB.metaManager.createMTreeSnapshot();
   }
 
+  private void operateKillQuery(KillQueryPlan killQueryPlan) throws QueryIdNotExsitException {
+    QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+    long killQueryId = killQueryPlan.getQueryId();
+    if (killQueryId != -1) {
+      if (queryTimeManager.getQueryInfoMap().get(killQueryId) != null) {
+        queryTimeManager.getQueryInfoMap().computeIfPresent(killQueryId, (k, v) -> {
+          queryTimeManager.killQuery(k);
+          return null;
+        });
+      } else {
+        throw new QueryIdNotExsitException(String
+            .format("Query Id %d is not exist, please check it.", killQueryPlan.getQueryId()));
+      }
+    } else {
+      // if queryId is not specified, kill all running queries
+      if (!queryTimeManager.getQueryInfoMap().isEmpty()) {
+        synchronized (queryTimeManager.getQueryInfoMap()) {
+          List<Long> queryIdList = new ArrayList<>(queryTimeManager.getQueryInfoMap().keySet());
+          for (Long queryId : queryIdList) {
+            queryTimeManager.killQuery(queryId);
+          }
+        }
+      }
+    }
+  }
+
   private void operateTracing(TracingPlan plan) {
     IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
@@ -353,7 +392,7 @@ public class PlanExecutor implements IPlanExecutor {
         StringBuilder sb = new StringBuilder();
         noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
         throw new StorageGroupNotSetException(
-            sb.subSequence(0, sb.length() - 1).toString());
+            sb.subSequence(0, sb.length() - 1).toString(), true);
       }
     }
   }
@@ -459,6 +498,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodes((CountPlan) showPlan);
       case MERGE_STATUS:
         return processShowMergeStatus();
+      case QUERY_PROCESSLIST:
+        return processShowQueryProcesslist();
       case FUNCTIONS:
         return processShowFunctions((ShowFunctionsPlan) showPlan);
       default:
@@ -1163,7 +1204,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw new QueryProcessException("Unsupported operation " + authorType);
       }
     } catch (AuthException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new QueryProcessException(e.getMessage(), true);
     }
     return true;
   }
@@ -1313,7 +1354,7 @@ public class PlanExecutor implements IPlanExecutor {
         List<PartialPath> allRelatedStorageGroupPath = IoTDB.metaManager
             .getStorageGroupPaths(storageGroupPath);
         if (allRelatedStorageGroupPath.isEmpty()) {
-          throw new PathNotExistException(storageGroupPath.getFullPath());
+          throw new PathNotExistException(storageGroupPath.getFullPath(), true);
         }
         for (PartialPath path : allRelatedStorageGroupPath) {
           StorageEngine.getInstance().deleteStorageGroup(path);
@@ -1571,6 +1612,21 @@ public class PlanExecutor implements IPlanExecutor {
     record.addField(status.isCancelled(), TSDataType.BOOLEAN);
     record.addField(status.isDone(), TSDataType.BOOLEAN);
     return record;
+  }
+
+  private QueryDataSet processShowQueryProcesslist() {
+    ListDataSet listDataSet = new ListDataSet(Arrays
+        .asList(new PartialPath(QUERY_ID, false), new PartialPath(STATEMENT, false)),
+        Arrays.asList(TSDataType.INT64, TSDataType.TEXT));
+    QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+    for (Entry<Long, QueryInfo> queryInfo : queryTimeManager.getQueryInfoMap()
+        .entrySet()) {
+      RowRecord record = new RowRecord(queryInfo.getValue().getStartTime());
+      record.addField(queryInfo.getKey(), TSDataType.INT64);
+      record.addField(new Binary(queryInfo.getValue().getStatement()), TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    }
+    return listDataSet;
   }
 
   /**

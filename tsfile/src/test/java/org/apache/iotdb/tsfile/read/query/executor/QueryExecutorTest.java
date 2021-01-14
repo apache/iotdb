@@ -90,7 +90,6 @@ public class QueryExecutorTest {
     while (queryDataSet.hasNext()) {
       RowRecord rowRecord = queryDataSet.next();
       Assert.assertEquals(aimedTimestamp, rowRecord.getTimestamp());
-      System.out.println(rowRecord);
       aimedTimestamp += 8;
     }
     long endTimestamp = System.currentTimeMillis();

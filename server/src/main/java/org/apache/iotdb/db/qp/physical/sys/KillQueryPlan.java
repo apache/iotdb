@@ -15,22 +15,30 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.db.exception.query;
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import java.util.Date;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class KillQueryPlan extends PhysicalPlan {
 
-public class OutOfTTLException extends WriteProcessException {
+  private long queryId = -1;
 
-  private static final long serialVersionUID = -1197147887094603300L;
+  public KillQueryPlan(long queryId) {
+    super(false, OperatorType.KILL);
+    this.queryId = queryId;
+  }
 
-  public OutOfTTLException(long insertionTime, long timeLowerBound) {
-    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), true);
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
+
+  public long getQueryId() {
+    return queryId;
   }
 }

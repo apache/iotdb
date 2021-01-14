@@ -41,6 +41,9 @@ public class TypeInferenceUtils {
   }
 
   static boolean isNumber(String s) {
+    if (s == null || s.equals("NaN")) {
+      return false;
+    }
     try {
       Double.parseDouble(s);
     } catch (NumberFormatException e) {

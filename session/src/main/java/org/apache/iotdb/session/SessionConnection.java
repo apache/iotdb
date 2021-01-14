@@ -258,8 +258,14 @@ public class SessionConnection {
 
   protected SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+    return this.executeQueryStatement(sql, Config.DEFAULT_QUERY_TIMEOUT_MS);
+  }
+
+  protected SessionDataSet executeQueryStatement(String sql, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(session.fetchSize);
+    execReq.setTimeout(timeout);
     TSExecuteStatementResp execResp;
     try {
       execResp = client.executeQueryStatement(execReq);
@@ -282,8 +288,9 @@ public class SessionConnection {
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+        execResp.isIgnoreTimeStamp(), timeout);
   }
+
 
   protected void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {

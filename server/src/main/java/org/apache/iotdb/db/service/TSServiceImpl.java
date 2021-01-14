@@ -59,6 +59,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
@@ -79,9 +80,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -89,9 +90,11 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
@@ -200,6 +203,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public static final TSProtocolVersion CURRENT_RPC_VERSION = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
   private static final AtomicInteger queryCount = new AtomicInteger(0);
+
+  private QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
 
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
@@ -471,7 +476,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
-          req.fetchSize, sessionIdUsernameMap.get(req.getSessionId()))
+          req.fetchSize, req.timeout, sessionIdUsernameMap.get(req.getSessionId()))
           : executeUpdateStatement(physicalPlan, req.getSessionId());
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
@@ -492,7 +497,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
-          sessionIdUsernameMap.get(req.getSessionId()))
+          req.timeout, sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (Exception e) {
@@ -512,7 +517,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           .rawDataQueryReqToPhysicalPlan(req, sessionIdZoneIdMap.get(req.getSessionId()));
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement("", req.statementId, physicalPlan, req.fetchSize,
-          sessionIdUsernameMap.get(req.getSessionId()))
+          config.getQueryTimeThreshold(), sessionIdUsernameMap.get(req.getSessionId()))
           : RpcUtils.getTSExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR,
               "Statement is not a query statement.");
     } catch (Exception e) {
@@ -526,8 +531,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *             some AuthorPlan
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
-      long statementId, PhysicalPlan plan, int fetchSize, String username)
+  private TSExecuteStatementResp internalExecuteQueryStatement(String statement, long statementId,
+      PhysicalPlan plan, int fetchSize, long timeout, String username)
       throws QueryProcessException, SQLException, StorageEngineException, QueryFilterOptimizationException, MetadataException, IOException, InterruptedException, TException, AuthException {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug("Session {} execute Query: {}", currSessionId.get(), statement);
@@ -580,12 +585,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // generate the queryId for the operation
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      // register query info to queryTimeManager
+      if (!(plan instanceof ShowQueryProcesslistPlan)) {
+        queryTimeManager
+            .registerQuery(queryId, startTime, statement, timeout, Thread.currentThread());
+      }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+        TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
-          TracingManager.getInstance()
-              .writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
+          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
-          TracingManager.getInstance().writeQueryInfo(queryId, statement, startTime);
+          tracingManager.writeQueryInfo(queryId, statement, startTime);
         }
       }
 
@@ -612,7 +622,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       resp.setOperationType(plan.getOperatorType().toString());
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
-      } // else default ignoreTimeStamp is false
+      } else if (plan instanceof ShowQueryProcesslistPlan) {
+        resp.setIgnoreTimeStamp(false);
+      }
 
       if (newDataSet instanceof DirectNonAlignDataSet) {
         resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
@@ -637,6 +649,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
       }
 
+      // remove query info in QueryTimeManager
+      if (!(plan instanceof ShowQueryProcesslistPlan)) {
+        queryTimeManager.unRegisterQuery(queryId);
+      }
       return resp;
     } catch (Exception e) {
       releaseQueryResourceNoExceptions(queryId);
@@ -838,6 +854,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
       }
 
+      // register query info to queryTimeManager
+      queryTimeManager
+          .registerQuery(req.queryId, System.currentTimeMillis(), req.statement, req.timeout,
+              Thread.currentThread());
+
       QueryDataSet queryDataSet = queryId2DataSet.get(req.queryId);
       if (req.isAlign) {
         TSQueryDataSet result =
@@ -850,6 +871,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setHasResultSet(hasResultSet);
         resp.setQueryDataSet(result);
         resp.setIsAlign(true);
+
+        queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       } else {
         TSQueryNonAlignDataSet nonAlignResult =
@@ -869,6 +892,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setHasResultSet(hasResultSet);
         resp.setNonAlignQueryDataSet(nonAlignResult);
         resp.setIsAlign(false);
+
+        queryTimeManager.unRegisterQuery(req.queryId);
         return resp;
       }
     } catch (Exception e) {
@@ -889,9 +914,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, InterruptedException, IOException, QueryProcessException {
+      throws TException, AuthException, IOException, QueryProcessException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
-    return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+    try {
+      return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
   }
 
   private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
@@ -1582,7 +1613,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   private TSStatus tryCatchQueryException(Exception e) {
-    if (e instanceof ParseCancellationException) {
+    if (e instanceof QueryTimeoutRuntimeException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
+      // just recover the state of thread here
+      if (Thread.interrupted()) {
+        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn("Recover the state of the thread interrupted");
+      }
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
+    } else if (e instanceof ParseCancellationException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
       return RpcUtils
           .getStatus(TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e));
@@ -1617,7 +1655,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      LOGGER.warn(message, e);
+      if (((IoTDBException) e).isUserException()) {
+        LOGGER.warn(message + e.getMessage());
+      } else {
+        LOGGER.warn(message, e);
+      }
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
     return null;
@@ -1629,6 +1671,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         .format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
       LOGGER.error(message, e);
+    } else if (e instanceof UnSupportedDataTypeException) {
+      LOGGER.warn(e.getMessage());
     } else {
       LOGGER.warn(message, e);
     }

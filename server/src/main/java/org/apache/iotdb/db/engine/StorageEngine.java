@@ -83,7 +83,6 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -394,7 +393,6 @@ public class StorageEngine implements IService {
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
-    // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
@@ -430,7 +428,6 @@ public class StorageEngine implements IService {
           + "failed", insertTabletPlan.getDeviceId()), e);
     }
 
-    // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
     if (config.isEnableStatMonitor()) {
       updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
@@ -518,7 +515,7 @@ public class StorageEngine implements IService {
       throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath(), true);
     }
 
     logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
@@ -542,14 +539,6 @@ public class StorageEngine implements IService {
     } finally {
       processor.writeUnlock();
     }
-  }
-
-  /**
-   * update data.
-   */
-  public void update(String deviceId, String measurementId, long startTime, long endTime,
-      TSDataType type, String v) {
-    // TODO
   }
 
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
@@ -884,8 +873,9 @@ public class StorageEngine implements IService {
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
+          throw new WriteProcessRejectException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
