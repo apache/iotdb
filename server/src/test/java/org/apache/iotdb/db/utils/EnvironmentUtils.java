@@ -281,8 +281,8 @@ public class EnvironmentUtils {
       daemon.active();
     } else {
       activeDaemon();
-      StorageEngine.getInstance().recover();
     }
+    StorageEngine.getInstance().recover();
   }
 
   public static void restartDaemon() throws Exception {
