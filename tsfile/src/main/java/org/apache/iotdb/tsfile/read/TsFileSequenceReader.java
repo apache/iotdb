@@ -722,7 +722,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    *                      search)
    * @return target MetadataIndexEntry, endOffset pair
    */
-  private Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
+  protected Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
       String name, boolean isDeviceLevel, boolean exactSearch) throws IOException {
     try {
       // When searching for a device node, return when it is not INTERNAL_DEVICE

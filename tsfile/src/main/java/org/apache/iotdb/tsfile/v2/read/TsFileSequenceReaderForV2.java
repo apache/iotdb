@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.v2.read;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -184,6 +185,51 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
+  /**
+   * Find the leaf node that contains path, return all the sensors in that leaf node which are also
+   * in allSensors set
+   */
+  @SuppressWarnings("squid:S3776")
+  @Override
+  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
+      throws IOException {
+    readFileMetadata();
+    MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
+        deviceMetadataIndexNode, path.getDevice(), true, true);
+    if (metadataIndexPair == null) {
+      return null;
+    }
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
+    if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+      try {
+        metadataIndexNode = MetadataIndexNodeV2.deserializeFrom(buffer);
+      } catch (BufferOverflowException e) {
+        throw e;
+      }
+      metadataIndexPair = getMetadataAndEndOffset(metadataIndexNode,
+          path.getMeasurement(), false, false);
+    }
+    if (metadataIndexPair == null) {
+      return null;
+    }
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      TimeseriesMetadata timeseriesMetadata;
+      try {
+        timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
+      } catch (BufferOverflowException e) {
+        throw e;
+      }
+      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
+        timeseriesMetadataList.add(timeseriesMetadata);
+      }
+    }
+    return timeseriesMetadataList;
+  }
+  
   @SuppressWarnings("squid:S3776")
   @Override
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
