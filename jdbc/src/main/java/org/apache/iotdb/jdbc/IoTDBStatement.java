@@ -227,7 +227,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
-    execReq.setTimeout((long) queryTimeout * 1000);
+    execReq.setTimeout(1);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
