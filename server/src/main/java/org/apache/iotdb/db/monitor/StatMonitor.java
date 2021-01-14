@@ -82,6 +82,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
   }
 
   public void initMonitorSeriesInfo() {
+    globalSeries.clear();
     String[] globalMonitorSeries = MonitorConstants.STAT_GLOBAL_ARRAY;
     for (int i = 0; i < StatMeasurementConstants.values().length; i++) {
       PartialPath globalMonitorPath = new PartialPath(globalMonitorSeries)
