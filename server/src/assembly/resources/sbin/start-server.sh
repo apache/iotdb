@@ -68,13 +68,12 @@ classname=org.apache.iotdb.db.service.IoTDB
 launch_service()
 {
 	class="$1"
-	iotdb_parms="-Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
+	iotdb_parms="$iotdb_parms -Dlogback.configurationFile=${IOTDB_CONF}/logback.xml"
 	iotdb_parms="$iotdb_parms -DIOTDB_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -DTSFILE_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	iotdb_parms="$iotdb_parms --add-exports java.base/jdk.internal.ref=ALL-UNNAMED"
 	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH"  "$class" $CONF_PARAMS
 	return $?
 }

@@ -90,8 +90,7 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"^
- --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
+ -DIOTDB_CONF="%IOTDB_CONF%"
 
 
 @REM ***** CLASSPATH library setting *****
