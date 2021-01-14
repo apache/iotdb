@@ -133,7 +133,7 @@ public class MergeMultiChunkTask {
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
       double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
-      if (newProgress - progress >= 1.0) {
+      if (newProgress - progress >= 10.0) {
         progress = newProgress;
         logger.info("{} has merged {}% series", taskName, progress);
       }

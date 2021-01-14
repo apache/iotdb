@@ -174,6 +174,7 @@ public class Planner {
       case SHOW_MERGE_STATUS:
       case DELETE_PARTITION:
       case CREATE_SCHEMA_SNAPSHOT:
+      case KILL:
       case CREATE_FUNCTION:
       case DROP_FUNCTION:
         return operator;

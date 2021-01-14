@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -55,6 +55,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
+import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -99,6 +100,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -112,11 +114,12 @@ import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -279,6 +282,8 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_CHILD_PATHS:
             return new ShowChildPathsPlan(
                 ShowContentType.CHILD_PATH, ((ShowChildPathsOperator) operator).getPath());
+          case SQLConstant.TOK_QUERY_PROCESSLIST:
+            return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
           case SQLConstant.TOK_SHOW_FUNCTIONS:
             return new ShowFunctionsPlan(((ShowFunctionsOperator) operator).showTemporary());
           default:
@@ -305,6 +310,8 @@ public class PhysicalGenerator {
         return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
+      case KILL:
+        return new KillQueryPlan(((KillQueryOperator) operator).getQueryId());
       case CREATE_FUNCTION:
         CreateFunctionOperator createFunctionOperator = (CreateFunctionOperator) operator;
         return new CreateFunctionPlan(createFunctionOperator.isTemporary(),

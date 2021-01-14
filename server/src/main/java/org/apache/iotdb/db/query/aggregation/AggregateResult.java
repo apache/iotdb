@@ -72,7 +72,8 @@ public abstract class AggregateResult {
    *
    * @param dataInThisPage the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
+  public abstract void updateResultFromPageData(BatchData dataInThisPage)
+      throws IOException, QueryProcessException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page

@@ -15,22 +15,28 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.db.exception.query;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-import java.util.Date;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.rpc.TSStatusCode;
+public class KillQueryOperator extends RootOperator {
+  long queryId = -1;
 
-public class OutOfTTLException extends WriteProcessException {
+  public KillQueryOperator(int tokenIntType) {
+    this(tokenIntType, OperatorType.KILL);
+  }
 
-  private static final long serialVersionUID = -1197147887094603300L;
+  public KillQueryOperator(int tokenIntType, OperatorType operatorType) {
+    super(tokenIntType);
+    this.operatorType = operatorType;
+  }
 
-  public OutOfTTLException(long insertionTime, long timeLowerBound) {
-    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), true);
+  public void setQueryId(long queryId) {
+    this.queryId = queryId;
+  }
+
+  public long getQueryId() {
+    return queryId;
   }
 }
