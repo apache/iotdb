@@ -1228,10 +1228,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   public void parseFillClause(FillClauseContext ctx, FillQueryOperator queryOp) {
-    FilterOperator filterOperator = queryOp.getFilterOperator();
-    if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
-      throw new SQLParserException("Only \"=\" can be used in fill function");
-    }
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {

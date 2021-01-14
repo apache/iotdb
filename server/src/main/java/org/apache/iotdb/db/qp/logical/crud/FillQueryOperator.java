@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -49,6 +50,10 @@ public class FillQueryOperator extends QueryOperator {
   public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
     if (hasUdf()) {
       throw new QueryProcessException("Fill functions are not supported in UDF queries.");
+    }
+    FilterOperator filterOperator = getFilterOperator();
+    if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
+      throw new SQLParserException("Only \"=\" can be used in fill function");
     }
     FillQueryPlan plan = new FillQueryPlan();
     FilterOperator timeFilter = getFilterOperator();

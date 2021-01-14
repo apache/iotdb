@@ -44,8 +44,14 @@ public class GroupByLevelQueryOperator extends GroupByQueryOperator {
 
   @Override
   public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
-    GroupByTimePlan plan = new GroupByTimePlan();
-    super.convert(plan);
+    AggregationPlan plan;
+    if (getUnit() > 0) {
+      plan = new GroupByTimePlan();
+      super.convert((GroupByTimePlan) plan);
+    } else {
+      plan = new AggregationPlan();
+      super.convert(plan);
+    }
     plan.setLevel(getLevel());
     try {
       if (!verifyAllAggregationDataTypesEqual(this)) {
