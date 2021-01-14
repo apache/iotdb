@@ -38,10 +38,6 @@ public class TimeSelector {
     lastTime = Long.MIN_VALUE;
   }
 
-  public int size() {
-    return heapSize;
-  }
-
   public boolean isEmpty() {
     while (heapSize != 0 && timeHeap[0] == lastTime) {
       timeHeap[0] = timeHeap[heapSize - 1];
@@ -108,7 +104,7 @@ public class TimeSelector {
   }
 
   private void percolateDown(int index, long element) {
-    if (index == heapSize) {
+    if (index == heapSize - 1) {
       return;
     }
 
@@ -141,8 +137,13 @@ public class TimeSelector {
     } else if (heapSize <= rightChildIndex) {
       smallerChildIndex = leftChildIndex;
     } else {
-      smallerChildIndex = timeHeap[leftChildIndex] < timeHeap[rightChildIndex]
-          ? leftChildIndex : rightChildIndex;
+      if (ascending) {
+        smallerChildIndex = timeHeap[leftChildIndex] < timeHeap[rightChildIndex]
+            ? leftChildIndex : rightChildIndex;
+      } else {
+        smallerChildIndex = timeHeap[leftChildIndex] < timeHeap[rightChildIndex]
+            ? rightChildIndex : leftChildIndex;
+      }
     }
     return smallerChildIndex;
   }
