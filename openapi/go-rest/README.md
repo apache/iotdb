@@ -39,8 +39,8 @@ To see how to make this your own, look here:
 
 1. run `mvn generate-sources` under the `openapi` module
 2. go to `go-rest` module, fix issues that current openapi-generator causes:
-  1. `"mime/multipart"` is forget to be imported in `router.go`
-  2. `github.com/gorilla/mux` should not be imported in `api_default.go` file.
+  1. `"mime/multipart"` is forget to be imported in `router.go` (target/gen/iotdbrest/router.go)
+  2. `github.com/gorilla/mux` should not be imported in `api_default.go` file. (target/gen/iotdbrest/api_default.go)
 
 ### Running the server
 To run the server, follow these simple steps:
