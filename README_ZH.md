@@ -93,11 +93,21 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 从二进制文件安装。推荐的方法是从官方网站下载二进制文件，您将获得一个开箱即用的二进制发布包。
 
-* 使用Docker: dockerfile的路径是https://github.com/apache/incubat-iotdb/tree/master/docker/src/main
+* 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
 在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅《用户指南》第3章。
 
 ## 从源码构建
+
+如果您使用Windows，请跳过此段。我们使用Thrift作为RPC模块来提供客户端-服务器间的通信和协议支持，因此在编译阶段我们需要使用Thrift 0.13.0
+（或更高）编译器生成对应的Java代码。Thrift只提供了Windows下的二进制编译器，Unix下需要通过源码自行编译。但我们预先编译了一个Thrift编译器，并将其上传到了GitHub
+，借助一个Maven插件，在编译时可以自动将其下载。该预编译的Thrift编译器在gcc8，Ubuntu, CentOS, MacOS下可以工作，但是在更低的gcc
+版本以及其他操作系统上尚未确认。如果您在编译时发现了Thrift编译器相关的问题，请升级您的gcc版本或者依照Thrift
+官方的指示自行编译编译器，并将编译器放置到目录`{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`。
+如果您已经安装了一个兼容的Thrift编译器，您可以在运行Maven时通过以下参数指定使用您的编译器：`-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`。
+您也可以使用以下Maven参数来更换Thrift编译器的下载地址：`-Dthrift.download-url=<THE REMOTE URL FOR DOWNLOADING> -Dthrift.exec.absolute.path=<THE DOWNLOADED BINARY FILE NAME>`。
+如果您对Maven足够熟悉，您也可以直接修改我们的根pom文件来避免每次编译都使用上述参数。
+Thrift官方网址为：https://thrift.apache.org/
 
 从 git 克隆源代码:
 
@@ -117,7 +127,7 @@ git checkout release/x.x.x
 > mvn clean package -DskipTests
 ```
 
-执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
+执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
 > 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
 

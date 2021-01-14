@@ -77,8 +77,10 @@ statement
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
-    | SHOW DEVICES prefixPath? #showDevices
+    | SHOW DEVICES prefixPath? limitClause? #showDevices
     | SHOW MERGE #showMergeStatus
+    | SHOW QUERY PROCESSLIST #showQueryProcesslist
+    | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
@@ -713,6 +715,19 @@ SELECT
 SHOW
     : S H O W
     ;
+
+QUERY
+    : Q U E R Y
+    ;
+
+KILL
+    : K I L L
+    ;
+
+PROCESSLIST
+    : P R O C E S S L I S T
+    ;
+
 
 GRANT
     : G R A N T

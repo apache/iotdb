@@ -149,11 +149,11 @@ public class Session {
   }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, Config.DEFAULT_TIMEOUT_MS);
+    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, Config.DEFAULT_TIMEOUT_MS);
+    open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -317,7 +317,7 @@ public class Session {
   }
 
   /**
-   * execure query sql
+   * execute query sql
    *
    * @param sql query statement
    * @return result set
@@ -325,6 +325,21 @@ public class Session {
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     return defaultSessionConnection.executeQueryStatement(sql);
+  }
+
+  /**
+   * execute query sql with explicit timeout
+   *
+   * @param sql query statement
+   * @param timeout the timeout of this query, in milliseconds
+   * @return result set
+   */
+  public SessionDataSet executeQueryStatement(String sql, long timeout)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (timeout <= 0) {
+      throw new StatementExecutionException("Timeout must be over 0, please check and try again.");
+    }
+    return defaultSessionConnection.executeQueryStatement(sql, timeout);
   }
 
   /**
@@ -661,19 +676,17 @@ public class Session {
     } else {
       //sort
       Integer[] index = new Integer[times.size()];
-      Integer[] index2 = new Integer[times.size()];
       for (int i = 0; i < times.size(); i++) {
-        index2[i] = index[i] = i;
+        index[i] = i;
       }
       Arrays.sort(index, Comparator.comparingLong(times::get));
-      Arrays.sort(index2, Comparator.comparingInt(x -> index[x]));
       times.sort(Long::compareTo);
       //sort measurementList
-      measurementsList = sortList(measurementsList, index2);
+      measurementsList = sortList(measurementsList, index);
       //sort typesList
-      typesList = sortList(typesList, index2);
+      typesList = sortList(typesList, index);
       //sort values
-      valuesList = sortList(valuesList, index2);
+      valuesList = sortList(valuesList, index);
     }
 
     TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
@@ -689,7 +702,7 @@ public class Session {
   private List sortList(List source, Integer[] index) {
     Object[] result = new Object[source.size()];
     for (int i = 0; i < index.length; i++) {
-      result[index[i]] = source.get(i);
+      result[i] = source.get(index[i]);
     }
     return Arrays.asList(result);
   }
