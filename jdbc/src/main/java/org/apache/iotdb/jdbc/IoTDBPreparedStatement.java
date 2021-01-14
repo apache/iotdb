@@ -44,12 +44,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedStatement {
 
   private String sql;
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBPreparedStatement.class);
 
   /**
    * save the SQL parameters as (paramLoc,paramValue) pairs.
@@ -448,8 +450,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
     StringBuilder newSql = new StringBuilder(parts.get(0));
     for (int i = 1; i < parts.size(); i++) {
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("SQL {}",sql);
-      LoggerFactory.getLogger(IoTDBPreparedStatement.class).debug("parameters {}",parameters.size());
+      if (logger.isDebugEnabled()) {
+        logger.debug("SQL {}",sql);
+        logger.debug("parameters {}",parameters.size());
+      }
       if (!parameters.containsKey(i)) {
         throw new SQLException("Parameter #" + i + " is unset");
       }

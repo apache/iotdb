@@ -54,7 +54,6 @@ public class SeriesReaderTest {
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
-
   @Before
   public void setUp() throws MetadataException, PathException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
@@ -128,7 +127,6 @@ public class SeriesReaderTest {
       e.printStackTrace();
       fail();
     }
-
   }
 
   @Test
@@ -159,6 +157,5 @@ public class SeriesReaderTest {
       e.printStackTrace();
       fail();
     }
-
   }
 }

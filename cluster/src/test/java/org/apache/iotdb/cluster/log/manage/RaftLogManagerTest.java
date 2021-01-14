@@ -86,13 +86,12 @@ public class RaftLogManagerTest {
   private LogApplier logApplier = new TestLogApplier() {
     @Override
     public void apply(Log log) {
-      new Thread(() -> {
-        while (blocked) {
-          // stuck
-        }
-        appliedLogs.put(log.getCurrLogIndex(), log);
-        log.setApplied(true);
-      }).start();
+      if (blocked) {
+        return;
+      }
+      // make sure the log is applied when not blocked
+      appliedLogs.put(log.getCurrLogIndex(), log);
+      log.setApplied(true);
     }
   };
   private int testIdentifier = 1;
@@ -154,10 +153,9 @@ public class RaftLogManagerTest {
       instance.append(logs.subList(0, 50));
       instance.commitTo(49);
 
-      blocked = true;
       instance.setBlockAppliedCommitIndex(99);
       instance.append(logs.subList(50, 100));
-      instance.commitTo(99);
+      instance.commitTo(98);
 
       try {
         // applier is blocked, so this should time out
@@ -167,6 +165,7 @@ public class RaftLogManagerTest {
         assertEquals("wait all log applied time out", e.getMessage());
       }
       blocked = false;
+      instance.commitTo(99);
       // applier is unblocked, BlockAppliedCommitIndex should be soon reached
       ClusterDescriptor.getInstance().getConfig().setCatchUpTimeoutMS(60_000);
       instance.takeSnapshot();
@@ -750,16 +749,14 @@ public class RaftLogManagerTest {
 
     try {
       instance.append(logs.subList(0, 10));
-      blocked = true;
       instance.commitTo(10);
       instance.setBlockAppliedCommitIndex(9);
 
+      blocked = false;
       // as [0, 10) are blocked and we require a block index of 9, [10, 20) should be added to the
       // blocked list
       instance.append(logs.subList(10, 20));
       instance.commitTo(20);
-
-      blocked = false;
       while (instance.getMaxHaveAppliedCommitIndex() < 9) {
         // wait until [0, 10) are applied
       }
@@ -1342,7 +1339,6 @@ public class RaftLogManagerTest {
     } finally {
       raftLogManager.close();
     }
-
   }
 
   @Test

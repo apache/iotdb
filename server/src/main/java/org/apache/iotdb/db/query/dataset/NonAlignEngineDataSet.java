@@ -28,6 +28,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -68,6 +69,10 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
       PublicBAOS timeBAOS = new PublicBAOS();
       PublicBAOS valueBAOS = new PublicBAOS();
       try {
+        if (interrupted) {
+          // nothing is put here since before reading it the main thread will return
+          return;
+        }
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue
           // so here we don't need to check whether the queue has free space
@@ -189,6 +194,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
         }
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+        interrupted = true;
         Thread.currentThread().interrupt();
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
@@ -226,6 +232,11 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  /**
+   * flag that main thread is interrupted or not
+   */
+  private volatile boolean interrupted = false;
+
   private static final QueryTaskPoolManager pool = QueryTaskPoolManager.getInstance();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NonAlignEngineDataSet.class);
@@ -258,6 +269,11 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   private void init(WatermarkEncoder encoder, int fetchSize) {
+    if (Thread.interrupted()) {
+      interrupted = true;
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
     initLimit(super.rowOffset, super.rowLimit, seriesReaderWithoutValueFilterList.size());
     this.fetchSize = fetchSize;
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -286,6 +302,12 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
+        // check the interrupted status of main thread before take next batch
+        if (Thread.interrupted()) {
+          interrupted = true;
+          throw new QueryTimeoutRuntimeException(
+              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+        }
         Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
             .take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {

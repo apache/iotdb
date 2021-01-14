@@ -30,7 +30,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class IoTDBDataDirViewer {
@@ -138,7 +138,7 @@ public class IoTDBDataDirViewer {
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     resource.deserialize();
     // sort device strings
-    SortedSet<String> keys = new TreeSet<>(resource.getDeviceToIndexMap().keySet());
+    SortedSet<String> keys = new TreeSet<>(resource.getDevices());
     for (String device : keys) {
       printlnBoth(pw,
           String.format("|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,

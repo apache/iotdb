@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
@@ -81,13 +82,12 @@ public class AvgAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
         break;
@@ -108,7 +108,7 @@ public class AvgAggrResult extends AggregateResult {
     }
   }
 
-  private void updateAvg(TSDataType type, Object sumVal) throws IOException {
+  private void updateAvg(TSDataType type, Object sumVal) throws UnSupportedDataTypeException {
     double val;
     switch (type) {
       case INT32:
@@ -126,7 +126,7 @@ public class AvgAggrResult extends AggregateResult {
       case TEXT:
       case BOOLEAN:
       default:
-        throw new IOException(
+        throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", type));
     }
     avg = avg * ((double) cnt / (cnt + 1)) + val * (1.0 / (cnt + 1));
