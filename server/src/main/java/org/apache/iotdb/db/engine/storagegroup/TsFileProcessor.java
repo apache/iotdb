@@ -22,10 +22,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -402,6 +404,7 @@ public class TsFileProcessor {
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       if (!flushingMemTables.isEmpty()) {
+        logger.warn("{}", modsToMemtable);
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
     } finally {
@@ -752,12 +755,15 @@ public class TsFileProcessor {
     }
 
     try {
-      for (Pair<Modification, IMemTable> entry : modsToMemtable) {
+      Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
+      logger.warn("{}", modsToMemtable);
+      while(iterator.hasNext()){
+        Pair<Modification, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
           entry.left.setFileOffset(tsFileResource.getTsFileSize());
           this.tsFileResource.getModFile().write(entry.left);
           tsFileResource.getModFile().close();
-          modsToMemtable.remove(entry);
+          iterator.remove();
         }
       }
     } catch (IOException e) {
@@ -911,11 +917,8 @@ public class TsFileProcessor {
     List<Modification> modifications = new ArrayList<>();
     boolean foundMemtable = false;
     for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable && !entry.right.equals(memTable)) {
-        break;
-      }
-      modifications.add(entry.left);
-      if (entry.right.equals(memTable)) {
+      if (foundMemtable || entry.right.equals(memTable)) {
+        modifications.add(entry.left);
         foundMemtable = true;
       }
     }
