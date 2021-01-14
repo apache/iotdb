@@ -28,14 +28,8 @@ import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
 import org.apache.iotdb.openapi.gen.model.InlineResponse200;
 import org.apache.iotdb.openapi.gen.model.InlineResponse2001;
 import java.util.List;
-import java.util.Set;
-
-import java.util.List;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 
-import java.io.InputStream;
-
-import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;

@@ -27,34 +27,34 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>java-rest</artifactId>
+    <packaging>war</packaging>
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
-<!--    <build>-->
-<!--        <plugins>-->
-<!--            <plugin>-->
-<!--                <groupId>org.codehaus.mojo</groupId>-->
-<!--                <artifactId>build-helper-maven-plugin</artifactId>-->
-<!--                <version>1.4</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>add-java-rest-source</id>-->
-<!--                        <phase>generate-sources</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>add-source</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <sources>-->
-<!--                                <source>${project.basedir}/../target/generated-sources/java/src/gen/java</source>-->
-<!--                            </sources>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
-<!--        </plugins>-->
-<!--    </build>-->
-
+    <!--    <build>-->
+    <!--        <plugins>-->
+    <!--            <plugin>-->
+    <!--                <groupId>org.codehaus.mojo</groupId>-->
+    <!--                <artifactId>build-helper-maven-plugin</artifactId>-->
+    <!--                <version>1.4</version>-->
+    <!--                <executions>-->
+    <!--                    <execution>-->
+    <!--                        <id>add-java-rest-source</id>-->
+    <!--                        <phase>generate-sources</phase>-->
+    <!--                        <goals>-->
+    <!--                            <goal>add-source</goal>-->
+    <!--                        </goals>-->
+    <!--                        <configuration>-->
+    <!--                            <sources>-->
+    <!--                                <source>${project.basedir}/../target/generated-sources/java/src/gen/java</source>-->
+    <!--                            </sources>-->
+    <!--                        </configuration>-->
+    <!--                    </execution>-->
+    <!--                </executions>-->
+    <!--            </plugin>-->
+    <!--        </plugins>-->
+    <!--    </build>-->
     <profiles>
         <profile>
             <id>java-rest-pom-by-openapi</id>
@@ -67,7 +67,7 @@
             <properties>
                 <swagger-core-version>1.5.18</swagger-core-version>
                 <beanvalidation-version>1.1.0.Final</beanvalidation-version>
-                <jetty-version>9.2.9.v20150224</jetty-version>
+                <jetty-version>${jetty.version}</jetty-version>
                 <jersey2-version>2.22.2</jersey2-version>
                 <jackson-version>${jackson.version}</jackson-version>
                 <junit-version>${junit.version}</junit-version>
@@ -206,8 +206,6 @@
                     <artifactId>migbase64</artifactId>
                     <version>2.2</version>
                 </dependency>
-
-
                 <!-- Bean Validation API support -->
                 <dependency>
                     <groupId>javax.validation</groupId>
@@ -215,11 +213,18 @@
                     <version>${beanvalidation-version}</version>
                     <scope>provided</scope>
                 </dependency>
-
+                <!-- -->
+                <!--                <dependency>-->
+                <!--                    <groupId>org.glassfish.jersey.containers</groupId>-->
+                <!--                    <artifactId>jersey-container-servlet-core</artifactId>-->
+                <!--                    <version>${jersey2-version}</version>-->
+                <!--                </dependency>-->
+                <!--                <dependency>-->
+                <!--                    <groupId>org.glassfish.jersey.media</groupId>-->
+                <!--                    <artifactId>jersey-media-multipart</artifactId>-->
+                <!--                    <version>${jersey2-version}</version>-->
+                <!--                </dependency>-->
             </dependencies>
-
-
         </profile>
     </profiles>
-
 </project>

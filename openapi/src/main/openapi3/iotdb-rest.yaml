@@ -7,13 +7,29 @@ info:
     name: Apache 2.0
   version: 1.0.0
 servers:
-- url: https://virtserver.swaggerhub.com/jixuan1989/iotdb/1.0.0
-  description: SwaggerHub API Auto Mocking
 - url: http://localhost:5667
   description: api
 security:
 - basic: []
 paths:
+  /ping:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      security:
+        - basic: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+              examples:
+                example-1:
+                  value: OK
+      operationId: tryPing
+      description: Just for checking whether the server works
   /v1/grafana/query/frame:
     post:
       summary: Serve for queries from Grafana
