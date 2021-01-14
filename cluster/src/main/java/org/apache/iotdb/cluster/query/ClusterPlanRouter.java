@@ -206,9 +206,8 @@ public class ClusterPlanRouter {
             insertMultiTabletPlan = new InsertMultiTabletPlan(
                 insertTabletPlanList, parentInsetTablePlanIndexList);
 
-            // 2.4 put the sgPathPlanMap to the pgSgPathPlanMap
+            // 2.4 put the insertMultiTabletPlan to the tmpSgPath
             sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
-            pgSgPathPlanMap.put(tmpPg, sgPathPlanMap);
           } else {
             // 2.5 just add the tmpPlan to the insertMultiTabletPlan
             insertMultiTabletPlan.addInsertTabletPlan(tmpPlan, i);
