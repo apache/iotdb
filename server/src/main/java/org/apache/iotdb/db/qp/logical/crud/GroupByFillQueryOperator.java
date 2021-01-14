@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class GroupByFillQueryOperator extends GroupByQueryOperator {
+
+  private Map<TSDataType, IFill> fillTypes;
 
 
   @Override
@@ -38,5 +43,13 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
       }
     }
     return plan;
+  }
+
+  public Map<TSDataType, IFill> getFillTypes() {
+    return fillTypes;
+  }
+
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
+    this.fillTypes = fillTypes;
   }
 }

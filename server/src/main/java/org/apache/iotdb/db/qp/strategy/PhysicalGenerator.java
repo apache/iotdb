@@ -45,7 +45,6 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -129,11 +128,9 @@ public class PhysicalGenerator {
       throws QueryProcessException {
     QueryPlan queryPlan;
 
-    if (queryOperator.hasAggregation()) {
-      if (queryOperator.hasUdf()) {
-        throw new QueryProcessException(
-            "User-defined and built-in hybrid aggregation is not supported.");
-      }
+    if (queryOperator.hasAggregation() && queryOperator.hasUdf()) {
+      throw new QueryProcessException(
+          "User-defined and built-in hybrid aggregation is not supported.");
     }
     queryPlan = (QueryPlan) queryOperator.convert(fetchSize);
 

@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 
-public class GroupByQueryOperator extends FillQueryOperator {
+public class GroupByQueryOperator extends QueryOperator {
 
   // time interval
   private long unit;
@@ -34,6 +35,7 @@ public class GroupByQueryOperator extends FillQueryOperator {
 
 
   public GroupByQueryOperator() {
+    super(SQLConstant.TOK_QUERY);
   }
 
   @Override

@@ -41,8 +41,7 @@ public class FillQueryOperator extends QueryOperator {
     return fillTypes;
   }
 
-  public void setFillTypes(
-      Map<TSDataType, IFill> fillTypes) {
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
     this.fillTypes = fillTypes;
   }
 
