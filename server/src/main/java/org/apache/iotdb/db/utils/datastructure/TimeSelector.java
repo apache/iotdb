@@ -23,6 +23,8 @@ import java.util.Arrays;
 
 public class TimeSelector {
 
+  private static final int MIN_DEFAULT_CAPACITY = 8;
+
   private final boolean ascending;
 
   private long[] timeHeap;
@@ -31,7 +33,7 @@ public class TimeSelector {
 
   public TimeSelector(int defaultCapacity, boolean isAscending) {
     this.ascending = isAscending;
-    timeHeap = new long[defaultCapacity];
+    timeHeap = new long[Math.max(defaultCapacity, MIN_DEFAULT_CAPACITY)];
     heapSize = 0;
     lastTime = Long.MIN_VALUE;
   }
