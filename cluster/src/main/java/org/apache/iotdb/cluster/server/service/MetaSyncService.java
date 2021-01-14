@@ -195,4 +195,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     removeNodeLog.deserialize(removeNodeLogBuffer);
     metaGroupMember.applyRemoveNode(removeNodeLog);
   }
+
+  @Override
+  public void handshake(Node sender) {
+    metaGroupMember.handleHandshake(sender);
+  }
 }

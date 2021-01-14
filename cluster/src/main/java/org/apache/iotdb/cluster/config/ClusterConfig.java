@@ -20,6 +20,8 @@ package org.apache.iotdb.cluster.config;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.iotdb.cluster.utils.ClusterConsistent;
 
 public class ClusterConfig {
@@ -56,13 +58,13 @@ public class ClusterConfig {
 
   private boolean useAsyncApplier = true;
 
-  private int connectionTimeoutInMS = 20_1000;
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
-  private int readOperationTimeoutMS = 30_000;
+  private int readOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int writeOperationTimeoutMS = 30_000;
+  private int writeOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
-  private int catchUpTimeoutMS = 60_000;
+  private int catchUpTimeoutMS = (int) TimeUnit.SECONDS.toMillis(60);
 
   private boolean useBatchInLogCatchUp = true;
 
@@ -120,9 +122,9 @@ public class ClusterConfig {
    */
   private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
 
-  private long joinClusterTimeOutMs = 5000L;
+  private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
-  private int pullSnapshotRetryIntervalMs = 5 * 1000;
+  private int pullSnapshotRetryIntervalMs = (int) TimeUnit.SECONDS.toMillis(5);
 
   /**
    * The maximum value of the raft log index stored in the memory per raft group, These indexes are

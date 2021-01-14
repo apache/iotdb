@@ -38,6 +38,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -116,7 +118,7 @@ public class RemoteSeriesReaderByTimestampTest {
   private MetaGroupMember metaGroupMember = new MetaGroupMember();
 
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, StorageEngineException {
     PartitionGroup group = new PartitionGroup();
     group.add(TestUtils.getNode(0));
     group.add(TestUtils.getNode(1));
@@ -125,20 +127,24 @@ public class RemoteSeriesReaderByTimestampTest {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     RemoteQueryContext context = new RemoteQueryContext(1);
 
-    DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-        request, context, metaGroupMember, group);
-    sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
+    try {
+      DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
+          request, context, metaGroupMember, group);
+      sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
 
-    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
+      RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
 
-    for (int i = 0; i < 100; i++) {
-      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+      for (int i = 0; i < 100; i++) {
+        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+      }
+      assertNull(reader.getValueInTimestamp(101));
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-    assertNull(reader.getValueInTimestamp(101));
   }
 
   @Test
-  public void testFailedNode() throws IOException {
+  public void testFailedNode() throws IOException, StorageEngineException {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     PartitionGroup group = new PartitionGroup();
     group.add(TestUtils.getNode(0));
@@ -148,55 +154,59 @@ public class RemoteSeriesReaderByTimestampTest {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     RemoteQueryContext context = new RemoteQueryContext(1);
 
-    DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
-        request, context, metaGroupMember, group);
-    long startTime = System.currentTimeMillis();
-    sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
-    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
-
-    long endTime = System.currentTimeMillis();
-    System.out.println(
-        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
-            - startTime));
-    // normal read
-    assertEquals(TestUtils.getNode(0), sourceInfo.getCurrentNode());
-    for (int i = 0; i < 50; i++) {
-      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
-    }
-
-    endTime = System.currentTimeMillis();
-    System.out.println(
-        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
-            - startTime));
-    failedNodes.add(TestUtils.getNode(0));
-    for (int i = 50; i < 80; i++) {
-      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
-    }
-    assertEquals(TestUtils.getNode(1), sourceInfo.getCurrentNode());
-
-    // a bad client, change to another node again
-    failedNodes.add(TestUtils.getNode(1));
-    for (int i = 80; i < 90; i++) {
-      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
-    }
-    assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
-
-    endTime = System.currentTimeMillis();
-    System.out.println(
-        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
-            - startTime));
-    // all node failed
-    failedNodes.add(TestUtils.getNode(2));
-
     try {
-      reader.getValueInTimestamp(90);
-      fail();
-    } catch (IOException e) {
-      assertEquals("no available client.", e.getMessage());
+      DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
+          request, context, metaGroupMember, group);
+      long startTime = System.currentTimeMillis();
+      sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
+      RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
+
+      long endTime = System.currentTimeMillis();
+      System.out.println(
+          Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+              - startTime));
+      // normal read
+      assertEquals(TestUtils.getNode(0), sourceInfo.getCurrentNode());
+      for (int i = 0; i < 50; i++) {
+        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+      }
+
+      endTime = System.currentTimeMillis();
+      System.out.println(
+          Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+              - startTime));
+      failedNodes.add(TestUtils.getNode(0));
+      for (int i = 50; i < 80; i++) {
+        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+      }
+      assertEquals(TestUtils.getNode(1), sourceInfo.getCurrentNode());
+
+      // a bad client, change to another node again
+      failedNodes.add(TestUtils.getNode(1));
+      for (int i = 80; i < 90; i++) {
+        assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+      }
+      assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
+
+      endTime = System.currentTimeMillis();
+      System.out.println(
+          Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+              - startTime));
+      // all node failed
+      failedNodes.add(TestUtils.getNode(2));
+
+      try {
+        reader.getValueInTimestamp(90);
+        fail();
+      } catch (IOException e) {
+        assertEquals("no available client.", e.getMessage());
+      }
+      endTime = System.currentTimeMillis();
+      System.out.println(
+          Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
+              - startTime));
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-    endTime = System.currentTimeMillis();
-    System.out.println(
-        Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime
-            - startTime));
   }
 }

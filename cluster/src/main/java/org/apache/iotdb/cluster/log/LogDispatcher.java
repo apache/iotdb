@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log;
 
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -27,8 +28,8 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.server.Peer;
-import org.apache.iotdb.cluster.server.Timer;
+import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -53,8 +54,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * A LogDispatcher servers a raft leader by queuing logs that the leader wants to send to the
- * follower and send the logs in an ordered manner so that the followers will not wait for previous
+ * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
+ * followers and send the logs in an ordered manner so that the followers will not wait for previous
  * logs for too long. For example: if the leader send 3 logs, log1, log2, log3, concurrently to
  * follower A, the actual reach order may be log3, log2, and log1. According to the protocol, log3
  * and log2 must halt until log1 reaches, as a result, the total delay may increase significantly.
@@ -68,12 +69,13 @@ public class LogDispatcher {
   private List<BlockingQueue<SendLogRequest>> nodeLogQueues =
       new ArrayList<>();
   private ExecutorService executorService;
-  private ExecutorService serializationService;
+  private static ExecutorService serializationService =
+      Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors(),
+          new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
     executorService = Executors.newCachedThreadPool();
-    serializationService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     for (Node node : member.getAllNodes()) {
       if (!node.equals(member.getThisNode())) {
         nodeLogQueues.add(createQueueAndBindingThread(node));
@@ -85,8 +87,6 @@ public class LogDispatcher {
   public void close() throws InterruptedException {
     executorService.shutdownNow();
     executorService.awaitTermination(10, TimeUnit.SECONDS);
-    serializationService.shutdownNow();
-    serializationService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
   public void offer(SendLogRequest log) {

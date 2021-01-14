@@ -28,6 +28,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -45,7 +46,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
     }
@@ -59,7 +60,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,1.0)");
     }
 
@@ -72,7 +73,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1.0)");
 
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
@@ -104,7 +105,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
@@ -119,7 +120,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("delete from root.turbine.d1.s1 where time<=1");
 
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
@@ -143,7 +144,7 @@ public class IoTDBRestartIT {
         hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
         assertTrue(hasResultSet);
         exp = new String[]{
-                "3,3.0"
+            "3,3.0"
         };
         resultSet = statement.getResultSet();
         cnt = 0;
@@ -169,7 +170,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
@@ -228,7 +229,7 @@ public class IoTDBRestartIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
@@ -284,22 +285,22 @@ public class IoTDBRestartIT {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try(Connection connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
       statement.execute("delete timeseries root.turbine1.d1.s1");
-      statement.execute("create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
 
     EnvironmentUtils.restartDaemon();
 
-
-    try(Connection connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select * from root");
       assertTrue(hasResultSet);
@@ -319,21 +320,20 @@ public class IoTDBRestartIT {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
-    try(Connection connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
       statement.execute("insert into root.turbine1.d1(timestamp,s1,s2) values(1,1.1,2.2)");
       statement.execute("delete timeseries root.turbine1.d1.s1");
     }
 
     EnvironmentUtils.restartDaemon();
 
-
-    try(Connection connection = DriverManager
+    try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement()){
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select * from root");
       assertTrue(hasResultSet);
@@ -375,6 +375,8 @@ public class IoTDBRestartIT {
     }
 
     try {
+      CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
+      Thread.sleep(10000);
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
       Assert.fail();

@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.cli.utils.IoTPrinter.computeHANCount;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printBlockLine;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printCount;
+import static org.apache.iotdb.cli.utils.IoTPrinter.printRow;
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -36,7 +41,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
@@ -107,7 +111,6 @@ public abstract class AbstractCli {
 
   static ServerProperties properties = null;
 
-  private static final PrintStream SCREEN_PRINTER = new PrintStream(System.out);
   private static boolean cursorBeforeFirst = true;
 
   static void init() {
@@ -120,16 +123,6 @@ public abstract class AbstractCli {
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
     keywordSet.add("-" + RPC_COMPRESS_ARGS);
-  }
-
-
-
-  private static void printCount(int cnt) {
-    if (cnt == 0) {
-      println("Empty set.");
-    } else {
-      println("Total line number = " + cnt);
-    }
   }
 
   static Options createOptions() {
@@ -507,32 +500,24 @@ public abstract class AbstractCli {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
-    List<List<String>> lists = new ArrayList<>(columnCount);
-    if (resultSet instanceof IoTDBJDBCResultSet) {
-      for (int i = 1; i <= columnCount; i++) {
-        List<String> list = new ArrayList<>(maxPrintRowCount + 1);
-        list.add(resultSetMetaData.getColumnLabel(i));
-        lists.add(list);
-        maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
-      }
-    } else {
-      for (int i = 1; i <= columnCount; i += 2) {
-        List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
-        timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
-        lists.add(timeList);
-        List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
-        valueList.add(resultSetMetaData.getColumnLabel(i + 1));
-        lists.add(valueList);
-        maxSizeList.add(TIMESTAMP_STR.length());
-        maxSizeList.add(resultSetMetaData.getColumnLabel(i + 1).length());
-      }
-    }
+
     int j = 0;
     if (cursorBeforeFirst) {
       isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
+
+    List<List<String>> lists = new ArrayList<>(columnCount);
     if (resultSet instanceof IoTDBJDBCResultSet) {
+      for (int i = 1; i <= columnCount; i++) {
+        List<String> list = new ArrayList<>(maxPrintRowCount + 1);
+        String columnLabel = resultSetMetaData.getColumnLabel(i);
+        list.add(columnLabel);
+        lists.add(list);
+        int count = computeHANCount(columnLabel);
+        maxSizeList.add(columnLabel.length() + count);
+      }
+
       boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
@@ -547,28 +532,10 @@ public abstract class AbstractCli {
             tmp = NULL;
           }
           lists.get(i - 1).add(tmp);
-          if (maxSizeList.get(i - 1) < tmp.length()) {
-            maxSizeList.set(i - 1, tmp.length());
-          }
-        }
-        j++;
-        isReachEnd = !resultSet.next();
-      }
-      return lists;
-    } else {
-      while (j < maxPrintRowCount && !isReachEnd) {
-        for (int i = 1; i <= columnCount; i++) {
-          String tmp = resultSet.getString(i);
-          if (tmp == null) {
-            tmp = NULL;
-          }
-          if (i % 2 != 0 && !tmp.equals(NULL)) {
-            tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
-                Long.parseLong(tmp), zoneId);
-          }
-          lists.get(i - 1).add(tmp);
-          if (maxSizeList.get(i - 1) < tmp.length()) {
-            maxSizeList.set(i - 1, tmp.length());
+          int count = computeHANCount(tmp);
+          int realLength = tmp.length() + count;
+          if (maxSizeList.get(i - 1) < realLength) {
+            maxSizeList.set(i - 1, realLength);
           }
         }
         j++;
@@ -576,6 +543,38 @@ public abstract class AbstractCli {
       }
       return lists;
     }
+
+    for (int i = 1; i <= columnCount; i += 2) {
+      List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
+      timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
+      lists.add(timeList);
+      List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
+      valueList.add(resultSetMetaData.getColumnLabel(i + 1));
+      lists.add(valueList);
+      maxSizeList.add(TIMESTAMP_STR.length());
+      maxSizeList.add(resultSetMetaData.getColumnLabel(i + 1).length());
+    }
+
+    while (j < maxPrintRowCount && !isReachEnd) {
+      for (int i = 1; i <= columnCount; i++) {
+        String tmp = resultSet.getString(i);
+        if (tmp == null) {
+          tmp = NULL;
+        }
+        if (i % 2 != 0 && !tmp.equals(NULL)) {
+          tmp = RpcUtils.formatDatetime(timeFormat, timestampPrecision,
+              Long.parseLong(tmp), zoneId);
+        }
+        lists.get(i - 1).add(tmp);
+        if (maxSizeList.get(i - 1) < tmp.length()) {
+          maxSizeList.set(i - 1, tmp.length());
+        }
+      }
+      j++;
+      isReachEnd = !resultSet.next();
+    }
+    return lists;
+
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
@@ -600,41 +599,8 @@ public abstract class AbstractCli {
     isReachEnd = false;
   }
 
-  private static void printBlockLine(List<Integer> maxSizeList) {
-    StringBuilder blockLine = new StringBuilder();
-    for (Integer integer : maxSizeList) {
-      blockLine.append("+").append(StringUtils.repeat("-", integer));
-    }
-    blockLine.append("+");
-    println(blockLine.toString());
-  }
-
-  private static void printRow(List<List<String>> lists, int i, List<Integer> maxSizeList) {
-    printf("|");
-    for (int j = 0; j < maxSizeList.size(); j++) {
-      printf("%" + maxSizeList.get(j) + "s|", lists.get(j).get(i));
-    }
-    println();
-  }
-
   enum OperationResult {
     STOP_OPER, CONTINUE_OPER, NO_OPER
-  }
-
-  private static void printf(String format, Object... args) {
-    SCREEN_PRINTER.printf(format, args);
-  }
-
-  static void print(String msg) {
-    SCREEN_PRINTER.print(msg);
-  }
-
-  private static void println() {
-    SCREEN_PRINTER.println();
-  }
-
-  static void println(String msg) {
-    SCREEN_PRINTER.println(msg);
   }
 
   static boolean processCommand(String s, IoTDBConnection connection) {

@@ -95,6 +95,11 @@ public class IoTDBMergeTest {
         }
         statement.execute("FLUSH");
         statement.execute("MERGE");
+        try{
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
 
         int cnt;
         try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {

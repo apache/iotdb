@@ -19,42 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
@@ -65,6 +30,7 @@ import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
@@ -75,7 +41,6 @@ import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -89,9 +54,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -107,23 +70,22 @@ import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.NodeReport;
-import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
-import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
+import org.apache.iotdb.cluster.server.monitor.NodeReport;
+import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -155,6 +117,40 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
+
 @SuppressWarnings("java:S1135")
 public class MetaGroupMember extends RaftMember {
 
@@ -172,6 +168,7 @@ public class MetaGroupMember extends RaftMember {
    * in case of data loss, some file changes would be made to a temporary file first
    */
   private static final String TEMP_SUFFIX = ".tmp";
+
   private static final String MSG_MULTIPLE_ERROR = "The following errors occurred when executing "
       + "the query, please retry or contact the DBA: ";
 
@@ -261,14 +258,28 @@ public class MetaGroupMember extends RaftMember {
    */
   private ScheduledExecutorService hardLinkCleanerThread;
 
+  private Coordinator coordinator;
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
+  }
+
+  public Coordinator getCoordinator() {
+    return this.coordinator;
+  }
+
+  public ClusterPlanRouter getRouter() {
+    return router;
+  }
+
   @TestOnly
   public MetaGroupMember() {
   }
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
+  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) throws QueryProcessException {
     super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new PartitionGroup();
     initPeerMap();
@@ -293,6 +304,7 @@ public class MetaGroupMember extends RaftMember {
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
+    this.coordinator = coordinator;
     loadPartitionTable();
   }
 
@@ -335,7 +347,7 @@ public class MetaGroupMember extends RaftMember {
       return;
     }
     addSeedNodes();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(this);
     super.start();
   }
 
@@ -392,6 +404,7 @@ public class MetaGroupMember extends RaftMember {
   protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
+    clientServer.setCoordinator(this.coordinator);
     clientServer.start();
   }
 
@@ -460,6 +473,7 @@ public class MetaGroupMember extends RaftMember {
         logger.info("Partition table is set up");
       }
       router = new ClusterPlanRouter(partitionTable);
+      this.coordinator.setRouter(router);
       startSubServers();
     }
   }
@@ -673,6 +687,7 @@ public class MetaGroupMember extends RaftMember {
     }
 
     router = new ClusterPlanRouter(newTable);
+    this.coordinator.setRouter(router);
 
     updateNodeList(newTable.getAllNodes());
 
@@ -708,6 +723,7 @@ public class MetaGroupMember extends RaftMember {
           logger.info("Partition table is set up");
         }
         router = new ClusterPlanRouter(partitionTable);
+        this.coordinator.setRouter(router);
         startSubServers();
       }
     }
@@ -785,6 +801,7 @@ public class MetaGroupMember extends RaftMember {
       try {
         getDataClusterServer().buildDataGroupMembers(partitionTable);
         initSubServers();
+        sendHandshake();
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();
@@ -792,6 +809,29 @@ public class MetaGroupMember extends RaftMember {
       }
     }
     logger.info("Sub-servers started.");
+  }
+
+  /**
+   * When the node restarts, it sends handshakes to all other nodes so they may know it is back.
+   */
+  private void sendHandshake() {
+    for (Node node : allNodes) {
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
+          if (asyncClient != null) {
+            asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+          }
+        } else {
+          SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
+          if (syncClient != null) {
+            syncClient.handshake(thisNode);
+          }
+        }
+      } catch (TException e) {
+        // ignore handshake exceptions
+      }
+    }
   }
 
   /**
@@ -1051,7 +1091,7 @@ public class MetaGroupMember extends RaftMember {
         logger.warn("Current thread is interrupted.");
       }
     } else {
-      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode);
+      SyncMetaClient client = (SyncMetaClient) getSyncClient(seedNode, false);
       if (client == null) {
         return null;
       }
@@ -1230,47 +1270,18 @@ public class MetaGroupMember extends RaftMember {
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
     long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
-      result = executeNonQueryLocally(plan);
-    } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
+    if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      // do it in local, only the follower forward the plan to local
+      logger.debug("receive a global meta plan {}", plan);
       result = processNonPartitionedMetaPlan(plan);
-    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
-      result = processNonPartitionedDataPlan(plan);
-    } else { //split the plan and forward them to some PartitionGroups
-      try {
-        result = processPartitionedPlan(plan);
-      } catch (UnsupportedPlanException e) {
-        return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
-      }
+    } else {
+      // do nothing
+      logger.warn("receive a plan {} could not be processed in local", plan);
+      result = StatusUtils.UNSUPPORTED_OPERATION;
     }
     Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
   }
-
-  /**
-   * execute a non-query plan that is not necessary to be executed on other nodes.
-   */
-  private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
-    boolean execRet;
-    try {
-      execRet = getLocalExecutor().processNonQuery(plan);
-    } catch (QueryProcessException e) {
-      if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
-        logger.debug("meet error while processing non-query. ", e);
-      } else {
-        logger.warn("meet error while processing non-query. ", e);
-      }
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    } catch (Exception e) {
-      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
-    }
-
-    return execRet
-        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
-        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-  }
-
 
   /**
    * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
@@ -1435,10 +1446,6 @@ public class MetaGroupMember extends RaftMember {
       if (tmpStatus != null) {
         status = tmpStatus;
       }
-    }
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode() && status
-        .isSetRedirectNode()) {
-      status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
@@ -1607,9 +1614,11 @@ public class MetaGroupMember extends RaftMember {
     }
     TSStatus status;
     if (errorCodePartitionGroups.isEmpty()) {
-      status = StatusUtils.OK;
       if (allRedirect) {
-        status = StatusUtils.getStatus(status, endPoint);
+        status = new TSStatus();
+        status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      } else {
+        status = StatusUtils.OK;
       }
     } else {
       status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
@@ -1717,6 +1726,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
+=======
+>>>>>>> master
    * Get the data groups that should be queried when querying "path" with "filter". First, the time
    * interval qualified by the filter will be extracted. If any side of the interval is open, query
    * all groups. Otherwise compute all involved groups w.r.t. the time partitioning.
@@ -1805,7 +1816,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) throws TException {
+  private void getNodeStatusSync(Map<Node, Boolean> nodeStatus) {
     NodeStatusHandler nodeStatusHandler = new NodeStatusHandler(nodeStatus);
     for (Node node : allNodes) {
       SyncMetaClient client = (SyncMetaClient) getSyncClient(node);
@@ -1827,6 +1838,7 @@ public class MetaGroupMember extends RaftMember {
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
     router = new ClusterPlanRouter(partitionTable);
+    this.coordinator.setRouter(router);
     DataClusterServer dClusterServer = getDataClusterServer();
     if (dClusterServer != null) {
       dClusterServer.setPartitionTable(partitionTable);
@@ -2080,7 +2092,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private PlanExecutor getLocalExecutor() throws QueryProcessException {
+  public PlanExecutor getLocalExecutor() throws QueryProcessException {
     if (localExecutor == null) {
       localExecutor = new PlanExecutor();
     }
@@ -2098,5 +2110,9 @@ public class MetaGroupMember extends RaftMember {
 
   public void setRouter(ClusterPlanRouter router) {
     this.router = router;
+  }
+
+  public void handleHandshake(Node sender) {
+    NodeStatusManager.getINSTANCE().activate(sender);
   }
 }

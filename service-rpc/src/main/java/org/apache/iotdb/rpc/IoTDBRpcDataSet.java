@@ -53,6 +53,7 @@ public class IoTDBRpcDataSet {
   public Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
+  public final long timeout;
   public boolean emptyResultSet = false;
   public boolean hasCachedRecord = false;
   public boolean lastReadWasNull;
@@ -77,13 +78,14 @@ public class IoTDBRpcDataSet {
   public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
-      int fetchSize) {
+      int fetchSize, long timeout) {
     this.sessionId = sessionId;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
     this.queryId = queryId;
     this.client = client;
     this.fetchSize = fetchSize;
+    this.timeout = timeout;
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
@@ -159,6 +161,7 @@ public class IoTDBRpcDataSet {
       }
     }
     this.tsQueryDataSet = queryDataSet;
+    this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
   }
 
   public void close() throws StatementExecutionException, TException {
@@ -199,7 +202,8 @@ public class IoTDBRpcDataSet {
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     rowsIndex = 0;
-    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true,
+        timeout);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 
@@ -474,5 +478,6 @@ public class IoTDBRpcDataSet {
 
   public void setTsQueryDataSet(TSQueryDataSet tsQueryDataSet) {
     this.tsQueryDataSet = tsQueryDataSet;
+    this.emptyResultSet = (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining());
   }
 }

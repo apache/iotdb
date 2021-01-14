@@ -722,6 +722,58 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  public void testShowDevicesWithLimitOffset() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      List<String> exps = Arrays
+          .asList("root.sg1.d1", "root.sg1.d2");
+
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
+          ++count;
+        }
+      }
+      Assert.assertEquals(2, count);
+    }
+  }
+
+  @Test
+  public void testShowDevicesWithLimit() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      List<String> exps = Arrays
+          .asList("root.sg1.d0", "root.sg1.d1");
+
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
+          ++count;
+        }
+      }
+      Assert.assertEquals(2, count);
+    }
+  }
+
+  @Test
   public void testFirstOverlappedPageFiltered() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager

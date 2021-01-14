@@ -71,6 +71,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -82,7 +83,6 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -393,12 +393,23 @@ public class StorageEngine implements IService {
 
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
-    // TODO monitor: update statistics
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
       }
+    } catch (WriteProcessException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
+      throws StorageEngineException {
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+
+    // TODO monitor: update statistics
+    try {
+      storageGroupProcessor.insert(insertRowsOfOneDevicePlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -417,7 +428,6 @@ public class StorageEngine implements IService {
           + "failed", insertTabletPlan.getDeviceId()), e);
     }
 
-    // TODO monitor: update statistics
     storageGroupProcessor.insertTablet(insertTabletPlan);
     if (config.isEnableStatMonitor()) {
       updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
@@ -503,7 +513,7 @@ public class StorageEngine implements IService {
       boolean isSeq, boolean isSync) throws StorageGroupNotSetException {
     StorageGroupProcessor processor = processorMap.get(storageGroupPath);
     if (processor == null) {
-      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath(), true);
     }
 
     logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
@@ -527,14 +537,6 @@ public class StorageEngine implements IService {
     } finally {
       processor.writeUnlock();
     }
-  }
-
-  /**
-   * update data.
-   */
-  public void update(String deviceId, String measurementId, long startTime, long endTime,
-      TSDataType type, String v) {
-    // TODO
   }
 
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
@@ -672,11 +674,11 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws LoadFileException, StorageEngineException, MetadataException {
-    Map<String, Integer> deviceMap = newTsFileResource.getDeviceToIndexMap();
-    if (deviceMap == null || deviceMap.isEmpty()) {
+    Set<String> deviceSet = newTsFileResource.getDevices();
+    if (deviceSet == null || deviceSet.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
-    String device = deviceMap.keySet().iterator().next();
+    String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
     PartialPath storageGroupPath = IoTDB.metaManager.getStorageGroupPath(devicePath);
     getProcessor(storageGroupPath).loadNewTsFile(newTsFileResource);
@@ -869,8 +871,9 @@ public class StorageEngine implements IService {
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException("System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
-              "ms");
+          throw new WriteProcessRejectException(
+              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() +
+                  "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

@@ -195,6 +195,11 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getAsyncClient(node);
+      }
+
+      @Override
       public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap) {
@@ -988,70 +993,74 @@ public class DataGroupMemberTest extends MemberTest {
     request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    request.setQueryId(queryContext.getQueryId());
-    request.setRequestor(TestUtils.getNode(0));
-    request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
-    request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
-    request.setAscending(true);
-
-    DataGroupMember dataGroupMember;
-    AtomicReference<Long> resultRef;
-    GenericHandler<Long> handler;
-    Long executorId;
-    AtomicReference<List<ByteBuffer>> aggrResultRef;
-    GenericHandler<List<ByteBuffer>> aggrResultHandler;
-    List<ByteBuffer> byteBuffers;
-    List<AggregateResult> aggregateResults;
-    Object[] answers;
-    // get an executor from a node holding this timeseries
-    request.setHeader(TestUtils.getNode(10));
-    dataGroupMember = getDataGroupMember(TestUtils.getNode(10));
     try {
-      resultRef = new AtomicReference<>();
-      handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
-      new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
-      executorId = resultRef.get();
-      assertEquals(1L, (long) executorId);
+      request.setQueryId(queryContext.getQueryId());
+      request.setRequestor(TestUtils.getNode(0));
+      request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
+      request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
+      request.setAscending(true);
 
-      // fetch result
-      aggrResultRef = new AtomicReference<>();
-      aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      new DataAsyncService(dataGroupMember)
-          .getGroupByResult(TestUtils.getNode(10), raftId, executorId, 0, 20, aggrResultHandler);
+      DataGroupMember dataGroupMember;
+      AtomicReference<Long> resultRef;
+      GenericHandler<Long> handler;
+      Long executorId;
+      AtomicReference<List<ByteBuffer>> aggrResultRef;
+      GenericHandler<List<ByteBuffer>> aggrResultHandler;
+      List<ByteBuffer> byteBuffers;
+      List<AggregateResult> aggregateResults;
+      Object[] answers;
+      // get an executor from a node holding this timeseries
+      request.setHeader(TestUtils.getNode(10));
+      dataGroupMember = getDataGroupMember(TestUtils.getNode(10));
+      try {
+        resultRef = new AtomicReference<>();
+        handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+        new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
+        executorId = resultRef.get();
+        assertEquals(1L, (long) executorId);
 
-      byteBuffers = aggrResultRef.get();
-      assertNotNull(byteBuffers);
-      aggregateResults = new ArrayList<>();
-      for (ByteBuffer byteBuffer : byteBuffers) {
-        aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+        // fetch result
+        aggrResultRef = new AtomicReference<>();
+        aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+        new DataAsyncService(dataGroupMember)
+            .getGroupByResult(TestUtils.getNode(10), raftId, executorId, 0, 20, aggrResultHandler);
+
+        byteBuffers = aggrResultRef.get();
+        assertNotNull(byteBuffers);
+        aggregateResults = new ArrayList<>();
+        for (ByteBuffer byteBuffer : byteBuffers) {
+          aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+        }
+        answers = new Object[]{15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
+        checkAggregates(answers, aggregateResults);
+      } finally {
+        dataGroupMember.closeLogManager();
       }
-      answers = new Object[]{15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
-      checkAggregates(answers, aggregateResults);
+
+      // get an executor from a node not holding this timeseries
+      request.setHeader(TestUtils.getNode(30));
+      dataGroupMember = getDataGroupMember(TestUtils.getNode(30));
+      try {
+        resultRef = new AtomicReference<>();
+        handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+        request.timeFilterBytes.position(0);
+        new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
+        executorId = resultRef.get();
+        assertEquals(-1L, (long) executorId);
+
+        // fetch result
+        aggrResultRef = new AtomicReference<>();
+        aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+        new DataAsyncService(dataGroupMember)
+            .getGroupByResult(TestUtils.getNode(30), raftId, executorId, 0, 20, aggrResultHandler);
+
+        byteBuffers = aggrResultRef.get();
+        assertNull(byteBuffers);
+      } finally {
+        dataGroupMember.closeLogManager();
+      }
     } finally {
-      dataGroupMember.closeLogManager();
-    }
-
-    // get an executor from a node not holding this timeseries
-    request.setHeader(TestUtils.getNode(30));
-    dataGroupMember = getDataGroupMember(TestUtils.getNode(30));
-    try {
-      resultRef = new AtomicReference<>();
-      handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
-      request.timeFilterBytes.position(0);
-      new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
-      executorId = resultRef.get();
-      assertEquals(-1L, (long) executorId);
-
-      // fetch result
-      aggrResultRef = new AtomicReference<>();
-      aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      new DataAsyncService(dataGroupMember)
-          .getGroupByResult(TestUtils.getNode(30), raftId, executorId, 0, 20, aggrResultHandler);
-
-      byteBuffers = aggrResultRef.get();
-      assertNull(byteBuffers);
-    } finally {
-      dataGroupMember.closeLogManager();
+      QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());
     }
   }
 

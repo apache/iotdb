@@ -50,45 +50,49 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    GroupByTimePlan groupByPlan = new GroupByTimePlan();
-    List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<String> aggregations = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
-      dataTypes.add(TSDataType.DOUBLE);
-      aggregations.add(SQLConstant.COUNT);
+    try {
+      GroupByTimePlan groupByPlan = new GroupByTimePlan();
+      List<PartialPath> pathList = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<String> aggregations = new ArrayList<>();
+      for (int i = 0; i < 10; i++) {
+        pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
+        dataTypes.add(TSDataType.DOUBLE);
+        aggregations.add(SQLConstant.COUNT);
+      }
+      groupByPlan.setPaths(pathList);
+      groupByPlan.setDeduplicatedPaths(pathList);
+      groupByPlan.setDataTypes(dataTypes);
+      groupByPlan.setDeduplicatedDataTypes(dataTypes);
+      groupByPlan.setAggregations(aggregations);
+      groupByPlan.setDeduplicatedAggregations(aggregations);
+
+      groupByPlan.setStartTime(0);
+      groupByPlan.setEndTime(20);
+      groupByPlan.setSlidingStep(5);
+      groupByPlan.setInterval(5);
+
+      IExpression expression = BinaryExpression.and(
+          new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
+          new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15))
+      );
+      groupByPlan.setExpression(expression);
+
+      ClusterGroupByVFilterDataSet dataSet = new ClusterGroupByVFilterDataSet(queryContext,
+          groupByPlan, testMetaMember);
+
+      Object[][] answers = new Object[][] {
+          new Object[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+          new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
+          new Object[] {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
+      };
+      for (Object[] answer : answers) {
+        checkDoubleDataset(dataSet, answer);
+      }
+      assertFalse(dataSet.hasNext());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());
     }
-    groupByPlan.setPaths(pathList);
-    groupByPlan.setDeduplicatedPaths(pathList);
-    groupByPlan.setDataTypes(dataTypes);
-    groupByPlan.setDeduplicatedDataTypes(dataTypes);
-    groupByPlan.setAggregations(aggregations);
-    groupByPlan.setDeduplicatedAggregations(aggregations);
-
-    groupByPlan.setStartTime(0);
-    groupByPlan.setEndTime(20);
-    groupByPlan.setSlidingStep(5);
-    groupByPlan.setInterval(5);
-
-    IExpression expression = BinaryExpression.and(
-        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0)),
-        new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(5, 0)), TimeFilter.ltEq(15))
-    );
-    groupByPlan.setExpression(expression);
-
-    ClusterGroupByVFilterDataSet dataSet = new ClusterGroupByVFilterDataSet(queryContext,
-        groupByPlan, testMetaMember);
-
-    Object[][] answers = new Object[][] {
-        new Object[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-        new Object[] {5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0},
-        new Object[] {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0},
-    };
-    for (Object[] answer : answers) {
-      checkDoubleDataset(dataSet, answer);
-    }
-    assertFalse(dataSet.hasNext());
   }
 }

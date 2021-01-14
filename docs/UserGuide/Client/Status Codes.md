@@ -80,6 +80,8 @@ Here is a list of Status Code and related message:
 |410|PATH_ERROR|Path related error|
 |411|QUERY_PROCESS_ERROR|Query process related error|
 |412|WRITE_PROCESS_ERROR|Writing data related error|
+|413|WRITE_PROCESS_REJECT|Writing data rejected error|
+|414|QUERY_ID_NOT_EXIST|Kill query with non existent queryId|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |501|CLOSE_OPERATION_ERROR|Meet error in close operation|
 |502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|

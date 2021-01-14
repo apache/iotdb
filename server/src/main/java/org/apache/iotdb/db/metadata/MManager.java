@@ -77,9 +77,11 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -574,6 +576,9 @@ public class MManager {
   public void setStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.setStorageGroup(storageGroup);
+      if (!config.isEnableMemControl()) {
+        MemTableManager.getInstance().addOrDeleteStorageGroup(1);
+      }
       if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
       }
@@ -605,6 +610,10 @@ public class MManager {
           removeFromTagInvertedIndex(leafMNode);
           // update statistics in schemaDataTypeNumMap
           updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
+        }
+
+        if (!config.isEnableMemControl()) {
+          MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
         }
 
         // if success
@@ -686,6 +695,10 @@ public class MManager {
    */
   public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
     return mtree.getDevices(prefixPath);
+  }
+
+  public Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
+    return mtree.getDevices(plan);
   }
 
   /**
@@ -803,7 +816,7 @@ public class MManager {
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
                                                              QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
     Map<String, Set<MeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
@@ -1348,32 +1361,42 @@ public class MManager {
     for (String key : keySet) {
       // check tag map
       // check attribute map
-      if (pair.left.containsKey(key)) {
-        deleteTag.put(key, pair.left.remove(key));
+      String removeVal = pair.left.remove(key);
+      if (removeVal != null) {
+        deleteTag.put(key, removeVal);
       } else {
-        pair.right.remove(key);
+        removeVal = pair.right.remove(key);
+        if (removeVal == null) {
+          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", fullPath, key);
+        }
       }
     }
 
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
+    Map<String, Set<MeasurementMNode>> tagVal2LeafMNodeSet;
+    Set<MeasurementMNode> MMNodes;
     for (Entry<String, String> entry : deleteTag.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       // change the tag inverted index map
-      if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(value)) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(String.format(
-                  String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
-                  entry.getKey(), entry.getValue(), leafMNode.getOffset()));
-        }
+      tagVal2LeafMNodeSet = tagIndex.get(key);
+      if (tagVal2LeafMNodeSet != null) {
+        MMNodes = tagVal2LeafMNodeSet.get(value);
+        if (MMNodes != null) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
+                entry.getKey(), entry.getValue(), leafMNode.getOffset()));
+          }
 
-        tagIndex.get(key).get(value).remove(leafMNode);
-        if (tagIndex.get(key).get(value).isEmpty()) {
-          tagIndex.get(key).remove(value);
-          if (tagIndex.get(key).isEmpty()) {
-            tagIndex.remove(key);
+          MMNodes.remove(leafMNode);
+          if (MMNodes.isEmpty()) {
+            tagVal2LeafMNodeSet.remove(value);
+            if (tagVal2LeafMNodeSet.isEmpty()) {
+              tagIndex.remove(key);
+            }
           }
         }
       } else {
@@ -1425,7 +1448,7 @@ public class MManager {
         pair.right.put(key, value);
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key), true);
       }
     }
 
@@ -1475,7 +1498,7 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey));
+          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey), true);
     }
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -1485,7 +1508,7 @@ public class MManager {
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
       throw new MetadataException(
           String.format(
-              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey));
+              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey), true);
     }
 
     // check tag map
@@ -1521,7 +1544,7 @@ public class MManager {
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
     } else {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey));
+          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey), true);
     }
   }
 

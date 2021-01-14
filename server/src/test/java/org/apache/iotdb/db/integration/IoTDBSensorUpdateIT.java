@@ -79,9 +79,6 @@ public class IoTDBSensorUpdateIT {
         }
         assertEquals(1, cnt);
       }
-
-      // after merge completes
-      statement.execute("DELETE FROM root.demo.d1");
     }
   }
 }

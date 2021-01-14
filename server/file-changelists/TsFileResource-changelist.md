@@ -21,10 +21,14 @@
 
 # 0.11.x -> 0.12.x
 
-Last updated on 2020-11-9 by Tian Jiang
+Last updated on 2021-01-06 by Samperson Sun
 
 ## Update：
-No change
+| Latest Changes                     |
+| ---------------------------------- |
+| Supply 2 types of time index (including device, start time, end time) |
+| Add version number (1) and time index type (0 or 1) |
+
 
 # 0.10.x -> 0.11.x
 

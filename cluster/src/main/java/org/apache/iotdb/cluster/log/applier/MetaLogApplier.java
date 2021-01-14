@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.exception.ChangeMembershipException;
+import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -70,7 +71,7 @@ public class MetaLogApplier extends BaseApplier {
       } else {
         logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
       }
-    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException | ChangeMembershipException e) {
+    } catch (StorageEngineException | StorageGroupNotSetException | QueryProcessException | ChangeMembershipException | UnsupportedPlanException e) {
       logger.debug("Exception occurred when executing {}", log, e);
       log.setException(e);
     } finally {
@@ -78,9 +79,10 @@ public class MetaLogApplier extends BaseApplier {
     }
   }
 
-  private void sendLogToAllDataGroups(Log log) throws ChangeMembershipException {
+  private void sendLogToAllDataGroups(Log log)
+      throws ChangeMembershipException, UnsupportedPlanException {
     LogPlan plan = new LogPlan(log.serialize());
-    TSStatus status = member.executeNonQueryPlan(plan);
+    TSStatus status = member.processPartitionedPlan(plan);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new ChangeMembershipException(String.format("apply %s failed with status {%s}", log, status));
     }

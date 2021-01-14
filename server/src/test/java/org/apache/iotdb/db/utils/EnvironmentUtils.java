@@ -39,7 +39,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -79,8 +81,14 @@ public class EnvironmentUtils {
       .parseBoolean(System.getProperty("test.port.closed", "false"));
 
   public static void cleanEnv() throws IOException, StorageEngineException {
+    // wait all compaction finished
+    CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
     // deregister all UDFs
-    UDFRegistrationService.getInstance().deregisterAll();
+    try {
+      UDFRegistrationService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException e) {
+      fail(e.getMessage());
+    }
 
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
@@ -245,8 +253,6 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
-    // disable the system monitor
-    config.setEnableStatMonitor(false);
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
@@ -281,6 +287,7 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
+    IoTDB.metaManager.clear();
     reactiveDaemon();
   }
 

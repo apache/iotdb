@@ -29,6 +29,7 @@ import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -62,6 +63,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
         subServerInitialized = true;
       }
     };
+    metaGroupMember.setCoordinator(new Coordinator());
   }
 
   @Override
