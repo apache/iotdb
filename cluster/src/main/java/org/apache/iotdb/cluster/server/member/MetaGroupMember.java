@@ -1298,7 +1298,7 @@ public class MetaGroupMember extends RaftMember {
     } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
       TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
-        result.setRedirectNode(new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
+        result = StatusUtils.getStatus(result, new EndPoint(leader.get().getIp(), leader.get().getClientPort()));
         return result;
       }
     }
