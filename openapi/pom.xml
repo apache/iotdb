@@ -24,11 +24,13 @@
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
         <version>0.12.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <packaging>pom</packaging>
     <modules>
         <module>java-rest</module>
+        <module>go-rest</module>
     </modules>
     <artifactId>openapi</artifactId>
     <properties>
@@ -97,9 +99,6 @@
                                 <configuration>
                                     <inputSpec>${project.basedir}/src/main/openapi3/iotdb-rest.yaml</inputSpec>
                                     <output>${project.build.directory}/generated-sources/go</output>
-                                    <apiPackage>org.apache.iotdb.openapi.gen.handler</apiPackage>
-                                    <modelPackage>org.apache.iotdb.openapi.gen.model</modelPackage>
-                                    <invokerPackage>org.apache.iotdb.openapi.gen.invoker</invokerPackage>
                                     <generatorName>go-server</generatorName>
                                     <groupId>org.apache.iotdb</groupId>
                                     <artifactId>iotdb-rest-service</artifactId>
@@ -107,13 +106,12 @@
                                     <addCompileSourceRoot>false</addCompileSourceRoot>
                                     <configOptions>
                                         <licenseName>Apache License 2.0</licenseName>
-                                        <packageName>org.apache.iotdb</packageName>
-                                        <packageName>org.apache.iotdb.rest</packageName>
+                                        <packageName>iotdbrest</packageName>
                                         <packageVersion>${project.version}</packageVersion>
                                         <serverPort>5667</serverPort>
                                         <useGzipFeature>true</useGzipFeature>
                                         <!-- sourceFolder is a relative folder -->
-                                        <sourceFolder>gen</sourceFolder>
+                                        <sourceFolder>iotdbrest</sourceFolder>
                                     </configOptions>
                                 </configuration>
                             </execution>
