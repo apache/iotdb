@@ -41,7 +41,6 @@ public class ShowOperator extends RootOperator {
     }
 
     return new ShowPlan(contentType);
-
   }
 
   public ShowOperator(int tokenIntType, OperatorType operatorType) {

@@ -18,13 +18,22 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 
 public class KillQueryOperator extends RootOperator {
+
   long queryId = -1;
 
   public KillQueryOperator(int tokenIntType) {
     this(tokenIntType, OperatorType.KILL);
+  }
+
+  @Override
+  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+    return new KillQueryPlan(getQueryId());
   }
 
   public KillQueryOperator(int tokenIntType, OperatorType operatorType) {

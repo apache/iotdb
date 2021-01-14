@@ -103,7 +103,7 @@ public class ShowPlan extends PhysicalPlan {
   public enum ShowContentType {
     FLUSH_TASK_INFO, TTL, VERSION, TIMESERIES, STORAGE_GROUP, CHILD_PATH, DEVICES,
     COUNT_TIMESERIES, COUNT_NODE_TIMESERIES, COUNT_NODES, MERGE_STATUS, FUNCTIONS, COUNT_DEVICES,
-    COUNT_STORAGE_GROUP, QUERY_PROCESSLIST
+    COUNT_STORAGE_GROUP, QUERY_PROCESSLIST;
 
     public static ShowContentType getFromOperatorType(int type) {
       switch (type) {
@@ -125,6 +125,8 @@ public class ShowPlan extends PhysicalPlan {
           return COUNT_TIMESERIES;
         case SQLConstant.TOK_CHILD_PATHS:
           return CHILD_PATH;
+        case SQLConstant.TOK_QUERY_PROCESSLIST:
+          return QUERY_PROCESSLIST;
         default:
           return null;
       }
