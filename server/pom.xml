@@ -191,6 +191,11 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.22.Final</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
