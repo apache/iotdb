@@ -57,15 +57,6 @@ public class VirtualStorageGroupManager {
    */
   private long monitorSeriesValue;
 
-  /**
-   * get all virtual storage group Processor
-   *
-   * @return all virtual storage group Processor
-   */
-  public StorageGroupProcessor[] getAllVirtualStorageGroupProcessor() {
-    return virtualStorageGroupProcessor;
-  }
-
   public VirtualStorageGroupManager() {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
   }

@@ -91,6 +91,10 @@ public class IoTDBStatMonitorTest {
       if(time > 10000){
         logger.warn("wait for sg ready for : " + (time / 1000) + " s");
       }
+
+      if(time > 30000){
+        throw new IllegalStateException("wait too long in IoTDBStatMonitorTest");
+      }
     }
     recoveryTest();
   }
