@@ -137,17 +137,17 @@ public class ChunkWriterImpl implements IChunkWriter {
         }
       }
 
-      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmin")) {
+      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmintime")) {
         try {
-          sdtEncoder.setCompMinTime(Double.parseDouble(measurementSchema.getProps().get("compmin")));
+          sdtEncoder.setCompMinTime(Double.parseDouble(measurementSchema.getProps().get("compmintime")));
         } catch (NumberFormatException e) {
           logger.error("meet error when formatting SDT compression minimum");
         }
       }
 
-      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmax")) {
+      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmaxtime")) {
         try {
-          sdtEncoder.setCompMaxTime(Double.parseDouble(measurementSchema.getProps().get("compmax")));
+          sdtEncoder.setCompMaxTime(Double.parseDouble(measurementSchema.getProps().get("compmaxtime")));
         } catch (NumberFormatException e) {
           logger.error("meet error when formatting SDT compression maximum");
         }
