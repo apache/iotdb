@@ -95,24 +95,24 @@ public class MemTableFlushTask {
           * config.getIoTaskQueueSizeForFlushing();
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
-    long start = System.nanoTime();
+    long start = System.currentTimeMillis();
     long sortTime = 0;
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
       for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
-        long startTime = System.nanoTime();
+        long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVListForFlush();
-        sortTime += System.nanoTime() - startTime;
+        sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
       }
       encodingTaskQueue.put(new EndChunkGroupIoTask());
     }
     encodingTaskQueue.put(new TaskEnd());
     logger.debug(
-        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ns.",
+        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);
 
     try {
@@ -139,8 +139,8 @@ public class MemTableFlushTask {
     }
 
     logger.info(
-        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ns",
-        storageGroup, memTable, System.nanoTime() - start);
+        "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
+        storageGroup, memTable, System.currentTimeMillis() - start);
   }
 
   private Runnable encodingTask = new Runnable() {
@@ -207,7 +207,7 @@ public class MemTableFlushTask {
         } else if (task instanceof TaskEnd) {
           break;
         } else {
-          long starTime = System.nanoTime();
+          long starTime = System.currentTimeMillis();
           Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
           writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
@@ -219,7 +219,7 @@ public class MemTableFlushTask {
             logger.error("Put task into ioTaskQueue Interrupted");
             Thread.currentThread().interrupt();
           }
-          memSerializeTime += System.nanoTime() - starTime;
+          memSerializeTime += System.currentTimeMillis() - starTime;
         }
       }
       try {
@@ -230,7 +230,7 @@ public class MemTableFlushTask {
       }
       
       logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
-              + "{} ns.",
+              + "{} ms.",
           storageGroup, memTable.getVersion(), memSerializeTime);
     }
   };
@@ -247,7 +247,7 @@ public class MemTableFlushTask {
         Thread.currentThread().interrupt();
         break;
       }
-      long starTime = System.nanoTime();
+      long starTime = System.currentTimeMillis();
       try {
         if (ioMessage instanceof StartFlushGroupIOTask) {
           this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
@@ -266,9 +266,9 @@ public class MemTableFlushTask {
             memTable.getVersion(), e);
         throw new FlushRunTimeException(e);
       }
-      ioTime += System.nanoTime() - starTime;
+      ioTime += System.currentTimeMillis() - starTime;
     }
-    logger.debug("flushing a memtable {} in storage group {}, io cost {}ns", memTable.getVersion(),
+    logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
         storageGroup, ioTime);
   };
 
