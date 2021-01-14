@@ -329,7 +329,6 @@ public class IoTDBLastIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TIMESEIRES_STR) + ","
               + resultSet.getString(VALUE_STR);
-          System.out.println(ans);
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }

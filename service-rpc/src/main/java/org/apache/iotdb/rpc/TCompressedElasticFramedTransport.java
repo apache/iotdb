@@ -30,9 +30,14 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
   private TByteBuffer writeCompressBuffer;
   private TByteBuffer readCompressBuffer;
 
+  private static final long MIN_SHRINK_INTERVAL = 60_000L;
+  private static final int MAX_BUFFER_OVERSIZE_TIME = 5;
+  private long lastShrinkTime;
+  private int bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+
   protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
+      int softMaxLength) {
+    super(underlying, initialBufferCapacity, softMaxLength);
     writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
     readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
   }
@@ -64,14 +69,30 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
   }
 
-  private TByteBuffer resizeCompressBuf(int size, TByteBuffer byteBuffer) {
-    double expandFactor = 1.5;
-    double loadFactor = 0.6;
-    if (byteBuffer.getByteBuffer().capacity() < size) {
-      int newCap = (int) Math.min(size * expandFactor, maxLength);
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCap));
-    } else if (byteBuffer.getByteBuffer().capacity() * loadFactor > size) {
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(size));
+  private TByteBuffer resizeCompressBuf(int size, TByteBuffer byteBuffer)
+      throws TTransportException {
+    if (size > RpcUtils.FRAME_HARD_MAX_LENGTH) {
+      close();
+      throw new TTransportException(TTransportException.CORRUPTED_DATA,
+          "Frame size (" + size + ") larger than protect max length (" + RpcUtils.FRAME_HARD_MAX_LENGTH
+              + ")!");
+    }
+
+    final int currentCapacity = byteBuffer.getByteBuffer().capacity();
+    final double loadFactor = 0.6;
+    if (currentCapacity < size) {
+      // Increase by a factor of 1.5x
+      int growCapacity = currentCapacity + (currentCapacity >> 1);
+      int newCapacity = Math.max(growCapacity, size);
+      byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCapacity));
+      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
+    } else if (currentCapacity > softMaxLength && currentCapacity * loadFactor > size
+        && bufTooLargeCounter-- <= 0
+        && System.currentTimeMillis() - lastShrinkTime > MIN_SHRINK_INTERVAL) {
+      // do not shrink beneath the initial size and do not shrink too often
+      byteBuffer = new TByteBuffer(ByteBuffer.allocate(size + (currentCapacity - size) / 2));
+      lastShrinkTime = System.currentTimeMillis();
+      bufTooLargeCounter = MAX_BUFFER_OVERSIZE_TIME;
     }
     return byteBuffer;
   }
@@ -95,8 +116,8 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     }
 
     writeBuffer.reset();
-    if (maxLength < length) {
-      writeBuffer.resizeIfNecessary(maxLength);
+    if (softMaxLength < length) {
+      writeBuffer.resizeIfNecessary(softMaxLength);
     }
     underlying.flush();
   }

@@ -320,6 +320,9 @@ public class IoTDBDescriptor {
           .getProperty("unseq_file_num_in_each_level",
               Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
+      conf.setQueryTimeThreshold(Integer.parseInt(properties
+          .getProperty("query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));

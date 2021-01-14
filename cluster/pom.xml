@@ -79,6 +79,13 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-server</artifactId>
+            <version>0.12.0-SNAPSHOT</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
             <version>0.12.0-SNAPSHOT</version>
             <scope>compile</scope>

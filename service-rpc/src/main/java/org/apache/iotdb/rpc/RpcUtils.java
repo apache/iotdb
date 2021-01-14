@@ -44,6 +44,12 @@ public class RpcUtils {
    * How big is the largest allowable frame? Defaults to 16MB.
    */
   public static final int DEFAULT_MAX_LENGTH = 16384000;
+  /**
+   * It is used to prevent the size of the parsing package from being too large and allocating the
+   * buffer will cause oom. Therefore, the maximum length of the requested memory is limited when
+   * reading. The default value is 512MB
+   */
+  public static final int FRAME_HARD_MAX_LENGTH = 536870912;
 
   private RpcUtils() {
     // util class
@@ -189,8 +195,6 @@ public class RpcUtils {
     switch (newTimeFormat.trim().toLowerCase()) {
       case "long":
       case "number":
-        timeFormat = newTimeFormat.trim().toLowerCase();
-        break;
       case DEFAULT_TIME_FORMAT:
       case "iso8601":
         timeFormat = newTimeFormat.trim().toLowerCase();
