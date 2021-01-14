@@ -134,8 +134,6 @@ public class StorageGroupProcessor {
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
-
-  private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * indicating the file to be loaded already exists locally.
    */
@@ -144,6 +142,7 @@ public class StorageGroupProcessor {
    * indicating the file to be loaded overlap with some files.
    */
   private static final int POS_OVERLAP = -3;
+  private final boolean enableMemControl = config.isEnableMemControl();
   /**
    * a read write lock for guaranteeing concurrent safety when accessing all fields in this class
    * (i.e., schema, (un)sequenceFileList, work(un)SequenceTsFileProcessor,
@@ -208,19 +207,15 @@ public class StorageGroupProcessor {
   private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
   private String storageGroupName;
   private String logicalStorageGroupName;
-
   private File storageGroupSysDir;
-
   // manage seqFileList and unSeqFileList
   private TsFileManagement tsFileManagement;
-
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
    * updates can be re-determined.
    */
   private HashMap<Long, VersionController> timePartitionIdVersionControllerMap = new HashMap<>();
-
   /**
    * when the data in a storage group is older than dataTTL, it is considered invalid and will be
    * eventually removed.
@@ -228,7 +223,6 @@ public class StorageGroupProcessor {
   private long dataTTL = Long.MAX_VALUE;
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
   private TsFileFlushPolicy fileFlushPolicy;
-
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -236,36 +230,33 @@ public class StorageGroupProcessor {
    * across different instances. partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
-
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
-
   /**
    * Record the device number of the last TsFile in each storage group, which is applied to
    * initialize the array size of DeviceTimeIndex. It is reasonable to assume that the adjacent
    * files should have similar numbers of devices. Default value: INIT_ARRAY_SIZE = 64
    */
   private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
-
-  public boolean isReady() {
-    return isReady;
-  }
-
-  public void setReady(boolean ready) {
-    isReady = ready;
-  }
-
   private boolean isReady = false;
-
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
-  public StorageGroupProcessor(String systemDir, String storageGroupName,
-      TsFileFlushPolicy fileFlushPolicy, String logicalStorageGroupName) throws StorageGroupProcessorException {
-    this.storageGroupName = storageGroupName;
+  /**
+   * constrcut a storage group processor
+   *
+   * @param systemDir               system dir path
+   * @param virtualStorageGroupId   virtual storage group id  e.g. 1
+   * @param fileFlushPolicy         file flush policy
+   * @param logicalStorageGroupName logical storage group name e.g.  root.sg1
+   */
+  public StorageGroupProcessor(String systemDir, String virtualStorageGroupId,
+      TsFileFlushPolicy fileFlushPolicy, String logicalStorageGroupName)
+      throws StorageGroupProcessorException {
+    this.storageGroupName = virtualStorageGroupId;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
 
-    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, storageGroupName);
+    storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
     if (storageGroupSysDir.mkdirs()) {
       logger.info("Storage Group system Directory {} doesn't exist, create it",
           storageGroupSysDir.getPath());
@@ -278,6 +269,18 @@ public class StorageGroupProcessor {
 
     recover();
 
+  }
+
+  public String getLogicalStorageGroupName() {
+    return logicalStorageGroupName;
+  }
+
+  public boolean isReady() {
+    return isReady;
+  }
+
+  public void setReady(boolean ready) {
+    isReady = ready;
   }
 
   private Map<Long, List<TsFileResource>> splitResourcesByPartition(
@@ -444,7 +447,8 @@ public class StorageGroupProcessor {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName);
+      File fileFolder = fsFactory
+          .getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName);
       if (!fileFolder.exists()) {
         continue;
       }
@@ -1025,17 +1029,20 @@ public class StorageGroupProcessor {
     } else {
       baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
     }
-    fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName).mkdirs();
+    fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, storageGroupName)
+        .mkdirs();
 
     String filePath =
-        baseDir + File.separator + logicalStorageGroupName + File.separator + storageGroupName + File.separator + timePartitionId
+        baseDir + File.separator + logicalStorageGroupName + File.separator + storageGroupName
+            + File.separator + timePartitionId
             + File.separator
             + getNewTsFileName(timePartitionId);
 
     TsFileProcessor tsFileProcessor;
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
-      tsFileProcessor = new TsFileProcessor(logicalStorageGroupName + File.separator + storageGroupName,
+      tsFileProcessor = new TsFileProcessor(
+          logicalStorageGroupName + File.separator + storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true, deviceNumInLastClosedTsFile);
@@ -1047,7 +1054,8 @@ public class StorageGroupProcessor {
             .getTsFileResource().calculateRamSize());
       }
     } else {
-      tsFileProcessor = new TsFileProcessor(logicalStorageGroupName + File.separator + storageGroupName,
+      tsFileProcessor = new TsFileProcessor(
+          logicalStorageGroupName + File.separator + storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false, deviceNumInLastClosedTsFile);
@@ -1210,7 +1218,8 @@ public class StorageGroupProcessor {
 
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
-      File storageGroupFolder = fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + storageGroupName);
+      File storageGroupFolder = fsFactory
+          .getFile(tsfilePath, logicalStorageGroupName + File.separator + storageGroupName);
       if (storageGroupFolder.exists()) {
         try {
           org.apache.iotdb.db.utils.FileUtils.deleteDirectory(storageGroupFolder);
@@ -2150,7 +2159,8 @@ public class StorageGroupProcessor {
       case LOAD_UNSEQUENCE:
         targetFile = fsFactory
             .getFile(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar + filePartitionId + File.separator
+                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar
+                    + filePartitionId + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
         if (tsFileManagement.contains(tsFileResource, false)) {
@@ -2164,7 +2174,8 @@ public class StorageGroupProcessor {
       case LOAD_SEQUENCE:
         targetFile =
             fsFactory.getFile(DirectoryManager.getInstance().getNextFolderForSequenceFile(),
-                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar + filePartitionId + File.separator
+                logicalStorageGroupName + File.separatorChar + storageGroupName + File.separatorChar
+                    + filePartitionId + File.separator
                     + tsFileResource.getTsFile().getName());
         tsFileResource.setFile(targetFile);
         if (tsFileManagement.contains(tsFileResource, true)) {
@@ -2502,6 +2513,21 @@ public class StorageGroupProcessor {
 
   }
 
+  @TestOnly
+  public long getPartitionMaxFileVersions(long partitionId) {
+    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
+  }
+
+  public void setCustomCloseFileListeners(
+      List<CloseFileListener> customCloseFileListeners) {
+    this.customCloseFileListeners = customCloseFileListeners;
+  }
+
+  public void setCustomFlushListeners(
+      List<FlushListener> customFlushListeners) {
+    this.customFlushListeners = customFlushListeners;
+  }
+
   private enum LoadTsFileType {
     LOAD_SEQUENCE, LOAD_UNSEQUENCE
   }
@@ -2534,20 +2560,5 @@ public class StorageGroupProcessor {
   public interface TimePartitionFilter {
 
     boolean satisfy(String storageGroupName, long timePartitionId);
-  }
-
-  @TestOnly
-  public long getPartitionMaxFileVersions(long partitionId) {
-    return partitionMaxFileVersions.getOrDefault(partitionId, -1L);
-  }
-
-  public void setCustomCloseFileListeners(
-      List<CloseFileListener> customCloseFileListeners) {
-    this.customCloseFileListeners = customCloseFileListeners;
-  }
-
-  public void setCustomFlushListeners(
-      List<FlushListener> customFlushListeners) {
-    this.customFlushListeners = customFlushListeners;
   }
 }

@@ -395,14 +395,14 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * get storage group processor by path
-   * @param storageGroupPath path of the storage group
-   * @param storageGroupMNode mnode of the storage group
+   * get storage group processor by device path
+   * @param devicePath path of the device
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid modification in mtree
    * @return found or new storage group processor
    */
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  private StorageGroupProcessor getStorageGroupProcessorByPath(PartialPath storageGroupPath,
+  private StorageGroupProcessor getStorageGroupProcessorByPath(PartialPath devicePath,
       StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap
@@ -410,7 +410,7 @@ public class StorageEngine implements IService {
     if (virtualStorageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
-        waitAllSgReady(storageGroupPath);
+        waitAllSgReady(devicePath);
         synchronized (storageGroupMNode) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
@@ -426,17 +426,22 @@ public class StorageEngine implements IService {
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
-    return virtualStorageGroupManager.getProcessor(storageGroupPath, storageGroupMNode);
+    return virtualStorageGroupManager.getProcessor(devicePath, storageGroupMNode);
   }
 
-  public StorageGroupProcessor buildNewStorageGroupProcessor(PartialPath storageGroupPath,
-      StorageGroupMNode storageGroupMNode, String storageGroupName)
+  /**
+   * build a new storage group processor
+   * @param virtualStorageGroupId virtual storage group id  e.g. 1
+   * @param logicalStorageGroupName logical storage group name e.g.  root.sg1
+   */
+  public StorageGroupProcessor buildNewStorageGroupProcessor(PartialPath logicalStorageGroupName,
+      StorageGroupMNode storageGroupMNode, String virtualStorageGroupId)
       throws StorageGroupProcessorException {
     StorageGroupProcessor processor;
     logger.info("construct a processor instance, the storage group is {}, Thread is {}",
-        storageGroupPath, Thread.currentThread().getId());
-    processor = new StorageGroupProcessor(systemDir + File.separator + storageGroupPath,
-        storageGroupName,
+        logicalStorageGroupName, Thread.currentThread().getId());
+    processor = new StorageGroupProcessor(systemDir + File.separator + logicalStorageGroupName,
+        virtualStorageGroupId,
         fileFlushPolicy, storageGroupMNode.getFullPath());
     processor.setDataTTL(storageGroupMNode.getDataTTL());
     processor.setCustomFlushListeners(customFlushListeners);
@@ -493,7 +498,7 @@ public class StorageEngine implements IService {
           StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
           updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
         } catch (MetadataException e) {
-          e.printStackTrace();
+          logger.error("failed to record status", e);
         }
       }
     } catch (WriteProcessException e) {
@@ -532,7 +537,7 @@ public class StorageEngine implements IService {
         StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
         updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
       } catch (MetadataException e) {
-        e.printStackTrace();
+        logger.error("failed to record status", e);
       }
     }
   }
@@ -579,7 +584,7 @@ public class StorageEngine implements IService {
 
       if (logger.isInfoEnabled()) {
         logger.info("{} closing sg processor is called for closing {}, seq = {}",
-            isSync ? "sync" : "async", storageGroupPath,
+            isSync ? "sync" : "async", processor.getStorageGroupName() + "-" + processor.getLogicalStorageGroupName(),
             isSeq);
       }
 
@@ -633,7 +638,7 @@ public class StorageEngine implements IService {
       if (processor != null) {
         logger
             .info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-                storageGroupPath, isSeq, partitionId);
+                processor.getStorageGroupName() + "-" + processor.getLogicalStorageGroupName(), isSeq, partitionId);
         processor.writeLock();
         // to avoid concurrent modification problem, we need a new array list
         List<TsFileProcessor> processors = isSeq ?
