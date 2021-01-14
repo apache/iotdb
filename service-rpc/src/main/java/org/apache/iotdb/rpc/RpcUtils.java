@@ -53,6 +53,7 @@ public class RpcUtils {
 
   /**
    * if resizeIfNecessary is called continuously with a small size for more than
+   * MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space.
    */
   public static final int MAX_BUFFER_OVERSIZE_TIME = 5;
   public static final long MIN_SHRINK_INTERVAL = 60_000L;
