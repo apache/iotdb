@@ -26,7 +26,7 @@ IoTDB集群版为您提供了NodeTool Shell工具用于监控指定集群的工�
 下面具体介绍每个指令的使用方式及示例，其中$IOTDB_CLUSTER_HOME表示IoTDB分布式的安装目录所在路径。
 
 # 前提条件
-使用NodeTool需要开启JMX服务，具体请参考[JMX Tool](JMX Tool.md)
+使用NodeTool需要开启JMX服务，具体请参考[JMX Tool](JMX Tool.md)。
 
 # 使用说明
 
@@ -35,9 +35,10 @@ IoTDB集群版为您提供了NodeTool Shell工具用于监控指定集群的工�
 NodeTool Shell工具启动脚本位于$IOTDB_CLUSTER_HOME/sbin文件夹下，启动时可以指定集群运行的IP和PORT。
 其中IP为您期望连接的节点的IP，PORT为IoTDB集群启动时指定的JMX服务端口号，分别默认为`127.0.0.1`和`31999`。
 
-对于开启了JMX鉴权服务的，启动时候需要指定JMX服务的用户名和密码，默认分别为`iotdb`和`passw!d`
+如果您需要监控远程集群或修改了JMX服务端口号，请通过启动参数`-h`和`-p`项来使用实际的IP和PORT。
 
-如果您需要监控远程集群或修改了JMX服务端口号，请通过启动参数-h和-p项来使用实际的IP和PORT。
+对于开启了JMX鉴权服务的，启动时候需要指定JMX服务的用户名和密码，默认分别为`iotdb`和`passw!d`，请通过启动参数`-u` 和`-pw`
+项来指定JMX服务的用户名和密码。
 
 ## 指令说明
 在分布式系统中，一个节点由节点IP，元数据端口，数据端口和服务端口来标识，即Node\<IP:METAPORT:DATAPORT:CLUSTERPORT>。

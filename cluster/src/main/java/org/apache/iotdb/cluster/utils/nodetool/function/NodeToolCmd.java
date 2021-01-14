@@ -25,7 +25,7 @@ import com.google.common.base.Throwables;
 import io.airlift.airline.Option;
 import io.airlift.airline.OptionType;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.Map;
 import javax.management.JMX;
 import javax.management.MBeanServerConnection;
@@ -83,8 +83,8 @@ public abstract class NodeToolCmd implements Runnable {
     try {
       String jmxURL = String.format(JMX_URL_FORMAT, host, port);
       JMXServiceURL serviceURL = new JMXServiceURL(jmxURL);
-      Map<String, Object> environment = new HashMap<>(1);
-      environment.put(JMXConnector.CREDENTIALS, new String[]{user, password});
+      Map<String, Object> environment = Collections
+          .singletonMap(JMXConnector.CREDENTIALS, new String[]{user, password});
       JMXConnector connector = JMXConnectorFactory.connect(serviceURL, environment);
       mbsc = connector.getMBeanServerConnection();
     } catch (IOException e) {
@@ -98,7 +98,8 @@ public abstract class NodeToolCmd implements Runnable {
   }
 
   String nodeToString(Node node) {
-    return String.format("%s:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort());
+    return String.format("%s:%d:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort(),
+        node.getClientPort());
   }
 
   String partitionGroupToString(PartitionGroup group) {

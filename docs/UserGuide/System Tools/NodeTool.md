@@ -39,11 +39,12 @@ and port is the JMX service port specified when the IoTDB cluster is started.
 
 The default values are `127.0.0.1` and `31999`, respectively.
 
-When JMX authentication service is enabled, the user name and password of JMX service should be specified. 
-The default values are `iotdb` and `passw!d`, respectively.
-
 If you need to monitor the remote cluster or modify the JMX service port number,
 set the actual IP and port with the `-h` and `-p` options.
+
+When JMX authentication service is enabled, the username and password of JMX service should be specified. 
+The default values are `iotdb` and `passw!d`, respectively. Please use the start parameters `-u` and `-pw`
+to specify the username and password of the JMX service.
 
 ## Explains
 In a distributed system, a node is identified by node IP, metadata port, data port and cluster port \<IP:METAPORT:DATAPORT:CLUSTERPORT>.
