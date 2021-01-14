@@ -44,6 +44,11 @@ public class VirtualStorageGroupManager {
   StorageGroupProcessor[] virtualStorageGroupProcessor;
 
   /**
+   * value of root.stats."root.sg".TOTAL_POINTS
+   */
+  private long monitorSeriesValue;
+
+  /**
    * get all virtual storage group Processor
    * @return all virtual storage group Processor
    */
@@ -132,5 +137,17 @@ public class VirtualStorageGroupManager {
           .buildNewStorageGroupProcessor(storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(i));
       virtualStorageGroupProcessor[i] = processor;
     }
+  }
+
+  public long getMonitorSeriesValue() {
+    return monitorSeriesValue;
+  }
+
+  public void setMonitorSeriesValue(long monitorSeriesValue) {
+    this.monitorSeriesValue = monitorSeriesValue;
+  }
+
+  public void updateMonitorSeriesValue(int successPointsNum) {
+    this.monitorSeriesValue += successPointsNum;
   }
 }

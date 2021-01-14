@@ -489,7 +489,12 @@ public class StorageEngine implements IService {
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
-        updateMonitorStatistics(storageGroupProcessor, insertRowPlan);
+        try {
+          StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
+          updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
+        } catch (MetadataException e) {
+          e.printStackTrace();
+        }
       }
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
@@ -523,16 +528,21 @@ public class StorageEngine implements IService {
 
     storageGroupProcessor.insertTablet(insertTabletPlan);
     if (config.isEnableStatMonitor()) {
-      updateMonitorStatistics(storageGroupProcessor, insertTabletPlan);
+      try {
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+        updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
+      } catch (MetadataException e) {
+        e.printStackTrace();
+      }
     }
   }
 
-  private void updateMonitorStatistics(StorageGroupProcessor processor, InsertPlan insertPlan) {
+  private void updateMonitorStatistics(VirtualStorageGroupManager virtualStorageGroupManager, InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
     int successPointsNum =
         insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
     // update to storage group statistics
-    processor.updateMonitorSeriesValue(successPointsNum);
+    virtualStorageGroupManager.updateMonitorSeriesValue(successPointsNum);
     // update to global statistics
     monitor.updateStatGlobalValue(successPointsNum);
   }

@@ -237,10 +237,6 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
-  /**
-   * value of root.stats."root.sg".TOTAL_POINTS
-   */
-  private long monitorSeriesValue;
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
 
   /**
@@ -379,18 +375,6 @@ public class StorageGroupProcessor {
       logger.error("{} compaction pool not started ,recover failed",
           storageGroupName);
     }
-  }
-
-  public long getMonitorSeriesValue() {
-    return monitorSeriesValue;
-  }
-
-  public void setMonitorSeriesValue(long monitorSeriesValue) {
-    this.monitorSeriesValue = monitorSeriesValue;
-  }
-
-  public void updateMonitorSeriesValue(int successPointsNum) {
-    this.monitorSeriesValue += successPointsNum;
   }
 
   /**

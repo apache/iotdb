@@ -846,7 +846,7 @@ public class IoTDBConfig {
   private boolean debugState = false;
 
   /**
-   * the number of virtual storage group
+   * the number of virtual storage groups per user-defined storage group
    */
   private int virtualStorageGroupNum = 8;
 
