@@ -64,7 +64,11 @@ public class QueryOperator extends SFWOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+    if (hasUdf() && hasAggregation()) {
+      throw new QueryProcessException(
+          "User-defined and built-in hybrid aggregation is not supported.");
+    }
     QueryPlan queryPlan;
     if (isLastQuery()) {
       queryPlan = new LastQueryPlan();

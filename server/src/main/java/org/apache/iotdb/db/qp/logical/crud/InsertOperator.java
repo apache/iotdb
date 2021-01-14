@@ -38,7 +38,7 @@ public class InsertOperator extends SFWOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     if (getMeasurementList().length != getValueList().length) {
       throw new SQLParserException(
           String.format(

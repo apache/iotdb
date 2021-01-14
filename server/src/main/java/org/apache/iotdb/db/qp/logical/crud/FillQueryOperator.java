@@ -46,7 +46,7 @@ public class FillQueryOperator extends QueryOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     if (hasUdf()) {
       throw new QueryProcessException("Fill functions are not supported in UDF queries.");
     }

@@ -32,5 +32,5 @@ public abstract class RootOperator extends Operator {
   }
 
 
-  public abstract PhysicalPlan convert(int fetchSize) throws QueryProcessException;
+  public abstract PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException;
 }

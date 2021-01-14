@@ -39,7 +39,7 @@ public class SetTTLOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     switch (getTokenIntType()) {
       case SQLConstant.TOK_SET:
         return new SetTTLPlan(getStorageGroup(), getDataTTL());

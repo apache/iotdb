@@ -90,7 +90,7 @@ public class ShowTimeSeriesOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(getPath(), getLimit(),
         getOffset(), fetchSize);
     showTimeSeriesPlan.setIsContains(isContains());

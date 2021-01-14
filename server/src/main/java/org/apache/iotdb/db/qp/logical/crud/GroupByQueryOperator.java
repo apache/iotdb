@@ -39,7 +39,7 @@ public class GroupByQueryOperator extends QueryOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     GroupByTimePlan plan = new GroupByTimePlan();
     convert(plan);
     return plan;

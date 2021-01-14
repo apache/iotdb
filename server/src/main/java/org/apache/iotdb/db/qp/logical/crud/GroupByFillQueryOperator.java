@@ -33,7 +33,7 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
 
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     GroupByTimeFillPlan plan = new GroupByTimeFillPlan();
     super.convert(plan);
     plan.setFillType(getFillTypes());

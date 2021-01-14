@@ -50,7 +50,7 @@ public class AlterTimeSeriesOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     return new AlterTimeSeriesPlan(getPath(), getAlterType(), getAlterMap(), getAlias(),
         getTagsMap(), getAttributesMap());
   }

@@ -80,7 +80,7 @@ public class PhysicalGenerator {
             .getLoadConfigurationOperatorType();
         return generateLoadConfigurationPlan(type);
       default:
-        return ((RootOperator) operator).convert(fetchSize);
+        return ((RootOperator) operator).transform2PhysicalPlan(fetchSize);
     }
   }
 
@@ -126,13 +126,7 @@ public class PhysicalGenerator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
       throws QueryProcessException {
-    QueryPlan queryPlan;
-
-    if (queryOperator.hasAggregation() && queryOperator.hasUdf()) {
-      throw new QueryProcessException(
-          "User-defined and built-in hybrid aggregation is not supported.");
-    }
-    queryPlan = (QueryPlan) queryOperator.convert(fetchSize);
+    QueryPlan queryPlan = (QueryPlan) queryOperator.transform2PhysicalPlan(fetchSize);
 
     if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic
@@ -564,27 +558,6 @@ public class PhysicalGenerator {
 
     // trim seriesPath list
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
-  }
-
-  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
-      throws MetadataException {
-    List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
-    if (aggregations.isEmpty()) {
-      return true;
-    }
-
-    List<PartialPath> paths = queryOperator.getSelectedPaths();
-    List<TSDataType> dataTypes = getSeriesTypes(paths);
-    String aggType = aggregations.get(0);
-    switch (aggType) {
-      case SQLConstant.MIN_VALUE:
-      case SQLConstant.MAX_VALUE:
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
-        return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
-      default:
-        return true;
-    }
   }
 
   protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {

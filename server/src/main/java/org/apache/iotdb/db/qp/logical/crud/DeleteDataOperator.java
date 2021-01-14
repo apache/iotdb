@@ -37,7 +37,7 @@ public class DeleteDataOperator extends SFWOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     return new DeletePlan(getStartTime(), getEndTime(), getSelectedPaths());
   }
 

@@ -959,7 +959,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         parseUdfCall(udfCallContext, selectOp);
       }
     }
-
     return selectOp;
   }
 

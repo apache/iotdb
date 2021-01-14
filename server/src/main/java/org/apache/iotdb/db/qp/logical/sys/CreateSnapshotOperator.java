@@ -32,7 +32,7 @@ public class CreateSnapshotOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     return new CreateSnapshotPlan();
   }
 }

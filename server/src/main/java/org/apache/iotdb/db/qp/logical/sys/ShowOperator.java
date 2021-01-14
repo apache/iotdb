@@ -33,7 +33,7 @@ public class ShowOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan convert(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     ShowContentType contentType = ShowContentType.getFromOperatorType(tokenIntType);
     if (contentType == null) {
       throw new LogicalOperatorException(String.format(
