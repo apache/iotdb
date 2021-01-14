@@ -649,7 +649,6 @@ public abstract class RaftLogManager {
         logApplier.apply(entry);
       } catch (Exception e) {
         entry.setException(e);
-      } finally {
         entry.setApplied(true);
       }
     }
