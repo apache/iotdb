@@ -94,7 +94,7 @@ public class RpcUtils {
       TSInsertTabletsReq req)
       throws StatementExecutionException, RedirectException {
     verifySuccess(status);
-    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
       Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
       List<TSStatus> statusSubStatus = status.getSubStatus();
       for (int i = 0; i < statusSubStatus.size(); i++) {
