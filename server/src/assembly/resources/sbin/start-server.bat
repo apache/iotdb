@@ -90,7 +90,9 @@ set JAVA_OPTS=-ea^
  -DIOTDB_HOME="%IOTDB_HOME%"^
  -DTSFILE_HOME="%IOTDB_HOME%"^
  -DTSFILE_CONF="%IOTDB_CONF%"^
- -DIOTDB_CONF="%IOTDB_CONF%"
+ -DIOTDB_CONF="%IOTDB_CONF%"^
+ --add-exports java.base/jdk.internal.ref=ALL-UNNAMED
+
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
