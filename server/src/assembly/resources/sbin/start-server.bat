@@ -92,7 +92,6 @@ set JAVA_OPTS=-ea^
  -DTSFILE_CONF="%IOTDB_CONF%"^
  -DIOTDB_CONF="%IOTDB_CONF%"
 
-
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%IOTDB_HOME%\lib\*"

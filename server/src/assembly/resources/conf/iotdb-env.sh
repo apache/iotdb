@@ -132,7 +132,6 @@ version_arr=(${JVM_VERSION//./ })
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
     MAJOR_VERSION=${version_arr[1]}
-    iotdb_parms=""
     echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]loggc"
     if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
         # only add -Xlog:gc if it's not mentioned in jvm-server.options file
@@ -144,8 +143,6 @@ if [ "${version_arr[0]}" = "1" ] ; then
 else
     #JDK 11 and others
     MAJOR_VERSION=${version_arr[0]}
-
-    iotdb_parms="--add-exports java.base/jdk.internal.ref=ALL-UNNAMED"
     # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
     # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
     echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]log:gc"
