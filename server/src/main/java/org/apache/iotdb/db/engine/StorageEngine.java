@@ -479,6 +479,7 @@ public class StorageEngine implements IService {
    * This function is just for unit test.
    */
   public synchronized void reset() {
+    setAllSgReady(false);
     processorMap.clear();
   }
 
