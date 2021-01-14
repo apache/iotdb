@@ -28,12 +28,7 @@ public interface VirtualPartitioner {
    * @param deviceId device id
    * @return virtual storage group id
    */
-  public int deviceToStorageGroup(PartialPath deviceId);
-
-  /**
-   * release resource
-   */
-  public void clear();
+  public int deviceToVirtualStorageGroupId(PartialPath deviceId);
 
   /**
    * get total number of virtual storage group

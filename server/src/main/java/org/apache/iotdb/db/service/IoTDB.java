@@ -111,7 +111,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(CompactionMergeTaskPoolManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
     registerManager.register(StorageEngine.getInstance());
-    StorageEngine.getInstance().recover();
     registerManager.register(TemporaryQueryDataFileService.getInstance());
     registerManager.register(UDFClassLoaderManager.getInstance());
     registerManager.register(UDFRegistrationService.getInstance());

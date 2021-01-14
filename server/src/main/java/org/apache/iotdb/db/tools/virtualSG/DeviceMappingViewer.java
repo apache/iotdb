@@ -52,7 +52,7 @@ public class DeviceMappingViewer {
       System.out.println("--------------------- mapping from device to virtual storage group ID ---------------------");
       System.out.println("Format is: device name -> virtual storage group ID");
       for(PartialPath partialPath : partialPathSet){
-        System.out.println(partialPath + " -> " + partitioner.deviceToStorageGroup(partialPath));
+        System.out.println(partialPath + " -> " + partitioner.deviceToVirtualStorageGroupId(partialPath));
       }
     }
 

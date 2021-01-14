@@ -61,19 +61,18 @@ import org.junit.Test;
 
 public class DeletionFileNodeTest {
 
-  private String processorName = "root.test";
-
   private static String[] measurements = new String[10];
-  private TSDataType dataType = TSDataType.DOUBLE;
-  private TSEncoding encoding = TSEncoding.PLAIN;
-
-  private int prevUnseqLevelNum = 0;
 
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
     }
   }
+
+  private String processorName = "root.test";
+  private TSDataType dataType = TSDataType.DOUBLE;
+  private TSEncoding encoding = TSEncoding.PLAIN;
+  private int prevUnseqLevelNum = 0;
 
   @Before
   public void setup() throws MetadataException {
@@ -180,8 +179,8 @@ public class DeletionFileNodeTest {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if(file.isDirectory()){
-            for(File tsfile : file.listFiles()){
+          if (file.isDirectory()) {
+            for (File tsfile : file.listFiles()) {
               if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
                 modFiles.add(tsfile);
               }
@@ -311,7 +310,7 @@ public class DeletionFileNodeTest {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if(file.isDirectory()) {
+          if (file.isDirectory()) {
             for (File tsfile : file.listFiles()) {
               if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
                 modFiles.add(tsfile);

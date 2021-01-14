@@ -109,7 +109,6 @@ public class FileLoaderTest {
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + "0" + File.separator + "0" + File.separator
                 + (time + i * 100 + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
-        LOGGER.error("file name is" + fileName);
 
         File syncFile = new File(fileName);
         File dataFile = new File(

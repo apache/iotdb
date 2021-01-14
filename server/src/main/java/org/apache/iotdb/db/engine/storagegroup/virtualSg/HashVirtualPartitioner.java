@@ -37,13 +37,8 @@ public class HashVirtualPartitioner implements VirtualPartitioner {
   }
 
   @Override
-  public int deviceToStorageGroup(PartialPath deviceId) {
+  public int deviceToVirtualStorageGroupId(PartialPath deviceId) {
     return toStorageGroupId(deviceId);
-  }
-
-  @Override
-  public void clear() {
-
   }
 
   @TestOnly

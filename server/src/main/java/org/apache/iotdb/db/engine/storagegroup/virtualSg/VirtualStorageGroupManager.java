@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
+import java.util.List;
+import java.util.ArrayList;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -52,7 +54,7 @@ public class VirtualStorageGroupManager {
    * get all virtual storage group Processor
    * @return all virtual storage group Processor
    */
-  public StorageGroupProcessor[] getAllVirutalStorageGroupProcessor(){
+  public StorageGroupProcessor[] getAllVirtualStorageGroupProcessor(){
     return virtualStorageGroupProcessor;
   }
 
@@ -102,7 +104,7 @@ public class VirtualStorageGroupManager {
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public StorageGroupProcessor getProcessor(PartialPath partialPath, StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-    int loc = partitioner.deviceToStorageGroup(partialPath);
+    int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
     StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
@@ -131,11 +133,33 @@ public class VirtualStorageGroupManager {
    * recover
    * @param storageGroupMNode logical sg mnode
    */
-  public void recover(StorageGroupMNode storageGroupMNode) throws StorageGroupProcessorException {
+  public void recover(StorageGroupMNode storageGroupMNode) {
+    List<Thread> threadList = new ArrayList<>(partitioner.getPartitionCount());
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance()
-          .buildNewStorageGroupProcessor(storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(i));
-      virtualStorageGroupProcessor[i] = processor;
+      int cur = i;
+      Thread recoverThread = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          StorageGroupProcessor processor = null;
+          try {
+            processor = StorageEngine.getInstance()
+                .buildNewStorageGroupProcessor(storageGroupMNode.getPartialPath(), storageGroupMNode, String.valueOf(cur));
+          } catch (StorageGroupProcessorException e) {
+            logger.error("failed to recover storage group processor in " + storageGroupMNode.getFullPath() + " virtual storage group id is " + cur);
+          }
+          virtualStorageGroupProcessor[cur] = processor;
+        }
+      });
+
+      threadList.add(recoverThread);
+    }
+
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      try {
+        threadList.get(i).join();
+      } catch (InterruptedException e) {
+        logger.error("failed to recover storage group processor in " + storageGroupMNode.getFullPath() + " virtual storage group id is " + i);
+      }
     }
   }
 
