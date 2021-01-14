@@ -15,22 +15,23 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
+package org.apache.iotdb.tsfile.exception;
 
-package org.apache.iotdb.db.exception.query;
+/**
+ * This class is used to throw run time exception when query is time out.
+ */
+public class QueryTimeoutRuntimeException extends RuntimeException {
 
-import java.util.Date;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.rpc.TSStatusCode;
+  public static final String TIMEOUT_EXCEPTION_MESSAGE
+      = "Current query is time out, please check your statement or modify timeout parameter.";
 
-public class OutOfTTLException extends WriteProcessException {
-
-  private static final long serialVersionUID = -1197147887094603300L;
-
-  public OutOfTTLException(long insertionTime, long timeLowerBound) {
-    super(String.format("Insertion time [%s] is less than ttl time bound [%s]",
-        new Date(insertionTime), new Date(timeLowerBound)),
-        TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode(), true);
+  public QueryTimeoutRuntimeException(String message, Throwable cause) {
+    super(message, cause);
   }
+
+  public QueryTimeoutRuntimeException(String message) {
+    super(message);
+  }
+
 }

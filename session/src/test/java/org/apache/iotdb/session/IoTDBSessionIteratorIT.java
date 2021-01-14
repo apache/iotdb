@@ -242,6 +242,35 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
+  /**
+   * Test executeQueryStatement with timeout, and the result is not timeout here.
+   */
+  @Test
+  public void queryWithTimeoutTest() {
+    String[] retArray = new String[]{
+        "9,root.sg1.d1.s1,false"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session
+          .executeQueryStatement("select last s1 from root.sg1.d1", 2000);
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = String.format("%s,%s,%s", iterator.getLong(1), iterator.getString(2),
+            iterator.getString(3));
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();

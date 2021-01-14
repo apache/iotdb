@@ -175,7 +175,7 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      String aggrStr = aggregations != null ? aggregations.get(i) : null;
       TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
@@ -237,7 +237,8 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(String
-          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()));
+          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()),
+          true);
     }
   }
 }

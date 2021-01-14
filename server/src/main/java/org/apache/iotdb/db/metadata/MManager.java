@@ -816,7 +816,7 @@ public class MManager {
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
                                                              QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
     Map<String, Set<MeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
@@ -1448,7 +1448,7 @@ public class MManager {
         pair.right.put(key, value);
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key), true);
       }
     }
 
@@ -1498,7 +1498,7 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey));
+          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey), true);
     }
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -1508,7 +1508,7 @@ public class MManager {
     if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
       throw new MetadataException(
           String.format(
-              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey));
+              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey), true);
     }
 
     // check tag map
@@ -1544,7 +1544,7 @@ public class MManager {
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
     } else {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey));
+          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey), true);
     }
   }
 
