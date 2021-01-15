@@ -80,10 +80,10 @@ Single quotes are not allowed in the path. If you want to use special characters
 
 The characters supported in LayerName without double quotes are as below:
 
-* Chinese characters '\u2E80' 到'\u9FFF'
+* Chinese characters '\u2E80' to '\u9FFF'
 * '+', '&', '%', '$', '#', '@', '/', '_', '-', ':'
 * 'A' to 'Z', 'a' to 'z', '0' to '9'
-* '[', ']'
+* '[', ']' (eg. 's[1', 's[1]', s[ab]')
 
 '-' and ':' cannot be the first character.
 
