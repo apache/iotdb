@@ -169,6 +169,7 @@ public class VirtualStorageGroupManager {
         logger.error(
             "failed to recover storage group processor in " + storageGroupMNode.getFullPath()
                 + " virtual storage group id is " + i);
+        Thread.currentThread().interrupt();
       }
     }
   }
