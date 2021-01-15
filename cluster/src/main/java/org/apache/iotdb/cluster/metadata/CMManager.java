@@ -1308,7 +1308,7 @@ public class CMManager extends MManager {
       }));
     }
 
-    waitForThreadPool(futureList, pool);
+    waitForThreadPool(futureList, pool, "showTimeseries()");
     List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
         limit, offset);
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
