@@ -44,7 +44,6 @@ import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
@@ -199,17 +198,7 @@ public class RestorableTsFileIOWriterTest {
     pathList.add(new Path("d1", "s2"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
-    RowRecord record = dataSet.next();
-    assertEquals(1, record.getTimestamp());
-    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
-    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
-    record = dataSet.next();
-    assertEquals(2, record.getTimestamp());
-    assertEquals(5.0f, record.getFields().get(0).getFloatV(), 0.001);
-    assertEquals(4.0f, record.getFields().get(1).getFloatV(), 0.001);
-    readOnlyTsFile.close();
     assertFalse(dataSet.hasNext());
-
     assertTrue(file.delete());
   }
 
