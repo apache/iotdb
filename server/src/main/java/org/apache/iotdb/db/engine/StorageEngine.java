@@ -899,7 +899,7 @@ public class StorageEngine implements IService {
       set.add(getProcessor(path.getDevicePath()));
     }
     List<StorageGroupProcessor> list = set.stream()
-        .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualstorageGroupId))
+        .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
         .collect(Collectors.toList());
     list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readLock());
     return list;

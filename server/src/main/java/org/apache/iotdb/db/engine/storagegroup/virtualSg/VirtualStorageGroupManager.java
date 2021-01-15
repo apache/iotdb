@@ -198,7 +198,7 @@ public class VirtualStorageGroupManager {
       if (logger.isInfoEnabled()) {
         logger.info("{} closing sg processor is called for closing {}, seq = {}",
             isSync ? "sync" : "async",
-            processor.getVirtualstorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq);
       }
 
@@ -241,7 +241,7 @@ public class VirtualStorageGroupManager {
       if (processor != null) {
         logger
             .info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-                processor.getVirtualstorageGroupId() + "-" + processor
+                processor.getVirtualStorageGroupId() + "-" + processor
                     .getLogicalStorageGroupName(), isSeq, partitionId);
         processor.writeLock();
         // to avoid concurrent modification problem, we need a new array list
