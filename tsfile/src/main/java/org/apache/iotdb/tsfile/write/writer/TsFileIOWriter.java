@@ -405,6 +405,7 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
     ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
     ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
+    out.flush();
   }
 
   /**

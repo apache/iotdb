@@ -995,9 +995,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     String lastDeviceId = null;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
-      boolean flag = true;
-      while (flag) {
-        marker = this.readMarker();
+      while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
@@ -1087,7 +1085,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkGroupHeader chunkGroupHeader = this.readChunkGroupHeader();
             lastDeviceId = chunkGroupHeader.getDeviceID();
             break;
-          case MetaMarker.SEPARATOR:
+          case MetaMarker.OPERATION_INDEX_RANGE:
             truncatedSize = this.position() - 1;
             if (lastDeviceId != null) {
               // schema of last chunk group
@@ -1102,10 +1100,8 @@ public class TsFileSequenceReader implements AutoCloseable {
               chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
               lastDeviceId = null;
             }
-            flag = false;
-            break;
-          case MetaMarker.OPERATION_INDEX_RANGE:
             readPlanIndex();
+            truncatedSize = this.position();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
@@ -1114,6 +1110,17 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       // now we read the tail of the data section, so we are sure that the last
       // ChunkGroupFooter is complete.
+      if (lastDeviceId != null) {
+        // schema of last chunk group
+        if (newSchema != null) {
+          for (MeasurementSchema tsSchema : measurementSchemaList) {
+            newSchema
+                .putIfAbsent(new Path(lastDeviceId, tsSchema.getMeasurementId()), tsSchema);
+          }
+        }
+        // last chunk group Metadata
+        chunkGroupMetadataList.add(new ChunkGroupMetadata(lastDeviceId, chunkMetadataList));
+      }
       truncatedSize = this.position() - 1;
     } catch (Exception e) {
       logger.info("TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",

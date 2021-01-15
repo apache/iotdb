@@ -21,7 +21,6 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -135,6 +134,7 @@ public class SeqTsFileRecoverTest {
       }
     }
     writer.flushAllChunkGroups();
+    writer.getIOWriter().writePlanIndices();
     writer.getIOWriter().close();
 
     node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());
