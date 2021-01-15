@@ -130,15 +130,15 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
   }
 
   private boolean cacheRowInObjects() throws IOException {
-    int columnNumber = seriesReaderByTimestampList.size();
+    int seriesNumber = seriesReaderByTimestampList.size();
     while (timeGenerator.hasNext()) {
       boolean hasField = false;
 
-      Object[] rowInObjects = new Object[columnNumber + 1];
+      Object[] rowInObjects = new Object[seriesNumber + 1];
       long timestamp = timeGenerator.next();
-      rowInObjects[columnNumber] = timestamp;
+      rowInObjects[seriesNumber] = timestamp;
 
-      for (int i = 0; i < columnNumber; i++) {
+      for (int i = 0; i < seriesNumber; i++) {
         Object value = cached.get(i)
             ? timeGenerator.getValue(paths.get(i), timestamp)
             : seriesReaderByTimestampList.get(i).getValueInTimestamp(timestamp);
