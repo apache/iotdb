@@ -23,7 +23,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -60,12 +59,7 @@ public class TsFileSketchTool {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-        List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-        reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
-        Map<Long, Long> versionMap = new HashMap<>();
-        for (Pair<Long, Long> versionPair : versionInfo) {
-          versionMap.put(versionPair.left - Long.BYTES - 1, versionPair.right);
-        }
+        reader.selfCheck(null, allChunkGroupMetadata, false);
 
         // begin print
         StringBuilder str1 = new StringBuilder();
@@ -111,16 +105,6 @@ public class TsFileSketchTool {
                   String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
-          // versionInfo begins if there is a versionInfo
-          if (versionMap.containsKey(chunkEndPos + chunkGroupHeader.getSerializedSize())) {
-            printlnBoth(pw,
-                    String.format("%20s", chunkEndPos + chunkGroupHeader.getSerializedSize())
-                            + "|\t[Version Info]");
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
-            printlnBoth(pw,
-                    String.format("%20s", "") + "|\t\t[version] "
-                            + versionMap.get(chunkEndPos + chunkGroupHeader.getSerializedSize()));
-          }
         }
 
         // metadata begins
