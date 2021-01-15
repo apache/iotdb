@@ -63,6 +63,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private ByteBuffer logBufferIdle;
   private ByteBuffer logBufferFlushing;
 
+  // used for the convenience of deletion
+  private ByteBuffer[] bufferArray;
+
   private final Object switchBufferCondition = new Object();
   private ReentrantLock lock = new ReentrantLock();
   private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
@@ -93,6 +96,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void initBuffer(ByteBuffer[] byteBuffers) {
     this.logBufferWorking = byteBuffers[0];
     this.logBufferIdle = byteBuffers[1];
+    this.bufferArray = byteBuffers;
   }
 
   @Override
@@ -206,18 +210,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
       deleted = true;
-      ByteBuffer[] res = new ByteBuffer[2];
-      int index = 0;
-      if (logBufferWorking != null) {
-        res[index++] = logBufferWorking;
-      }
-      if (logBufferIdle != null) {
-        res[index++] = logBufferIdle;
-      }
-      if (logBufferFlushing != null) {
-        res[index] = logBufferFlushing;
-      }
-      return res;
+      return this.bufferArray;
     } finally {
       lock.unlock();
     }

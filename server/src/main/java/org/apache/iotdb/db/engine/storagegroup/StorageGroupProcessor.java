@@ -280,6 +280,9 @@ public class StorageGroupProcessor {
 
   private int currentWalPoolSize = 0;
 
+  // this field is used to a
+  private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
+
 
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer
@@ -308,6 +311,10 @@ public class StorageGroupProcessor {
         res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
         res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
       }
+      // if the pool is empty, set the time back to MAX_VALUE
+      if (walByteBufferPool.isEmpty()) {
+        timeWhenPoolNotEmpty = Long.MAX_VALUE;
+      }
     }
     return res;
   }
@@ -320,6 +327,10 @@ public class StorageGroupProcessor {
       byteBuffer.clear();
     }
     synchronized (walByteBufferPool) {
+      // if the pool is empty before, update the time
+      if (walByteBufferPool.isEmpty()) {
+        timeWhenPoolNotEmpty = System.nanoTime();
+      }
       walByteBufferPool.addLast(byteBuffers[0]);
       walByteBufferPool.addLast(byteBuffers[1]);
       walByteBufferPool.notifyAll();
@@ -333,7 +344,13 @@ public class StorageGroupProcessor {
     synchronized (walByteBufferPool) {
       int expectedSize =
           (workSequenceTsFileProcessors.size() + workUnsequenceTsFileProcessors.size()) * 2;
-      while (expectedSize < currentWalPoolSize && !walByteBufferPool.isEmpty()) {
+      // the unit is ms
+      long poolNotEmptyIntervalInMS = (System.nanoTime() - timeWhenPoolNotEmpty) / 1_000_000;
+      // only when the expected size less than the current pool size
+      // and the pool is not empty and the time interval since the pool is not empty is larger than 10s
+      // we will trim the size to expectedSize until the pool is empty
+      while (expectedSize < currentWalPoolSize && !walByteBufferPool.isEmpty()
+          && poolNotEmptyIntervalInMS >= DEFAULT_POOL_TRIM_INTERVAL_MILLIS) {
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
         currentWalPoolSize -= 2;
@@ -644,7 +661,8 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
-          writer = recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
+          writer = recoverPerformer
+              .recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
             tsFileManagement.addRecover(tsFileResource, isSeq);
           } else {
@@ -653,7 +671,8 @@ public class StorageGroupProcessor {
           }
           continue;
         } else {
-          writer = recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
+          writer = recoverPerformer
+              .recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(),
@@ -1623,7 +1642,8 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) throws IOException {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
+      throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
           deletion.getEndTime())) {
