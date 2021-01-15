@@ -79,14 +79,14 @@ public class QueryOperator extends SFWOperator {
       ((UDTFPlan) queryPlan).constructUdfExecutors(getSelectOperator().getUdfList());
     } else if (hasAggregation()) {
       queryPlan = new AggregationPlan();
-      convert((AggregationPlan) queryPlan);
+      setPlanValues((AggregationPlan) queryPlan);
     } else {
       queryPlan = new RawDataQueryPlan();
     }
     return queryPlan;
   }
 
-  protected void convert(AggregationPlan plan) {
+  protected void setPlanValues(AggregationPlan plan) {
     plan.setAggregations(getSelectOperator().getAggregations());
   }
 

@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_QUERY;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -1098,8 +1097,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitGroupByFillStatement(GroupByFillStatementContext ctx) {
-    queryOp = new GroupByFillQueryOperator();
-    parseGroupByFillClause(ctx.groupByFillClause(), (GroupByFillQueryOperator) queryOp);
+    queryOp = parseGroupByFillClause(ctx.groupByFillClause());
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     }
@@ -1111,8 +1109,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitFillStatement(FillStatementContext ctx) {
-    queryOp = new FillQueryOperator();
-    parseFillClause(ctx.fillClause(), (FillQueryOperator) queryOp);
+    queryOp = parseFillClause(ctx.fillClause());
     if (ctx.slimitClause() != null) {
       parseSlimitClause(ctx.slimitClause(), queryOp);
     }
@@ -1139,8 +1136,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitGroupByLevelStatement(GroupByLevelStatementContext ctx) {
-    queryOp = new GroupByLevelQueryOperator();
-    parseGroupByLevelClause(ctx.groupByLevelClause(), (GroupByLevelQueryOperator) queryOp);
+    queryOp = parseGroupByLevelClause(ctx.groupByLevelClause());
     if (ctx.orderByTimeClause() != null) {
       parseOrderByTimeClause(ctx.orderByTimeClause(), queryOp);
     }
@@ -1242,17 +1238,22 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     return sequence;
   }
 
-  public void parseGroupByLevelClause(GroupByLevelClauseContext ctx, GroupByLevelQueryOperator op) {
+  public GroupByLevelQueryOperator parseGroupByLevelClause(GroupByLevelClauseContext ctx) {
+    GroupByLevelQueryOperator op = new GroupByLevelQueryOperator();
     op.setLevel(Integer.parseInt(ctx.INT().getText()));
+    return op;
   }
 
-  public void parseFillClause(FillClauseContext ctx, FillQueryOperator queryOp) {
+  public FillQueryOperator parseFillClause(FillClauseContext ctx) {
+    FillQueryOperator op = new FillQueryOperator();
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
-      parseTypeClause(typeClause, fillTypes, queryOp);
+      parseTypeClause(typeClause, fillTypes, op);
     }
-    queryOp.setFillTypes(fillTypes);
+    op.setFillTypes(fillTypes);
+
+    return op;
   }
 
   private void parseLimitClause(LimitClauseContext ctx, Operator operator) {
@@ -1356,7 +1357,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     return op;
   }
 
-  private void parseGroupByFillClause(GroupByFillClauseContext ctx, GroupByFillQueryOperator op) {
+  private GroupByFillQueryOperator parseGroupByFillClause(GroupByFillClauseContext ctx) {
+    GroupByFillQueryOperator op = new GroupByFillQueryOperator();
+
     op.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
     // parse timeUnit
@@ -1401,6 +1404,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       }
     }
     op.setFillTypes(fillTypes);
+
+    return op;
   }
 
   private void parseTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes,

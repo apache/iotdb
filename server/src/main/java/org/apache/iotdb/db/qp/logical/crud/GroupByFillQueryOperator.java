@@ -35,7 +35,7 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
   @Override
   public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     GroupByTimeFillPlan plan = new GroupByTimeFillPlan();
-    super.convert(plan);
+    super.setPlanValues(plan);
     plan.setFillType(getFillTypes());
     for (String aggregation : plan.getAggregations()) {
       if (!SQLConstant.LAST_VALUE.equals(aggregation)) {

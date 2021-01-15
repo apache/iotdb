@@ -47,10 +47,10 @@ public class GroupByLevelQueryOperator extends GroupByQueryOperator {
     AggregationPlan plan;
     if (getUnit() > 0) {
       plan = new GroupByTimePlan();
-      super.convert((GroupByTimePlan) plan);
+      super.setPlanValues((GroupByTimePlan) plan);
     } else {
       plan = new AggregationPlan();
-      super.convert(plan);
+      super.setPlanValues(plan);
     }
     plan.setLevel(getLevel());
     try {

@@ -41,12 +41,12 @@ public class GroupByQueryOperator extends QueryOperator {
   @Override
   public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
     GroupByTimePlan plan = new GroupByTimePlan();
-    convert(plan);
+    setPlanValues(plan);
     return plan;
   }
 
-  protected void convert(GroupByTimePlan plan) {
-    super.convert(plan);
+  protected void setPlanValues(GroupByTimePlan plan) {
+    super.setPlanValues(plan);
     plan.setInterval(getUnit());
     plan.setIntervalByMonth(isIntervalByMonth());
     plan.setSlidingStep(getSlidingStep());
