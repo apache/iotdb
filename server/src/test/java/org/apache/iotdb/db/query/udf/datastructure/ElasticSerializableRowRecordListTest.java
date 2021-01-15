@@ -23,13 +23,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Random;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Before;
@@ -74,26 +71,27 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
   private void testPut() {
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        RowRecord rowRecord = new RowRecord(i);
-        for (TSDataType dataType : DATA_TYPES) {
-          switch (dataType) {
+        Object[] rowRecord = new Object[DATA_TYPES.length + 1];
+        rowRecord[DATA_TYPES.length] = (long) i;
+        for (int j = 0; j < DATA_TYPES.length; ++j) {
+          switch (DATA_TYPES[j]) {
             case INT32:
-              rowRecord.addField(i, dataType);
+              rowRecord[j] = i;
               break;
             case INT64:
-              rowRecord.addField((long) i, dataType);
+              rowRecord[j] = (long) i;
               break;
             case FLOAT:
-              rowRecord.addField((float) i, dataType);
+              rowRecord[j] = (float) i;
               break;
             case DOUBLE:
-              rowRecord.addField((double) i, dataType);
+              rowRecord[j] = (double) i;
               break;
             case BOOLEAN:
-              rowRecord.addField(i % 2 == 0, dataType);
+              rowRecord[j] = i % 2 == 0;
               break;
             case TEXT:
-              rowRecord.addField(Binary.valueOf(String.valueOf(i)), dataType);
+              rowRecord[j] = Binary.valueOf(String.valueOf(i));
               break;
           }
         }
@@ -105,31 +103,30 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     assertEquals(ITERATION_TIMES, rowRecordList.size());
   }
 
-  private void testRowRecord(RowRecord rowRecord, int expected) {
-    List<Field> fields = rowRecord.getFields();
+  private void testRowRecord(Object[] rowRecord, int expected) {
     for (int j = 0; j < DATA_TYPES.length; ++j) {
       switch (DATA_TYPES[j]) {
         case INT32:
-          assertEquals(expected, fields.get(j).getIntV());
+          assertEquals(expected, (int) rowRecord[j]);
           break;
         case INT64:
-          assertEquals(expected, fields.get(j).getLongV());
+          assertEquals(expected, (long) rowRecord[j]);
           break;
         case FLOAT:
-          assertEquals(expected, fields.get(j).getFloatV(), 0);
+          assertEquals(expected, (float) rowRecord[j], 0);
           break;
         case DOUBLE:
-          assertEquals(expected, fields.get(j).getDoubleV(), 0);
+          assertEquals(expected, (double) rowRecord[j], 0);
           break;
         case BOOLEAN:
-          assertEquals(expected % 2 == 0, fields.get(j).getBoolV());
+          assertEquals(expected % 2 == 0, rowRecord[j]);
           break;
         case TEXT:
-          assertEquals(Binary.valueOf(String.valueOf(expected)), fields.get(j).getBinaryV());
+          assertEquals(Binary.valueOf(String.valueOf(expected)), rowRecord[j]);
           break;
       }
     }
-    assertEquals(DATA_TYPES.length, fields.size());
+    assertEquals(DATA_TYPES.length, rowRecord.length - 1);
   }
 
   private void testOrderedAccessByIndex() {
@@ -186,28 +183,28 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     }
   }
 
-  private RowRecord generateRowRecord(int time, int byteLength) {
-    String string = generateRandomString(byteLength);
-    RowRecord rowRecord = new RowRecord(time);
-    for (TSDataType dataType : DATA_TYPES) {
-      switch (dataType) {
+  private Object[] generateRowRecord(int time, int byteLength) {
+    Object[] rowRecord = new Object[DATA_TYPES.length + 1];
+    rowRecord[DATA_TYPES.length] = (long) time;
+    for (int i = 0; i < DATA_TYPES.length; ++i) {
+      switch (DATA_TYPES[i]) {
         case INT32:
-          rowRecord.addField(time, dataType);
+          rowRecord[i] = time;
           break;
         case INT64:
-          rowRecord.addField((long) time, dataType);
+          rowRecord[i] = (long) time;
           break;
         case FLOAT:
-          rowRecord.addField((float) time, dataType);
+          rowRecord[i] = (float) time;
           break;
         case DOUBLE:
-          rowRecord.addField((double) time, dataType);
+          rowRecord[i] = (double) time;
           break;
         case BOOLEAN:
-          rowRecord.addField(time % 2 == 0, dataType);
+          rowRecord[i] = time % 2 == 0;
           break;
         case TEXT:
-          rowRecord.addField(Binary.valueOf(string), dataType);
+          rowRecord[i] = Binary.valueOf(generateRandomString(byteLength));
           break;
       }
     }
