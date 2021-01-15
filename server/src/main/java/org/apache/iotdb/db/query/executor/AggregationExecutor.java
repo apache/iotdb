@@ -389,10 +389,10 @@ public class AggregationExecutor {
     if (((AggregationPlan) plan).getLevel() >= 0) {
       Map<Integer, String> pathIndex = new HashMap<>();
       Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(
-              (AggregationPlan) plan, pathIndex);
+          (AggregationPlan) plan, pathIndex);
 
       List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
-              aggregateResultList, finalPaths, pathIndex);
+          aggregateResultList, finalPaths, pathIndex);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();

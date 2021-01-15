@@ -38,8 +38,8 @@ public class Deletion extends Modification {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long versionNum, long endTime) {
-    super(Type.DELETION, path, versionNum);
+  public Deletion(PartialPath path, long fileOffset, long endTime) {
+    super(Type.DELETION, path, fileOffset);
     this.startTime = Long.MIN_VALUE;
     this.endTime = endTime;
   }
@@ -50,8 +50,8 @@ public class Deletion extends Modification {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long versionNum, long startTime, long endTime) {
-    super(Type.DELETION, path, versionNum);
+  public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
+    super(Type.DELETION, path, fileOffset);
     this.startTime = startTime;
     this.endTime = endTime;
   }

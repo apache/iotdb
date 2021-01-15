@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -39,8 +40,8 @@ import org.slf4j.LoggerFactory;
 
 public class MemTableFlushTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
-  private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
+  private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
+  private static final FlushSubTaskPoolManager SUB_TASK_POOL_MANAGER = FlushSubTaskPoolManager
       .getInstance();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
@@ -65,40 +66,45 @@ public class MemTableFlushTask {
     this.memTable = memTable;
     this.writer = writer;
     this.storageGroup = storageGroup;
-    this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
-    this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
-    logger.debug("flush task of Storage group {} memtable {} is created ",
-        storageGroup, memTable.getVersion());
+    this.encodingTaskFuture = SUB_TASK_POOL_MANAGER.submit(encodingTask);
+    this.ioTaskFuture = SUB_TASK_POOL_MANAGER.submit(ioTask);
+    LOGGER.debug("flush task of Storage group {} memtable is created, flushing to file {}.",
+              storageGroup, writer.getFile().getName());
   }
 
   /**
    * the function for flushing memtable.
    */
   public void syncFlushMemTable()
-      throws ExecutionException, InterruptedException, IOException {
-    logger.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
+      throws ExecutionException, InterruptedException {
+    LOGGER.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
         storageGroup,
         memTable.memSize(),
         memTable.getTotalPointsNum() / memTable.getSeriesNumber());
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    for (String deviceId : memTable.getMemTableMap().keySet()) {
-      encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
-      for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+    //for map do not use get(key) to iteratate
+    for (Map.Entry<String, Map<String, IWritableMemChunk>> memTableEntry : memTable.getMemTableMap().entrySet()) {
+      encodingTaskQueue.add(new StartFlushGroupIOTask(memTableEntry.getKey()));
+
+      final Map<String, IWritableMemChunk> value = memTableEntry.getValue();
+      for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
         long startTime = System.currentTimeMillis();
-        IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
+        IWritableMemChunk series = iWritableMemChunkEntry.getValue();
         MeasurementSchema desc = series.getSchema();
         TVList tvList = series.getSortedTVListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
       }
+
       encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
+
     noMoreEncodingTask = true;
-    logger.debug(
-        "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
-        storageGroup, memTable.getVersion(), sortTime);
+    LOGGER.debug(
+        "Storage group {} memtable flushing into file {}: data sort time cost {} ms.",
+        storageGroup, writer.getFile().getName(), sortTime);
 
     try {
       encodingTaskFuture.get();
@@ -112,13 +118,12 @@ public class MemTableFlushTask {
     ioTaskFuture.get();
 
     try {
-      writer.writeVersion(memTable.getVersion());
       writer.writePlanIndices();
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
 
-    logger.info(
+    LOGGER.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup, memTable, System.currentTimeMillis() - start);
   }
@@ -154,7 +159,7 @@ public class MemTableFlushTask {
             seriesWriterImpl.write(time, tvPairs.getBinary(i));
             break;
           default:
-            logger.error("Storage group {} does not support data type: {}", storageGroup,
+            LOGGER.error("Storage group {} does not support data type: {}", storageGroup,
                 dataType);
             break;
         }
@@ -166,8 +171,8 @@ public class MemTableFlushTask {
     public void run() {
       long memSerializeTime = 0;
       boolean noMoreMessages = false;
-      logger.debug("Storage group {} memtable {}, starts to encoding data.", storageGroup,
-          memTable.getVersion());
+      LOGGER.debug("Storage group {} memtable flushing to file {} starts to encoding data.",
+              storageGroup, writer.getFile().getName());
       while (true) {
         if (noMoreEncodingTask) {
           noMoreMessages = true;
@@ -180,8 +185,8 @@ public class MemTableFlushTask {
           try {
             TimeUnit.MILLISECONDS.sleep(10);
           } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-            logger.error("Storage group {} memtable {}, encoding task is interrupted.",
-                storageGroup, memTable.getVersion(), e);
+            LOGGER.error("Storage group {} memtable flushing to file {}, encoding task is interrupted.",
+                storageGroup, writer.getFile().getName(), e);
             // generally it is because the thread pool is shutdown so the task should be aborted
             break;
           }
@@ -199,9 +204,9 @@ public class MemTableFlushTask {
         }
       }
       noMoreIOTask = true;
-      logger.debug("Storage group {}, flushing memtable {} into disk: Encoding data cost "
+      LOGGER.debug("Storage group {}, flushing memtable into file {}: Encoding data cost "
               + "{} ms.",
-          storageGroup, memTable.getVersion(), memSerializeTime);
+          storageGroup, writer.getFile().getName(), memSerializeTime);
     }
   };
 
@@ -209,7 +214,8 @@ public class MemTableFlushTask {
   private Runnable ioTask = () -> {
     long ioTime = 0;
     boolean returnWhenNoTask = false;
-    logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+    LOGGER.debug("Storage group {} memtable flushing to file {} start io.",
+            storageGroup, writer.getFile().getName());
     while (true) {
       if (noMoreIOTask) {
         returnWhenNoTask = true;
@@ -222,8 +228,8 @@ public class MemTableFlushTask {
         try {
           TimeUnit.MILLISECONDS.sleep(10);
         } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-          logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
-              , memTable.getVersion());
+          LOGGER.error("Storage group {} memtable flushing to file {}, io task is interrupted.",
+                  storageGroup, writer.getFile().getName());
           // generally it is because the thread pool is shutdown so the task should be aborted
           break;
         }
@@ -241,15 +247,15 @@ public class MemTableFlushTask {
             this.writer.endChunkGroup();
           }
         } catch (IOException e) {
-          logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
-              memTable.getVersion(), e);
+          LOGGER.error("Storage group {} memtable flushing to file {}, io task meets error.",
+                  storageGroup, writer.getFile().getName(), e);
           throw new FlushRunTimeException(e);
         }
         ioTime += System.currentTimeMillis() - starTime;
       }
     }
-    logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
-        storageGroup, ioTime);
+    LOGGER.debug("flushing a memtable to file {} in storage group {}, io cost {}ms",
+            writer.getFile().getName(), storageGroup, ioTime);
   };
 
   static class EndChunkGroupIoTask {

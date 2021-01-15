@@ -111,12 +111,12 @@ public class MTree implements Serializable {
     } else {
       try {
         QueryDataSource dataSource = QueryResourceManager.getInstance().
-                getQueryDataSource(node.getPartialPath(), queryContext, null);
+            getQueryDataSource(node.getPartialPath(), queryContext, null);
         Set<String> measurementSet = new HashSet<>();
         measurementSet.add(node.getPartialPath().getFullPath());
         LastPointReader lastReader = new LastPointReader(node.getPartialPath(),
-                node.getSchema().getType(), measurementSet, queryContext,
-                dataSource, Long.MAX_VALUE, null);
+            node.getSchema().getType(), measurementSet, queryContext,
+            dataSource, Long.MAX_VALUE, null);
         last = lastReader.readLastPoint();
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
@@ -485,7 +485,7 @@ public class MTree implements Serializable {
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
     } else {
-      throw new StorageGroupNotSetException(path.getFullPath());
+      throw new StorageGroupNotSetException(path.getFullPath(), true);
     }
   }
 
@@ -523,7 +523,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
-        throw new PathNotExistException(path.getFullPath());
+        throw new PathNotExistException(path.getFullPath(), true);
       }
     }
     return cur;
@@ -747,7 +747,8 @@ public class MTree implements Serializable {
    * @return Pair.left  contains all the satisfied paths
    *         Pair.right means the current offset or zero if we don't set offset.
    */
-  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit, int offset) throws MetadataException {
+  Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(PartialPath prefixPath, int limit,
+      int offset) throws MetadataException {
     PartialPath prePath = new PartialPath(prefixPath.getNodes());
     ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prefixPath);
     plan.setLimit(limit);
@@ -972,7 +973,8 @@ public class MTree implements Serializable {
   }
 
 
-  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan, boolean removeCurrentOffset)
+  List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan,
+      boolean removeCurrentOffset)
       throws MetadataException {
     List<Pair<PartialPath, String[]>> res = new LinkedList<>();
     String[] nodes = plan.getPath().getNodes();
@@ -1314,7 +1316,8 @@ public class MTree implements Serializable {
         }
         nodeStack.push(node);
       } catch (Exception e) {
-        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(),
+            e);
       }
     }
 

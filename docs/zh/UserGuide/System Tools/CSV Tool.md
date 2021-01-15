@@ -52,6 +52,7 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > 1. `,` : 包含`,`的字段需要使用单引号或者双引号括起来
 > 2. `"` : "字段中的`"`需要被替换成转义字符`\"`或者用`\'`将字段括起来。
 > 3. `'` : "字段中的`'`需要被替换成转义字符`\'`或者用`\"`将字段括起来。
+> 4. 你可以输入时间格式像yyyy-MM-dd'T'HH:mm:ss, yyy-MM-dd HH:mm:ss, 或者yyyy-MM-dd'T'HH:mm:ss.SSSZ.
 
 ### 运行 import shell
 ```

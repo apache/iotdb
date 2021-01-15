@@ -25,6 +25,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -129,9 +130,13 @@ public class IoTDBFillIT {
   private static final String STATUS_STR_2 = "root.ln.wf01.wt02.status";
   private static final String HARDWARE_STR = "root.ln.wf01.wt01.hardware";
 
+  boolean prevEnableUnseqCompaction;
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
+    prevEnableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -140,6 +145,7 @@ public class IoTDBFillIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   @Test
