@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.v2.read;
 
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -47,7 +45,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.v2.file.footer.ChunkGroupFooterV2;
 import org.apache.iotdb.tsfile.v2.file.header.ChunkHeaderV2;
 import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
@@ -341,12 +338,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
           .add(chunkMetadata);
     }
-
-    // set version in ChunkMetadata
-    List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
-    for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
-      VersionUtils.applyVersion(entry.getValue(), versionInfo);
-    }
     return seriesMetadata;
   }
 
@@ -546,7 +537,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     readFileMetadata();
-    List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
     ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
@@ -555,8 +545,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     while (buffer.hasRemaining()) {
       chunkMetadataList.add(ChunkMetadataV2.deserializeFrom(buffer));
     }
-
-    VersionUtils.applyVersion(chunkMetadataList, versionInfo);
 
     // minimize the storage of an ArrayList instance.
     chunkMetadataList.trimToSize();

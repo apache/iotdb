@@ -19,12 +19,9 @@
 package org.apache.iotdb.tsfile.v2.file.metadata;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TsFileMetadataV2 {
@@ -49,14 +46,13 @@ public class TsFileMetadataV2 {
     ReadWriteIOUtils.readInt(buffer);
 
     // versionInfo
-    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
     int versionSize = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < versionSize; i++) {
-      long versionPos = ReadWriteIOUtils.readLong(buffer);
-      long version = ReadWriteIOUtils.readLong(buffer);
-      versionInfo.add(new Pair<>(versionPos, version));
+      // versionPos
+      ReadWriteIOUtils.readLong(buffer);
+      // version
+      ReadWriteIOUtils.readLong(buffer);
     }
-    fileMetaData.setVersionInfo(versionInfo);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);

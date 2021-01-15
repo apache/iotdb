@@ -135,7 +135,6 @@ public class SeqTsFileRecoverTest {
       }
     }
     writer.flushAllChunkGroups();
-    writer.writeVersion(0);
     writer.getIOWriter().close();
 
     node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());

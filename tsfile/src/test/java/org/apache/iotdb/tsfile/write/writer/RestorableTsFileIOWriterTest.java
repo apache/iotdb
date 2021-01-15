@@ -188,7 +188,6 @@ public class RestorableTsFileIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
-    writer.writeVersion(0);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
