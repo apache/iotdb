@@ -62,6 +62,10 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
         .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
         || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+    for (ChunkMetadata metadata : chunkMetadataList) {
+      metadata.setVersion(resource.getVersion());
+    }
     return chunkMetadataList;
   }
 

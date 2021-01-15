@@ -354,7 +354,6 @@ public class TsFileWriter implements AutoCloseable {
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();
-    fileWriter.setDefaultVersionPair();
     fileWriter.endFile();
   }
 
@@ -365,9 +364,5 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
-  }
-
-  public void writeVersion(long versionPair) throws IOException {
-    fileWriter.writeVersion(versionPair);
   }
 }

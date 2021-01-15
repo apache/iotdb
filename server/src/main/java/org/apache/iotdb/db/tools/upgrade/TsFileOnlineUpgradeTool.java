@@ -164,7 +164,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             String deviceID = chunkGroupFooter.getDeviceID();
             rewrite(deviceID, measurementSchemaList, pageHeadersInChunkGroup,
                 pageDataInChunkGroup, needToDecodeInfoInChunkGroup);
-
             pageHeadersInChunkGroup.clear();
             pageDataInChunkGroup.clear();
             measurementSchemaList.clear();
@@ -172,10 +171,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             newChunkGroup = true;
             break;
           case MetaMarker.VERSION:
-            long version = reader.readVersion();
-            for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-              tsFileIOWriter.writeVersion(version);
-            }
+            reader.readVersion();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
