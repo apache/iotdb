@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools.virtualSG;
+package org.apache.iotdb.db.tools.virtualsg;
 
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
