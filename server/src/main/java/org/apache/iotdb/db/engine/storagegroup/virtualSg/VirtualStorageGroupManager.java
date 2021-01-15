@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -413,4 +414,10 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /**
+   * only for test
+   */
+  public void reset(){
+    Arrays.fill(virtualStorageGroupProcessor, null);
+  }
 }

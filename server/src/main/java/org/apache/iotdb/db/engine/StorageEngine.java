@@ -267,9 +267,12 @@ public class StorageEngine implements IService {
     for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit(() -> {
         try {
-          VirtualStorageGroupManager virtualStorageGroupManager = new VirtualStorageGroupManager();
+          // for recovery in test
+          VirtualStorageGroupManager virtualStorageGroupManager = processorMap
+              .computeIfAbsent(storageGroup.getPartialPath(),
+                  id -> new VirtualStorageGroupManager());
+
           virtualStorageGroupManager.recover(storageGroup);
-          processorMap.put(storageGroup.getPartialPath(), virtualStorageGroupManager);
 
           logger.info("Storage Group Processor {} is recovered successfully",
               storageGroup.getFullPath());
@@ -396,8 +399,10 @@ public class StorageEngine implements IService {
 
   /**
    * get storage group processor by device path
-   * @param devicePath path of the device
-   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid modification in mtree
+   *
+   * @param devicePath        path of the device
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
+   *                          modification in mtree
    * @return found or new storage group processor
    */
   @SuppressWarnings("java:S2445")
@@ -431,7 +436,8 @@ public class StorageEngine implements IService {
 
   /**
    * build a new storage group processor
-   * @param virtualStorageGroupId virtual storage group id  e.g. 1
+   *
+   * @param virtualStorageGroupId   virtual storage group id  e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g.  root.sg1
    */
   public StorageGroupProcessor buildNewStorageGroupProcessor(PartialPath logicalStorageGroupName,
@@ -479,8 +485,9 @@ public class StorageEngine implements IService {
    * This function is just for unit test.
    */
   public synchronized void reset() {
-    setAllSgReady(false);
-    processorMap.clear();
+    for(VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()){
+      virtualStorageGroupManager.reset();
+    }
   }
 
   /**
@@ -496,8 +503,10 @@ public class StorageEngine implements IService {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
-          StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
-          updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
+          StorageGroupMNode storageGroupMNode = IoTDB.metaManager
+              .getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
+          updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()),
+              insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
         }
@@ -509,7 +518,8 @@ public class StorageEngine implements IService {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(
+        insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -535,15 +545,18 @@ public class StorageEngine implements IService {
     storageGroupProcessor.insertTablet(insertTabletPlan);
     if (config.isEnableStatMonitor()) {
       try {
-        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
-        updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager
+            .getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+        updateMonitorStatistics(processorMap.get(storageGroupMNode.getPartialPath()),
+            insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
       }
     }
   }
 
-  private void updateMonitorStatistics(VirtualStorageGroupManager virtualStorageGroupManager, InsertPlan insertPlan) {
+  private void updateMonitorStatistics(VirtualStorageGroupManager virtualStorageGroupManager,
+      InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
     int successPointsNum =
         insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
@@ -632,7 +645,8 @@ public class StorageEngine implements IService {
         }
 
         PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap.get(storageGroupPath).delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
+        processorMap.get(storageGroupPath)
+            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -740,12 +754,14 @@ public class StorageEngine implements IService {
 
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
-    virtualStorageGroupManager.deleteStorageGroup(systemDir + File.pathSeparator + storageGroupPath);
+    virtualStorageGroupManager
+        .deleteStorageGroup(systemDir + File.pathSeparator + storageGroupPath);
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile()))).loadNewTsFileForSync(newTsFileResource);
+    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile())))
+        .loadNewTsFileForSync(newTsFileResource);
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
@@ -813,7 +829,8 @@ public class StorageEngine implements IService {
 
     Iterator<String> partialPathIterator = tsFileResource.getDevices().iterator();
     try {
-      return getProcessor(new PartialPath(partialPathIterator.next())).isFileAlreadyExist(tsFileResource, partitionNum);
+      return getProcessor(new PartialPath(partialPathIterator.next()))
+          .isFileAlreadyExist(tsFileResource, partitionNum);
     } catch (StorageEngineException | IllegalPathException e) {
       logger.error("can't find processor with: " + tsFileResource, e);
     }
