@@ -280,7 +280,11 @@ public class StorageGroupProcessor {
 
   private int currentWalPoolSize = 0;
 
-  // this field is used to a
+  // this field is used to avoid when one writer release bytebuffer back to pool,
+  // and the next writer has already arrived, but the check thread get the lock first, it find the pool
+  // is not empty, so it free the memory. When the next writer get the lock, it will apply the memory again.
+  // So our free memory strategy is only when the expected size less than the current pool size
+  // and the pool is not empty and the time interval since the pool is not empty is larger than DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
 
