@@ -197,7 +197,7 @@ public class VirtualStorageGroupManager {
       if (logger.isInfoEnabled()) {
         logger.info("{} closing sg processor is called for closing {}, seq = {}",
             isSync ? "sync" : "async",
-            processor.getVirtualstorageGroupName() + "-" + processor.getLogicalStorageGroupName(),
+            processor.getVirtualstorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq);
       }
 
@@ -240,7 +240,7 @@ public class VirtualStorageGroupManager {
       if (processor != null) {
         logger
             .info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
-                processor.getVirtualstorageGroupName() + "-" + processor
+                processor.getVirtualstorageGroupId() + "-" + processor
                     .getLogicalStorageGroupName(), isSeq, partitionId);
         processor.writeLock();
         // to avoid concurrent modification problem, we need a new array list
@@ -349,7 +349,8 @@ public class VirtualStorageGroupManager {
   /**
    * push getAllClosedStorageGroupTsFile operation down to all virtual storage group processors
    */
-  public void getAllClosedStorageGroupTsFile(PartialPath storageGroupName, Map<PartialPath, Map<Long, List<TsFileResource>>> ret){
+  public void getAllClosedStorageGroupTsFile(PartialPath storageGroupName,
+      Map<PartialPath, Map<Long, List<TsFileResource>>> ret) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         List<TsFileResource> allResources = storageGroupProcessor.getSequenceFileTreeSet();
@@ -371,7 +372,7 @@ public class VirtualStorageGroupManager {
   /**
    * push setPartitionVersionToMax operation down to all virtual storage group processors
    */
-  public void setPartitionVersionToMax(long partitionId, long newMaxVersion){
+  public void setPartitionVersionToMax(long partitionId, long newMaxVersion) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.setPartitionFileVersionToMax(partitionId, newMaxVersion);
@@ -382,7 +383,7 @@ public class VirtualStorageGroupManager {
   /**
    * push removePartitions operation down to all virtual storage group processors
    */
-  public void removePartitions(TimePartitionFilter filter){
+  public void removePartitions(TimePartitionFilter filter) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.removePartitions(filter);
@@ -393,7 +394,8 @@ public class VirtualStorageGroupManager {
   /**
    * push getWorkingStorageGroupPartitions operation down to all virtual storage group processors
    */
-  public void getWorkingStorageGroupPartitions(String storageGroupName, Map<String, List<Pair<Long, Boolean>>> res){
+  public void getWorkingStorageGroupPartitions(String storageGroupName,
+      Map<String, List<Pair<Long, Boolean>>> res) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
@@ -417,7 +419,7 @@ public class VirtualStorageGroupManager {
   /**
    * only for test
    */
-  public void reset(){
+  public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
   }
 }
