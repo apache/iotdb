@@ -22,6 +22,8 @@ import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
 import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_QUERY;
 
 import java.io.File;
 import java.time.ZoneId;
@@ -68,6 +70,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
+import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
@@ -145,6 +148,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.IndexWithClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnsSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.KillQueryContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LastClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LastElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LimitClauseContext;
@@ -189,6 +193,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowMergeStatusContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowQueryProcesslistContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowTimeseriesContext;
@@ -734,6 +739,20 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       parseLimitClause(ctx.limitClause(), showTimeSeriesOperator);
     }
     return showTimeSeriesOperator;
+  }
+
+  @Override
+  public Operator visitShowQueryProcesslist(ShowQueryProcesslistContext ctx) {
+    return new ShowOperator(SQLConstant.TOK_QUERY_PROCESSLIST);
+  }
+
+  @Override
+  public Operator visitKillQuery(KillQueryContext ctx) {
+    KillQueryOperator killQueryOperator = new KillQueryOperator(TOK_KILL_QUERY);
+    if (ctx.INT() != null) {
+      killQueryOperator.setQueryId(Integer.parseInt(ctx.INT().getText()));
+    }
+    return killQueryOperator;
   }
 
   @Override

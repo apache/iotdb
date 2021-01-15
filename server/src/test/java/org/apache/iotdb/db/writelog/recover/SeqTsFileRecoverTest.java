@@ -184,7 +184,7 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, false);
     RestorableTsFileIOWriter writer = performer.recover(true, () -> {
       ByteBuffer[] buffers = new ByteBuffer[2];
@@ -244,7 +244,7 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, true);
     RestorableTsFileIOWriter writer = performer.recover(true, () -> {
       ByteBuffer[] buffers = new ByteBuffer[2];

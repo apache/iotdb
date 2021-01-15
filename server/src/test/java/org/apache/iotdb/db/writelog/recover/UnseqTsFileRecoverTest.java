@@ -193,7 +193,7 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, false, false);
+        resource, false, false);
     performer.recover(true, () -> {
       ByteBuffer[] buffers = new ByteBuffer[2];
       buffers[0] = ByteBuffer
@@ -226,8 +226,7 @@ public class UnseqTsFileRecoverTest {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReader(new ChunkDataIterator(chunkReader), priorityValue);
-      priorityValue++;
+          .addReader(new ChunkDataIterator(chunkReader), priorityValue++);
     }
 
     for (int i = 0; i < 10; i++) {

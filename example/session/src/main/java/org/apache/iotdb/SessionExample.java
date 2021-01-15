@@ -58,8 +58,9 @@ public class SessionExample {
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         throw e;
+      }
     }
 
     createTimeseries();
@@ -70,6 +71,7 @@ public class SessionExample {
     insertRecords();
     nonQuery();
     query();
+    queryWithTimeout();
     rawDataQuery();
     queryByIterator();
     deleteData();
@@ -178,7 +180,8 @@ public class SessionExample {
     }
   }
 
-  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertStrRecord()
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -249,6 +252,7 @@ public class SessionExample {
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
+
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -422,6 +426,18 @@ public class SessionExample {
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
+    dataSet.setFetchSize(1024); // default is 10000
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void queryWithTimeout()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1", 2000);
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
     while (dataSet.hasNext()) {

@@ -983,6 +983,21 @@ TRACING ON    //打开性能追踪
 TRACING OFF   //关闭性能追踪
 ```
 
+## 中止查询
+
+- 显示正在执行的查询列表
+
+```
+SHOW QUERY PROCESSLIST
+```
+
+- 中止查询
+```
+KILL QUERY INT?
+E.g. KILL QUERY
+E.g. KILL QUERY 2
+```
+
 # 参考
 
 ## 标识符

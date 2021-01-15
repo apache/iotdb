@@ -115,6 +115,8 @@ struct TSExecuteStatementReq {
   3: required i64 statementId
 
   4: optional i32 fetchSize
+
+  5: optional i64 timeout
 }
 
 struct TSExecuteBatchStatementReq{
@@ -153,6 +155,7 @@ struct TSFetchResultsReq{
   3: required i32 fetchSize
   4: required i64 queryId
   5: required bool isAlign
+  6: required i64 timeout
 }
 
 struct TSFetchResultsResp{
