@@ -158,6 +158,7 @@ public class VirtualStorageGroupManager {
       });
 
       threadList.add(recoverThread);
+      recoverThread.start();
     }
 
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
