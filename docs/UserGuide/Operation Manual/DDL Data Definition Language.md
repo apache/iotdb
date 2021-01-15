@@ -38,6 +38,9 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
+The LayerName of storage group can only be characters, numbers and underscores. 
+ 
+Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 ## Show Storage Group
 

@@ -78,7 +78,18 @@ It is worth noting that in the path, root is a reserved character, which is only
 
 Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
 
-> Note: the LayerName of storage group can only be characters, numbers and underscores.
+The characters supported in LayerName without double quotes are as below:
+
+* Chinese characters '\u2E80' 到'\u9FFF'
+* '+', '&', '%', '$', '#', '@', '/', '_', '-', ':'
+* 'A' to 'Z', 'a' to 'z', '0' to '9'
+* '[', ']'
+
+'-' and ':' cannot be the first character.
+
+> Note: the LayerName of storage group can only be characters, numbers and underscores. 
+> 
+> Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 * Timeseries Path
 
