@@ -217,16 +217,24 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(leafName)) {
-        throw new PathAlreadyExistException(path.getFullPath());
+      MNode child = cur.getChild(leafName);
+      if (child instanceof MeasurementMNode) {
+          throw new PathAlreadyExistException(path.getFullPath());
       }
-      if (alias != null && cur.hasChild(alias)) {
-        throw new AliasAlreadyExistException(path.getFullPath(), alias);
+      if (alias != null) {
+        MNode childByAlias = cur.getChild(alias);
+        if (childByAlias instanceof MeasurementMNode) {
+          throw new AliasAlreadyExistException(path.getFullPath(), alias);
+        }
       }
+
       MeasurementMNode leaf = new MeasurementMNode(cur, leafName, alias, dataType, encoding,
           compressor, props);
-
-      cur.addChild(leafName, leaf);
+      if (child != null) {
+        cur.replaceChild(leaf.getName(), leaf);
+      } else {
+        cur.addChild(leafName, leaf);
+      }
 
       // link alias to LeafMNode
       if (alias != null) {
