@@ -65,7 +65,6 @@ public class TsFileIOWriterTest {
     writer.endCurrentChunk();
     writer.endChunkGroup();
 
-    writer.writeVersion(0L);
     writer.setMinPlanIndex(100);
     writer.setMaxPlanIndex(10000);
     writer.writePlanIndices();
@@ -101,11 +100,6 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(MetaMarker.CHUNK_GROUP_FOOTER, reader.readMarker());
     ChunkGroupFooter footer = reader.readChunkGroupFooter();
     Assert.assertEquals(deviceId, footer.getDeviceID());
-
-    // separator
-    Assert.assertEquals(MetaMarker.VERSION, reader.readMarker());
-
-    reader.readVersion();
 
     Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
     reader.readPlanIndex();

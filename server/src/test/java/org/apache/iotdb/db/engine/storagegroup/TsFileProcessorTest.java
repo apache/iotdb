@@ -27,12 +27,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.version.SysTimeVersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -88,7 +86,7 @@ public class TsFileProcessorTest {
   public void testWriteAndFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -144,7 +142,7 @@ public class TsFileProcessorTest {
       throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -227,7 +225,7 @@ public class TsFileProcessorTest {
   public void testMultiFlush() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
@@ -268,7 +266,7 @@ public class TsFileProcessorTest {
   public void testWriteAndClose() throws IOException, WriteProcessException, MetadataException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath), sgInfo,
-        SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
+        this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true, INIT_ARRAY_SIZE);
 
     TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);

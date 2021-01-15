@@ -51,6 +51,13 @@ public class RpcUtils {
    */
   public static final int FRAME_HARD_MAX_LENGTH = 536870912;
 
+  /**
+   * if resizeIfNecessary is called continuously with a small size for more than
+   * MAX_BUFFER_OVERSIZE_TIME times, we will shrink the buffer to reclaim space.
+   */
+  public static final int MAX_BUFFER_OVERSIZE_TIME = 5;
+  public static final long MIN_SHRINK_INTERVAL = 60_000L;
+
   private RpcUtils() {
     // util class
   }
