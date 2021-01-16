@@ -102,12 +102,14 @@ public class LogReplayer {
           } else if (plan instanceof UpdatePlan) {
             replayUpdate((UpdatePlan) plan);
           }
+        } catch (PathNotExistException ignored) {
+          // can not get path because it is deleted
         } catch (Exception e) {
-          logger.error("recover wal of {} failed", insertFilePath, e);
+          logger.warn("recover wal of {} failed", insertFilePath, e);
         }
       }
     } catch (IOException e) {
-      logger.error("meet error when redo wal of {}", insertFilePath, e);
+      logger.warn("meet error when redo wal of {}", insertFilePath, e);
     } finally {
       logReader.close();
       try {
