@@ -26,25 +26,33 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.TsFileRestorableReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
-public class TsFileRestorableReaderTest {
+public class TsFileRestorableReaderTest extends BaseTsFileGeneratorForTest {
 
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testTsFileRestorableReader.tsfile");;
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 10 * 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTsFileRestorableReaderTest");
+    outputDataFile = TsFileRestorableReaderTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTsFileRestorableReaderTest.tsfile");
+  }
 
   @Test
   public void testToReadDamagedFileAndRepair() throws IOException {
     File file = fsFactory.getFile(FILE_PATH);
 
-    TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
+    writeFileWithOneIncompleteChunkHeader(file);
 
     TsFileSequenceReader reader = new TsFileRestorableReader(FILE_PATH, true);
     String tailMagic = reader.readTailMagic();
@@ -59,7 +67,7 @@ public class TsFileRestorableReaderTest {
   public void testToReadDamagedFileNoRepair() throws IOException {
     File file = fsFactory.getFile(FILE_PATH);
 
-    TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
+    writeFileWithOneIncompleteChunkHeader(file);
     // This should throw an Illegal Argument Exception
     TsFileSequenceReader reader = new TsFileRestorableReader(FILE_PATH, false);
     assertFalse(reader.isComplete());

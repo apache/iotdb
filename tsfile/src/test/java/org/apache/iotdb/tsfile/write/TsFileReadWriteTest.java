@@ -163,7 +163,6 @@ public class TsFileReadWriteTest {
     try {
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     } catch (IOException e) {
-      // Assert.fail();
     } finally {
       reader.close();
     }
@@ -217,6 +216,7 @@ public class TsFileReadWriteTest {
       proxy.assertEqualProxy(i, r.getFields().get(0), delta);
       i++;
     }
+    readTsFile.close();
     reader.close();
   }
 

@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.reader;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -32,7 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -41,20 +42,27 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 
-public class ReaderTest {
-
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+public class ReaderTest extends BaseTsFileGeneratorForTest {
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testReaderTest.tsfile");
+  private static final int ROW_COUNT = 1000000;
   private TsFileSequenceReader fileReader;
   private MetadataQuerierByFileImpl metadataQuerierByFile;
   private int maxDegreeOfIndexNode;
-  private final int rowCount = 1000000;
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 10 * 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perReaderTest");
+    outputDataFile = ReaderTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perReaderTest.tsfile");
+  }
 
   @Before
   public void before() throws IOException {
     maxDegreeOfIndexNode = TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
-    TsFileGeneratorForTest.generateFile(rowCount, 10 * 1024 * 1024, 10000);
+    generateFile(ReaderTest.ROW_COUNT, ReaderTest.ROW_COUNT, ReaderTest.ROW_COUNT);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
   }
@@ -63,7 +71,7 @@ public class ReaderTest {
   public void after() throws IOException {
     fileReader.close();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test
@@ -75,7 +83,7 @@ public class ReaderTest {
 
     AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
         chunkMetadataList, null);
-    long startTime = TsFileGeneratorForTest.START_TIMESTAMP;
+    long startTime = START_TIMESTAMP;
     BatchData data = null;
 
     while (seriesReader.hasNextBatch()) {
@@ -87,7 +95,7 @@ public class ReaderTest {
         count++;
       }
     }
-    Assert.assertEquals(rowCount, count);
+    Assert.assertEquals(ReaderTest.ROW_COUNT, count);
 
     chunkMetadataList = metadataQuerierByFile.getChunkMetaDataList(new Path("d1", "s4"));
     seriesReader = new FileSeriesReader(seriesChunkLoader, chunkMetadataList, null);
@@ -128,5 +136,8 @@ public class ReaderTest {
         data.next();
       }
     }
+
+    seriesChunkLoader.close();
+    seriesReader.close();
   }
 }

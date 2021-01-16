@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,20 +33,27 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
-public class IMetadataQuerierByFileImplTest {
-
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+public class IMetadataQuerierByFileImplTest extends BaseTsFileGeneratorForTest {
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testIMetadataQuerierByFileImplTest.tsfile");
   private TsFileSequenceReader reader;
   private ArrayList<TimeRange> d1s6timeRangeList = new ArrayList<>();
   private ArrayList<TimeRange> d2s1timeRangeList = new ArrayList<>();
   private ArrayList<long[]> d1chunkGroupMetaDataOffsetList = new ArrayList<>();
   private ArrayList<long[]> d2chunkGroupMetaDataOffsetList = new ArrayList<>();
 
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 1024;
+    pageSize = 100;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perIMetadataQuerierByFileImplTest");
+    outputDataFile = IMetadataQuerierByFileImplTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perIMetadataQuerierByFileImplTest.tsfile");
+  }
+
   @Before
   public void before() throws IOException {
-    TsFileGeneratorForTest.generateFile(10000, 1024, 100);
+    generateFile(10000, 1024, 100);
     reader = new TsFileSequenceReader(FILE_PATH);
     List<ChunkMetadata> d1s6List = reader.getChunkMetadataList(new Path("d1", "s6"));
     for (ChunkMetadata chunkMetaData : d1s6List) {
@@ -74,7 +83,7 @@ public class IMetadataQuerierByFileImplTest {
   @After
   public void after() throws IOException {
     reader.close();
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test
@@ -110,7 +119,6 @@ public class IMetadataQuerierByFileImplTest {
     unionCandidates.add(d1s6timeRangeList.get(1));
     ArrayList<TimeRange> expectedRanges = new ArrayList<>(TimeRange.sortAndMerge(unionCandidates));
     Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
-
   }
 
   @Test
@@ -135,6 +143,6 @@ public class IMetadataQuerierByFileImplTest {
       expectedRanges.addAll(remains);
     }
     Assert.assertEquals(expectedRanges.toString(), resTimeRanges.toString());
-
   }
+
 }

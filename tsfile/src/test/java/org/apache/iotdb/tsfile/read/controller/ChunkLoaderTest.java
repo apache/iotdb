@@ -21,6 +21,9 @@ package org.apache.iotdb.tsfile.read.controller;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.read.reader.ReaderTest;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -31,22 +34,30 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
-public class ChunkLoaderTest {
+public class ChunkLoaderTest extends BaseTsFileGeneratorForTest {
 
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testChunkLoaderTest.tsfile");
   private TsFileSequenceReader fileReader;
+
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perChunkLoaderTest");
+    outputDataFile = ChunkLoaderTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perChunkLoaderTest.tsfile");
+  }
 
   @Before
   public void before() throws IOException {
-    TsFileGeneratorForTest.generateFile(1000000, 1024 * 1024, 10000);
+    generateFile(1000000, 1000000, 1000000);
   }
 
   @After
   public void after() throws IOException {
     fileReader.close();
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test

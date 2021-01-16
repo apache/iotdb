@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
@@ -32,24 +33,32 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class TimeGeneratorTest {
+public class TimeGeneratorTest extends BaseTsFileGeneratorForTest {
 
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testTimeGeneratorTest.tsfile");
   private TsFileSequenceReader fileReader;
   private MetadataQuerierByFileImpl metadataQuerierByFile;
   private IChunkLoader chunkLoader;
 
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 10 * 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTimeGeneratorTest");
+    outputDataFile = TimeGeneratorTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perTimeGeneratorTest.tsfile");
+  }
   @Before
   public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
-    TsFileGeneratorForTest.generateFile(1000, 10 * 1024 * 1024, 10000);
+    generateFile(1000, 1000, 1000);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     chunkLoader = new CachedChunkLoaderImpl(fileReader);
@@ -58,7 +67,7 @@ public class TimeGeneratorTest {
   @After
   public void after() throws IOException {
     fileReader.close();
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test
@@ -77,10 +86,10 @@ public class TimeGeneratorTest {
     TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
         metadataQuerierByFile);
     while (timestampGenerator.hasNext()) {
-      // System.out.println(timestampGenerator.next());
       Assert.assertEquals(startTimestamp, timestampGenerator.next());
       startTimestamp += 1;
     }
     Assert.assertEquals(1480562618101L, startTimestamp);
   }
+
 }

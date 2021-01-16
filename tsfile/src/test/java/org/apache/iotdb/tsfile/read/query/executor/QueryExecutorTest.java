@@ -20,13 +20,14 @@ package org.apache.iotdb.tsfile.read.query.executor;
 
 import java.io.IOException;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -43,24 +44,30 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.query.executor.QueryExecutor;
-import org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
-public class QueryExecutorTest {
+public class QueryExecutorTest extends BaseTsFileGeneratorForTest {
 
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+  private static final String FILE_PATH = TestConstant.BASE_OUTPUT_PATH.concat("testQueryExecutorTest.tsfile");
   private TsFileSequenceReader fileReader;
   private MetadataQuerierByFileImpl metadataQuerierByFile;
   private IChunkLoader chunkLoader;
   private int rowCount = 10000;
   private TsFileExecutor queryExecutorWithQueryFilter;
 
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 16 * 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perQueryExecutorTest");
+    outputDataFile = QueryExecutorTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perQueryExecutorTest.tsfile");
+  }
+
   @Before
-  public void before() throws InterruptedException, WriteProcessException, IOException {
+  public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
-    TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
+    generateFile(rowCount, rowCount, rowCount);
     fileReader = new TsFileSequenceReader(FILE_PATH);
     metadataQuerierByFile = new MetadataQuerierByFileImpl(fileReader);
     chunkLoader = new CachedChunkLoaderImpl(fileReader);
@@ -70,7 +77,7 @@ public class QueryExecutorTest {
   @After
   public void after() throws IOException {
     fileReader.close();
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test

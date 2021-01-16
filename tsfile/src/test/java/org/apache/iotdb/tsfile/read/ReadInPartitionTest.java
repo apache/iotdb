@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,7 +45,6 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 
 /*
   This test is designed for the TsFileExecutor's execute(queryExpression, params) function.
@@ -54,17 +55,24 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
   IMetadataQuerierByFileImplTest and TimeRangeTest, is not the test focus here.
 
  */
-public class ReadInPartitionTest {
-
-  private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
+public class ReadInPartitionTest extends BaseTsFileGeneratorForTest {
+  private static final String FILE_PATH = "ReadInPartitionTest.tsfile";
   private static ReadOnlyTsFile roTsFile = null;
   private ArrayList<TimeRange> d1s6timeRangeList = new ArrayList<>();
   private ArrayList<TimeRange> d2s1timeRangeList = new ArrayList<>();
   private ArrayList<long[]> d1chunkGroupMetaDataOffsetList = new ArrayList<>();
 
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 1024;
+    pageSize = 100;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perReadInPartitionTest");
+    outputDataFile = ReadInPartitionTest.FILE_PATH;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perReadInPartitionTest.tsfile");
+  }
   @Before
   public void before() throws IOException {
-    TsFileGeneratorForTest.generateFile(10000, 1024, 100);
+    generateFile(10000, 10000, 10000);
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
     roTsFile = new ReadOnlyTsFile(reader);
 
@@ -94,7 +102,7 @@ public class ReadInPartitionTest {
   @After
   public void after() throws IOException {
     roTsFile.close();
-    TsFileGeneratorForTest.after();
+    closeAndDelete();
   }
 
   @Test

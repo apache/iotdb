@@ -47,7 +47,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import org.apache.iotdb.tsfile.utils.BaseTsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
@@ -55,10 +55,19 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 @SuppressWarnings("squid:S4042") // Suppress use java.nio.Files#delete warning
-public class RestorableTsFileIOWriterTest {
+public class RestorableTsFileIOWriterTest extends BaseTsFileGeneratorForTest {
 
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("testRestorableTsFileIOWriterTest.ts");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  @Override
+  public void initParameter() {
+    chunkGroupSize = 10 * 1024 * 1024;
+    pageSize = 10000;
+    inputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perRestorableTsFileIOWriterTest");
+    outputDataFile = RestorableTsFileIOWriterTest.FILE_NAME;
+    errorOutputDataFile = TestConstant.BASE_OUTPUT_PATH.concat("perRestorableTsFileIOWriterTest.tsfile");
+  }
 
   @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
@@ -114,7 +123,7 @@ public class RestorableTsFileIOWriterTest {
   public void testOnlyOneIncompleteChunkHeader() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
 
-    TsFileGeneratorForTest.writeFileWithOneIncompleteChunkHeader(file);
+    writeFileWithOneIncompleteChunkHeader(file);
 
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     TsFileWriter writer = new TsFileWriter(rWriter);
