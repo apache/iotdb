@@ -24,6 +24,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -32,7 +33,8 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +47,9 @@ public class UpgradeUtils {
   private static final ReadWriteLock cntUpgradeFileLock = new ReentrantReadWriteLock();
   private static final ReadWriteLock upgradeLogLock = new ReentrantReadWriteLock();
 
+  private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  private static Map<String, Integer> upgradeRecoverMap = new HashMap<>();
   public static ReadWriteLock getCntUpgradeFileLock() {
     return cntUpgradeFileLock;
   }
@@ -66,9 +71,9 @@ public class UpgradeUtils {
     } finally {
       tsFileResource.readUnlock();
     }
-    try (TsFileSequenceReader tsFileSequenceReader = new TsFileSequenceReader(
+    try (TsFileSequenceReaderForV2 tsFileSequenceReader = new TsFileSequenceReaderForV2(
         tsFileResource.getTsFile().getAbsolutePath())) {
-      if (tsFileSequenceReader.readVersionNumber() == TSFileConfig.VERSION_NUMBER_V2.getBytes()[0]) {
+      if (tsFileSequenceReader.readVersionNumberV2() == TSFileConfig.VERSION_NUMBER_V2) {
         return true;
       }
     } catch (Exception e) {
@@ -80,21 +85,34 @@ public class UpgradeUtils {
     return false;
   }
 
-  /**
-   * Since one old TsFile may be upgraded to multiple upgraded files, 
-   * this method is for getting the name of one of the upgraded file. 
-   * 
-   * @param upgradeResource TsFile resource to be upgraded
-   * @return name of upgraded file
-   * 
-   */
-  public static String getOneUpgradedFileName(TsFileResource upgradeResource)
-      throws IOException {
-    upgradeResource.deserialize();
-    long firstPartitionId = upgradeResource.getTimePartition();
-    File oldTsFile = upgradeResource.getTsFile();
-    return oldTsFile.getParent()
-        + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
+  public static void moveUpgradedFiles(TsFileResource resource) throws IOException {
+    List<TsFileResource> upgradedResources = resource.getUpgradedResources();
+    for (TsFileResource upgradedResource : upgradedResources) {
+      File upgradedFile = upgradedResource.getTsFile();
+      long partition = upgradedResource.getTimePartition();
+      String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
+      File partitionDir = fsFactory.getFile(storageGroupPath, partition + "");
+      if (!partitionDir.exists()) {
+        partitionDir.mkdir();
+      }
+      fsFactory.moveFile(upgradedFile,
+          fsFactory.getFile(partitionDir, upgradedFile.getName()));
+      upgradedResource.setFile(
+          fsFactory.getFile(partitionDir, upgradedFile.getName()));
+      //TODO : UPGRADE mods
+      // delete tmp partition folder when it is empty
+      if (upgradedFile.getParentFile().isDirectory()
+          && upgradedFile.getParentFile().listFiles().length == 0) {
+        Files.delete(upgradedFile.getParentFile().toPath());
+      }
+      upgradedResource.serialize();
+    }
+  }
+
+  public static boolean isFileUpgraded(String oldFileName) {
+    return upgradeRecoverMap.containsKey(oldFileName) 
+        && upgradeRecoverMap.get(oldFileName) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
+        .getCheckStatusCode();
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -103,7 +121,6 @@ public class UpgradeUtils {
       try (BufferedReader upgradeLogReader = new BufferedReader(
           new FileReader(
               FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath())))) {
-        Map<String, Integer> upgradeRecoverMap = new HashMap<>();
         String line = null;
         while ((line = upgradeLogReader.readLine()) != null) {
           String oldFileName = line.split(COMMA_SEPERATOR)[0];
@@ -128,36 +145,6 @@ public class UpgradeUtils {
                       .getFile(key).getName())) {
                     Files.delete(generatedFile.toPath());
                   }
-                }
-              }
-            }
-          } else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
-              .getCheckStatusCode()) {
-            String upgradedFileName = getOneUpgradedFileName(new TsFileResource(
-                FSFactoryProducer.getFSFactory().getFile(key)));
-            if (FSFactoryProducer.getFSFactory().getFile(key).exists() && FSFactoryProducer
-                .getFSFactory().getFile(upgradedFileName).exists()) {
-              // if both old tsfile and upgrade file exists, delete the old tsfile and resource
-              Files.delete(FSFactoryProducer.getFSFactory().getFile(key).toPath());
-              Files.delete(FSFactoryProducer.getFSFactory().getFile(key 
-                  + TsFileResource.RESOURCE_SUFFIX).toPath());
-            } 
-            // move the upgrade files and resources to their own partition directories
-            File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
-                .getParentFile();
-            String storageGroupPath = upgradeDir.getParent();
-            File[] partitionDirs = upgradeDir.listFiles();
-            for (File partitionDir : partitionDirs) {
-              if (partitionDir.isDirectory()) {
-                String partitionId = partitionDir.getName();
-                File destPartitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partitionId);
-                if (!destPartitionDir.exists()) {
-                  destPartitionDir.mkdir();
-                }
-                File[] generatedFiles = partitionDir.listFiles();
-                for (File generatedFile : generatedFiles) {
-                  FSFactoryProducer.getFSFactory().moveFile(generatedFile, 
-                      FSFactoryProducer.getFSFactory().getFile(destPartitionDir, generatedFile.getName()));
                 }
               }
             }

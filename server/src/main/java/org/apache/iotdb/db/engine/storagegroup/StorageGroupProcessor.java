@@ -25,6 +25,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,6 +62,8 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
+import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -85,6 +88,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1684,24 +1688,21 @@ public class StorageGroupProcessor {
       );
     }
 
-    insertLock.writeLock().lock();  
-    tsFileManagement.writeLock(); 
-    try { 
-      if (tsFileResource.isSeq()) { 
-        tsFileManagement.addAll(upgradedResources, true); 
-        upgradeSeqFileList.remove(tsFileResource);  
-      } else {  
-        tsFileManagement.addAll(upgradedResources, false);  
-        upgradeUnseqFileList.remove(tsFileResource);  
-      } 
-    } finally { 
-      tsFileManagement.writeUnlock(); 
-      insertLock.writeLock().unlock();  
-    }
     upgradeFileCount.getAndAdd(-1);
-    // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
+
+    // load all upgraded resources in this sg to tsFileManagement
     if (upgradeFileCount.get() == 0) {
-      
+      insertLock.writeLock().lock();  
+      tsFileManagement.writeLock();
+      try {
+        loadUpgradedResources(upgradeSeqFileList, true);
+        loadUpgradedResources(upgradeUnseqFileList, false);
+      } finally {
+        tsFileManagement.writeUnlock(); 
+        insertLock.writeLock().unlock();
+      }
+
+      // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
           .entrySet()) {
         long timePartitionId = entry.getKey();
@@ -1720,6 +1721,32 @@ public class StorageGroupProcessor {
 //        UpgradeSevice.getINSTANCE().stop();
 //      }
     }
+  }
+
+  private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {
+    for (TsFileResource resource : resources) {
+      try {
+        UpgradeUtils.moveUpgradedFiles(resource);
+        tsFileManagement.addAll(resource.getUpgradedResources(), isseq); 
+        // delete old TsFile and resource
+        resource.delete();
+        UpgradeLog.writeUpgradeLogFile(
+            resource.getTsFile().getAbsolutePath() + "," + UpgradeCheckStatus.UPGRADE_SUCCESS);
+      } catch (IOException e) {
+        logger.error("Unable to load {}, caused by ", resource, e);
+      }
+    }
+    // delete upgrade folder when it is empty
+    if (resources.get(0).getTsFile().getParentFile().isDirectory()
+        && resources.get(0).getTsFile().getParentFile().listFiles().length == 0) {
+      try {
+        Files.delete(resources.get(0).getTsFile().getParentFile().toPath());
+      } catch (IOException e) {
+        logger.error("Delete upgrade folder {} failed, caused by ",
+            resources.get(0).getTsFile().getParentFile(), e);
+      }
+    }
+    resources.clear();
   }
 
   public void merge(boolean fullMerge) {

@@ -274,7 +274,25 @@ public class TsFileResource {
     Files.deleteIfExists(dest.toPath());
     fsFactory.moveFile(src, dest);
   }
-  
+
+  public void deserialize() throws IOException {
+    try (InputStream inputStream = fsFactory.getBufferedInputStream(
+        file + RESOURCE_SUFFIX)) {
+      readVersionNumber(inputStream);
+      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
+      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      if (inputStream.available() > 0) {
+        String modFileName = ReadWriteIOUtils.readString(inputStream);
+        if (modFileName != null) {
+          File modF = new File(file.getParentFile(), modFileName);
+          modFile = new ModificationFile(modF.getPath());
+        }
+      }
+    }
+  }
+
   public void deserializeFromOldFile() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
@@ -304,23 +322,6 @@ public class TsFileResource {
           ReadWriteIOUtils.readLong(inputStream);
         }
       }
-      if (inputStream.available() > 0) {
-        String modFileName = ReadWriteIOUtils.readString(inputStream);
-        if (modFileName != null) {
-          File modF = new File(file.getParentFile(), modFileName);
-          modFile = new ModificationFile(modF.getPath());
-        }
-      }
-    }
-  }
-  public void deserialize() throws IOException {
-    try (InputStream inputStream = fsFactory.getBufferedInputStream(
-        file + RESOURCE_SUFFIX)) {
-      readVersionNumber(inputStream);
-      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
-      maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
-      minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
         if (modFileName != null) {
