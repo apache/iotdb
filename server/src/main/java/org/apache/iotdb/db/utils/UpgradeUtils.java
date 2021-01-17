@@ -73,7 +73,7 @@ public class UpgradeUtils {
     }
     try (TsFileSequenceReaderForV2 tsFileSequenceReader = new TsFileSequenceReaderForV2(
         tsFileResource.getTsFile().getAbsolutePath())) {
-      if (tsFileSequenceReader.readVersionNumberV2() == TSFileConfig.VERSION_NUMBER_V2) {
+      if (tsFileSequenceReader.readVersionNumberV2().equals(TSFileConfig.VERSION_NUMBER_V2)) {
         return true;
       }
     } catch (Exception e) {
