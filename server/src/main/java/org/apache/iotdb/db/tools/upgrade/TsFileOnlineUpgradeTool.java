@@ -172,6 +172,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             break;
           case MetaMarker.VERSION:
             reader.readVersion();
+            // write plan indices
+            for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) { 
+              tsFileIOWriter.writePlanIndices(); 
+            }
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
