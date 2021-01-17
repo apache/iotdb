@@ -25,10 +25,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -344,10 +347,34 @@ public class IoTDBConfigCheck {
           File[] resources = fsFactory
               .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
           if (tsfiles.length != resources.length) {
-            logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-                + "on v0.11 IoTDB before upgrading to v0.12");
-            System.exit(-1);
+            // If upgrading from v0.11.2 to v0.12, there may be some Unclosed merging files.
+            // We have to delete these files before upgrading
+            File[] unmergedTsfiles = fsFactory
+                .listFilesBySuffix(partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
+            File[] unmergedResources = fsFactory
+                .listFilesBySuffix(partitionDir.toString(), "0" + TsFileResource.RESOURCE_SUFFIX);
+            if (unmergedTsfiles.length != unmergedResources.length) {
+              logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
+                  + "on v0.11 IoTDB before upgrading to v0.12");
+              System.exit(-1);
+            }
+            deleteMergeingTsFiles(tsfiles, resources);
           }
+        }
+      }
+    }
+  }
+
+  private void deleteMergeingTsFiles(File[] tsfiles, File[] resources) {
+    Set<String> resourcesSet = new HashSet<>();
+    for (File resource : resources) {
+      resourcesSet.add(resource.getName());
+    }
+    for (File tsfile : tsfiles) {
+      if (!resourcesSet.contains(tsfile.getName() + TsFileResource.RESOURCE_SUFFIX)) {
+        if (!tsfile.delete()) {
+          logger.error("Failed to delete merging tsfile {}", tsfile);
+          System.exit(-1);
         }
       }
     }
