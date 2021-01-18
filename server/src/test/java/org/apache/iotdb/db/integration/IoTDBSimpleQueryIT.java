@@ -260,7 +260,7 @@ public class IoTDBSimpleQueryIT {
         }
       }
     } catch (SQLException e) {
-      e.printStackTrace();
+      fail();
     }
   }
 
