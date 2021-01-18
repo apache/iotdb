@@ -64,9 +64,14 @@ public class UDFClassLoaderManager implements IService {
     queryIdToUDFClassLoaderMap.put(queryId, activeClassLoader);
   }
 
-  public void finalizeUDFQuery(long queryId) throws IOException {
+  public void finalizeUDFQuery(long queryId) {
     UDFClassLoader classLoader = queryIdToUDFClassLoaderMap.remove(queryId);
-    classLoader.release();
+    try {
+      classLoader.release();
+    } catch (IOException e) {
+      logger
+          .warn("Failed to close UDFClassLoader (queryId: {}), because {}", queryId, e.toString());
+    }
   }
 
   public UDFClassLoader updateAndGetActiveClassLoader() throws IOException {

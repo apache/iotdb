@@ -17,37 +17,27 @@
 # under the License.
 #
 
-# this docker file shows how to build an IoTDB image from IoTDB source codes.
-FROM ubuntu:18.04
+# docker build context is the root path of the repository
+
+FROM openjdk:11-jre-slim
+
+ADD distribution/target/apache-iotdb-*-bin.zip /
+
 RUN apt update \
-  && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \
-  && wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz -O jdk11.tar.gz \
-  && tar -xzf jdk11.tar.gz \
-  && rm -rf jdk11.tar.gz \
-  && export JAVA_HOME=/jdk-11.0.2/ \
-  && export PATH="$JAVA_HOME/bin:$PATH" \
-  && wget https://github.com/apache/iotdb/archive/master.zip \
-  && unzip master.zip \
-  && rm master.zip \
-  && cd iotdb-master \
-  && mvn package -pl server,client -am -Papache-release -DskipTests -Dthrift.download-url="http://www.apache.org/licenses/LICENSE-2.0.txt" -Dthrift.exec.absolute.path="/usr/bin/thrift" \
-  && cd target/ \
-  && unzip apache-iotdb-0.12.0-SNAPSHOT-bin.zip \
-  && mkdir /iotdb \
-  && mv apache-iotdb-0.12.0-SNAPSHOT/* /iotdb/ \
-  && cd ../../ \
-  && mvn clean \
-  && ls -lh ~/.m2 \
-  && rm -rf ~/.m2 \
-  && rm -rf /iotdb-master \
-  && sed -i '119d' /iotdb/conf/logback.xml \
-  && apt remove wget maven unzip thrift-compiler -y \
+  && apt install lsof procps unzip -y \
+  && unzip /apache-iotdb-*-bin.zip -d / \
+  && rm /apache-iotdb-*-bin.zip \
+  && mv /apache-iotdb-* /iotdb \
+  && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
-  && apt clean -y 
-ENV JAVA_HOME  "/jdk-11.0.2"
-ENV PATH "$JAVA_HOME/bin:$PATH"
+  && apt clean -y
+
 EXPOSE 6667
+EXPOSE 31999
+EXPOSE 5555
+EXPOSE 8181
 VOLUME /iotdb/data
 VOLUME /iotdb/logs
-#ENTRYPOINT ["/iotdb/bin/start-server.sh"]
+ENV PATH="/iotdb/sbin/:/iotdb/tools/:${PATH}"
+ENTRYPOINT ["/iotdb/sbin/start-server.sh"]

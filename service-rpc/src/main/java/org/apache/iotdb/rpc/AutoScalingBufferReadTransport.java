@@ -76,4 +76,13 @@ public class AutoScalingBufferReadTransport extends NonOpenTransport {
   public void resizeIfNecessary(int size) {
     buf.resizeIfNecessary(size);
   }
+
+  public void limit(int newLimit) {
+    this.limit = newLimit;
+  }
+
+  public void position(int newPosition) {
+    this.pos = newPosition;
+  }
+
 }

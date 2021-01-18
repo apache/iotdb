@@ -61,6 +61,7 @@ public abstract class TsFileManagement {
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
   public volatile boolean isUnseqMerging = false;
+  public volatile boolean isSeqMerging = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
@@ -97,6 +98,11 @@ public abstract class TsFileManagement {
    * add one TsFile to list
    */
   public abstract void add(TsFileResource tsFileResource, boolean sequence);
+
+  /**
+   * add one TsFile to list for recover
+   */
+  public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
 
   /**
    * add some TsFiles to list
@@ -196,6 +202,16 @@ public abstract class TsFileManagement {
             (System.currentTimeMillis() - mergeStartTime));
       }
       return;
+    }
+    // wait until seq merge has finished
+    while (isSeqMerging) {
+      try {
+        wait(200);
+      } catch (InterruptedException e) {
+        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
+        return;
+      }
     }
     isUnseqMerging = true;
 

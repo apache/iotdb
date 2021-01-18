@@ -86,7 +86,7 @@ public class CompactionMergeTaskPoolManager implements IService {
           FilePathUtils.regularizePath(IoTDBDescriptor.getInstance().getConfig().getSystemDir())
               + "storage_groups");
       File[] subDirList = sgDir.listFiles();
-      if(subDirList!=null) {
+      if (subDirList != null) {
         for (File subDir : subDirList) {
           while (FSFactoryProducer.getFSFactory().getFile(
               subDir.getAbsoluteFile() + File.separator + subDir.getName() + COMPACTION_LOG_NAME)
