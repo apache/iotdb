@@ -26,6 +26,9 @@ Users can obtain the status of the cluster by running a variety of instructions.
 The following describes the usage and examples of each instruction, 
 where $IOTDB_CLUSTER_HOME indicates the path of the distributed IoTDB installation directory.
 
+# Prerequisites
+To use the nodetool, you need to enable JMX service. Please refer to [JMX tool](JMX Tool.md) for details.
+
 # Instructions
 ## Get Started
 The nodetool shell tool startup script is located at $IOTDB_CLUSTER_HOME/sbin folder,
@@ -34,10 +37,14 @@ you can specify the IP address and port of the cluster during startup.
 IP is the IP (or hostname) of the node that you expect to connect to,
 and port is the JMX service port specified when the IoTDB cluster is started.
 
-The default values are 127.0.0.1 and 31999, respectively.
+The default values are `127.0.0.1` and `31999`, respectively.
 
 If you need to monitor the remote cluster or modify the JMX service port number,
 set the actual IP and port with the `-h` and `-p` options.
+
+When JMX authentication service is enabled, the username and password of JMX service should be specified. 
+The default values are `iotdb` and `passw!d`, respectively. Please use the start parameters `-u` and `-pw`
+to specify the username and password of the JMX service.
 
 ## Explains
 In a distributed system, a node is identified by node IP, metadata port, data port and cluster port \<IP:METAPORT:DATAPORT:CLUSTERPORT>.

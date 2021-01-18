@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v1.file.metadata.ChunkGroupMetaDataV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataIndexV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataV1;
 import org.apache.iotdb.tsfile.v1.file.metadata.TsFileMetadataV1;
@@ -329,13 +328,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       return;
     }
 
-    // ChunkGroupOffset -> version
-    Map<Long, Long> oldVersionInfo = getVersionInfo();
-
     // start to scan chunks and chunkGroups
-    long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
-    long versionOfChunkGroup = 0;
     int chunkGroupCount = 0;
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
@@ -349,8 +343,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             // this is the first chunk of a new ChunkGroup.
             if (newChunkGroup) {
               newChunkGroup = false;
-              startOffsetOfChunkGroup = this.position() - 1;
-              versionOfChunkGroup = oldVersionInfo.get(startOffsetOfChunkGroup);
             }
             ChunkHeader header = this.readChunkHeader();
             MeasurementSchema measurementSchema = new MeasurementSchema(header.getMeasurementID(),
@@ -380,7 +372,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             rewrite(oldTsFile, deviceID, measurementSchemaList, pageHeadersInChunkGroup,
-                pageDataInChunkGroup, versionOfChunkGroup, pagePartitionInfoInChunkGroup);
+                pageDataInChunkGroup, pagePartitionInfoInChunkGroup);
 
             pageHeadersInChunkGroup.clear();
             pageDataInChunkGroup.clear();
@@ -422,7 +414,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    */
   private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas,
       List<List<PageHeader>> pageHeadersInChunkGroup, List<List<ByteBuffer>> dataInChunkGroup,
-      long versionOfChunkGroup, List<List<Boolean>> pagePartitionInfoInChunkGroup)
+                       List<List<Boolean>> pagePartitionInfoInChunkGroup)
       throws IOException, PageException {
     Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
     for (int i = 0; i < schemas.size(); i++) {
@@ -453,7 +445,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
         chunkWriter.writeToFileWriter(tsFileIOWriter);
       }
       tsFileIOWriter.endChunkGroup();
-      tsFileIOWriter.writeVersion(versionOfChunkGroup);
     }
   }
 
@@ -576,27 +567,6 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       return false;
     }
     return true;
-  }
-
-  private Map<Long, Long> getVersionInfo() throws IOException {
-    Map<Long, Long> versionInfo = new HashMap<>();
-    TsFileMetadataV1 fileMetadata = readFileMetadata();
-    List<TsDeviceMetadataV1> oldDeviceMetadataList = new ArrayList<>();
-    for (TsDeviceMetadataIndexV1 index : fileMetadata.getDeviceMap().values()) {
-      TsDeviceMetadataV1 oldDeviceMetadata = readTsDeviceMetaData(index);
-      oldDeviceMetadataList.add(oldDeviceMetadata);
-    }
-
-    for (TsDeviceMetadataV1 oldTsDeviceMetadata : oldDeviceMetadataList) {
-      for (ChunkGroupMetaDataV1 oldChunkGroupMetadata : oldTsDeviceMetadata
-          .getChunkGroupMetaDataList()) {
-        long version = oldChunkGroupMetadata.getVersion();
-        long offsetOfChunkGroup = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
-        // get version informations
-        versionInfo.put(offsetOfChunkGroup, version);
-      }
-    }
-    return versionInfo;
   }
 
   private TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
