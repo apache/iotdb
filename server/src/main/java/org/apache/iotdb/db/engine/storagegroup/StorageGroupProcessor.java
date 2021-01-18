@@ -1409,6 +1409,11 @@ public class StorageGroupProcessor {
    */
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
       throws IOException {
+    // If there are still some old version tsfiles, the delete won't succeeded.
+    if (upgradeFileCount.get() != 0) {
+      throw new IOException("Delete failed. "
+          + "Please do not delete until the old files upgraded.");
+    }
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
