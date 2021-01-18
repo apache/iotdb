@@ -99,7 +99,7 @@ public class TsFileSketchTool {
             printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
             nextChunkGroupHeaderPos =
                     chunkMetadata.getOffsetOfChunkHeader() + chunk.getHeader().getSerializedSize()
-                            + chunk.getHeader().getDataSize();
+                            + chunk.getHeader().getDataSize() - 1;
           }
 
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "

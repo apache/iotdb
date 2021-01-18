@@ -1732,7 +1732,7 @@ public class StorageGroupProcessor {
         tsFileManagement.addAll(resource.getUpgradedResources(), isseq); 
         // delete old TsFile and resource
         resource.delete();
-        Files.delete(fsFactory
+        Files.deleteIfExists(fsFactory
             .getFile(resource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX).toPath());
         UpgradeLog.writeUpgradeLogFile(
             resource.getTsFile().getAbsolutePath() + "," + UpgradeCheckStatus.UPGRADE_SUCCESS);
