@@ -125,7 +125,7 @@ public class UpgradeUtils {
     }
   }
 
-  public static boolean isFileUpgraded(String oldFileName) {
+  public static boolean isUpgradedFileGenerated(String oldFileName) {
     return upgradeRecoverMap.containsKey(oldFileName) 
         && upgradeRecoverMap.get(oldFileName) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
         .getCheckStatusCode();

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.slf4j.Logger;
@@ -49,7 +50,7 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       List<TsFileResource> upgradedResources;
-      if (!UpgradeUtils.isFileUpgraded(oldTsfilePath)) {
+      if (!UpgradeUtils.isUpgradedFileGenerated(oldTsfilePath)) {
         upgradedResources = generateUpgradedFiles();
       }
       else {
@@ -75,7 +76,8 @@ public class UpgradeTask extends WrappedRunnable {
     }
   }
 
-  private List<TsFileResource> generateUpgradedFiles() throws Exception {
+  private List<TsFileResource> generateUpgradedFiles() 
+      throws IOException, WriteProcessException {
     upgradeResource.readLock();
     String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();

@@ -358,22 +358,24 @@ public class IoTDBConfigCheck {
                   + "on v0.11 IoTDB before upgrading to v0.12");
               System.exit(-1);
             }
-            deleteMergeingTsFiles(tsfiles, resources);
+            deleteMergingTsFiles(tsfiles, resources);
           }
         }
       }
     }
   }
 
-  private void deleteMergeingTsFiles(File[] tsfiles, File[] resources) {
+  private void deleteMergingTsFiles(File[] tsfiles, File[] resources) {
     Set<String> resourcesSet = new HashSet<>();
     for (File resource : resources) {
       resourcesSet.add(resource.getName());
     }
     for (File tsfile : tsfiles) {
       if (!resourcesSet.contains(tsfile.getName() + TsFileResource.RESOURCE_SUFFIX)) {
-        if (!tsfile.delete()) {
-          logger.error("Failed to delete merging tsfile {}", tsfile);
+        try {
+          Files.delete(tsfile.toPath());
+        } catch (Exception e) {
+          logger.error("Failed to delete merging tsfile {} ", tsfile, e);
           System.exit(-1);
         }
       }
