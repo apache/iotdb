@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
@@ -44,7 +43,7 @@ public class QueryTimeManager implements IService {
 
   /**
    * the key of queryInfoMap is the query id and the value of queryInfoMap is the start
-   * time, the statement and executing thread of this query.
+   * time, the statement of this query.
    */
   private Map<Long, QueryInfo> queryInfoMap;
 
@@ -59,9 +58,8 @@ public class QueryTimeManager implements IService {
         "query-time-manager");
   }
 
-  public void registerQuery(long queryId, long startTime, String sql, long timeout,
-      Thread queryThread) {
-    queryInfoMap.put(queryId, new QueryInfo(startTime, sql, queryThread));
+  public void registerQuery(long queryId, long startTime, String sql, long timeout) {
+    queryInfoMap.put(queryId, new QueryInfo(startTime, sql, timeout));
     timeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
@@ -78,25 +76,17 @@ public class QueryTimeManager implements IService {
     if (queryInfoMap.get(queryId) == null) {
       return;
     }
-    queryInfoMap.get(queryId).getThread().interrupt();
+    queryInfoMap.get(queryId).setInterrupted(true);
     unRegisterQuery(queryId);
   }
 
   public void unRegisterQuery(long queryId) {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
-    if (queryInfoMap.get(queryId) == null) {
+    if (queryInfoMap.get(queryId) == null || queryScheduledTaskMap.get(queryId) == null) {
       return;
     }
     queryInfoMap.remove(queryId);
     queryScheduledTaskMap.get(queryId).cancel(false);
     queryScheduledTaskMap.remove(queryId);
-  }
-
-  public boolean isQueryInterrupted(long queryId) {
-    return queryInfoMap.get(queryId).getThread().isInterrupted();
   }
 
   public Map<Long, QueryInfo> getQueryInfoMap() {
@@ -143,16 +133,13 @@ public class QueryTimeManager implements IService {
 
     private final long startTime;
     private final String statement;
-    /**
-     *  Only main thread is put in this structure since the sub threads are maintained
-     *  by the thread pool. The thread allocated for readTask will change every time,
-     *  so we have to access this map frequently, which will lead to big performance cost.
-     */
-    private final Thread thread;
+    private final long timeout;
 
-    public QueryInfo(long startTime, String statement, Thread thread) {
+    private boolean isInterrupted = false;
+
+    public QueryInfo(long startTime, String statement, long timeout) {
       this.startTime = startTime;
-      this.thread = thread;
+      this.timeout = timeout;
       if (statement.length() <= 64) {
         this.statement = statement;
       } else {
@@ -169,8 +156,12 @@ public class QueryTimeManager implements IService {
       return statement;
     }
 
-    public Thread getThread() {
-      return thread;
+    public void setInterrupted(boolean interrupted) {
+      isInterrupted = interrupted;
+    }
+
+    public boolean isInterrupted() {
+      return isInterrupted;
     }
   }
 }

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -55,6 +56,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class SeriesReader {
 
+  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   // inner class of SeriesReader for order purpose
   private TimeOrderUtils orderUtils;
 
@@ -174,8 +176,12 @@ public class SeriesReader {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
+  private boolean isQueryInterrupted() {
+    return queryTimeManager.getQueryInfoMap().get(context.getQueryId()).isInterrupted();
+  }
+
   boolean hasNextFile() throws IOException {
-    if (Thread.interrupted()) {
+    if (isQueryInterrupted()) {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
@@ -238,7 +244,7 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (Thread.interrupted()) {
+    if (isQueryInterrupted()) {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
@@ -362,7 +368,7 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (Thread.interrupted()) {
+    if (isQueryInterrupted()) {
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }

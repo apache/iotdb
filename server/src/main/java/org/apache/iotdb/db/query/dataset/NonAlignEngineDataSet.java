@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -194,7 +195,6 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
         }
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted while putting into the blocking queue: ", e);
-        interrupted = true;
         Thread.currentThread().interrupt();
       } catch (IOException e) {
         LOGGER.error("Something gets wrong while reading from the series reader: ", e);
@@ -232,6 +232,9 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  private final long queryId;
+
+  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   /**
    * flag that main thread is interrupted or not
    */
@@ -248,9 +251,10 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public NonAlignEngineDataSet(List<PartialPath> paths, List<TSDataType> dataTypes,
+  public NonAlignEngineDataSet(long queryId, List<PartialPath> paths, List<TSDataType> dataTypes,
       List<ManagedSeriesReader> readers) {
     super(new ArrayList<>(paths), dataTypes);
+    this.queryId = queryId;
     this.seriesReaderWithoutValueFilterList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
@@ -269,7 +273,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   private void init(WatermarkEncoder encoder, int fetchSize) {
-    if (Thread.interrupted()) {
+    if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
       interrupted = true;
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
@@ -303,7 +307,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
         // check the interrupted status of main thread before take next batch
-        if (Thread.interrupted()) {
+        if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
           interrupted = true;
           throw new QueryTimeoutRuntimeException(
               QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
