@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -64,6 +65,10 @@ public class UpgradeTask extends WrappedRunnable {
       UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
           oldTsfilePath, UpgradeSevice.getCntUpgradeFileNum());
+      if (UpgradeSevice.getCntUpgradeFileNum() == 0) {
+        UpgradeSevice.getINSTANCE().stop();
+        logger.info("All files upgraded successfully! ");
+      }
     } catch (Exception e) {
       logger.error("meet error when upgrade file:{}", upgradeResource.getTsFile().getAbsolutePath(),
           e);
@@ -78,9 +83,6 @@ public class UpgradeTask extends WrappedRunnable {
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
       TsFileOnlineUpgradeTool.upgradeOneTsfile(upgradeResource, upgradedResources);
-      for (TsFileResource resource : upgradedResources) {
-        resource.serialize();
-      }
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
@@ -89,7 +91,7 @@ public class UpgradeTask extends WrappedRunnable {
     return upgradedResources;
   }
 
-  private List<TsFileResource> findUpgradedFiles() {
+  private List<TsFileResource> findUpgradedFiles() throws IOException {
     upgradeResource.readLock();
     List<TsFileResource> upgradedResources = new ArrayList<>();
     try {
@@ -97,8 +99,10 @@ public class UpgradeTask extends WrappedRunnable {
       for (File tempPartitionDir : upgradeFolder.listFiles()) {
         if (tempPartitionDir.isDirectory() && 
             fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()).exists()) {
-          upgradedResources.add(new TsFileResource(
-              fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName())));
+          TsFileResource resource = new TsFileResource(
+              fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()));
+          resource.deserialize();
+          upgradedResources.add(resource);
         }
       }
     } finally {

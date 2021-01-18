@@ -23,10 +23,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -62,6 +64,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
   private TsFileSequenceReaderForV2 reader;
   private File oldTsFile;
   private List<Modification> oldModification;
+  private Iterator<Modification> modsIterator;
+  // new tsFile writer -> list of new modification
+  private Map<TsFileIOWriter, ModificationFile> fileModificationMap;
+  private Deletion currentMod;
   private Decoder defaultTimeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
       TSDataType.INT64);
@@ -86,6 +92,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     if (FSFactoryProducer.getFSFactory().getFile(file +
         ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeUpgraded.getModFile().getModifications();
+      modsIterator = oldModification.iterator();
+      fileModificationMap = new HashMap<>();
     }
   }
 
@@ -167,7 +175,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             needToDecodeInfoInChunkGroup.add(needToDecodeInfo);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
-            // this is the footer of a ChunkGroup.
+            // this is the footer of a ChunkGroup in TsFileV2.
             ChunkGroupHeader chunkGroupFooter = reader.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             rewrite(deviceID, measurementSchemaList, pageHeadersInChunkGroup,
@@ -179,8 +187,26 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             newChunkGroup = true;
             break;
           case MetaMarker.VERSION:
-            reader.readVersion();
-            // write plan indices
+            long version = reader.readVersion();
+            // convert old Modification to new 
+            if (oldModification != null && modsIterator.hasNext()) {
+              if (currentMod == null) {
+                currentMod = (Deletion) modsIterator.next();
+              }
+              if (currentMod.getFileOffset() <= version) {
+                for (Entry<TsFileIOWriter, ModificationFile> entry 
+                    : fileModificationMap.entrySet()) {
+                  TsFileIOWriter tsFileIOWriter = entry.getKey();
+                  ModificationFile newMods = entry.getValue();
+                  newMods.write(new Deletion(currentMod.getPath(), 
+                      tsFileIOWriter.getFile().length(),
+                      currentMod.getStartTime(),
+                      currentMod.getEndTime()));
+                }
+                currentMod = null;
+              }
+            }
+            // write plan indices for ending memtable
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) { 
               tsFileIOWriter.writePlanIndices(); 
             }
@@ -194,6 +220,24 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
+      }
+      // write the remain modification for new file
+      if (oldModification != null) {
+        while (currentMod != null || modsIterator.hasNext()) {
+          if (currentMod == null) {
+            currentMod = (Deletion) modsIterator.next();
+          }
+          for (Entry<TsFileIOWriter, ModificationFile> entry 
+              : fileModificationMap.entrySet()) {
+            TsFileIOWriter tsFileIOWriter = entry.getKey();
+            ModificationFile newMods = entry.getValue();
+            newMods.write(new Deletion(currentMod.getPath(), 
+                tsFileIOWriter.getFile().length(),
+                currentMod.getStartTime(),
+                currentMod.getEndTime()));
+          }
+          currentMod = null;
+        }
       }
     } catch (IOException e2) {
       throw new IOException("TsFile upgrade process cannot proceed at position " +
@@ -271,7 +315,11 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
               logger.error("The TsFile {} has been created ", newFile);
               return null;
             }
-            return new TsFileIOWriter(newFile);
+            TsFileIOWriter writer = new TsFileIOWriter(newFile);
+            if (oldModification != null) {
+              fileModificationMap.put(writer, new ModificationFile(newFile + ModificationFile.FILE_SUFFIX));
+            }
+            return writer;
           } catch (IOException e) {
             logger.error("Create new TsFile {} failed ", newFile);
             return null;
@@ -383,6 +431,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       }
     }
     tsFileResource.setClosed(true);
+    tsFileResource.serialize();
     return tsFileResource;
   }
 

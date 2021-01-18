@@ -86,6 +86,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -1687,9 +1688,7 @@ public class StorageGroupProcessor {
               resource.getEndTime(device))
       );
     }
-
     upgradeFileCount.getAndAdd(-1);
-
     // load all upgraded resources in this sg to tsFileManagement
     if (upgradeFileCount.get() == 0) {
       insertLock.writeLock().lock();  
@@ -1701,7 +1700,6 @@ public class StorageGroupProcessor {
         tsFileManagement.writeUnlock(); 
         insertLock.writeLock().unlock();
       }
-
       // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
           .entrySet()) {
@@ -1717,9 +1715,6 @@ public class StorageGroupProcessor {
           }
         }
       }
-//      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
-//        UpgradeSevice.getINSTANCE().stop();
-//      }
     }
   }
 
@@ -1733,6 +1728,8 @@ public class StorageGroupProcessor {
         tsFileManagement.addAll(resource.getUpgradedResources(), isseq); 
         // delete old TsFile and resource
         resource.delete();
+        Files.delete(fsFactory
+            .getFile(resource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX).toPath());
         UpgradeLog.writeUpgradeLogFile(
             resource.getTsFile().getAbsolutePath() + "," + UpgradeCheckStatus.UPGRADE_SUCCESS);
       } catch (IOException e) {

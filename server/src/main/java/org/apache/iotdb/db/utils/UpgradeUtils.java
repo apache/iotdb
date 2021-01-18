@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
@@ -95,11 +97,25 @@ public class UpgradeUtils {
       if (!partitionDir.exists()) {
         partitionDir.mkdir();
       }
+      // move upgraded TsFile
       fsFactory.moveFile(upgradedFile,
           fsFactory.getFile(partitionDir, upgradedFile.getName()));
+      // delete generated temp resource
+      Files.delete(fsFactory
+          .getFile(upgradedResource.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      // move upgraded mods file
+      File newModsFile = fsFactory.getFile(upgradedResource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX);
+      if (newModsFile.exists()) {
+        fsFactory.moveFile(newModsFile,
+            fsFactory.getFile(partitionDir, newModsFile.getName()));
+      }
+      // re-serialize upgraded resource to correct place
       upgradedResource.setFile(
           fsFactory.getFile(partitionDir, upgradedFile.getName()));
-      //TODO : UPGRADE mods
+      if (newModsFile.exists()) {
+        upgradedResource.getModFile();
+      }
+      upgradedResource.serialize();
       // delete tmp partition folder when it is empty
       if (upgradedFile.getParentFile().isDirectory()
           && upgradedFile.getParentFile().listFiles().length == 0) {
@@ -144,6 +160,7 @@ public class UpgradeUtils {
                   if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
                       .getFile(key).getName())) {
                     Files.delete(generatedFile.toPath());
+                    Files.deleteIfExists(new File(generatedFile + ModificationFile.FILE_SUFFIX).toPath());
                   }
                 }
               }
