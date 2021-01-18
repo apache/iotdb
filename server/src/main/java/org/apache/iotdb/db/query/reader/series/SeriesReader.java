@@ -177,7 +177,8 @@ public class SeriesReader {
   }
 
   private void checkQueryAlive() {
-    if (queryTimeManager.getQueryInfoMap().get(context.getQueryId()).isInterrupted()) {
+    if (queryTimeManager.getQueryInfoMap().get(context.getQueryId()) != null &&
+        queryTimeManager.getQueryInfoMap().get(context.getQueryId()).isInterrupted()) {
       queryTimeManager.unRegisterQuery(context.getQueryId());
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);

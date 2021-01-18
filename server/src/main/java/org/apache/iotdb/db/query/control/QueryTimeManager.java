@@ -60,7 +60,7 @@ public class QueryTimeManager implements IService {
 
   public void registerQuery(long queryId, long startTime, String sql, long timeout) {
     timeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
-    queryInfoMap.put(queryId, new QueryInfo(startTime, sql, timeout));
+    queryInfoMap.put(queryId, new QueryInfo(startTime, sql));
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       killQuery(queryId);
@@ -77,12 +77,11 @@ public class QueryTimeManager implements IService {
   }
 
   public void unRegisterQuery(long queryId) {
-    if (queryInfoMap.get(queryId) == null || queryScheduledTaskMap.get(queryId) == null) {
-      return;
-    }
-    queryInfoMap.remove(queryId);
-    queryScheduledTaskMap.get(queryId).cancel(false);
-    queryScheduledTaskMap.remove(queryId);
+    queryInfoMap.computeIfPresent(queryId, (k, v) -> null);
+    queryScheduledTaskMap.computeIfPresent(queryId, (k, v) -> {
+      queryScheduledTaskMap.get(queryId).cancel(false);
+      return null;
+    });
   }
 
   public Map<Long, QueryInfo> getQueryInfoMap() {
@@ -129,13 +128,11 @@ public class QueryTimeManager implements IService {
 
     private final long startTime;
     private final String statement;
-    private final long timeout;
 
     private boolean isInterrupted = false;
 
-    public QueryInfo(long startTime, String statement, long timeout) {
+    public QueryInfo(long startTime, String statement) {
       this.startTime = startTime;
-      this.timeout = timeout;
       if (statement.length() <= 64) {
         this.statement = statement;
       } else {

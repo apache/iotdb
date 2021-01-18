@@ -32,7 +32,7 @@ public class LocalTsFileInput implements TsFileInput {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTsFileInput.class);
 
-  private volatile FileChannel channel;
+  private final FileChannel channel;
   private final String filePath;
 
   public LocalTsFileInput(Path file) throws IOException {

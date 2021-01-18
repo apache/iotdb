@@ -477,7 +477,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
   }
 
   private void checkQueryAlive() {
-    if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
+    if (queryTimeManager.getQueryInfoMap().get(queryId) != null &&
+        queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
       interrupted = true;
       queryTimeManager.unRegisterQuery(queryId);
       throw new QueryTimeoutRuntimeException(
