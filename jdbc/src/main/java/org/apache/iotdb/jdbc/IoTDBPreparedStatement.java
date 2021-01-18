@@ -799,7 +799,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
               } else if (parameterAsNum instanceof java.math.BigInteger) {
                   setBigDecimal(parameterIndex, new java.math.BigDecimal((java.math.BigInteger) parameterAsNum, scale));
               } else {
-                  setBigDecimal(parameterIndex, new java.math.BigDecimal(parameterAsNum.doubleValue()));
+                  setBigDecimal(parameterIndex, BigDecimal.valueOf(parameterAsNum.doubleValue()));
               }
 
               break;
