@@ -336,7 +336,11 @@ class Session(object):
 
 
     def insert_records_of_one_device(self, device_id, times_list, measurements_list, types_list, values_list):
-        print("here")
+        # sort by timestamp
+        sorted_zipped = sorted(zip(times_list, measurements_list, types_list, values_list))
+        result = zip(*sorted_zipped)
+        times_list, measurements_list, types_list, values_list = [list(x) for x in result]
+
         self.insert_records_of_one_device_sorted(device_id, times_list, measurements_list, types_list, values_list)
 
     def insert_records_of_one_device_sorted(self, device_id, times_list, measurements_list, types_list, values_list):
@@ -355,7 +359,12 @@ class Session(object):
         # check parameter
         size = len(times_list)
         if (size != len(measurements_list) or size != len(types_list) or size != len(values_list)):
-            print("types, times, measurementsList and valuesList's size should be equal")
+            print("insert records of one device error: types, times, measurementsList and valuesList's size should be equal")
+            return
+
+        # check sorted
+        if not Session.check_sorted(times_list):
+            print("insert records of one device error: timestamp not sorted")
             return
 
         request = self.gen_insert_records_of_one_device_request(device_id, times_list, measurements_list, values_list, types_list)
@@ -369,7 +378,7 @@ class Session(object):
         for values, data_types, measurements in zip(values_list, types_list, measurements_list):
             data_types = [data_type.value for data_type in data_types]
             if (len(values) != len(data_types)) or (len(values) != len(measurements)):
-                print("deviceIds, times, measurementsList and valuesList's size should be equal")
+                print("insert records of one device error: deviceIds, times, measurementsList and valuesList's size should be equal")
                 # could raise an error here.
                 return
             values_in_bytes = Session.value_to_bytes(data_types, values)
@@ -449,7 +458,6 @@ class Session(object):
         format_str_list = [">"]
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
-            print(data_type, TSDataType.BOOLEAN.value)
             if data_type == TSDataType.BOOLEAN.value:
                 format_str_list.append("h")
                 format_str_list.append("?")
@@ -510,3 +518,10 @@ class Session(object):
             print("Could not set time zone because: ", e)
             raise Exception
         self.__zone_id = zone_id
+
+    @staticmethod
+    def check_sorted(timestamps):
+        for i in range(1, len(timestamps)):
+            if timestamps[i] < timestamps[i - 1]:
+                return False
+        return True
