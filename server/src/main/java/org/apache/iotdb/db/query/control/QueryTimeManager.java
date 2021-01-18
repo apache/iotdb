@@ -23,9 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
@@ -76,12 +78,28 @@ public class QueryTimeManager implements IService {
     queryInfoMap.get(queryId).setInterrupted(true);
   }
 
-  public void unRegisterQuery(long queryId) {
-    queryInfoMap.computeIfPresent(queryId, (k, v) -> null);
+  public AtomicBoolean unRegisterQuery(long queryId) {
+    // This is used to make sure the QueryTimeoutRuntimeException is thrown once
+    AtomicBoolean successRemoved = new AtomicBoolean(false);
+    queryInfoMap.computeIfPresent(queryId, (k, v) -> {
+      successRemoved.set(true);
+      return null;
+    });
     queryScheduledTaskMap.computeIfPresent(queryId, (k, v) -> {
       queryScheduledTaskMap.get(queryId).cancel(false);
       return null;
     });
+    return successRemoved;
+  }
+
+  public static void checkQueryAlive(long queryId) {
+    if (getInstance().queryInfoMap.get(queryId) != null &&
+          getInstance().queryInfoMap.get(queryId).isInterrupted()) {
+      if (getInstance().unRegisterQuery(queryId).get()) {
+        throw new QueryTimeoutRuntimeException(
+            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+      }
+    }
   }
 
   public Map<Long, QueryInfo> getQueryInfoMap() {

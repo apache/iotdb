@@ -28,7 +28,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
@@ -233,8 +232,6 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
   private final long queryId;
-
-  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   /**
    * flag that main thread is interrupted or not
    */
@@ -273,7 +270,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   private void init(WatermarkEncoder encoder, int fetchSize) {
-    checkQueryAlive();
+    QueryTimeManager.checkQueryAlive(queryId);
     initLimit(super.rowOffset, super.rowLimit, seriesReaderWithoutValueFilterList.size());
     this.fetchSize = fetchSize;
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -303,7 +300,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
         // check the interrupted status of query before take next batch
-        checkQueryAlive();
+        QueryTimeManager.checkQueryAlive(queryId);
         Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
             .take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {
@@ -351,13 +348,4 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
     return null;
   }
 
-  private void checkQueryAlive() {
-    if (queryTimeManager.getQueryInfoMap().get(queryId) != null &&
-        queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-      interrupted = true;
-      queryTimeManager.unRegisterQuery(queryId);
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
-  }
 }

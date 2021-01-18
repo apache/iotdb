@@ -28,7 +28,6 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
@@ -148,8 +147,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
   private final long queryId;
-
-  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   /**
    * flag that main thread is interrupted or not
    */
@@ -194,7 +191,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of query before taking next batch
-      checkQueryAlive();
+      QueryTimeManager.checkQueryAlive(queryId);
       fillCache(i);
       // try to put the next timestamp into the heap
       if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
@@ -301,7 +298,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           cachedBatchDataArray[seriesIndex].next();
 
           // check the interrupted status of query before taking next batch
-          checkQueryAlive();
+          QueryTimeManager.checkQueryAlive(queryId);
           // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
               && !noMoreDataInQueueArray[seriesIndex]) {
@@ -450,7 +447,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         cachedBatchDataArray[seriesIndex].next();
 
         // check the interrupted status of query before taking next batch
-        checkQueryAlive();
+        QueryTimeManager.checkQueryAlive(queryId);
 
         // get next batch if current batch is empty and still have remaining batch data in queue
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()
@@ -476,13 +473,4 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     return record;
   }
 
-  private void checkQueryAlive() {
-    if (queryTimeManager.getQueryInfoMap().get(queryId) != null &&
-        queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-      interrupted = true;
-      queryTimeManager.unRegisterQuery(queryId);
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
-  }
 }
