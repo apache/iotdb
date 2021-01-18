@@ -26,7 +26,6 @@ import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -92,7 +91,6 @@ public class TsFileMetadata {
     if (metadataIndex != null) {
       byteLen += metadataIndex.serializeTo(outputStream);
     } else {
-      // TODO Maybe should throw an exception
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
 
