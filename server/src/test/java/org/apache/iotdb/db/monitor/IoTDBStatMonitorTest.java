@@ -26,6 +26,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -34,11 +35,14 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is a integration test for StatMonitor.
  */
 public class IoTDBStatMonitorTest {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBStatMonitorTest.class);
 
   private StatMonitor statMonitor;
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -59,7 +63,9 @@ public class IoTDBStatMonitorTest {
     config.setEnableMonitorSeriesWrite(true);
     EnvironmentUtils.envSetUp();
     statMonitor = StatMonitor.getInstance();
-    statMonitor.initMonitorSeriesInfo();
+    if (statMonitor.globalSeries.isEmpty()){
+      statMonitor.initMonitorSeriesInfo();
+    }
     insertSomeData();
   }
 
@@ -77,6 +83,19 @@ public class IoTDBStatMonitorTest {
 
     // restart server
     EnvironmentUtils.restartDaemon();
+    long time = 0;
+    while(!StorageEngine.getInstance().isAllSgReady()){
+      Thread.sleep(500);
+      time += 500;
+
+      if(time > 10000){
+        logger.warn("wait for sg ready for : " + (time / 1000) + " s");
+      }
+
+      if(time > 30000){
+        throw new IllegalStateException("wait too long in IoTDBStatMonitorTest");
+      }
+    }
     recoveryTest();
   }
 
