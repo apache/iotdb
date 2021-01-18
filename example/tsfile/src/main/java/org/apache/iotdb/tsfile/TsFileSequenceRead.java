@@ -106,9 +106,10 @@ public class TsFileSequenceRead {
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             System.out.println("device: " + chunkGroupHeader.getDeviceID());
             break;
-          case MetaMarker.VERSION:
-            long version = reader.readVersion();
-            System.out.println("version: " + version);
+          case MetaMarker.OPERATION_INDEX_RANGE:
+            reader.readPlanIndex();
+            System.out.println("minPlanIndex: " + reader.getMinPlanIndex());
+            System.out.println("maxPlanIndex: " + reader.getMaxPlanIndex());
             break;
           default:
             MetaMarker.handleUnexpectedMarker(marker);

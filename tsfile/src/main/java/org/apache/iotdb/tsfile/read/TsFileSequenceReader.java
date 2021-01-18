@@ -762,15 +762,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     return ChunkGroupHeader.deserializeFrom(tsFileInput, position, markerRead);
   }
 
-  public long readVersion() throws IOException {
-    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
-      throw new IOException("reach the end of the file.");
-    }
-    buffer.flip();
-    return buffer.getLong();
-  }
-
   public void readPlanIndex() throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
     if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {

@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.v2.file.footer.ChunkGroupFooterV2;
 import org.apache.iotdb.tsfile.v2.file.header.ChunkHeaderV2;
 import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
@@ -528,6 +529,15 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
 
   public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
     return readData(-1, header.getCompressedSize());
+  }
+
+  public long readVersion() throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    return buffer.getLong();
   }
 
   /**

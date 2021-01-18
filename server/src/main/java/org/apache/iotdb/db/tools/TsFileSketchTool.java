@@ -75,13 +75,21 @@ public class TsFileSketchTool {
                 String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)
                         + "|\t[version number] "
                         + reader.readVersionNumber());
+        long nextChunkGroupHeaderPos = TSFileConfig.MAGIC_STRING.getBytes().length 
+            + Byte.BYTES;
         // ChunkGroup begins
         for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() +
                   ", num of Chunks:" + chunkGroupMetadata.getChunkMetadataList().size());
+          // chunkGroupHeader begins
+          printlnBoth(pw, String.format("%20s", nextChunkGroupHeaderPos) + "|\t[Chunk Group Header]");
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
+          printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
+          printlnBoth(pw,
+                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
           // chunk begins
-          long chunkEndPos = 0;
           for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk(chunkMetadata);
             printlnBoth(pw,
                     String.format("%20d", chunkMetadata.getOffsetOfChunkHeader()) + "|\t[Chunk] of "
                             + chunkMetadata.getMeasurementUid() + ", numOfPoints:" + chunkMetadata
@@ -89,20 +97,11 @@ public class TsFileSketchTool {
                             + chunkMetadata.getEndTime() + "], tsDataType:" + chunkMetadata.getDataType()
                             + ", \n" + String.format("%20s", "") + " \t" + chunkMetadata.getStatistics());
             printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[ChunkHeader]");
-            Chunk chunk = reader.readMemChunk(chunkMetadata);
-            printlnBoth(pw,
-                    String.format("%20s", "") + "|\t\t" + chunk.getHeader().getNumOfPages() + " pages");
-            chunkEndPos =
+            nextChunkGroupHeaderPos =
                     chunkMetadata.getOffsetOfChunkHeader() + chunk.getHeader().getSerializedSize()
                             + chunk.getHeader().getDataSize();
           }
-          // chunkGroupFooter begins
-          printlnBoth(pw, String.format("%20s", chunkEndPos) + "|\t[Chunk Group Footer]");
-          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader(chunkEndPos, false);
-          printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
-          printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
+
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
         }
