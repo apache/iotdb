@@ -96,7 +96,7 @@ public class ElasticSerializableIntList implements IntList {
     }
 
     void clear() {
-      cacheSize = 0;
+      reset();
     }
   }
 }

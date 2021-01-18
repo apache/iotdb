@@ -26,20 +26,20 @@ public abstract class Cache {
 
   private static class Node {
 
-    Node previous;
-    int value;
-    Node succeeding;
+    private Node previous;
+    private int value;
+    private Node succeeding;
 
-    Node() {
+    private Node() {
     }
 
-    Node remove() {
+    private Node remove() {
       previous.succeeding = succeeding;
       succeeding.previous = previous;
       return this;
     }
 
-    void set(Node previous, int value, Node succeeding) {
+    private void set(Node previous, int value, Node succeeding) {
       this.previous = previous;
       previous.succeeding = this;
       this.value = value;
@@ -48,25 +48,27 @@ public abstract class Cache {
     }
   }
 
+  protected final Node head;
+  protected final Node tail;
+
+  protected final Node[] cachedNodes;
+
   protected final int cacheCapacity;
   protected int cacheSize;
 
-  protected Node[] cachedNodes;
-
-  protected Node head;
-  protected Node tail;
-
   protected Cache(int capacity) {
-    cacheCapacity = capacity;
-    cacheSize = 0;
-    cachedNodes = new Node[capacity];
-    for (int i = 0; i < capacity; ++i) {
-      cachedNodes[i] = new Node();
-    }
     head = new Node();
     tail = new Node();
     head.succeeding = tail;
     tail.previous = head;
+
+    cachedNodes = new Node[capacity];
+    for (int i = 0; i < capacity; ++i) {
+      cachedNodes[i] = new Node();
+    }
+
+    cacheCapacity = capacity;
+    cacheSize = 0;
   }
 
   protected boolean removeFirstOccurrence(int value) {
@@ -87,5 +89,12 @@ public abstract class Cache {
 
   protected void addFirst(int value) {
     cachedNodes[cacheSize++].set(head, value, head.succeeding);
+  }
+
+  protected void reset() {
+    head.succeeding = tail;
+    tail.previous = head;
+
+    cacheSize = 0;
   }
 }
