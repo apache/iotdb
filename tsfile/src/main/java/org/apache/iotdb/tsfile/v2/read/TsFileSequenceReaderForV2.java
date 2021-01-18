@@ -154,15 +154,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return tsFileMetaData;
   }
 
-  public List<Pair<Long, Long>> getVersionInfo() throws IOException {
-    if (tsFileMetaData == null) {
-      versionInfo = new ArrayList<>();
-      tsFileMetaData = TsFileMetadataV2.deserializeFrom(
-          readData(fileMetadataPos, fileMetadataSize), versionInfo);
-    }
-    return versionInfo;
-  }
-
   @Override
   public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
     readFileMetadata();
