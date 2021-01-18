@@ -193,12 +193,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
-      // check the interrupted status of main thread before taking next batch
-      if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-        interrupted = true;
-        throw new QueryTimeoutRuntimeException(
-            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-      }
+      // check the interrupted status of query before taking next batch
+      checkQueryAlive();
       fillCache(i);
       // try to put the next timestamp into the heap
       if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
@@ -304,12 +300,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           // move next
           cachedBatchDataArray[seriesIndex].next();
 
-          // check the interrupted status of main thread before taking next batch
-          if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-            interrupted = true;
-            throw new QueryTimeoutRuntimeException(
-                QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-          }
+          // check the interrupted status of query before taking next batch
+          checkQueryAlive();
           // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
               && !noMoreDataInQueueArray[seriesIndex]) {
@@ -457,12 +449,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         // move next
         cachedBatchDataArray[seriesIndex].next();
 
-        // check the interrupted status of main thread before taking next batch
-        if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-          interrupted = true;
-          throw new QueryTimeoutRuntimeException(
-              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-        }
+        // check the interrupted status of query before taking next batch
+        checkQueryAlive();
+
         // get next batch if current batch is empty and still have remaining batch data in queue
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()
             && !noMoreDataInQueueArray[seriesIndex]) {
@@ -485,5 +474,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
     }
 
     return record;
+  }
+
+  private void checkQueryAlive() {
+    if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
+      interrupted = true;
+      queryTimeManager.unRegisterQuery(queryId);
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
   }
 }

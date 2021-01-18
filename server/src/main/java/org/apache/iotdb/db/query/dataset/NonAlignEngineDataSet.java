@@ -273,11 +273,7 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   }
 
   private void init(WatermarkEncoder encoder, int fetchSize) {
-    if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-      interrupted = true;
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    checkQueryAlive();
     initLimit(super.rowOffset, super.rowLimit, seriesReaderWithoutValueFilterList.size());
     this.fetchSize = fetchSize;
     for (int i = 0; i < seriesReaderWithoutValueFilterList.size(); i++) {
@@ -306,12 +302,8 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
 
     for (int seriesIndex = 0; seriesIndex < seriesNum; seriesIndex++) {
       if (!noMoreDataInQueueArray[seriesIndex]) {
-        // check the interrupted status of main thread before take next batch
-        if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
-          interrupted = true;
-          throw new QueryTimeoutRuntimeException(
-              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-        }
+        // check the interrupted status of query before take next batch
+        checkQueryAlive();
         Pair<ByteBuffer, ByteBuffer> timeValueByteBufferPair = blockingQueueArray[seriesIndex]
             .take();
         if (timeValueByteBufferPair.left == null || timeValueByteBufferPair.right == null) {
@@ -357,5 +349,14 @@ public class NonAlignEngineDataSet extends QueryDataSet implements DirectNonAlig
   @Override
   public RowRecord nextWithoutConstraint() {
     return null;
+  }
+
+  private void checkQueryAlive() {
+    if (queryTimeManager.getQueryInfoMap().get(queryId).isInterrupted()) {
+      interrupted = true;
+      queryTimeManager.unRegisterQuery(queryId);
+      throw new QueryTimeoutRuntimeException(
+          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+    }
   }
 }

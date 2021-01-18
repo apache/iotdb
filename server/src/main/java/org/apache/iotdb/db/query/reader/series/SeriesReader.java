@@ -176,15 +176,16 @@ public class SeriesReader {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
-  private boolean isQueryInterrupted() {
-    return queryTimeManager.getQueryInfoMap().get(context.getQueryId()).isInterrupted();
-  }
-
-  boolean hasNextFile() throws IOException {
-    if (isQueryInterrupted()) {
+  private void checkQueryAlive() {
+    if (queryTimeManager.getQueryInfoMap().get(context.getQueryId()).isInterrupted()) {
+      queryTimeManager.unRegisterQuery(context.getQueryId());
       throw new QueryTimeoutRuntimeException(
           QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     }
+  }
+
+  boolean hasNextFile() throws IOException {
+    checkQueryAlive();
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -244,10 +245,7 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (isQueryInterrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    checkQueryAlive();
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -368,10 +366,7 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (isQueryInterrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    checkQueryAlive();
 
     /*
      * has overlapped data before

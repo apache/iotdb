@@ -306,7 +306,7 @@ public class IoTDBStatement implements Statement {
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
     if (timeoutInMS < 0) {
-      throw new SQLException("Timeout must be over 0, please check and try again.");
+      throw new SQLException("Timeout must be >= 0, please check and try again.");
     }
     isClosed = false;
     try {
