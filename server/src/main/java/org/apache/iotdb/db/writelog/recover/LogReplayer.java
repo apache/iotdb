@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -59,7 +58,6 @@ public class LogReplayer {
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
-  private VersionController versionController;
   private TsFileResource currentTsFileResource;
   private IMemTable recoverMemTable;
 
@@ -70,12 +68,10 @@ public class LogReplayer {
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
   public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
-      VersionController versionController, TsFileResource currentTsFileResource,
-      IMemTable memTable, boolean sequence) {
+      TsFileResource currentTsFileResource, IMemTable memTable, boolean sequence) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
-    this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
     this.recoverMemTable = memTable;
     this.sequence = sequence;
@@ -127,7 +123,7 @@ public class LogReplayer {
       }
       modFile
           .write(
-              new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
+              new Deletion(path, currentTsFileResource.getTsFileSize(), deletePlan.getDeleteStartTime(),
                   deletePlan.getDeleteEndTime()));
     }
   }

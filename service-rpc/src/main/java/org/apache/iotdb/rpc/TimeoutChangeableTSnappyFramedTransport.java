@@ -33,10 +33,12 @@ public class TimeoutChangeableTSnappyFramedTransport extends TSnappyElasticFrame
     this.underlyingSocket = underlying;
   }
 
+  @Override
   public void setTimeout(int timeout) {
     underlyingSocket.setTimeout(timeout);
   }
 
+  @Override
   public int getTimeOut() throws SocketException {
     return underlyingSocket.getSocket().getSoTimeout();
   }

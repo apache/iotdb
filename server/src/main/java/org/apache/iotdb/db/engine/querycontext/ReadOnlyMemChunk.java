@@ -46,7 +46,6 @@ public class ReadOnlyMemChunk {
   private TSEncoding encoding;
 
   private static final Logger logger = LoggerFactory.getLogger(ReadOnlyMemChunk.class);
-  private long version;
 
   private int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
@@ -59,13 +58,11 @@ public class ReadOnlyMemChunk {
   private int chunkDataSize;
 
   public ReadOnlyMemChunk(String measurementUid, TSDataType dataType, TSEncoding encoding,
-      TVList tvList, Map<String, String> props, long version, int size,
-      List<TimeRange> deletionList)
+      TVList tvList, Map<String, String> props, int size, List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     this.measurementUid = measurementUid;
     this.dataType = dataType;
     this.encoding = encoding;
-    this.version = version;
     if (props != null && props.containsKey(Encoder.MAX_POINT_NUMBER)) {
       try {
         this.floatPrecision = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
@@ -141,10 +138,6 @@ public class ReadOnlyMemChunk {
   public IPointReader getPointReader() {
     chunkPointReader = chunkData.getIterator(floatPrecision, encoding, chunkDataSize, deletionList);
     return chunkPointReader;
-  }
-
-  public long getVersion() {
-    return version;
   }
 
   public String getMeasurementUid() {
