@@ -26,7 +26,8 @@ from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from .thrift.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
-     TSExecuteStatementReq, TSOpenSessionReq, TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
+    TSExecuteStatementReq, TSOpenSessionReq, TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq, \
+    TSInsertRecordsOfOneDeviceReq
 from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 
 # for debug
@@ -61,6 +62,7 @@ class Session(object):
         self.__session_id = None
         self.__statement_id = None
         self.__zone_id = zone_id
+        self.__default_timeout = 1000
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
@@ -293,7 +295,7 @@ class Session(object):
 
     def gen_insert_records_req(self, device_ids, times, measurements_lst, types_lst, values_lst):
         if (len(device_ids) != len(measurements_lst)) or (len(times) != len(types_lst)) or \
-           (len(device_ids) != len(times)) or (len(times) != len(values_lst)):
+            (len(device_ids) != len(times)) or (len(times) != len(values_lst)):
             print("deviceIds, times, measurementsList and valuesList's size should be equal")
             # could raise an error here.
             return
@@ -331,6 +333,50 @@ class Session(object):
         """
         status = self.__client.insertTablets(self.gen_insert_tablets_req(tablet_lst))
         print("insert multiple tablets, message: {}".format(status.message))
+
+
+    def insert_records_of_one_device(self, device_id, times_list, measurements_list, types_list, values_list):
+        print("here")
+        self.insert_records_of_one_device_sorted(device_id, times_list, measurements_list, types_list, values_list)
+
+    def insert_records_of_one_device_sorted(self, device_id, times_list, measurements_list, types_list, values_list):
+        """
+        Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+        executeBatch, we pack some insert request in batch and send them to server. If you want improve
+        your performance, please see insertTablet method
+
+        :param device_id: device id
+        :param times_list: timestamps list
+        :param measurements_list: measurements list
+        :param types_list: types list
+        :param values_list: values list
+        :param have_sorted: have these list been sorted by timestamp
+        """
+        # check parameter
+        size = len(times_list)
+        if (size != len(measurements_list) or size != len(types_list) or size != len(values_list)):
+            print("types, times, measurementsList and valuesList's size should be equal")
+            return
+
+        request = self.gen_insert_records_of_one_device_request(device_id, times_list, measurements_list, values_list, types_list)
+
+        # send request
+        status = self.__client.insertRecordsOfOneDevice(request)
+        print("insert records of one device, message: {}".format(status.message))
+
+    def gen_insert_records_of_one_device_request(self, device_id, times_list, measurements_list, values_list, types_list):
+        binary_value_list = []
+        for values, data_types, measurements in zip(values_list, types_list, measurements_list):
+            data_types = [data_type.value for data_type in data_types]
+            if (len(values) != len(data_types)) or (len(values) != len(measurements)):
+                print("deviceIds, times, measurementsList and valuesList's size should be equal")
+                # could raise an error here.
+                return
+            values_in_bytes = Session.value_to_bytes(data_types, values)
+            binary_value_list.append(values_in_bytes)
+
+        return TSInsertRecordsOfOneDeviceReq(self.__session_id, device_id, measurements_list, binary_value_list, times_list)
+
 
     def test_insert_tablet(self, tablet):
         """
@@ -380,7 +426,7 @@ class Session(object):
         :param sql: String, query sql statement
         :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
         """
-        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id, self.__fetch_size)
+        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id, self.__fetch_size, self.__default_timeout)
         resp = self.__client.executeQueryStatement(request)
         return SessionDataSet(sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId,
                               self.__client, self.__session_id, resp.queryDataSet, resp.ignoreTimeStamp)
@@ -403,6 +449,7 @@ class Session(object):
         format_str_list = [">"]
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
+            print(data_type, TSDataType.BOOLEAN.value)
             if data_type == TSDataType.BOOLEAN.value:
                 format_str_list.append("h")
                 format_str_list.append("?")
