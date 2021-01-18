@@ -75,7 +75,7 @@ public class TsFileSketchTool {
                 String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)
                         + "|\t[version number] "
                         + reader.readVersionNumber());
-        long nextChunkGroupHeaderPos = TSFileConfig.MAGIC_STRING.getBytes().length 
+        long nextChunkGroupHeaderPos = (long) TSFileConfig.MAGIC_STRING.getBytes().length 
             + Byte.BYTES;
         // ChunkGroup begins
         for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
