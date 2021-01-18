@@ -1,41 +1,10 @@
-<!--
-
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
-<!-- Thanks for trying to help us make Apache IoTDB be the best it can be! 
-Please fill out as much of the following information as is possible (where relevant, and remove it 
-when irrelevant) to help make the intention and scope of this PR clear in order to ease review. -->
-
 ## Description
 
-<!-- Describe the goal of this PR, what problem are you fixing. If there is a corresponding issue, 
-it's not necessary to repeat the description here, 
-however, you may choose to keep one summary sentence. -->
-
-<!-- Describe your patch: what did you change in code? How did you fix the problem? -->
-
-<!-- If there are several relatively logically separate changes in this PR, create a mini-section 
-for each of them. For example: -->
 
 ### Content1 ...
+
 ### Content2 ...
+
 ### Content3 ...
 
 <!--
@@ -89,5 +58,3 @@ self-review the PR. -->
 <hr>
 
 ##### Key changed/added classes (or packages if there are too many classes) in this PR
-
-<!-- Template copied and modified from Apache Druid-->

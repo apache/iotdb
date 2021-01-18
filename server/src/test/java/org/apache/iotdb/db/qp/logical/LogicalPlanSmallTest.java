@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.plan;
+package org.apache.iotdb.db.qp.logical;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -350,4 +350,5 @@ public class LogicalPlanSmallTest {
     }
     Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
   }
+
 }

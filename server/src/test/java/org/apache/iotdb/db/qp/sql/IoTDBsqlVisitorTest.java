@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy;
+package org.apache.iotdb.db.qp.sql;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,7 +33,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class LogicalGeneratorTest {
+public class IoTDBsqlVisitorTest {
 
   IoTDBSqlVisitor visitor;
 

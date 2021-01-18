@@ -146,7 +146,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     return readerIndexes;
   }
 
-  public void finalizeUDFs(long queryId) throws IOException {
+  public void finalizeUDFs(long queryId) {
     udtfPlan.finalizeUDFExecutors(queryId);
   }
 }

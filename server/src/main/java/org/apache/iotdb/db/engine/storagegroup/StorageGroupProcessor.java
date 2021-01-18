@@ -433,24 +433,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  /**
-   * get version controller by time partition Id Thread-safety should be ensure by caller
-   *
-   * @param timePartitionId time partition Id
-   * @return version controller
-   */
-  private VersionController getVersionControllerByTimePartitionId(long timePartitionId) {
-    return timePartitionIdVersionControllerMap.computeIfAbsent(timePartitionId,
-        id -> {
-          try {
-            return new SimpleFileVersionController(storageGroupSysDir.getPath(), timePartitionId);
-          } catch (IOException e) {
-            logger.error("can't build a version controller for time partition {}", timePartitionId);
-            return null;
-          }
-        });
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
       throws IOException {
@@ -572,17 +554,20 @@ public class StorageGroupProcessor {
       long timePartitionId = tsFileResource.getTimePartition();
 
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
-          storageGroupName + FILE_NAME_SEPARATOR,
-          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, isSeq,
+          storageGroupName + FILE_NAME_SEPARATOR, tsFileResource, isSeq,
           i == tsFiles.size() - 1);
 
       RestorableTsFileIOWriter writer;
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
-          recoverPerformer.recover(false);
-          tsFileResource.setClosed(true);
-          tsFileManagement.add(tsFileResource, isSeq);
+          writer = recoverPerformer.recover(false);
+          if (writer.hasCrashed()) {
+            tsFileManagement.addRecover(tsFileResource, isSeq);
+          } else {
+            tsFileResource.setClosed(true);
+            tsFileManagement.add(tsFileResource, isSeq);
+          }
           continue;
         } else {
           writer = recoverPerformer.recover(true);
@@ -601,7 +586,6 @@ public class StorageGroupProcessor {
         TsFileProcessor tsFileProcessor;
         if (isSeq) {
           tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
-              getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
               true, writer);
           if (enableMemControl) {
@@ -614,7 +598,6 @@ public class StorageGroupProcessor {
           workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         } else {
           tsFileProcessor = new TsFileProcessor(storageGroupName, storageGroupInfo, tsFileResource,
-              getVersionControllerByTimePartitionId(timePartitionId),
               this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
               writer);
           if (enableMemControl) {
@@ -1042,11 +1025,10 @@ public class StorageGroupProcessor {
             + getNewTsFileName(timePartitionId);
 
     TsFileProcessor tsFileProcessor;
-    VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
-          versionController, this::closeUnsealedTsFileProcessorCallBack,
+          this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true, deviceNumInLastClosedTsFile);
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
@@ -1058,7 +1040,7 @@ public class StorageGroupProcessor {
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
-          versionController, this::closeUnsealedTsFileProcessorCallBack,
+          this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false, deviceNumInLastClosedTsFile);
       if (enableMemControl) {
         TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
@@ -1549,17 +1531,14 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
-      throws IOException {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
           deletion.getEndTime())) {
         continue;
       }
 
-      long partitionId = tsFileResource.getTimePartition();
-      deletion.setVersionNum(getVersionControllerByTimePartitionId(partitionId).nextVersion());
-
+      deletion.setFileOffset(tsFileResource.getTsFileSize());
       // write deletion into modification file
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file

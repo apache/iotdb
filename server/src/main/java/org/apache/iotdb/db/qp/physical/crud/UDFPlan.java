@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
@@ -48,5 +47,5 @@ public interface UDFPlan {
   /**
    * Call UDF finalization methods and release computing resources.
    */
-  void finalizeUDFExecutors(long queryId) throws IOException;
+  void finalizeUDFExecutors(long queryId);
 }

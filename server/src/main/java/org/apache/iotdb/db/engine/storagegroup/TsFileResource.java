@@ -42,6 +42,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -151,6 +152,8 @@ public class TsFileResource {
    */
   protected long minPlanIndex = Long.MAX_VALUE;
 
+  private long version = 0;
+
   public TsFileResource() {
   }
 
@@ -170,6 +173,7 @@ public class TsFileResource {
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
   }
 
   /**
@@ -177,6 +181,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file) {
     this.file = file;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
@@ -186,6 +191,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
     this.file = file;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
@@ -203,6 +209,7 @@ public class TsFileResource {
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
+    this.version = originTsFileResource.version;
     generateTimeSeriesMetadata();
   }
 
@@ -718,5 +725,13 @@ public class TsFileResource {
 
   public void setMinPlanIndex(long minPlanIndex) {
     this.minPlanIndex = minPlanIndex;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }

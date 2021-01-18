@@ -38,7 +38,6 @@ public class TestHelper {
   public static TsFileMetadata createSimpleFileMetaData() {
     TsFileMetadata metaData = new TsFileMetadata();
     metaData.setMetadataIndex(generateMetaDataIndex());
-    metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
@@ -48,14 +47,6 @@ public class TestHelper {
       metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5));
     }
     return metaDataIndex;
-  }
-
-  private static List<Pair<Long, Long>> generateVersionInfo() {
-    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      versionInfo.add(new Pair<>((long) i * 5, 0L));
-    }
-    return versionInfo;
   }
 
   public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {

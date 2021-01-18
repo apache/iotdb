@@ -65,7 +65,6 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       truncatePosition = tsFileMetadata.getMetaOffset();
 
       canWrite = true;
-      versionInfo = tsFileMetadata.getVersionInfo();
       totalChunkNum = tsFileMetadata.getTotalChunkNum();
       invalidChunkNum = tsFileMetadata.getInvalidChunkNum();
       

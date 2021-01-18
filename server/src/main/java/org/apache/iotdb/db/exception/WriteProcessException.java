@@ -33,6 +33,10 @@ public class WriteProcessException extends IoTDBException {
     super(message, errorCode);
   }
 
+  public WriteProcessException(String message, int errorCode, boolean isUserException) {
+    super(message, errorCode, isUserException);
+  }
+
   public WriteProcessException(String message, Throwable cause) {
     super(message, cause, TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
   }

@@ -181,7 +181,7 @@ public class RecoverResourceFromReaderTest {
       ReadWriteIOUtils.write(123, outputStream);
     }
 
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, false);
     performer.recover(true).close();
     assertEquals(1, resource.getStartTime("root.sg.device99"));
