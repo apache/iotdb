@@ -531,6 +531,7 @@ nodeName
 
 nodeNameWithoutStar
     : ID
+    | STAR ID?
     | DOUBLE_QUOTE_STRING_LITERAL
     | DURATION
     | encoding
