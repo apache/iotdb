@@ -61,8 +61,6 @@ public class StringUtils {
     return decimal.toString();
   }
   
-  
-  
   public static final String fixDecimalExponent(String dString) {
     int ePos = dString.indexOf("E");
     if (ePos == -1)
