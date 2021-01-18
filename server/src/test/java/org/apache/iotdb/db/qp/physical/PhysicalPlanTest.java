@@ -1046,6 +1046,9 @@ public class PhysicalPlanTest {
         + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
+    String sqlStr2 = "select *my from root";
+    PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
+    Assert.assertEquals(OperatorType.QUERY, plan2.getOperatorType());
   }
 
   @Test
