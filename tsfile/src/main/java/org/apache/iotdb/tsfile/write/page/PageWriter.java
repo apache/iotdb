@@ -243,7 +243,6 @@ public class PageWriter {
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = uncompressedSize;
     } else {
-      // TODO maybe we can control this memory to avoid allocate new heap memory each time
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       // data is never a directByteBuffer now, so we can use data.array()
       compressedSize = compressor.compress(pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
