@@ -848,7 +848,7 @@ public class IoTDBConfig {
   /**
    * the number of virtual storage groups per user-defined storage group
    */
-  private int virtualStorageGroupNum = 8;
+  private int virtualStorageGroupNum = 1;
 
   public IoTDBConfig() {
     // empty constructor
