@@ -320,6 +320,9 @@ public class IoTDBDescriptor {
           .getProperty("unseq_file_num_in_each_level",
               Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
+      conf.setQueryTimeThreshold(Integer.parseInt(properties
+          .getProperty("query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
@@ -500,6 +503,9 @@ public class IoTDBDescriptor {
 //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
 //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
+      conf.setTimeIndexLevel(
+          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
+
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
           Integer.parseInt(properties.getProperty("default_fill_interval",
@@ -561,6 +567,10 @@ public class IoTDBDescriptor {
           "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
+
+      conf.setEnablePartition(Boolean.parseBoolean(properties.getProperty("enable_partition", conf.isEnablePartition() + "")));
+
+      conf.setPartitionInterval(Long.parseLong(properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()

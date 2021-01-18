@@ -24,6 +24,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 public class ShowDevicesOperator extends ShowOperator {
 
   private PartialPath path;
+  private int limit = 0;
+  private int offset = 0;
 
   public ShowDevicesOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
@@ -32,5 +34,21 @@ public class ShowDevicesOperator extends ShowOperator {
 
   public PartialPath getPath() {
     return path;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
   }
 }

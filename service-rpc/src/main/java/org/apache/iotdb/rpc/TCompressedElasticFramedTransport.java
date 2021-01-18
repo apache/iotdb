@@ -19,22 +19,20 @@
 package org.apache.iotdb.rpc;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import org.apache.thrift.transport.TByteBuffer;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 public abstract class TCompressedElasticFramedTransport extends TElasticFramedTransport {
 
-  private TByteBuffer writeCompressBuffer;
-  private TByteBuffer readCompressBuffer;
+  private AutoScalingBufferWriteTransport writeCompressBuffer;
+  private AutoScalingBufferReadTransport readCompressBuffer;
 
   protected TCompressedElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
-      int maxLength) {
-    super(underlying, initialBufferCapacity, maxLength);
-    writeCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
-    readCompressBuffer = new TByteBuffer(ByteBuffer.allocate(initialBufferCapacity));
+      int softMaxLength) {
+    super(underlying, initialBufferCapacity, softMaxLength);
+    writeCompressBuffer = new AutoScalingBufferWriteTransport(initialBufferCapacity);
+    readCompressBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
   }
 
   @Override
@@ -53,27 +51,14 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     try {
       int uncompressedLength = uncompressedLength(readBuffer.getBuffer(), 0, size);
       RpcStat.readBytes.addAndGet(uncompressedLength);
-      readCompressBuffer = resizeCompressBuf(uncompressedLength, readCompressBuffer);
-      uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getByteBuffer().array(), 0);
-      readCompressBuffer.getByteBuffer().limit(uncompressedLength);
-      readCompressBuffer.getByteBuffer().position(0);
-
+      readCompressBuffer.resizeIfNecessary(uncompressedLength);
+      uncompress(readBuffer.getBuffer(), 0, size, readCompressBuffer.getBuffer(), 0);
+      readCompressBuffer.limit(uncompressedLength);
+      readCompressBuffer.position(0);
       readBuffer.fill(readCompressBuffer, uncompressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
     }
-  }
-
-  private TByteBuffer resizeCompressBuf(int size, TByteBuffer byteBuffer) {
-    double expandFactor = 1.5;
-    double loadFactor = 0.6;
-    if (byteBuffer.getByteBuffer().capacity() < size) {
-      int newCap = (int) Math.min(size * expandFactor, maxLength);
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(newCap));
-    } else if (byteBuffer.getByteBuffer().capacity() * loadFactor > size) {
-      byteBuffer = new TByteBuffer(ByteBuffer.allocate(size));
-    }
-    return byteBuffer;
   }
 
   @Override
@@ -82,21 +67,20 @@ public abstract class TCompressedElasticFramedTransport extends TElasticFramedTr
     RpcStat.writeBytes.addAndGet(length);
     try {
       int maxCompressedLength = maxCompressedLength(length);
-      writeCompressBuffer = resizeCompressBuf(maxCompressedLength, writeCompressBuffer);
-      int compressedLength = compress(writeBuffer.getBuf().array(), 0, length,
-          writeCompressBuffer.getByteBuffer().array(), 0);
+      writeCompressBuffer.resizeIfNecessary(maxCompressedLength);
+      int compressedLength = compress(writeBuffer.getBuffer(), 0, length,
+          writeCompressBuffer.getBuffer(), 0);
       RpcStat.writeCompressedBytes.addAndGet(compressedLength);
       TFramedTransport.encodeFrameSize(compressedLength, i32buf);
       underlying.write(i32buf, 0, 4);
-
-      underlying.write(writeCompressBuffer.getByteBuffer().array(), 0, compressedLength);
+      underlying.write(writeCompressBuffer.getBuffer(), 0, compressedLength);
     } catch (IOException e) {
       throw new TTransportException(e);
     }
 
     writeBuffer.reset();
-    if (maxLength < length) {
-      writeBuffer.resizeIfNecessary(maxLength);
+    if (softMaxLength < length) {
+      writeBuffer.resizeIfNecessary(softMaxLength);
     }
     underlying.flush();
   }

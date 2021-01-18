@@ -24,10 +24,21 @@ public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
   protected int errorCode;
+  /**
+   * This kind of exception is caused by users' wrong sql, and there is no need for server
+   * to print the full stack of the exception
+   */
+  protected boolean isUserException = false;
 
   public IoTDBException(String message, int errorCode) {
     super(message);
     this.errorCode = errorCode;
+  }
+
+  public IoTDBException(String message, int errorCode, boolean isUserException) {
+    super(message);
+    this.errorCode = errorCode;
+    this.isUserException = isUserException;
   }
 
   public IoTDBException(String message, Throwable cause, int errorCode) {
@@ -38,6 +49,16 @@ public class IoTDBException extends Exception {
   public IoTDBException(Throwable cause, int errorCode) {
     super(cause);
     this.errorCode = errorCode;
+  }
+
+  public IoTDBException(Throwable cause, int errorCode, boolean isUserException) {
+    super(cause);
+    this.errorCode = errorCode;
+    this.isUserException = isUserException;
+  }
+
+  public boolean isUserException() {
+    return isUserException;
   }
 
   public int getErrorCode() {

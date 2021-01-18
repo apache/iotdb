@@ -81,6 +81,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new ConcurrentSkipListMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
+  private final List<TsFileResource> sequenceRecoverTsFileResources = new CopyOnWriteArrayList<>();
+  private final List<TsFileResource> unSequenceRecoverTsFileResources = new CopyOnWriteArrayList<>();
 
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -240,6 +242,19 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
+  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+    if (sequence) {
+      synchronized (sequenceRecoverTsFileResources) {
+        sequenceRecoverTsFileResources.add(tsFileResource);
+      }
+    } else {
+      synchronized (unSequenceTsFileResources) {
+        unSequenceRecoverTsFileResources.add(tsFileResource);
+      }
+    }
+  }
+
+  @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       add(tsFileResource, sequence);
@@ -349,7 +364,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
         if (fullMerge) {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource targetTsFileResource = getTsFileResource(targetFile, isSeq);
+          TsFileResource targetTsFileResource = getRecoverTsFileResource(targetFile, isSeq);
           long timePartition = targetTsFileResource.getTimePartition();
           RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
           // if not complete compaction, resume merge
@@ -371,7 +386,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           deleteAllSubLevelFiles(isSeq, timePartition);
         } else {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource targetResource = getTsFileResource(targetFile, isSeq);
+          TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
           long timePartition = targetResource.getTimePartition();
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String file : sourceFileList) {
@@ -392,13 +407,26 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 .merge(targetResource, sourceTsFileResources, storageGroupName,
                     compactionLogger, deviceSet,
                     isSeq);
+            // complete compaction and delete source file
+            writeLock();
+            try {
+              int targetLevel = getMergeLevel(targetResource.getTsFile());
+              if (isSeq) {
+                sequenceTsFileResources.get(timePartition).get(targetLevel).add(targetResource);
+                sequenceRecoverTsFileResources.clear();
+              } else {
+                unSequenceTsFileResources.get(timePartition).get(targetLevel).add(targetResource);
+                unSequenceRecoverTsFileResources.clear();
+              }
+              deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+            } finally {
+              writeUnlock();
+            }
+            deleteLevelFilesInDisk(sourceTsFileResources);
             compactionLogger.close();
           } else {
             writer.close();
           }
-          // complete compaction and delete source file
-          deleteLevelFilesInDisk(sourceTsFileResources);
-          deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
         }
       }
     } catch (IOException | IllegalPathException e) {
@@ -498,6 +526,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         return;
       }
     }
+    isSeqMerging = true;
     long startTimeMillis = System.currentTimeMillis();
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
@@ -506,6 +535,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // level is numbered from 0
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to seq file
+            isSeqMerging = false;
             merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
           } else {
             CompactionLogger compactionLogger = new CompactionLogger(storageGroupDir,
@@ -561,6 +591,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } catch (Exception e) {
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
+      isSeqMerging = false;
       // reset the merge working state to false
       logger.info("{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
           storageGroupName, sequence,
@@ -572,7 +603,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
    * if level < maxLevel-1, the file need compaction else, the file can be merged later
    */
   private File createNewTsFileName(File sourceFile, int level) {
-    String path = sourceFile.getAbsolutePath();
+    String path = sourceFile.getPath();
     String prefixPath = path.substring(0, path.lastIndexOf(FILE_NAME_SEPARATOR) + 1);
     return new File(prefixPath + level + TSFILE_SUFFIX);
   }
@@ -611,13 +642,33 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return Integer.parseInt(mergeLevelStr);
   }
 
+  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
+      throws IOException {
+    if (isSeq) {
+      for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
+        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+          return tsFileResource;
+        }
+      }
+    } else {
+      for (TsFileResource tsFileResource : unSequenceRecoverTsFileResources) {
+        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+          return tsFileResource;
+        }
+      }
+    }
+    logger.error("cannot get tsfile resource path: {}", filePath);
+    throw new IOException();
+  }
+
   private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
     if (isSeq) {
       for (List<SortedSet<TsFileResource>> tsFileResourcesWithLevel : sequenceTsFileResources
           .values()) {
         for (SortedSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }
@@ -628,7 +679,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           .values()) {
         for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
           for (TsFileResource tsFileResource : tsFileResources) {
-            if (tsFileResource.getTsFile().getAbsolutePath().equals(filePath)) {
+            if (Files
+                .isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
               return tsFileResource;
             }
           }

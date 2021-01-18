@@ -48,23 +48,27 @@ public class ClusterTimeGeneratorTest extends BaseQueryTest {
     RawDataQueryPlan dataQueryPlan = new RawDataQueryPlan();
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
-    IExpression expression =
-        BinaryExpression.and(
-            new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
-                ValueFilter.gtEq(3.0)),
-            new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(1, 1)),
-                ValueFilter.ltEq(8.0)));
-    dataQueryPlan.setExpression(expression);
-    dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
-    dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
+    try {
+      IExpression expression =
+          BinaryExpression.and(
+              new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(0, 0)),
+                  ValueFilter.gtEq(3.0)),
+              new SingleSeriesExpression(new PartialPath(TestUtils.getTestSeries(1, 1)),
+                  ValueFilter.ltEq(8.0)));
+      dataQueryPlan.setExpression(expression);
+      dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(0, 0)));
+      dataQueryPlan.addDeduplicatedPaths(new PartialPath(TestUtils.getTestSeries(1, 1)));
 
-    ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
-        testMetaMember, dataQueryPlan);
-    for (int i = 3; i <= 8; i++) {
-      assertTrue(timeGenerator.hasNext());
-      assertEquals(i, timeGenerator.next());
+      ClusterTimeGenerator timeGenerator = new ClusterTimeGenerator(expression, context,
+          testMetaMember, dataQueryPlan);
+      for (int i = 3; i <= 8; i++) {
+        assertTrue(timeGenerator.hasNext());
+        assertEquals(i, timeGenerator.next());
+      }
+      assertFalse(timeGenerator.hasNext());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
-    assertFalse(timeGenerator.hasNext());
   }
 
 }

@@ -29,7 +29,7 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
     super.heap = new PriorityQueue<>((o1, o2) -> {
       int timeCompare = Long.compare(o2.timeValuePair.getTimestamp(),
           o1.timeValuePair.getTimestamp());
-      return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+      return timeCompare != 0 ? timeCompare : o2.priority.compareTo(o1.priority);
     });
   }
 
@@ -40,7 +40,7 @@ public class DescPriorityMergeReader extends PriorityMergeReader {
    * @throws IOException
    */
   @Override
-  public void addReader(IPointReader reader, long priority, long endTime) throws IOException {
+  public void addReader(IPointReader reader, MergeReaderPriority priority, long endTime) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(new Element(reader, reader.nextTimeValuePair(), priority));
       super.currentReadStopTime = Math.min(currentReadStopTime, endTime);
