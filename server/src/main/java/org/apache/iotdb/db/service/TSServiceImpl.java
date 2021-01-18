@@ -540,9 +540,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
 
       // In case users forget to set this field in query, use the default value
-      if (fetchSize == 0) {
-        fetchSize = DEFAULT_FETCH_SIZE;
-      }
+      fetchSize = fetchSize == 0 ? DEFAULT_FETCH_SIZE : fetchSize;
 
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {

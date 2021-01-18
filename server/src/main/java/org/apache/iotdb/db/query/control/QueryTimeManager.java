@@ -24,6 +24,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 public class QueryTimeManager implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(QueryTimeManager.class);
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * the key of queryInfoMap is the query id and the value of queryInfoMap is the start
@@ -59,6 +62,7 @@ public class QueryTimeManager implements IService {
   public void registerQuery(long queryId, long startTime, String sql, long timeout,
       Thread queryThread) {
     queryInfoMap.put(queryId, new QueryInfo(startTime, sql, queryThread));
+    timeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       queryInfoMap.computeIfPresent(queryId, (k, v) -> {

@@ -315,8 +315,8 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql, long timeout)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (timeout <= 0) {
-      throw new StatementExecutionException("Timeout must be over 0, please check and try again.");
+    if (timeout < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
     return defaultSessionConnection.executeQueryStatement(sql, timeout);
   }
