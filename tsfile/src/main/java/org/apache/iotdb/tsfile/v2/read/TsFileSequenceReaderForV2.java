@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -55,7 +56,7 @@ import org.apache.iotdb.tsfile.v2.file.metadata.TsFileMetadataV2;
 
 public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements AutoCloseable {
 
-  private int totalChunkNum;
+  private List<Pair<Long, Long>> versionInfo;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -146,10 +147,15 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   @Override
   public TsFileMetadata readFileMetadata() throws IOException {
     if (tsFileMetaData == null) {
+      versionInfo = new ArrayList<>();
       tsFileMetaData = TsFileMetadataV2.deserializeFrom(
-          readData(fileMetadataPos, fileMetadataSize));
+          readData(fileMetadataPos, fileMetadataSize), versionInfo);
     }
     return tsFileMetaData;
+  }
+
+  public List<Pair<Long, Long>> getVersionInfo() {
+    return versionInfo;
   }
 
   @Override
@@ -338,6 +344,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       seriesMetadata.computeIfAbsent(chunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
           .add(chunkMetadata);
     }
+    // set version in ChunkMetadata 
+    for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {  
+      applyVersion(entry.getValue()); 
+    }
     return seriesMetadata;
   }
 
@@ -524,10 +534,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return readData(-1, header.getCompressedSize());
   }
 
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
   /**
    * get ChunkMetaDatas in given TimeseriesMetaData
    *
@@ -548,7 +554,22 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
 
     // minimize the storage of an ArrayList instance.
     chunkMetadataList.trimToSize();
+    applyVersion(chunkMetadataList);
     return chunkMetadataList;
   }
 
+  private void applyVersion(List<ChunkMetadata> chunkMetadataList) {
+    if (versionInfo == null || versionInfo.isEmpty()) { 
+      return;
+    } 
+    int versionIndex = 0;
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+
+      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
+        versionIndex++;
+      }
+
+      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
+    }
+  }
 }

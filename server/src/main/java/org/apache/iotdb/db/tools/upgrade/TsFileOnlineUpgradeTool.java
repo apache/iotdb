@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -59,6 +61,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
 
   private TsFileSequenceReaderForV2 reader;
   private File oldTsFile;
+  private List<Modification> oldModification;
   private Decoder defaultTimeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
       TSDataType.INT64);
@@ -69,27 +72,32 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
-   * file metadata size.Then the reader will skip the first TSFileConfig.OLD_MAGIC_STRING.length()
+   * file metadata size. Then the reader will skip the first TSFileConfig.OLD_MAGIC_STRING.length()
    * bytes of the file for preparing reading real data.
    *
    * @param file the data file
    * @throws IOException If some I/O error occurs
    */
-  public TsFileOnlineUpgradeTool(String file) throws IOException {
-    oldTsFile = FSFactoryProducer.getFSFactory().getFile(file);
+  public TsFileOnlineUpgradeTool(TsFileResource resourceToBeUpgraded) throws IOException {
+    oldTsFile = resourceToBeUpgraded.getTsFile();
+    String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReaderForV2(file);
     partitionWriterMap = new HashMap<>();
+    if (FSFactoryProducer.getFSFactory().getFile(file +
+        ModificationFile.FILE_SUFFIX).exists()) {
+      oldModification = (List<Modification>) resourceToBeUpgraded.getModFile().getModifications();
+    }
   }
 
   /**
-   * upgrade a single tsfile
+   * upgrade a single TsFile
    *
    * @param tsFileName old version tsFile's absolute path
    * @param upgradedResources new version tsFiles' resources
    */
-  public static void upgradeOneTsfile(String tsFileName, List<TsFileResource> upgradedResources)
+  public static void upgradeOneTsfile(TsFileResource resourceToBeUpgraded, List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
-    try (TsFileOnlineUpgradeTool updater = new TsFileOnlineUpgradeTool(tsFileName)) {
+    try (TsFileOnlineUpgradeTool updater = new TsFileOnlineUpgradeTool(resourceToBeUpgraded)) {
       updater.upgradeFile(upgradedResources);
     }
   }
@@ -99,7 +107,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
   }
 
   /**
-   * upgrade file and resource
+   * upgrade file resource
    *
    * @throws IOException, WriteProcessException
    */
