@@ -1724,6 +1724,9 @@ public class StorageGroupProcessor {
   }
 
   private void loadUpgradedResources(List<TsFileResource> resources, boolean isseq) {
+    if (resources.isEmpty()) {
+      return;
+    }
     for (TsFileResource resource : resources) {
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
