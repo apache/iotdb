@@ -81,7 +81,8 @@ public class SessionPool {
   private boolean closed;//whether the queue is closed.
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null, Config.DEFAULT_CACHE_LEADER_MODE);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, null,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
@@ -98,7 +99,8 @@ public class SessionPool {
 
   public SessionPool(String ip, int port, String user, String password, int maxSize,
       ZoneId zoneId) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId, Config.DEFAULT_CACHE_LEADER_MODE);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false, zoneId,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   @SuppressWarnings("squid:S107")
@@ -118,7 +120,7 @@ public class SessionPool {
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
 
-  @SuppressWarnings({"squid:S3776","squid:S2446"}) // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({"squid:S3776", "squid:S2446"}) // Suppress high Cognitive Complexity warning
   private Session getSession() throws IoTDBConnectionException {
     Session session = queue.poll();
     if (closed) {
@@ -168,8 +170,7 @@ public class SessionPool {
           }
           throw e;
         }
-      }
-      else {
+      } else {
         while (session == null) {
           synchronized (this) {
             if (closed) {
@@ -178,7 +179,8 @@ public class SessionPool {
             //we have to wait for someone returns a session.
             try {
               if (logger.isDebugEnabled()) {
-                logger.debug("no more sessions can be created, wait... queue.size={}", queue.size());
+                logger
+                    .debug("no more sessions can be created, wait... queue.size={}", queue.size());
               }
               this.wait(1000);
               long time = timeout < 60_000 ? timeout : 60_000;
@@ -278,7 +280,7 @@ public class SessionPool {
     //we do not need to notifyAll as any waited thread can continue to work after waked up.
     this.notify();
     if (logger.isDebugEnabled()) {
-        logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
+      logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
     }
   }
 
@@ -326,7 +328,7 @@ public class SessionPool {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   *
+   * <p>
    * a Tablet example:
    *
    *      device1
@@ -424,8 +426,7 @@ public class SessionPool {
   /**
    * Insert data that belong to the same device in batch format, which can reduce the overhead of
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
-   * send them to server If you want
-   * improve your performance, please see insertTablet method
+   * send them to server If you want improve your performance, please see insertTablet method
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -435,7 +436,8 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList,
+            false);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -452,18 +454,20 @@ public class SessionPool {
   /**
    * Insert data that belong to the same device in batch format, which can reduce the overhead of
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
-   * send them to server If you want
-   * improve your performance, please see insertTablet method
-   * @param  haveSorted whether the times list has been ordered.
+   * send them to server If you want improve your performance, please see insertTablet method
+   *
+   * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
    */
   public void insertOneDeviceRecords(String deviceId, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, boolean haveSorted) throws IoTDBConnectionException, StatementExecutionException {
+      List<List<Object>> valuesList, boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+        session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList,
+            haveSorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

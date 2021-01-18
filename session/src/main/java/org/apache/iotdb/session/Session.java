@@ -330,7 +330,7 @@ public class Session {
   /**
    * execute query sql with explicit timeout
    *
-   * @param sql query statement
+   * @param sql     query statement
    * @param timeout the timeout of this query, in milliseconds
    * @return result set
    */
