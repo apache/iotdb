@@ -24,42 +24,68 @@ package org.apache.iotdb.db.query.udf.datastructure;
  */
 public abstract class Cache {
 
-  private final int[] cacheBuffer;
+  private static class Node {
+
+    Node previous;
+    int value;
+    Node succeeding;
+
+    Node() {
+    }
+
+    Node remove() {
+      previous.succeeding = succeeding;
+      succeeding.previous = previous;
+      return this;
+    }
+
+    void set(Node previous, int value, Node succeeding) {
+      this.previous = previous;
+      previous.succeeding = this;
+      this.value = value;
+      this.succeeding = succeeding;
+      succeeding.previous = this;
+    }
+  }
 
   protected final int cacheCapacity;
   protected int cacheSize;
 
+  protected Node[] cachedNodes;
+
+  protected Node head;
+  protected Node tail;
+
   protected Cache(int capacity) {
-    cacheBuffer = new int[capacity];
     cacheCapacity = capacity;
     cacheSize = 0;
+    cachedNodes = new Node[capacity];
+    for (int i = 0; i < capacity; ++i) {
+      cachedNodes[i] = new Node();
+    }
+    head = new Node();
+    tail = new Node();
+    head.succeeding = tail;
+    tail.previous = head;
   }
 
   protected boolean removeFirstOccurrence(int value) {
-    int firstIndex = -1;
-    for (int i = 0; i < cacheSize; ++i) {
-      if (value == cacheBuffer[i]) {
-        firstIndex = i;
-        break;
+    for (Node node = head.succeeding; node != tail; node = node.succeeding) {
+      if (node.value == value) {
+        cachedNodes[--cacheSize] = node.remove();
+        return true;
       }
     }
-    if (firstIndex == -1) {
-      return false;
-    }
-    System.arraycopy(cacheBuffer, 0, cacheBuffer, 1, firstIndex);
-    --cacheSize;
-    return true;
+    return false;
   }
 
   protected int removeLast() {
-    int last = cacheBuffer[cacheSize - 1];
-    System.arraycopy(cacheBuffer, 0, cacheBuffer, 1, cacheSize - 1);
-    --cacheSize;
-    return last;
+    Node last = tail.previous.remove();
+    cachedNodes[--cacheSize] = last;
+    return last.value;
   }
 
   protected void addFirst(int value) {
-    cacheBuffer[0] = value;
-    ++cacheSize;
+    cachedNodes[cacheSize++].set(head, value, head.succeeding);
   }
 }
