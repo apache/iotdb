@@ -186,7 +186,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setArray(int parameterIndex, Array x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
@@ -284,12 +284,12 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+	  throw new SQLException(Constant.PARAMETER_SUPPORTED);
   }
 
   @Override
