@@ -845,6 +845,11 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * the number of virtual storage groups per user-defined storage group
+   */
+  private int virtualStorageGroupNum = 1;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1139,7 +1144,7 @@ public class IoTDBConfig {
     return schemaDir;
   }
 
-  void setSchemaDir(String schemaDir) {
+  public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
   }
 
@@ -2238,6 +2243,14 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {

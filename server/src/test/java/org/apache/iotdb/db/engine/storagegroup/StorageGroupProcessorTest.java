@@ -63,6 +63,7 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
@@ -595,7 +596,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
 
   }
