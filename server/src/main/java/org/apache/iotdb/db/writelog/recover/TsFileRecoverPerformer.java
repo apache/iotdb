@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -56,18 +55,16 @@ public class TsFileRecoverPerformer {
 
   private final String filePath;
   private final String logNodePrefix;
-  private final VersionController versionController;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
 
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
    */
-  public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
-      TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile) {
+  public TsFileRecoverPerformer(String logNodePrefix,
+    TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
-    this.versionController = versionController;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
   }
@@ -199,9 +196,9 @@ public class TsFileRecoverPerformer {
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
-    recoverMemTable.setVersion(versionController.nextVersion());
-    LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
-        versionController, tsFileResource, recoverMemTable, sequence);
+    LogReplayer logReplayer = new LogReplayer(
+            logNodePrefix, filePath, tsFileResource.getModFile(),
+            tsFileResource, recoverMemTable, sequence);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
