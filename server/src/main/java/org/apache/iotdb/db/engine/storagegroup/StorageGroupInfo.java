@@ -18,12 +18,18 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.utils.MmapUtil;
+import org.apache.iotdb.db.utils.TestOnly;
 
 /**
  * The storageGroupInfo records the total memory cost of the Storage Group.
@@ -33,15 +39,15 @@ public class StorageGroupInfo {
   private StorageGroupProcessor storageGroupProcessor;
 
   /**
-   * The total Storage group memory cost,
-   * including unsealed TsFileResource, ChunkMetadata, WAL, primitive arrays and TEXT values
+   * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
+   * primitive arrays and TEXT values
    */
   private AtomicLong memoryCost;
 
   /**
    * The threshold of reporting it's size to SystemInfo
    */
-  private long storageGroupSizeReportThreshold = 
+  private long storageGroupSizeReportThreshold =
       IoTDBDescriptor.getInstance().getConfig().getStorageGroupSizeReportThreshold();
 
   private AtomicLong lastReportedSize = new AtomicLong();
@@ -94,13 +100,46 @@ public class StorageGroupInfo {
   }
 
   /**
-   * When a TsFileProcessor is closing, remove it from reportedTsps, and report to systemInfo
-   * to update SG cost.
-   * 
+   * When a TsFileProcessor is closing, remove it from reportedTsps, and report to systemInfo to
+   * update SG cost.
+   *
    * @param tsFileProcessor
    */
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
     SystemInfo.getInstance().resetStorageGroupStatus(this, true);
+  }
+
+  public Supplier<ByteBuffer[]> getWalSupplier() {
+    if (storageGroupProcessor != null) {
+      return storageGroupProcessor::getWalDirectByteBuffer;
+    } else { // only happens in test
+      return this::walSupplier;
+    }
+  }
+
+  @TestOnly
+  private ByteBuffer[] walSupplier() {
+    ByteBuffer[] buffers = new ByteBuffer[2];
+    buffers[0] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    buffers[1] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    return buffers;
+  }
+
+  public Consumer<ByteBuffer[]> getWalConsumer() {
+    if (storageGroupProcessor != null) {
+      return storageGroupProcessor::releaseWalBuffer;
+    } else { // only happens in test
+      return this::walConsumer;
+    }
+  }
+
+  @TestOnly
+  private void walConsumer(ByteBuffer[] buffers) {
+    for (ByteBuffer byteBuffer : buffers) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
   }
 }

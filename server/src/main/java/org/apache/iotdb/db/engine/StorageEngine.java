@@ -335,6 +335,9 @@ public class StorageEngine implements IService {
             + "recoverAllSgThreadPool.", e);
       }
     }
+    for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
+      this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
+    }
     this.reset();
   }
 
@@ -485,7 +488,7 @@ public class StorageEngine implements IService {
    * This function is just for unit test.
    */
   public synchronized void reset() {
-    for(VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()){
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
       virtualStorageGroupManager.reset();
     }
   }
@@ -726,6 +729,15 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * release all the allocated non-heap
+   */
+  public void releaseWalDirectByteBufferPoolInOneStorageGroup(PartialPath storageGroupPath) {
+    if (processorMap.containsKey(storageGroupPath)) {
+      processorMap.get(storageGroupPath).releaseWalDirectByteBufferPool();
+    }
+  }
+
+  /**
    * delete all data of storage groups' timeseries.
    */
   public synchronized boolean deleteAll() {
@@ -753,6 +765,7 @@ public class StorageEngine implements IService {
     }
 
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
+    releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
     virtualStorageGroupManager
         .deleteStorageGroup(systemDir + File.pathSeparator + storageGroupPath);

@@ -66,7 +66,7 @@ public class InputLayer {
       List<TSDataType> dataTypes, List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
     constructInputLayer(queryId, memoryBudgetInMB,
-        new RawQueryDataSetWithoutValueFilter(paths, dataTypes, readers, true));
+        new RawQueryDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
   }
 
   /**
