@@ -355,16 +355,15 @@ public class IoTDBConfigCheck {
           File[] resources = fsFactory
               .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
           if (tsfiles.length != resources.length) {
-            File[] unmergedTsfiles = fsFactory
+            File[] zeroLevelTsFiles = fsFactory
                 .listFilesBySuffix(partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
-            File[] unmergedResources = fsFactory
+            File[] zeroLevelResources = fsFactory
                 .listFilesBySuffix(partitionDir.toString(), "0" + TsFileResource.RESOURCE_SUFFIX);
-            if (unmergedTsfiles.length != unmergedResources.length) {
+            if (zeroLevelTsFiles.length != zeroLevelResources.length) {
               logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
                   + "on v0.11 IoTDB before upgrading to v0.12");
               System.exit(-1);
             }
-            deleteMergingTsFiles(tsfiles, resources);
           }
         }
       }
@@ -419,6 +418,7 @@ public class IoTDBConfigCheck {
               .listFilesBySuffix(partitionDir.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
           File[] oldModificationFileArray = fsFactory
               .listFilesBySuffix(partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
+          deleteMergingTsFiles(oldTsfileArray, oldResourceFileArray);
           // move the old files to upgrade folder if exists
           if (oldTsfileArray.length != 0) {
             // create upgrade directory if not exist
