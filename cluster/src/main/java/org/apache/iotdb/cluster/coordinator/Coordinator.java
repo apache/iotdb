@@ -372,15 +372,9 @@ public class Coordinator {
       long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .getOperationStartTime();
       logger.debug("Execute {} in a local group of {}", entry.getKey(),
-<<<<<<< HEAD
         entry.getValue().getHeader());
       result = metaGroupMember.getLocalDataMember(new RaftNode(entry.getValue().getHeader(), entry.getValue().getId()))
         .executeNonQueryPlan(entry.getKey());
-=======
-          entry.getValue().getHeader());
-      result = metaGroupMember.getLocalDataMember(entry.getValue().getHeader())
-          .executeNonQueryPlan(entry.getKey());
->>>>>>> master
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
     } else {
