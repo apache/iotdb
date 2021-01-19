@@ -23,10 +23,13 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -78,8 +81,8 @@ public class TsFileRecoverPerformer {
    * writing
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public RestorableTsFileIOWriter recover(boolean needRedoWal)
-      throws StorageGroupProcessorException {
+  public RestorableTsFileIOWriter recover(boolean needRedoWal, Supplier<ByteBuffer[]> supplier,
+      Consumer<ByteBuffer[]> consumer) throws StorageGroupProcessorException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
@@ -117,12 +120,13 @@ public class TsFileRecoverPerformer {
 
     // redo logs
     if (needRedoWal) {
-      redoLogs(restorableTsFileIOWriter);
+      redoLogs(restorableTsFileIOWriter, supplier);
 
       // clean logs
       try {
         MultiFileLogNodeManager.getInstance()
-            .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
+            .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName(),
+                consumer);
       } catch (IOException e) {
         throw new StorageGroupProcessorException(e);
       }
@@ -193,13 +197,13 @@ public class TsFileRecoverPerformer {
     tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMaxPlanIndex());
   }
 
-  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
+  private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter, Supplier<ByteBuffer[]> supplier)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     LogReplayer logReplayer = new LogReplayer(
             logNodePrefix, filePath, tsFileResource.getModFile(),
             tsFileResource, recoverMemTable, sequence);
-    logReplayer.replayLogs();
+    logReplayer.replayLogs(supplier);
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
