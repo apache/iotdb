@@ -347,8 +347,6 @@ public class IoTDBConfigCheck {
           File[] resources = fsFactory
               .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
           if (tsfiles.length != resources.length) {
-            // If upgrading from v0.11.2 to v0.12, there may be some Unclosed merging files.
-            // We have to delete these files before upgrading
             File[] unmergedTsfiles = fsFactory
                 .listFilesBySuffix(partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
             File[] unmergedResources = fsFactory
@@ -365,6 +363,10 @@ public class IoTDBConfigCheck {
     }
   }
 
+  /**
+   * If upgrading from v0.11.2 to v0.12, there may be some unsealed merging files.
+   * We have to delete these files before upgrading.
+   */
   private void deleteMergingTsFiles(File[] tsfiles, File[] resources) {
     Set<String> resourcesSet = new HashSet<>();
     for (File resource : resources) {
