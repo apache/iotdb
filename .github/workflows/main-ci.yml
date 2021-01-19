@@ -37,7 +37,7 @@ jobs:
       - name: Install Bison
         if: matrix.os == 'macos-latest'
         shell: bash
-        run: brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && echo $PATH
+        run: brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && which bison && export LDFLAGS="-L/usr/local/opt/bison/lib"
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
