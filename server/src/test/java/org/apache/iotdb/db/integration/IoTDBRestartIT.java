@@ -28,14 +28,20 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBRestartIT {
+
+  private final Logger logger = LoggerFactory.getLogger(IoTDBRestartIT.class);
+
 
   @Test
   public void testRestart()
@@ -111,8 +117,18 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
     }
 
+    long time = 0;
     try {
       EnvironmentUtils.restartDaemon();
+      StorageEngine.getInstance().recover();
+      // wait for recover
+      while(!StorageEngine.getInstance().isAllSgReady()){
+        Thread.sleep(500);
+        time += 500;
+        if(time > 10000){
+          logger.warn("wait too long in restart, wait for: " + time / 1000 + "s");
+        }
+      }
     } catch (Exception e) {
       Assert.fail();
     }

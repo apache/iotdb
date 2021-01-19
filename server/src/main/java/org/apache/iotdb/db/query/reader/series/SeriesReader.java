@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
@@ -175,10 +175,7 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -238,10 +235,7 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -362,10 +356,7 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     /*
      * has overlapped data before
@@ -487,17 +478,17 @@ public class SeriesReader {
             if (orderUtils.getAscending()) {
               seqPageReaders
                   .add(new VersionPageReader(chunkMetaData.getVersion(),
-                          chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
+                      chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             } else {
               seqPageReaders
                   .add(0, new VersionPageReader(chunkMetaData.getVersion(),
-                          chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
+                      chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             }
 
           } else {
             unSeqPageReaders
                 .add(new VersionPageReader(chunkMetaData.getVersion(),
-                        chunkMetaData.getOffsetOfChunkHeader(), pageReader, false));
+                    chunkMetaData.getOffsetOfChunkHeader(), pageReader, false));
           }
         });
   }

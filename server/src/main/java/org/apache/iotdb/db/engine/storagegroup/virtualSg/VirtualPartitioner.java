@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,26 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
-public class Config {
+import org.apache.iotdb.db.metadata.PartialPath;
 
-  public static final String DEFAULT_USER = "root";
-  public static final String DEFAULT_PASSWORD = "root";
-  public static final int DEFAULT_FETCH_SIZE = 10000;
-  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
-  public static final boolean DEFAULT_CACHE_LEADER_MODE = false;
-
-  public static final int RETRY_NUM = 3;
-  public static final long RETRY_INTERVAL_MS = 1000;
+public interface VirtualPartitioner {
 
   /**
-   * thrift init buffer size, 1KB by default
+   * use device id to determine storage group id
+   *
+   * @param deviceId device id
+   * @return virtual storage group id
    */
-  public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
+  public int deviceToVirtualStorageGroupId(PartialPath deviceId);
 
   /**
-   * thrift max frame size (16384000 bytes by default), we change it to 64MB
+   * get total number of virtual storage group
+   *
+   * @return total number of virtual storage group
    */
-  public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
+  public int getPartitionCount();
+
 }
