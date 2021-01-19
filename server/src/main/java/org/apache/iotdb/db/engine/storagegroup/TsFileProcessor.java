@@ -397,7 +397,6 @@ public class TsFileProcessor {
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       if (!flushingMemTables.isEmpty()) {
-        logger.warn("{}", modsToMemtable);
         modsToMemtable.add(new Pair<>(deletion, flushingMemTables.getLast()));
       }
     } finally {
@@ -749,8 +748,7 @@ public class TsFileProcessor {
 
     try {
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
-      logger.warn("{}", modsToMemtable);
-      while (iterator.hasNext()) {
+      while (iterator.hasNext()){
         Pair<Modification, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
           entry.left.setFileOffset(tsFileResource.getTsFileSize());
