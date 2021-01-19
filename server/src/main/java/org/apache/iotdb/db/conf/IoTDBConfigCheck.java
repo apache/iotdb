@@ -88,6 +88,9 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode = String
       .valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
+  private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
+  private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBConfigCheck getInstance() {
@@ -138,6 +141,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
+    systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
   }
 
 
@@ -306,6 +310,10 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
       printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
+    }
+
+    if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
+      printErrorLogAndExit(VIRTUAL_STORAGE_GROUP_NUM);
     }
   }
 
