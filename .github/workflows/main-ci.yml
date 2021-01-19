@@ -35,7 +35,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - name: Install Bison
-        if: ${{ strategy.matrix.os == 'macos-latest' }}
+        if: matrix.os == 'macos-latest'
         shell: bash
         run: brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && echo $PATH
       - name: Cache Maven packages
