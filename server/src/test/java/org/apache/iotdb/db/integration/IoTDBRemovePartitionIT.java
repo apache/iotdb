@@ -83,6 +83,12 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemovePartialPartition() throws StorageEngineException, IllegalPathException {
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // do nothing
+    }
+
     StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> timePartitionId >= 5);
     StorageEngine.getInstance().removePartitions(new PartialPath("root.test2"),
@@ -117,6 +123,12 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testRemoveAllPartition() throws StorageEngineException, IllegalPathException {
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // do nothing
+    }
+
     StorageEngine.getInstance().removePartitions(new PartialPath("root.test1"),
         (storageGroupName, timePartitionId) -> true);
 
@@ -133,6 +145,12 @@ public class IoTDBRemovePartitionIT {
 
   @Test
   public void testSQLRemovePartition() {
+    try {
+      Thread.sleep(5000);
+    } catch (InterruptedException e) {
+      // do nothing
+    }
+    
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
