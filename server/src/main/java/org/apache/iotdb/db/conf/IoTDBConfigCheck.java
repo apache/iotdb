@@ -88,6 +88,9 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode = String
       .valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
+  private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
+  private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBConfigCheck getInstance() {
@@ -138,6 +141,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
+    systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
   }
 
 
@@ -307,6 +311,10 @@ public class IoTDBConfigCheck {
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
       printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
     }
+
+    if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
+      printErrorLogAndExit(VIRTUAL_STORAGE_GROUP_NUM);
+    }
   }
 
   private void printErrorLogAndExit(String property) {
@@ -401,18 +409,8 @@ public class IoTDBConfigCheck {
         if (!storageGroup.isDirectory()) {
           continue;
         }
-        File upgradeFolder = fsFactory.getFile(storageGroup, IoTDBConstant.UPGRADE_FOLDER_NAME);
-        // create upgrade directory if not exist
-        if (upgradeFolder.mkdirs()) {
-          logger.info("Upgrade Directory {} doesn't exist, create it",
-              upgradeFolder.getPath());
-        } else if (!upgradeFolder.exists()) {
-          logger.error("Create upgrade Directory {} failed",
-              upgradeFolder.getPath());
-        }
         for (File partitionDir : storageGroup.listFiles()) {
-          if (!partitionDir.isDirectory() || 
-              partitionDir.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+          if (!partitionDir.isDirectory()) {
             continue;
           }
           File[] oldTsfileArray = fsFactory
@@ -424,6 +422,8 @@ public class IoTDBConfigCheck {
           // move the old files to upgrade folder if exists
           if (oldTsfileArray.length != 0) {
             // create upgrade directory if not exist
+            File upgradeFolder = fsFactory.getFile(
+                partitionDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
             if (upgradeFolder.mkdirs()) {
               logger.info("Upgrade Directory {} doesn't exist, create it",
                   upgradeFolder.getPath());
@@ -435,21 +435,18 @@ public class IoTDBConfigCheck {
             for (File file : oldTsfileArray) {
               if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
                 logger.error("Failed to move tsfile {} to upgrade folder", file);
-                System.exit(-1);
               }
             }
             // move .resource to upgrade folder
             for (File file : oldResourceFileArray) {
               if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
                 logger.error("Failed to move resource {} to upgrade folder", file);
-                System.exit(-1);
               }
             }
             // move .mods to upgrade folder
             for (File file : oldModificationFileArray) {
               if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
                 logger.error("Failed to move mod file {} to upgrade folder", file);
-                System.exit(-1);
               }
             }
           }

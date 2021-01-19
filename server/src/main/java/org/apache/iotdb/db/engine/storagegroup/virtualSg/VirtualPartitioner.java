@@ -16,22 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.exception;
+package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
-/**
- * This class is used to throw run time exception when query is time out.
- */
-public class QueryTimeoutRuntimeException extends RuntimeException {
+import org.apache.iotdb.db.metadata.PartialPath;
 
-  public static final String TIMEOUT_EXCEPTION_MESSAGE
-      = "Current query is time out, please check your statement or modify timeout parameter.";
+public interface VirtualPartitioner {
 
-  public QueryTimeoutRuntimeException(String message, Throwable cause) {
-    super(message, cause);
-  }
+  /**
+   * use device id to determine storage group id
+   *
+   * @param deviceId device id
+   * @return virtual storage group id
+   */
+  public int deviceToVirtualStorageGroupId(PartialPath deviceId);
 
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
-  }
+  /**
+   * get total number of virtual storage group
+   *
+   * @return total number of virtual storage group
+   */
+  public int getPartitionCount();
 
 }

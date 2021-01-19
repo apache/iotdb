@@ -39,7 +39,7 @@ E.g. ((IoTDBStatement) statement).executeQuery(String sql, long timeoutInMS)
 E.g. session.executeQueryStatement(String sql, long timeout)
 ```
 
-If the timeout parameter is not configured, the default timeout time will be used. The configuration parameters of JDBC and session are located at: ` org.apache.iotdb.jdbc.IoTDBStatement.queryTimeout` and `org.apache.iotdb.session.Config.DEFAULT_QUERY_TIMEOUT_MS`.
+If the timeout parameter is not configured or with value 0, the default timeout time will be used.
 
 ## Query abort
 
