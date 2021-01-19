@@ -91,7 +91,7 @@ public abstract class Cache {
     cachedNodes[cacheSize++].set(head, value, head.succeeding);
   }
 
-  protected void reset() {
+  public void clear() {
     head.succeeding = tail;
     tail.previous = head;
 

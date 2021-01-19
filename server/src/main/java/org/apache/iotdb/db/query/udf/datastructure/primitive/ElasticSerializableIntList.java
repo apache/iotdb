@@ -94,9 +94,5 @@ public class ElasticSerializableIntList implements IntList {
       addFirst(targetIndex);
       return intLists.get(targetIndex);
     }
-
-    void clear() {
-      reset();
-    }
   }
 }
