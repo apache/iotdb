@@ -73,12 +73,15 @@ public class UpgradeUtils {
     } finally {
       tsFileResource.readUnlock();
     }
+    tsFileResource.readLock();
     try (TsFileSequenceReaderForV2 tsFileSequenceReader = new TsFileSequenceReaderForV2(
         tsFileResource.getTsFile().getAbsolutePath())) {
-      if (tsFileSequenceReader.readVersionNumberV2().equals(TSFileConfig.VERSION_NUMBER_V2)) {
+      String versionNumber = tsFileSequenceReader.readVersionNumberV2();
+      if (versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2) 
+          || versionNumber.equals(TSFileConfig.VERSION_NUMBER_V1)) {
         return true;
       }
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
           tsFileResource.getTsFile().getAbsolutePath(), e);
     } finally {

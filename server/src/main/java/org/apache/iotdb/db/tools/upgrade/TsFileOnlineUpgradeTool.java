@@ -119,7 +119,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    *
    * @throws IOException, WriteProcessException
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({ "squid:S3776", "deprecation" }) // Suppress high Cognitive Complexity warning
   private void upgradeFile(List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
 
