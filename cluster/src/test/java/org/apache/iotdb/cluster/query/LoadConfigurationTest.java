@@ -49,6 +49,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
+@PowerMockIgnore({"com.sun.org.apache.xerces.*","javax.xml.*","org.xml.*","javax.management.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({IoTDBDescriptor.class,ClusterDescriptor.class})
 public class LoadConfigurationTest {
