@@ -134,7 +134,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compdev")) {
         try {
-          sdtEncoder.setCompDeviation(Double.parseDouble(measurementSchema.getProps().get("compdev")));
+          sdtEncoder
+              .setCompDeviation(Double.parseDouble(measurementSchema.getProps().get("compdev")));
         } catch (NumberFormatException e) {
           logger.error("meet error when formatting SDT compression deviation");
         }
@@ -163,7 +164,8 @@ public class ChunkWriterImpl implements IChunkWriter {
 
       if (isSdtEncoding && sdtEncoder.getCompMax() <= sdtEncoder.getCompMin()) {
         logger
-            .error("SDT compression maximum needs to be greater than compression minimum. SDT encoding is turned off");
+            .error(
+                "SDT compression maximum needs to be greater than compression minimum. SDT encoding is turned off");
         isSdtEncoding = false;
       }
     }
@@ -308,18 +310,19 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private void writePageToPageBuffer() {
     try {
-      int size = pageWriter
-          .writePageHeaderAndDataIntoBuff(pageBuffer, numOfPages == 0);
       if (numOfPages == 0) { // record the firstPageStatistics
         this.firstPageStatistics = pageWriter.getStatistics();
-        this.sizeWithoutStatistic = size;
+        this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         byte[] b = pageBuffer.toByteArray();
         pageBuffer.reset();
         pageBuffer.write(b, 0, this.sizeWithoutStatistic);
         firstPageStatistics.serialize(pageBuffer);
         pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
         firstPageStatistics = null;
+      } else {
+        pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, false);
       }
 
       // update statistics of this chunk

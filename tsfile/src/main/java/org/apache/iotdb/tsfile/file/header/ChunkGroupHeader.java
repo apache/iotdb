@@ -47,7 +47,7 @@ public class ChunkGroupHeader {
     this.serializedSize = getSerializedSize(deviceID);
   }
 
-  public static int getSerializedSize(String deviceID) {
+  private int getSerializedSize(String deviceID) {
     int length = deviceID.getBytes(TSFileConfig.STRING_CHARSET).length;
     return Byte.BYTES + ReadWriteForEncodingUtils.varIntSize(length) + length;
   }
