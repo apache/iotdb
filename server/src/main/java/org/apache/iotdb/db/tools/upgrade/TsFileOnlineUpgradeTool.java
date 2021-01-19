@@ -249,6 +249,11 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     }
   }
 
+  /**
+   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and 
+   * INT32 data with PLAIN encoding, and also add a sum statistic for BOOLEAN data,
+   * these types of data need to decode to points and rewrite in new TsFile.
+   */
   private boolean checkIfNeedToDecode(TSDataType dataType, TSEncoding encoding,
       PageHeader pageHeader) {
     return dataType == TSDataType.BOOLEAN ||

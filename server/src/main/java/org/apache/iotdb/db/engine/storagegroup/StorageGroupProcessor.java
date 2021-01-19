@@ -472,7 +472,7 @@ public class StorageGroupProcessor {
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
           }
           else {
-            // move 
+            // collect old TsFiles for upgrading
             Collections.addAll(upgradeFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
           }
