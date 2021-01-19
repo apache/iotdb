@@ -40,7 +40,7 @@ E.g. ((IoTDBStatement) statement).executeQuery(String sql, long timeoutInMS)
 E.g. session.executeQueryStatement(String sql, long timeout)
 ```
 
-如果不配置超时时间参数，将使用默认的超时时间，JDBC 和 Session 的配置参数分别位于：` org.apache.iotdb.jdbc.IoTDBStatement.queryTimeout` 和 `org.apache.iotdb.session.Config.DEFAULT_QUERY_TIMEOUT_MS`.
+如果不配置超时时间参数或将超时时间设置为 0，将使用服务器端默认的超时时间.
 
 ## 查询中止
 
