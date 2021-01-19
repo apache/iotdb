@@ -36,7 +36,7 @@ public class ChunkHeader {
 
 
   /**
-   * 1 means this chunk has more than one page, so each page has its own page statistic 4 means this
+   * 1 means this chunk has more than one page, so each page has its own page statistic 5 means this
    * chunk has only one page, and this page has no page statistic
    */
   private byte chunkType;
@@ -107,7 +107,7 @@ public class ChunkHeader {
   }
 
   /**
-   * deserialize from inputStream.
+   * deserialize from inputStream, the marker has already been read.
    */
   public static ChunkHeader deserializeFrom(InputStream inputStream, byte chunkType)
       throws IOException {
@@ -121,7 +121,7 @@ public class ChunkHeader {
   }
 
   /**
-   * deserialize from TsFileInput.
+   * deserialize from TsFileInput, the marker has not been read.
    *
    * @param input           TsFileInput
    * @param offset          offset

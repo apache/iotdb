@@ -152,6 +152,7 @@ public class ReadWriteForEncodingUtils {
    *
    * @param value value to write into stream
    * @param out   output stream
+   * @return the number of bytes that the value consume.
    */
   public static int writeUnsignedVarInt(int value, ByteArrayOutputStream out) {
     int position = 1;
