@@ -28,8 +28,8 @@ import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -146,6 +146,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
   // capacity for blocking queue
   private static final int BLOCKING_QUEUE_CAPACITY = 5;
 
+  private final long queryId;
   /**
    * flag that main thread is interrupted or not
    */
@@ -163,10 +164,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
    * @param dataTypes time series data type
    * @param readers   readers in List(IPointReader) structure
    */
-  public RawQueryDataSetWithoutValueFilter(List<PartialPath> paths, List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers, boolean ascending)
+  public RawQueryDataSetWithoutValueFilter(long queryId, List<PartialPath> paths,
+      List<TSDataType> dataTypes, List<ManagedSeriesReader> readers, boolean ascending)
       throws IOException, InterruptedException {
     super(new ArrayList<>(paths), dataTypes, ascending);
+    this.queryId = queryId;
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
     for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -188,12 +190,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           .submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
-      // check the interrupted status of main thread before taking next batch
-      if (Thread.interrupted()) {
-        interrupted = true;
-        throw new QueryTimeoutRuntimeException(
-            QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-      }
+      // check the interrupted status of query before taking next batch
+      QueryTimeManager.checkQueryAlive(queryId);
       fillCache(i);
       // try to put the next timestamp into the heap
       if (cachedBatchDataArray[i] != null && cachedBatchDataArray[i].hasCurrent()) {
@@ -299,12 +297,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
           // move next
           cachedBatchDataArray[seriesIndex].next();
 
-          // check the interrupted status of main thread before taking next batch
-          if (Thread.interrupted()) {
-            interrupted = true;
-            throw new QueryTimeoutRuntimeException(
-                QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-          }
+          // check the interrupted status of query before taking next batch
+          QueryTimeManager.checkQueryAlive(queryId);
           // get next batch if current batch is empty and still have remaining batch data in queue
           if (!cachedBatchDataArray[seriesIndex].hasCurrent()
               && !noMoreDataInQueueArray[seriesIndex]) {
@@ -452,12 +446,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
         // move next
         cachedBatchDataArray[seriesIndex].next();
 
-        // check the interrupted status of main thread before taking next batch
-        if (Thread.interrupted()) {
-          interrupted = true;
-          throw new QueryTimeoutRuntimeException(
-              QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-        }
+        // check the interrupted status of query before taking next batch
+        QueryTimeManager.checkQueryAlive(queryId);
+
         // get next batch if current batch is empty and still have remaining batch data in queue
         if (!cachedBatchDataArray[seriesIndex].hasCurrent()
             && !noMoreDataInQueueArray[seriesIndex]) {
@@ -465,10 +456,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
             fillCache(seriesIndex);
           } catch (InterruptedException e) {
             LOGGER.error("Interrupted while taking from the blocking queue: ", e);
-            interrupted = true;
             Thread.currentThread().interrupt();
-            throw new QueryTimeoutRuntimeException(
-                QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
           } catch (IOException e) {
             LOGGER.error("Got IOException", e);
             throw e;
@@ -484,4 +472,5 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
 
     return record;
   }
+
 }
