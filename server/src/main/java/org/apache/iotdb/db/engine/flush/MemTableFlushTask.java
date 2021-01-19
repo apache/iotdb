@@ -61,8 +61,8 @@ public class MemTableFlushTask {
 
   private IMemTable memTable;
 
-  private long memSerializeTime = 0L;
-  private long ioTime = 0L;
+  private volatile long memSerializeTime = 0L;
+  private volatile long ioTime = 0L;
 
   /**
    * @param memTable the memTable to flush
@@ -188,7 +188,6 @@ public class MemTableFlushTask {
     @SuppressWarnings("squid:S135")
     @Override
     public void run() {
-      long memSerializeTime = 0;
       LOGGER.debug("Storage group {} memtable flushing to file {} starts to encoding data.",
           storageGroup, writer.getFile().getName());
       while (true) {
@@ -243,7 +242,6 @@ public class MemTableFlushTask {
 
   @SuppressWarnings("squid:S135")
   private Runnable ioTask = () -> {
-    long ioTime = 0;
     LOGGER.debug("Storage group {} memtable flushing to file {} start io.",
         storageGroup, writer.getFile().getName());
     while (true) {
