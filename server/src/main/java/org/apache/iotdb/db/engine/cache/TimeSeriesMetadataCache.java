@@ -193,7 +193,7 @@ public class TimeSeriesMetadataCache {
             "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.", key.device,
             key.measurement, key.filePath, timeseriesMetadata);
       }
-      return new TimeseriesMetadata(timeseriesMetadata);
+      return timeseriesMetadata;
     }
   }
 
