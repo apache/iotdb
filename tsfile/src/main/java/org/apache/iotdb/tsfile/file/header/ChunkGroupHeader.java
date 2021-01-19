@@ -38,7 +38,7 @@ public class ChunkGroupHeader {
   private int serializedSize;
 
   /**
-   * constructor of CHUNK_GROUP_FOOTER.
+   * constructor of CHUNK_GROUP_HEADER.
    *  @param deviceID       device ID
    *
    */
@@ -55,7 +55,7 @@ public class ChunkGroupHeader {
   /**
    * deserialize from inputStream.
    *
-   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
    */
   public static ChunkGroupHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
     if (!markerRead) {
@@ -72,7 +72,7 @@ public class ChunkGroupHeader {
   /**
    * deserialize from TsFileInput.
    *
-   * @param markerRead Whether the marker of the CHUNK_GROUP_FOOTER is read ahead.
+   * @param markerRead Whether the marker of the CHUNK_GROUP_HEADER is read ahead.
    */
   public static ChunkGroupHeader deserializeFrom(TsFileInput input, long offset, boolean markerRead)
       throws IOException {

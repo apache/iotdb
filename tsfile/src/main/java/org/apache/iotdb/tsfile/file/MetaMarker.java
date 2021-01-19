@@ -28,10 +28,11 @@ public class MetaMarker {
 
   public static final byte CHUNK_GROUP_HEADER = 0;
   /**
-   * means this chunk has more than one page
+   * Chunk header marker and this chunk has more than one page.
    */
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
+  @Deprecated
   public static final byte VERSION = 3;
   
   // following this marker are two longs marking the minimum and maximum indices of operations
@@ -40,7 +41,7 @@ public class MetaMarker {
   public static final byte OPERATION_INDEX_RANGE = 4;
 
   /**
-   * means this chunk has only one page
+   * Chunk header marker and this chunk has only one page.
    */
   public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 

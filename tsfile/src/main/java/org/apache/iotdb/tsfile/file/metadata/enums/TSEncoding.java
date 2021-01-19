@@ -42,12 +42,12 @@ public enum TSEncoding {
    * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short encoding) {
+  public static TSEncoding deserialize(byte encoding) {
     return getTsEncoding(encoding);
   }
 
 
-  private static TSEncoding getTsEncoding(short encoding) {
+  private static TSEncoding getTsEncoding(byte encoding) {
     for (TSEncoding tsEncoding : TSEncoding.values()) {
       if (encoding == tsEncoding.type) {
         return tsEncoding;

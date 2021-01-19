@@ -44,7 +44,10 @@ public class PageHeader {
    * max page header size without statistics
    */
   public static int estimateMaxPageHeaderSizeWithoutStatistics() {
-    return 2 * (Integer.BYTES + 1); // uncompressedSize, compressedSize
+    // uncompressedSize, compressedSize
+    // because we use unsigned varInt to encode these two integer,
+    //each unsigned arInt will cost at most 5 bytes
+    return 2 * (Integer.BYTES + 1);
   }
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
