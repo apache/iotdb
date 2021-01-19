@@ -22,12 +22,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.exception.QueryTimeoutRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +45,6 @@ public class LocalTsFileInput implements TsFileInput {
   public long size() throws IOException {
     try {
       return channel.size();
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} size", filePath);
       throw e;
@@ -60,9 +55,6 @@ public class LocalTsFileInput implements TsFileInput {
   public long position() throws IOException {
     try {
       return channel.position();
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while getting {} current position", filePath);
       throw e;
@@ -74,9 +66,6 @@ public class LocalTsFileInput implements TsFileInput {
     try {
       channel.position(newPosition);
       return this;
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while changing {} position to {}", filePath, newPosition);
       throw e;
@@ -87,9 +76,6 @@ public class LocalTsFileInput implements TsFileInput {
   public int read(ByteBuffer dst) throws IOException {
     try {
       return channel.read(dst);
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while reading {} from current position", filePath);
       throw e;
@@ -100,9 +86,6 @@ public class LocalTsFileInput implements TsFileInput {
   public int read(ByteBuffer dst, long position) throws IOException {
     try {
       return channel.read(dst, position);
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while reading {} from position {}", filePath, position);
       throw e;
@@ -133,9 +116,6 @@ public class LocalTsFileInput implements TsFileInput {
   public void close() throws IOException {
     try {
       channel.close();
-    } catch (ClosedByInterruptException e) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
     } catch (IOException e) {
       logger.error("Error happened while closing {}", filePath);
       throw e;

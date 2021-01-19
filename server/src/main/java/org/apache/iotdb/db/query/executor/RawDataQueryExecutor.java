@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -67,12 +66,12 @@ public class RawDataQueryExecutor {
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
-      return new RawQueryDataSetWithoutValueFilter(queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries, queryPlan.isAscending());
+      return new RawQueryDataSetWithoutValueFilter(context.getQueryId(),
+          queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes(),
+          readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
+      throw new StorageEngineException(e.getMessage());
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -81,7 +80,7 @@ public class RawDataQueryExecutor {
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(),
+    return new NonAlignEngineDataSet(context.getQueryId(), queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries);
   }
 
