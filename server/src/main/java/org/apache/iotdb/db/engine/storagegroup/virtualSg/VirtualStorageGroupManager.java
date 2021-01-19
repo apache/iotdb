@@ -419,7 +419,9 @@ public class VirtualStorageGroupManager {
 
   public void releaseWalDirectByteBufferPool() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      storageGroupProcessor.releaseWalDirectByteBufferPool();
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.releaseWalDirectByteBufferPool();
+      }
     }
   }
 
