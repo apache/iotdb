@@ -72,3 +72,10 @@ session.open(False)
 zone = session.get_time_zone()
 session.close()
 ```
+
+## test file
+
+You can use `client-py/src/SessionTest.py` to test python session, if all test has been passed, it will return 0
+Otherwise it will return 1. You can use print message to locate failed operations and the reason of them
+
+Notice: you should start IoTDB server firstly and then run the test
