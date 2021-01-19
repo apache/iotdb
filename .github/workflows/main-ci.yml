@@ -43,7 +43,7 @@ jobs:
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Test with Maven
-        run:  mvn -B clean integration-test -Dtest.port.closed=true
+        run:  mvn -B clean integration-test -Pclient-cpp -Dtest.port.closed=true
 
   build-win:
     strategy:
