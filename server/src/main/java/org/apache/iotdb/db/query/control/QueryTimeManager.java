@@ -147,7 +147,7 @@ public class QueryTimeManager implements IService {
     private final long startTime;
     private final String statement;
 
-    private boolean isInterrupted = false;
+    private volatile boolean isInterrupted = false;
 
     public QueryInfo(long startTime, String statement) {
       this.startTime = startTime;

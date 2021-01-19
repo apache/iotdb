@@ -33,7 +33,7 @@ Last Updated on 2021.01.19 by Xiangwei Wei.
 
 | Latest Changes                                               | Related Committers     |
 | ------------------------------------------------------------ | ---------------------- |
-| Add timeout(optional) in TSFetchResultsReq and TSExecuteStatementReq | Xiangwei Wei | 
+| Add timeout in TSFetchResultsReq and TSExecuteStatementReq | Xiangwei Wei | 
 
 
 ## 3. Update
