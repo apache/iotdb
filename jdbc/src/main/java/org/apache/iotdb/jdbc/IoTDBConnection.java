@@ -85,7 +85,7 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if (Config.RPC_THRIFT_COMPRESSION_ENABLE) {
+    if (Config.rpcThriftCompressionEnable) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
     } else {
       setClient(new TSIService.Client(new TBinaryProtocol(transport)));
@@ -473,7 +473,7 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if (Config.RPC_THRIFT_COMPRESSION_ENABLE) {
+          if (Config.rpcThriftCompressionEnable) {
             setClient(new TSIService.Client(new TCompactProtocol(transport)));
           } else {
             setClient(new TSIService.Client(new TBinaryProtocol(transport)));

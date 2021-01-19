@@ -70,7 +70,7 @@ public class IoTDBRpcCompressionIT {
     IoTDBDescriptor.getInstance().getConfig().setRpcThriftCompressionEnable(true);
     EnvironmentUtils.envSetUp();
     //let JDBC use thrift rpc compression
-    Config.RPC_THRIFT_COMPRESSION_ENABLE = true;
+    Config.rpcThriftCompressionEnable = true;
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
@@ -78,7 +78,7 @@ public class IoTDBRpcCompressionIT {
     ){
       doSomething(statement);
     } finally {
-      Config.RPC_THRIFT_COMPRESSION_ENABLE = false;
+      Config.rpcThriftCompressionEnable = false;
     }
   }
 
@@ -105,7 +105,7 @@ public class IoTDBRpcCompressionIT {
     IoTDBDescriptor.getInstance().getConfig().setRpcThriftCompressionEnable(true);
     EnvironmentUtils.envSetUp();
     //let JDBC use thrift rpc compression
-    Config.RPC_THRIFT_COMPRESSION_ENABLE = true;
+    Config.rpcThriftCompressionEnable = true;
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
@@ -113,7 +113,7 @@ public class IoTDBRpcCompressionIT {
     ){
       doSomething(statement);
     } finally {
-      Config.RPC_THRIFT_COMPRESSION_ENABLE = false;
+      Config.rpcThriftCompressionEnable = false;
     }
   }
 

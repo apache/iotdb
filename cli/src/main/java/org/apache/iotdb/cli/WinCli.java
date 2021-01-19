@@ -93,7 +93,7 @@ public class WinCli extends AbstractCli {
         return false;
       }
       if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
-        Config.RPC_THRIFT_COMPRESSION_ENABLE = true;
+        Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         timeFormat = RpcUtils.setTimeFormat("long");

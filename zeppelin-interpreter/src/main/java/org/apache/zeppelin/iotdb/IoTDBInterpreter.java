@@ -123,7 +123,7 @@ public class IoTDBInterpreter extends AbstractInterpreter {
       String timeDisplayType = properties.getProperty(IOTDB_TIME_DISPLAY_TYPE,
           DEFAULT_TIME_DISPLAY_TYPE).trim();
       this.timeFormat = setTimeFormat(timeDisplayType);
-      Config.RPC_THRIFT_COMPRESSION_ENABLE = "true".equalsIgnoreCase(
+      Config.rpcThriftCompressionEnable = "true".equalsIgnoreCase(
           properties.getProperty(IOTDB_ENABLE_RPC_COMPRESSION,
               DEFAULT_ENABLE_RPC_COMPRESSION).trim());
 

@@ -48,12 +48,12 @@ public class Config {
   static final int RETRY_NUM = 3;
   static final long RETRY_INTERVAL_MS = 1000;
 
-  static final int DEFAULT_FETCH_SIZE = 5000;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
-  public static boolean RPC_THRIFT_COMPRESSION_ENABLE = false;
+  public static boolean rpcThriftCompressionEnable = false;
 
   /**
    * thrift init buffer size, 1KB by default
