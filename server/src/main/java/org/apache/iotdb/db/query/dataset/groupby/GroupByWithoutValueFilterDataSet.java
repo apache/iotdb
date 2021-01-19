@@ -37,6 +37,9 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.GroupByQueryRecord;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -91,6 +94,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
     try {
       // init resultIndexes, group result indexes by path
+      WorkloadManager manager = WorkloadManager.getInstance();
+      String curDevice = null;
+      List<String> sensors = new ArrayList<>();
+      List<String> ops = new ArrayList<>();
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         if (!pathExecutors.containsKey(path)) {
@@ -105,6 +112,25 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
                 dataTypes.get(i), ascending);
         pathExecutors.get(path).addAggregateResult(aggrResult);
+        // workload manager collection the records
+        if (!path.getDevice().equals(curDevice)) {
+          if (sensors.size() != 0 && ops.size() != 0) {
+            QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+                    groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
+            manager.addRecord(record);
+          }
+          sensors.clear();
+          ops.clear();
+          curDevice = path.getDevice();
+        }
+        sensors.add(path.getMeasurement());
+        ops.add(groupByTimePlan.getDeduplicatedAggregations().get(i));
+      }
+      // add the remaining records to the manager
+      if (sensors.size() != 0 && ops.size() != 0) {
+        QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+                groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
+        manager.addRecord(record);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);

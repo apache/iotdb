@@ -40,6 +40,9 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.GroupByQueryRecord;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -91,11 +94,33 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     List<StorageGroupProcessor> list = StorageEngine.getInstance()
         .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    WorkloadManager manager = WorkloadManager.getInstance();
+    List<String> sensors = new ArrayList<>();
+    List<String> ops = new ArrayList<>();
+    String curDevice = null;
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         allDataReaderList
             .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
+        if (!path.getDevice().equals(curDevice)) {
+          if (sensors.size() != 0 && ops.size() != 0) {
+            QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+                    groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
+            manager.addRecord(record);
+          }
+          sensors.clear();
+          ops.clear();
+          curDevice = path.getDevice();
+        }
+        sensors.add(path.getMeasurement());
+        ops.add(groupByTimePlan.getDeduplicatedAggregations().get(i));
+      }
+      // add the remaining records to the manager
+      if (sensors.size() != 0 && ops.size() != 0) {
+        QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+                groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
+        manager.addRecord(record);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);

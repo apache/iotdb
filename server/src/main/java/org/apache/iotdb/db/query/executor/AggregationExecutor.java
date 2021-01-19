@@ -47,6 +47,9 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.AggregationQueryRecord;
+import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -102,11 +105,37 @@ public class AggregationExecutor {
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list = StorageEngine.getInstance()
         .mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+    WorkloadManager manager = WorkloadManager.getInstance();
+    List<String> sensorList = new ArrayList<>();
+    List<String> opList = new ArrayList<>();
+    String curDevice = null;
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         aggregateOneSeries(entry, aggregateResultList,
             aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
             context);
+        // Workload manager monitor
+        List<Integer> AggrIndexes = entry.getValue();
+        if(!entry.getKey().getDevice().equals(curDevice)) {
+          if (sensorList.size() != 0 && opList.size() != 0) {
+            QueryRecord record = new AggregationQueryRecord(curDevice, sensorList, opList);
+            String sql = record.getSql();
+            manager.addRecord(record);
+          }
+          sensorList.clear();
+          opList.clear();
+          curDevice = entry.getKey().getDevice();
+        }
+        for(int idx = 0; idx < AggrIndexes.size(); ++idx) {
+          sensorList.add(entry.getKey().getMeasurement());
+          opList.add(aggregationPlan.getDeduplicatedAggregations().get(AggrIndexes.get(idx)));
+        }
+      }
+      // add the remaining record to the manager
+      if (sensorList.size() != 0 && opList.size() != 0) {
+        QueryRecord record = new AggregationQueryRecord(curDevice, sensorList, opList);
+        String sql = record.getSql();
+        manager.addRecord(record);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
@@ -324,6 +353,29 @@ public class AggregationExecutor {
       AggregateResult result = AggregateResultFactory
           .getAggrResultByName(aggregations.get(i), type, ascending);
       aggregateResults.add(result);
+    }
+    // Workload collection
+    WorkloadManager manager = WorkloadManager.getInstance();
+    String curDevice = null;
+    List<String> sensors = new ArrayList<>();
+    List<String> ops = new ArrayList<>();
+    for(int i = 0; i < selectedSeries.size(); ++i) {
+      if (!selectedSeries.get(i).getDevice().equals(curDevice)) {
+        if (sensors.size() != 0 && ops.size() != 0) {
+          QueryRecord record = new AggregationQueryRecord(curDevice, sensors, ops);
+          manager.addRecord(record);
+        }
+        curDevice = selectedSeries.get(i).getDevice();
+        ops.clear();
+        sensors.clear();
+      }
+      ops.add(aggregations.get(i));
+      sensors.add(selectedSeries.get(i).getMeasurement());
+    }
+    // add the remaining record to the manager
+    if (sensors.size() != 0 && ops.size() != 0) {
+      QueryRecord record = new AggregationQueryRecord(curDevice, sensors, ops);
+      manager.addRecord(record);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
     return constructDataSet(aggregateResults, queryPlan);
