@@ -56,7 +56,8 @@ public class TElasticFramedTransport extends TTransport {
     this(underlying, DEFAULT_BUF_CAPACITY, DEFAULT_MAX_LENGTH);
   }
 
-  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity, int softMaxLength) {
+  public TElasticFramedTransport(TTransport underlying, int initialBufferCapacity,
+      int softMaxLength) {
     this.underlying = underlying;
     this.softMaxLength = softMaxLength;
     readBuffer = new AutoScalingBufferReadTransport(initialBufferCapacity);
@@ -66,9 +67,9 @@ public class TElasticFramedTransport extends TTransport {
   /**
    * The capacity of the underlying buffer is allowed to exceed maxSoftLength, but if adjacent
    * requests all have sizes smaller than maxSoftLength, the underlying buffer will be shrunk
-   * beneath maxSoftLength.
-   * The shrinking is limited at most once per minute to reduce overhead when maxSoftLength is
-   * set unreasonably or the workload naturally contains both ver large and very small requests.
+   * beneath maxSoftLength. The shrinking is limited at most once per minute to reduce overhead when
+   * maxSoftLength is set unreasonably or the workload naturally contains both ver large and very
+   * small requests.
    */
   protected final int softMaxLength;
   protected final TTransport underlying;
@@ -116,7 +117,8 @@ public class TElasticFramedTransport extends TTransport {
     if (size > RpcUtils.FRAME_HARD_MAX_LENGTH) {
       close();
       throw new TTransportException(TTransportException.CORRUPTED_DATA,
-          "Frame size (" + size + ") larger than protect max length (" + RpcUtils.FRAME_HARD_MAX_LENGTH
+          "Frame size (" + size + ") larger than protect max length ("
+              + RpcUtils.FRAME_HARD_MAX_LENGTH
               + ")!");
     }
 
@@ -131,7 +133,7 @@ public class TElasticFramedTransport extends TTransport {
     int length = writeBuffer.getPos();
     TFramedTransport.encodeFrameSize(length, i32buf);
     underlying.write(i32buf, 0, 4);
-    underlying.write(writeBuffer.getBuf().array(), 0, length);
+    underlying.write(writeBuffer.getBuffer(), 0, length);
     writeBuffer.reset();
     if (length > softMaxLength) {
       writeBuffer.resizeIfNecessary(softMaxLength);

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,22 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.exception;
+package org.apache.iotdb.db.utils;
 
-/**
- * This class is used to throw run time exception when query is time out.
- */
-public class QueryTimeoutRuntimeException extends RuntimeException {
+import io.netty.util.internal.PlatformDependent;
+import java.nio.MappedByteBuffer;
 
-  public static final String TIMEOUT_EXCEPTION_MESSAGE
-      = "Current query is time out, please check your statement or modify timeout parameter.";
+public class MmapUtil {
 
-  public QueryTimeoutRuntimeException(String message, Throwable cause) {
-    super(message, cause);
+  public static void clean(MappedByteBuffer mappedByteBuffer) {
+    if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity()== 0) {
+      return;
+    }
+    PlatformDependent.freeDirectBuffer(mappedByteBuffer);
   }
-
-  public QueryTimeoutRuntimeException(String message) {
-    super(message);
-  }
-
 }

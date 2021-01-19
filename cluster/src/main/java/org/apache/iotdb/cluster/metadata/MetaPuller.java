@@ -74,8 +74,6 @@ public class MetaPuller {
   /**
    * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
    * contain the storage group.
-   * <p>
-   * Attention!!!  Just copy from metaGroupMember now, will refactor later.
    */
   List<MeasurementSchema> pullMeasurementSchemas(List<PartialPath> prefixPaths)
       throws MetadataException {
@@ -83,7 +81,8 @@ public class MetaPuller {
     // split the paths by the data groups that will hold them
     Map<PartitionGroup, List<PartialPath>> partitionGroupPathMap = new HashMap<>();
     for (PartialPath prefixPath : prefixPaths) {
-      PartitionGroup partitionGroup = ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
+      PartitionGroup partitionGroup = ClusterUtils
+          .partitionByPathTimeWithSync(prefixPath, metaGroupMember);
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
 

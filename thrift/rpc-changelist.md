@@ -18,6 +18,29 @@
     under the License.
 
 -->
+# 0.11.x(version-2) -> 0.12.x(version-1)
+
+Last Updated on 2021.01.19 by Xiangwei Wei.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Add timeout in TSFetchResultsReq and TSExecuteStatementReq | Xiangwei Wei | 
+
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+
 
 # 0.10.x (version-2) -> 0.11.x (version-3)
 
@@ -36,6 +59,7 @@ Last Updated on 2020-10-27 by Xiangwei Wei.
 | Latest Changes                                               | Related Committers     |
 | ------------------------------------------------------------ | ---------------------- |
 | set the input/output as TFramedTransport      |  Tian Jiang        |
+| Add timeout(optional) in TSFetchResultsReq and TSExecuteStatementReq | Xiangwei Wei | 
 
 
 ## 3. Update

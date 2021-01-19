@@ -31,13 +31,14 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReaderPriority;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -174,10 +175,7 @@ public class SeriesReader {
   }
 
   boolean hasNextFile() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -237,10 +235,7 @@ public class SeriesReader {
    * overlapped chunks are consumed
    */
   boolean hasNextChunk() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -361,10 +356,7 @@ public class SeriesReader {
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
-    if (Thread.interrupted()) {
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    QueryTimeManager.checkQueryAlive(context.getQueryId());
 
     /*
      * has overlapped data before
@@ -485,15 +477,18 @@ public class SeriesReader {
             // addLast for asc; addFirst for desc
             if (orderUtils.getAscending()) {
               seqPageReaders
-                  .add(new VersionPageReader(chunkMetaData.getVersion(), pageReader, true));
+                  .add(new VersionPageReader(chunkMetaData.getVersion(),
+                      chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             } else {
               seqPageReaders
-                  .add(0, new VersionPageReader(chunkMetaData.getVersion(), pageReader, true));
+                  .add(0, new VersionPageReader(chunkMetaData.getVersion(),
+                      chunkMetaData.getOffsetOfChunkHeader(), pageReader, true));
             }
 
           } else {
             unSeqPageReaders
-                .add(new VersionPageReader(chunkMetaData.getVersion(), pageReader, false));
+                .add(new VersionPageReader(chunkMetaData.getVersion(),
+                    chunkMetaData.getOffsetOfChunkHeader(), pageReader, false));
           }
         });
   }
@@ -893,13 +888,13 @@ public class SeriesReader {
 
   private class VersionPageReader {
 
-    protected long version;
+    protected PriorityMergeReader.MergeReaderPriority version;
     protected IPageReader data;
 
     protected boolean isSeq;
 
-    VersionPageReader(long version, IPageReader data, boolean isSeq) {
-      this.version = version;
+    VersionPageReader(long version, long offset, IPageReader data, boolean isSeq) {
+      this.version = new MergeReaderPriority(version, offset);
       this.data = data;
       this.isSeq = isSeq;
     }

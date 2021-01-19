@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -119,6 +120,8 @@ public class ClusterPlanRouter {
       throws UnsupportedPlanException, MetadataException, UnknownLogTypeException {
     if (plan instanceof InsertTabletPlan) {
       return splitAndRoutePlan((InsertTabletPlan) plan);
+    } else if (plan instanceof InsertMultiTabletPlan) {
+      return splitAndRoutePlan((InsertMultiTabletPlan) plan);
     } else if (plan instanceof CountPlan) {
       return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
@@ -182,6 +185,77 @@ public class ClusterPlanRouter {
     PartitionGroup partitionGroup =
         partitionTable.partitionByPathTime(plan.getPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
+  }
+
+  /**
+   * @param plan InsertMultiTabletPlan
+   * @return key is InsertMultiTabletPlan, value is the partition group the plan belongs to, all
+   * InsertTabletPlans in InsertMultiTabletPlan belongs to one same storage group.
+   */
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertMultiTabletPlan plan)
+      throws MetadataException {
+    /*
+     * the key of pgSgPathPlanMap is the partition group; the value is one map,
+     * the key of the map is storage group, the value is the InsertMultiTabletPlan,
+     * all InsertTabletPlans in InsertMultiTabletPlan belongs to one same storage group.
+     */
+    Map<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgSgPathPlanMap = new HashMap<>();
+    for (int i = 0; i < plan.getInsertTabletPlanList().size(); i++) {
+      InsertTabletPlan insertTabletPlan = plan.getInsertTabletPlanList().get(i);
+      Map<PhysicalPlan, PartitionGroup> tmpResult = splitAndRoutePlan(insertTabletPlan);
+      for (Map.Entry<PhysicalPlan, PartitionGroup> entry : tmpResult.entrySet()) {
+        //1. handle the value returned by call splitAndRoutePlan(InsertTabletPlan)
+        InsertTabletPlan tmpPlan = (InsertTabletPlan) entry.getKey();
+        PartitionGroup tmpPg = entry.getValue();
+        //1.1 the sg that the plan(actually calculated based on device) belongs to
+        PartialPath tmpSgPath = IoTDB.metaManager.getStorageGroupPath(tmpPlan.getDeviceId());
+        Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgSgPathPlanMap.get(tmpPg);
+        if (sgPathPlanMap == null) {
+          // 2.1 construct the InsertMultiTabletPlan
+          List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
+          List<Integer> parentInsetTablePlanIndexList = new ArrayList<>();
+          insertTabletPlanList.add(tmpPlan);
+          parentInsetTablePlanIndexList.add(i);
+          InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(
+              insertTabletPlanList, parentInsetTablePlanIndexList);
+
+          // 2.2 construct the sgPathPlanMap
+          sgPathPlanMap = new HashMap<>();
+          sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
+
+          // 2.3 put the sgPathPlanMap to the pgSgPathPlanMap
+          pgSgPathPlanMap.put(tmpPg, sgPathPlanMap);
+        } else {
+          InsertMultiTabletPlan insertMultiTabletPlan = sgPathPlanMap.get(tmpSgPath);
+          if (insertMultiTabletPlan == null) {
+            List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
+            List<Integer> parentInsetTablePlanIndexList = new ArrayList<>();
+            insertTabletPlanList.add(tmpPlan);
+            parentInsetTablePlanIndexList.add(i);
+            insertMultiTabletPlan = new InsertMultiTabletPlan(
+                insertTabletPlanList, parentInsetTablePlanIndexList);
+
+            // 2.4 put the insertMultiTabletPlan to the tmpSgPath
+            sgPathPlanMap.put(tmpSgPath, insertMultiTabletPlan);
+          } else {
+            // 2.5 just add the tmpPlan to the insertMultiTabletPlan
+            insertMultiTabletPlan.addInsertTabletPlan(tmpPlan, i);
+          }
+        }
+      }
+    }
+
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>(pgSgPathPlanMap.values().size());
+    for (Map.Entry<PartitionGroup, Map<PartialPath, InsertMultiTabletPlan>> pgMapEntry : pgSgPathPlanMap
+        .entrySet()) {
+      PartitionGroup pg = pgMapEntry.getKey();
+      Map<PartialPath, InsertMultiTabletPlan> sgPathPlanMap = pgMapEntry.getValue();
+      // All InsertTabletPlan in InsertMultiTabletPlan belong to the same storage group
+      for (Map.Entry<PartialPath, InsertMultiTabletPlan> sgPathEntry : sgPathPlanMap.entrySet()) {
+        result.put(sgPathEntry.getValue(), pg);
+      }
+    }
+    return result;
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
