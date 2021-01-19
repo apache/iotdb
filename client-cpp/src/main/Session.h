@@ -25,6 +25,7 @@
 #include <map>
 #include <utility>
 #include <memory>
+#include <new>
 #include <thread>
 #include <mutex>
 #include <stdexcept>

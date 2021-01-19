@@ -19,39 +19,13 @@ on:
       - 'docs/**'
         
 jobs:
-  build-ubuntu:
+  build:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         java: [8, 11.0.x]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os}}
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
-        with:
-          java-version: ${{ matrix.java }}
-      - name: Cache Maven packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Check Apache Rat
-        run: mvn -B apache-rat:check
-      - name: Test with Maven
-        run:  mvn -B clean integration-test -Pclient-cpp -Dtest.port.closed=true
-
-  build-mac:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
-      matrix:
-        java: [8, 11.0.x]
-        os: [macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -61,14 +35,9 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - name: Install Bison
+        if: ${{ strategy.matrix.os == 'macos-latest' }}
         shell: bash
-        run: brew install bison
-      - name: Add Bison Path
-        shell: bash
-        run: echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile
-      - name: Check Bison Path
-        shell: bash
-        run: source ~/.bash_profile && echo $PATH
+        run: brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && echo $PATH
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
