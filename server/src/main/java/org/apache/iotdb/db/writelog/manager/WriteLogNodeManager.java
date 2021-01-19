@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.writelog.manager;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 
 /**
@@ -33,14 +36,14 @@ public interface WriteLogNodeManager {
    * @param identifier -identifier, the format: "{storageGroupName}-{BufferWrite/Overflow}-{
    * nameOfTsFile}"
    */
-  WriteLogNode getNode(String identifier);
+  WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier);
 
   /**
    * Delete a log node. If the log node does not exist, this will be an empty operation.
    *
    * @param identifier -identifier
    */
-  void deleteNode(String identifier) throws IOException;
+  void deleteNode(String identifier, Consumer<ByteBuffer[]> consumer) throws IOException;
 
   /**
    * Close all nodes.

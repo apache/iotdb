@@ -354,10 +354,7 @@ public class PlanExecutor implements IPlanExecutor {
     long killQueryId = killQueryPlan.getQueryId();
     if (killQueryId != -1) {
       if (queryTimeManager.getQueryInfoMap().get(killQueryId) != null) {
-        queryTimeManager.getQueryInfoMap().computeIfPresent(killQueryId, (k, v) -> {
-          queryTimeManager.killQuery(k);
-          return null;
-        });
+        queryTimeManager.killQuery(killQueryId);
       } else {
         throw new QueryIdNotExsitException(String
             .format("Query Id %d is not exist, please check it.", killQueryPlan.getQueryId()));
