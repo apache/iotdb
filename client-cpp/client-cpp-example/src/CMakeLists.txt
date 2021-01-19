@@ -27,4 +27,4 @@ INCLUDE_DIRECTORIES(client/include)
 LINK_DIRECTORIES(client/lib)
 
 ADD_EXECUTABLE(SessionExample SessionExample.cpp)
-TARGET_LINK_LIBRARIES(SessionExample iotdb_session)
+TARGET_LINK_LIBRARIES(SessionExample iotdb_session pthread)
