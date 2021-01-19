@@ -49,6 +49,7 @@ public class MergeTaskTest extends MergeTest {
 
   private File tempSGDir;
 
+
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException, MetadataException {
     super.setUp();
@@ -218,7 +219,7 @@ public class MergeTaskTest extends MergeTest {
   public void mergeWithDeletionTest() throws Exception {
     try {
       PartialPath device = new PartialPath(deviceIds[0]);
-      seqResources.get(0).getModFile().write(new Deletion(device.concatNode(measurementSchemas[0].getMeasurementId()), 10000, 0, 49));
+      seqResources.get(0).getModFile().write(new Deletion(device.concatNode(measurementSchemas[0].getMeasurementId()), seqResources.get(0).getTsFileSize(), 0, 49));
     } finally {
       seqResources.get(0).getModFile().close();
     }

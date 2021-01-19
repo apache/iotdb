@@ -57,7 +57,8 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
     buf.resizeIfNecessary(size);
   }
 
-  public AutoResizingBuffer getBuf() {
-    return buf;
+  @Override
+  public byte[] getBuffer() {
+    return buf.array();
   }
 }

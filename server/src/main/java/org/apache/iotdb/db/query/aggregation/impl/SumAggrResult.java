@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -54,13 +55,12 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage) throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage) {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override
-  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound)
-      throws IOException {
+  public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
         break;
@@ -81,7 +81,7 @@ public class SumAggrResult extends AggregateResult {
     }
   }
 
-  private void updateSum(Object sumVal) throws IOException {
+  private void updateSum(Object sumVal) throws UnSupportedDataTypeException {
     double preValue = getDoubleValue();
     switch (seriesDataType) {
       case INT32:
@@ -99,7 +99,7 @@ public class SumAggrResult extends AggregateResult {
       case TEXT:
       case BOOLEAN:
       default:
-        throw new IOException(
+        throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
     }
     setDoubleValue(preValue);

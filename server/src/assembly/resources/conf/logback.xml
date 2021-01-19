@@ -26,9 +26,9 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-error.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-error.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
             <maxFileSize>10MB</maxFileSize>
@@ -47,9 +47,9 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
         <file>${IOTDB_HOME}/logs/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-warn.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-warn.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
             <maxFileSize>10MB</maxFileSize>
@@ -68,12 +68,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
         <file>${IOTDB_HOME}/logs/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-info.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-info.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>100MB</maxFileSize>
+            <maxFileSize>50MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -89,12 +89,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
         <file>${IOTDB_HOME}/logs/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-debug.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-debug.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -110,12 +110,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILETRACE">
         <file>${IOTDB_HOME}/logs/log_trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-trace.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-trace.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -142,12 +142,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-all.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-all.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>100MB</maxFileSize>
+            <maxFileSize>50MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -161,12 +161,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_COST_MEASURE">
         <file>${IOTDB_HOME}/logs/log_measure.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-measure.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-measure.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -180,12 +180,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SYNC">
         <file>${IOTDB_HOME}/logs/log_sync.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-sync.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-sync.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -199,12 +199,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="AUDIT">
         <file>${IOTDB_HOME}/logs/log_audit.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-audit.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-audit.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -218,12 +218,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_DEBUG">
         <file>${IOTDB_HOME}/logs/log_query_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-debug-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -237,12 +237,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="SLOW_SQL">
         <file>${IOTDB_HOME}/logs/log_slow_sql.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-slow-sql-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -256,12 +256,12 @@
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="QUERY_FREQUENCY">
         <file>${IOTDB_HOME}/logs/log_query_frequency.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>${IOTDB_HOME}/logs/log-query-frequency-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <minIndex>1</minIndex>
-            <maxIndex>10</maxIndex>
+            <maxIndex>5</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>50MB</maxFileSize>
+            <maxFileSize>10MB</maxFileSize>
         </triggeringPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">

@@ -48,7 +48,10 @@ public class QueryUtils {
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {
-        if (modification.getVersionNum() > metaData.getVersion()) {
+        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+        // is not supposed to exist as getFileOffset() is offset containing full chunk,
+        // while getOffsetOfChunkHeader() returns the chunk header offset
+        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
           doModifyChunkMetaData(modification, metaData);
         }
       }
