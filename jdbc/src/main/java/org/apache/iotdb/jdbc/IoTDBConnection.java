@@ -85,7 +85,7 @@ public class IoTDBConnection implements Connection {
     params = Utils.parseUrl(url, info);
 
     openTransport();
-    if (Config.rpcThriftCompressionEnable) {
+    if (Config.RPC_THRIFT_COMPRESSION_ENABLE) {
       setClient(new TSIService.Client(new TCompactProtocol(transport)));
     } else {
       setClient(new TSIService.Client(new TBinaryProtocol(transport)));
@@ -255,7 +255,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.connectionTimeoutInMs;
+    return Config.DEFAULT_CONNECTION_TIMEOUT_MS;
   }
 
   @Override
@@ -418,7 +418,7 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setMaxLength(params.getMaxFrameSize());
     transport = RpcTransportFactory.INSTANCE
         .getTransport(new TSocket(params.getHost(), params.getPort(),
-            Config.connectionTimeoutInMs));
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS));
     if (!transport.isOpen()) {
       transport.open();
     }
@@ -473,7 +473,7 @@ public class IoTDBConnection implements Connection {
         if (transport != null) {
           transport.close();
           openTransport();
-          if (Config.rpcThriftCompressionEnable) {
+          if (Config.RPC_THRIFT_COMPRESSION_ENABLE) {
             setClient(new TSIService.Client(new TCompactProtocol(transport)));
           } else {
             setClient(new TSIService.Client(new TBinaryProtocol(transport)));

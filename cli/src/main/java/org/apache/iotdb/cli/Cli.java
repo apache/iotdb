@@ -84,7 +84,7 @@ public class Cli extends AbstractCli {
         return false;
       }
       if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
-        Config.rpcThriftCompressionEnable = true;
+        Config.RPC_THRIFT_COMPRESSION_ENABLE = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         timeFormat = RpcUtils.setTimeFormat("long");

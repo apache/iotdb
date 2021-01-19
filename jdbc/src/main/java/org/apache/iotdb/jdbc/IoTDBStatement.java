@@ -96,7 +96,7 @@ public class IoTDBStatement implements Statement {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
-    this.fetchSize = Config.fetchSize;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
     this.stmtId = statementId;
@@ -104,7 +104,7 @@ public class IoTDBStatement implements Statement {
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       long sessionId, ZoneId zoneId) throws SQLException {
-    this(connection, client, sessionId, Config.fetchSize, zoneId);
+    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
 
   @Override
@@ -490,7 +490,7 @@ public class IoTDBStatement implements Statement {
     if (fetchSize < 0) {
       throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
     }
-    this.fetchSize = fetchSize == 0 ? Config.fetchSize : fetchSize;
+    this.fetchSize = fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize;
   }
 
   @Override
