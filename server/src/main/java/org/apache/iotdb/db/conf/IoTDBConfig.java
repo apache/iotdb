@@ -477,6 +477,11 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /**
+   * the max executing time of query in ms.
+   */
+  private int queryTimeThreshold = 60000;
+
+  /**
    * Replace implementation class of JDBC service
    */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -840,6 +845,11 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * the number of virtual storage groups per user-defined storage group
+   */
+  private int virtualStorageGroupNum = 1;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1134,7 +1144,7 @@ public class IoTDBConfig {
     return schemaDir;
   }
 
-  void setSchemaDir(String schemaDir) {
+  public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
   }
 
@@ -1312,6 +1322,14 @@ public class IoTDBConfig {
 
   public void setCacheFileReaderClearPeriod(long cacheFileReaderClearPeriod) {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
+  }
+
+  public int getQueryTimeThreshold() {
+    return queryTimeThreshold;
+  }
+
+  public void setQueryTimeThreshold(int queryTimeThreshold) {
+    this.queryTimeThreshold = queryTimeThreshold;
   }
 
   public boolean isReadOnly() {
@@ -2225,6 +2243,14 @@ public class IoTDBConfig {
 
   public void setDefaultIndexWindowRange(int defaultIndexWindowRange) {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
+  }
+
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {

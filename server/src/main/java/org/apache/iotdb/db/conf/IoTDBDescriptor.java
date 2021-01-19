@@ -45,8 +45,8 @@ import org.slf4j.LoggerFactory;
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
+  private IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -320,6 +320,9 @@ public class IoTDBDescriptor {
           .getProperty("unseq_file_num_in_each_level",
               Integer.toString(conf.getUnseqFileNumInEachLevel()))));
 
+      conf.setQueryTimeThreshold(Integer.parseInt(properties
+          .getProperty("query_time_threshold", Integer.toString(conf.getQueryTimeThreshold()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
@@ -440,6 +443,7 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
 
+
       int maxConcurrentClientNum = Integer.parseInt(properties.
           getProperty("rpc_max_concurrent_client_num",
               Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
@@ -535,6 +539,9 @@ public class IoTDBDescriptor {
 
       conf.setDebugState(Boolean.parseBoolean(properties
           .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
+      conf.setVirtualStorageGroupNum(Integer.parseInt(properties
+          .getProperty("virtual_storage_group_num",
+              String.valueOf(conf.getVirtualStorageGroupNum()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

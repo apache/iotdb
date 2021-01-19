@@ -203,7 +203,7 @@ level-1: t3-1 t4-1
 level-2: t0-2
 
 * NO_COMPACTION -> LEVEL_COMPACTION
-	* 此时因为因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到0层
+	* 此时因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到0层
 	* 每一次合并会最多取出满足 {merge_chunk_point_number} 的文件进行合并，直到将所有多余的文件合并完，进入正常的合并流程
 假设整个系统中有5个文件，此时恢复后的文件结构为：
 level-2: t0-0 t1-0 t2-0 t3-0 t4-0

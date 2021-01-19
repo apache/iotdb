@@ -144,8 +144,10 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s", path,
-        dataType, encoding, compressor, tagOffset);
+    return String
+        .format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
+            path,
+            dataType, encoding, compressor, tagOffset);
   }
 
   @Override
@@ -288,11 +290,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       return false;
     }
     CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
-    return Objects.equals(path, that.path) &&
-        dataType == that.dataType &&
-        encoding == that.encoding &&
-        compressor == that.compressor &&
-        tagOffset == that.tagOffset;
+
+    return Objects.equals(path, that.path) && dataType == that.dataType && encoding == that.encoding
+        && compressor == that.compressor && tagOffset == that.tagOffset;
   }
 
   @Override

@@ -27,8 +27,12 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Multiplier implements UDTF {
+
+  private static final Logger logger = LoggerFactory.getLogger(Multiplier.class);
 
   private long a;
   private long b;
@@ -42,6 +46,7 @@ public class Multiplier implements UDTF {
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
+    logger.debug("Multiplier#beforeStart");
     a = parameters.getLongOrDefault("a", 0);
     b = parameters.getLongOrDefault("b", 0);
     configurations
@@ -52,5 +57,10 @@ public class Multiplier implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putLong(row.getTime(), row.getLong(0) * a * b);
+  }
+
+  @Override
+  public void beforeDestroy() {
+    logger.debug("Multiplier#beforeDestroy");
   }
 }

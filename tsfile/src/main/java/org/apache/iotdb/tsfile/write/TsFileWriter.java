@@ -225,9 +225,16 @@ public class TsFileWriter implements AutoCloseable {
     // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
     for (MeasurementSchema timeseries : tablet.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
-      if (schema.containsTimeseries(new Path(deviceId, measurementId))) {
-        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(new Path(deviceId, measurementId)),
-            pageSize);
+      Path path = new Path(deviceId, measurementId);
+      if (schema.containsTimeseries(path)) {
+        groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
+      } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
+        // use the default template without needing to register device
+        Map<String, MeasurementSchema> template = schema.getDeviceTemplates()
+            .entrySet().iterator().next().getValue();
+        if (template.containsKey(path.getMeasurement())) {
+          groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
+        }
       } else {
         throw new NoMeasurementException("input measurement is invalid: " + measurementId);
       }
@@ -347,7 +354,6 @@ public class TsFileWriter implements AutoCloseable {
   public void close() throws IOException {
     LOG.info("start close file");
     flushAllChunkGroups();
-    fileWriter.setDefaultVersionPair();
     fileWriter.endFile();
   }
 
@@ -358,9 +364,5 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
-  }
-
-  public void writeVersion(long versionPair) throws IOException {
-    fileWriter.writeVersion(versionPair);
   }
 }
