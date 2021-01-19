@@ -308,8 +308,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           if (!partitionDir.exists()) {
             partitionDir.mkdirs();
           }
-          File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-              + File.separator + partition + File.separator + oldTsFile.getName());
+          File newFile = FSFactoryProducer.getFSFactory().getFile(partitionDir 
+              + File.separator + oldTsFile.getName());
           try {
             if (!newFile.createNewFile()) {
               logger.error("The TsFile {} has been created ", newFile);

@@ -409,18 +409,8 @@ public class IoTDBConfigCheck {
         if (!storageGroup.isDirectory()) {
           continue;
         }
-        File upgradeFolder = fsFactory.getFile(storageGroup, IoTDBConstant.UPGRADE_FOLDER_NAME);
-        // create upgrade directory if not exist
-        if (upgradeFolder.mkdirs()) {
-          logger.info("Upgrade Directory {} doesn't exist, create it",
-              upgradeFolder.getPath());
-        } else if (!upgradeFolder.exists()) {
-          logger.error("Create upgrade Directory {} failed",
-              upgradeFolder.getPath());
-        }
         for (File partitionDir : storageGroup.listFiles()) {
-          if (!partitionDir.isDirectory() || 
-              partitionDir.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+          if (!partitionDir.isDirectory()) {
             continue;
           }
           File[] oldTsfileArray = fsFactory
@@ -430,35 +420,38 @@ public class IoTDBConfigCheck {
           File[] oldModificationFileArray = fsFactory
               .listFilesBySuffix(partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
           // move the old files to upgrade folder if exists
-          if (oldTsfileArray.length != 0) {
-            // create upgrade directory if not exist
-            if (upgradeFolder.mkdirs()) {
-              logger.info("Upgrade Directory {} doesn't exist, create it",
-                  upgradeFolder.getPath());
-            } else if (!upgradeFolder.exists()) {
-              logger.error("Create upgrade Directory {} failed",
-                  upgradeFolder.getPath());
+          if (oldTsfileArray.length == 0) {
+            continue;
+          }
+          // create upgrade directory if not exist
+          File upgradeFolder = fsFactory.getFile(
+              partitionDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
+          if (upgradeFolder.mkdirs()) {
+            logger.info("Upgrade Directory {} doesn't exist, create it",
+                upgradeFolder.getPath());
+          } else if (!upgradeFolder.exists()) {
+            logger.error("Create upgrade Directory {} failed",
+                upgradeFolder.getPath());
+          }
+          // move .tsfile to upgrade folder
+          for (File file : oldTsfileArray) {
+            if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+              logger.error("Failed to move tsfile {} to upgrade folder", file);
+              System.exit(-1);
             }
-            // move .tsfile to upgrade folder
-            for (File file : oldTsfileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move tsfile {} to upgrade folder", file);
-                System.exit(-1);
-              }
+          }
+          // move .resource to upgrade folder
+          for (File file : oldResourceFileArray) {
+            if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+              logger.error("Failed to move resource {} to upgrade folder", file);
+              System.exit(-1);
             }
-            // move .resource to upgrade folder
-            for (File file : oldResourceFileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move resource {} to upgrade folder", file);
-                System.exit(-1);
-              }
-            }
-            // move .mods to upgrade folder
-            for (File file : oldModificationFileArray) {
-              if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-                logger.error("Failed to move mod file {} to upgrade folder", file);
-                System.exit(-1);
-              }
+          }
+          // move .mods to upgrade folder
+          for (File file : oldModificationFileArray) {
+            if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+              logger.error("Failed to move mod file {} to upgrade folder", file);
+              System.exit(-1);
             }
           }
         }
