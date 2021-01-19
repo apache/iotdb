@@ -1139,7 +1139,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           TSStatusCode.INTERNAL_SERVER_ERROR));
     }
 
-    return RpcUtils.getStatus(statusList);
+    TSStatus resp = RpcUtils.getStatus(statusList);
+    for(TSStatus status : resp.subStatus){
+      if(status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()){
+        return resp;
+      }
+    }
+
+    resp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    return resp;
   }
 
   @Override
