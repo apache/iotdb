@@ -214,7 +214,6 @@ public class IoTDBConfigCheck {
       MLogWriter.upgradeMLog();
       logger.info("Mlog upgraded!");
       logger.info("Start upgrading Version-2 TsFiles...");
-      
     }
     checkProperties();
   }
