@@ -46,7 +46,7 @@ import org.junit.Test;
 
 public class IoTDBUDTFNonAlignQueryIT {
 
-  protected final static int ITERATION_TIMES = 10_000;
+  protected final static int ITERATION_TIMES = Config.DEFAULT_FETCH_SIZE;
 
   protected final static int ADDEND = 500_000_000;
 

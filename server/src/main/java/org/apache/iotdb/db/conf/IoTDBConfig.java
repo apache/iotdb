@@ -846,6 +846,11 @@ public class IoTDBConfig {
   private boolean debugState = false;
 
   /**
+   * the size of ioTaskQueue
+   */
+  private int ioTaskQueueSizeForFlushing = 10;
+
+  /**
    * the number of virtual storage groups per user-defined storage group
    */
   private int virtualStorageGroupNum = 1;
@@ -2268,5 +2273,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getIoTaskQueueSizeForFlushing() {
+    return ioTaskQueueSizeForFlushing;
+  }
+
+  public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
+    this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
   }
 }
