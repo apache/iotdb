@@ -444,6 +444,14 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
       recoverCompaction();
+      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
@@ -481,6 +489,13 @@ public class StorageGroupProcessor {
     } else {
       logger.error("{} compaction pool not started ,recover failed",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
+    }
+  }
+
+  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
+    if (fileVersion > oldVersion) {
+      partitionMaxFileVersions.put(partitionNum, fileVersion);
     }
   }
 
@@ -1958,6 +1973,8 @@ public class StorageGroupProcessor {
 
       // update latest time map
       updateLatestTimeMap(newTsFileResource);
+      long partitionNum = newTsFileResource.getTimePartition();
+      updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -2311,6 +2328,8 @@ public class StorageGroupProcessor {
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
+
+    updatePartitionFileVersion(filePartitionId, tsFileResource.getVersion());
     return true;
   }
 
