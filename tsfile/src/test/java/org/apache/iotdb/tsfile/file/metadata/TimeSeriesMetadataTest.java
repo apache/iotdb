@@ -67,7 +67,7 @@ public class TimeSeriesMetadataTest {
       ByteBuffer buffer = ByteBuffer.allocate((int) fch.size());
       fch.read(buffer);
       buffer.flip();
-      metaData = TimeseriesMetadata.deserializeFrom(buffer);
+      metaData = TimeseriesMetadata.deserializeFrom(buffer, true);
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();

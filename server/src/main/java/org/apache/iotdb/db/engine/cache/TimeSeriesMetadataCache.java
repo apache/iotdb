@@ -83,7 +83,10 @@ public class TimeSeriesMetadataCache {
           currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(key.device)
               + RamUsageEstimator.sizeOf(key.measurement) + RamUsageEstimator.shallowSizeOf(value)
               + RamUsageEstimator.sizeOf(value.getMeasurementId()) + RamUsageEstimator
-              .shallowSizeOf(value.getStatistics());
+              .shallowSizeOf(value.getStatistics()) +
+              (value.getChunkMetadataList().get(0).calculateRamSize()
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.getChunkMetadataList().size()
+              + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
           averageSize = ((averageSize * count) + currentSize) / (++count);
         } else if (count < 100000) {
           count++;
@@ -92,7 +95,10 @@ public class TimeSeriesMetadataCache {
           averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(key.device)
               + RamUsageEstimator.sizeOf(key.measurement) + RamUsageEstimator.shallowSizeOf(value)
               + RamUsageEstimator.sizeOf(value.getMeasurementId()) + RamUsageEstimator
-              .shallowSizeOf(value.getStatistics());
+              .shallowSizeOf(value.getStatistics()) +
+              (value.getChunkMetadataList().get(0).calculateRamSize()
+                  + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.getChunkMetadataList().size()
+              + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
           count = 1;
           currentSize = averageSize;
         }
@@ -193,7 +199,7 @@ public class TimeSeriesMetadataCache {
             "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.", key.device,
             key.measurement, key.filePath, timeseriesMetadata);
       }
-      return timeseriesMetadata;
+      return new TimeseriesMetadata(timeseriesMetadata);
     }
   }
 

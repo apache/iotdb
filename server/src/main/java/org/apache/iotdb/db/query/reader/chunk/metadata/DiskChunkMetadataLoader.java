@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
-import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -33,11 +32,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
 
-  private TsFileResource resource;
-  private PartialPath seriesPath;
-  private QueryContext context;
+  private final TsFileResource resource;
+  private final PartialPath seriesPath;
+  private final QueryContext context;
   // time filter or value filter, only used to check time range
-  private Filter filter;
+  private final Filter filter;
 
   public DiskChunkMetadataLoader(TsFileResource resource, PartialPath seriesPath,
       QueryContext context, Filter filter) {
@@ -69,18 +68,6 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     return chunkMetadataList;
   }
 
-  /**
-   * For query v0.9/v1 tsfile only When generate temporary timeseriesMetadata set DiskChunkLoader to
-   * each chunkMetadata in the List
-   *
-   * @param chunkMetadataList
-   * @throws IOException
-   */
-  @Override
-  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) {
-    setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
-  }
-
   public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
       TsFileResource resource, PartialPath seriesPath, QueryContext context) {
     List<Modification> pathModifications =
@@ -89,10 +76,14 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
-
-    for (ChunkMetadata data : chunkMetadataList) {
-      data.setChunkLoader(new DiskChunkLoader(resource));
-    }
+    // it is ok, even if it is not thread safe, because the cost of creating a DiskChunkLoader is very cheap.
+    chunkMetadataList.forEach(chunkMetadata -> {
+      if (chunkMetadata.getChunkLoader() == null) {
+        chunkMetadata.setFilePath(resource.getTsFilePath());
+        chunkMetadata.setClosed(resource.isClosed());
+        chunkMetadata.setChunkLoader(new DiskChunkLoader());
+      }
+    });
   }
 
 }

@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -143,7 +142,6 @@ class MergeFileTask {
 
     seqFile.writeLock();
     try {
-      ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
       resource.removeFileReader(seqFile);
@@ -294,7 +292,6 @@ class MergeFileTask {
     seqFile.writeLock();
     try {
       resource.removeFileReader(seqFile);
-      ChunkMetadataCache.getInstance().remove(seqFile);
 
       File newMergeFile = seqFile.getTsFile();
       newMergeFile.delete();
@@ -306,7 +303,6 @@ class MergeFileTask {
       // clean cache
       if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
         ChunkCache.getInstance().clear();
-        ChunkMetadataCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
         FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       }

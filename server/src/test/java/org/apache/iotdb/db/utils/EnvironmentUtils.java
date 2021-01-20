@@ -37,7 +37,6 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -128,7 +127,6 @@ public class EnvironmentUtils {
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
-      ChunkMetadataCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata

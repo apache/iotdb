@@ -71,7 +71,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -337,7 +336,6 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateClearCache() {
     ChunkCache.getInstance().clear();
-    ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
   }
 

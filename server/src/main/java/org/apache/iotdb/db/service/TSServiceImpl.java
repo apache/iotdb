@@ -49,7 +49,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -664,11 +663,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (config.isDebugOn()) {
         SLOW_SQL_LOGGER.info(
-            "ChunkCache used memory proportion: {}\nChunkMetadataCache used memory proportion: {}\n"
+            "ChunkCache used memory proportion: {}\n"
                 + "TimeSeriesMetadataCache used memory proportion: {}",
             ChunkCache.getInstance()
-                .getUsedMemoryProportion(),
-            ChunkMetadataCache.getInstance().getUsedMemoryProportion(), TimeSeriesMetadataCache
+                .getUsedMemoryProportion(), TimeSeriesMetadataCache
                 .getInstance().getUsedMemoryProportion());
       }
     }

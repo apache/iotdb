@@ -58,8 +58,7 @@ public class TimeseriesMetadata implements Accountable {
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
   private boolean isSeq = true;
 
-  private ByteBuffer chunkMetadataListByteBuffer;
-
+  // used to save chunk metadata list while serializing
   private PublicBAOS chunkMetadataListBuffer;
 
   private ArrayList<ChunkMetadata> chunkMetadataList;
@@ -87,9 +86,10 @@ public class TimeseriesMetadata implements Accountable {
     this.dataType = timeseriesMetadata.dataType;
     this.statistics = timeseriesMetadata.statistics;
     this.modified = timeseriesMetadata.modified;
+    this.chunkMetadataList = new ArrayList<>(timeseriesMetadata.chunkMetadataList);
   }
 
-  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
+  public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer, boolean needChunkMetadata) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setTimeSeriesMetadataType(ReadWriteIOUtils.readByte(buffer));
     timeseriesMetaData.setMeasurementId(ReadWriteIOUtils.readVarIntString(buffer));
@@ -99,8 +99,16 @@ public class TimeseriesMetadata implements Accountable {
     timeseriesMetaData
         .setDataSizeOfChunkMetaDataList(chunkMetaDataListDataSize);
     timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.dataType));
-    timeseriesMetaData.chunkMetadataListByteBuffer = buffer.slice();
-    timeseriesMetaData.chunkMetadataListByteBuffer.limit(chunkMetaDataListDataSize);
+    if (needChunkMetadata) {
+      ByteBuffer byteBuffer = buffer.slice();
+      byteBuffer.limit(chunkMetaDataListDataSize);
+      timeseriesMetaData.chunkMetadataList = new ArrayList<>();
+      while (byteBuffer.hasRemaining()) {
+        timeseriesMetaData.chunkMetadataList.add(ChunkMetadata.deserializeFrom(byteBuffer, timeseriesMetaData));
+      }
+      // minimize the storage of an ArrayList instance.
+      timeseriesMetaData.chunkMetadataList.trimToSize();
+    }
     buffer.position(buffer.position() + chunkMetaDataListDataSize);
     return timeseriesMetaData;
   }
@@ -183,15 +191,6 @@ public class TimeseriesMetadata implements Accountable {
   }
 
   public List<ChunkMetadata> getChunkMetadataList() {
-    if (chunkMetadataList == null) {
-      chunkMetadataList = new ArrayList<>();
-      while (chunkMetadataListByteBuffer.hasRemaining()) {
-        chunkMetadataList.add(ChunkMetadata.deserializeFrom(chunkMetadataListByteBuffer, this));
-      }
-      // minimize the storage of an ArrayList instance.
-      chunkMetadataList.trimToSize();
-      chunkMetadataListByteBuffer = null;
-    }
     return chunkMetadataList;
   }
 

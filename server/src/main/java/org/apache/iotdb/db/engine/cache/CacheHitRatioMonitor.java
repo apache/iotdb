@@ -53,31 +53,6 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
-  public double getChunkMetaDataHitRatio() {
-    return ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheUsedMemory() {
-    return ChunkMetadataCache.getInstance().getUsedMemory();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheMaxMemory() {
-    return ChunkMetadataCache.getInstance().getMaxMemory();
-  }
-
-  @Override
-  public double getChunkMetaDataCacheUsedMemoryProportion() {
-    return ChunkMetadataCache.getInstance().getUsedMemoryProportion();
-  }
-
-  @Override
-  public long getChunkMetaDataCacheAverageSize() {
-    return ChunkMetadataCache.getInstance().getAverageSize();
-  }
-
-  @Override
   public double getChunkHitRatio() {
     return ChunkCache.getInstance().calculateChunkHitRatio();
   }

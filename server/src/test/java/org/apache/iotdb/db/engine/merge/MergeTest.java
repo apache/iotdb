@@ -30,7 +30,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -90,7 +89,6 @@ abstract class MergeTest {
     unseqResources.clear();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
-    ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
