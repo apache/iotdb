@@ -1467,7 +1467,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseOrderByTimeClause(OrderByTimeClauseContext ctx, QueryOperator queryOp) {
-    queryOp.setColumn(ctx.TIME().getText());
     if (ctx.DESC() != null) {
       queryOp.setAscending(false);
     }

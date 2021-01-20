@@ -38,7 +38,6 @@ public class QueryOperator extends SFWOperator {
   private long startTime;
   private long endTime;
 
-
   private int rowLimit = 0;
   private int rowOffset = 0;
   private int seriesLimit = 0;
@@ -46,9 +45,6 @@ public class QueryOperator extends SFWOperator {
 
   private boolean isAlignByDevice = false;
   private boolean isAlignByTime = true;
-
-  private String column;
-
 
   private boolean isIntervalByMonth = false;
   private boolean isSlidingStepByMonth = false;
@@ -192,14 +188,6 @@ public class QueryOperator extends SFWOperator {
 
   public void setIntervalByMonth(boolean intervalByMonth) {
     isIntervalByMonth = intervalByMonth;
-  }
-
-  public String getColumn() {
-    return column;
-  }
-
-  public void setColumn(String column) {
-    this.column = column;
   }
 
   public boolean isAscending() {
