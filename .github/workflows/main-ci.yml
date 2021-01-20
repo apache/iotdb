@@ -37,7 +37,7 @@ jobs:
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: apt-get install boost
+        run: sudo apt-get install boost
       - name: Install CPP Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         shell: bash
