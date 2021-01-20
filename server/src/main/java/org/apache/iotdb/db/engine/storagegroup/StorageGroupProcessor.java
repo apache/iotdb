@@ -333,7 +333,7 @@ public class StorageGroupProcessor {
           tsFileManagement::mergeEndAction,
           taskName,
           IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), logicalStorageGroupName + "-" + virtualStorageGroupId);
-      logger.info("{} a RecoverMergeTask {} starts...", logicalStorageGroupName + "-" + virtualStorageGroupId, taskName);
+      logger.info("{} - {} a RecoverMergeTask {} starts...", logicalStorageGroupName, virtualStorageGroupId, taskName);
       recoverMergeTask
           .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
@@ -365,14 +365,14 @@ public class StorageGroupProcessor {
   private void recoverCompaction() {
     if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
       compactionMergeWorking = true;
-      logger.info("{} submit a compaction merge task", logicalStorageGroupName + "-" + virtualStorageGroupId);
+      logger.info("{} - {} submit a compaction merge task", logicalStorageGroupName, virtualStorageGroupId);
       try {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
-        logger.error("{} compaction submit task failed", logicalStorageGroupName + "-" + virtualStorageGroupId);
+        logger.error("{} - {} compaction submit task failed", logicalStorageGroupName, virtualStorageGroupId);
       }
     } else {
       logger.error("{} compaction pool not started ,recover failed",
