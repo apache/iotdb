@@ -46,8 +46,7 @@ public class SessionDataSet {
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
-        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE,
-        Config.DEFAULT_QUERY_TIMEOUT_MS);
+        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE, 0);
   }
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
