@@ -204,18 +204,18 @@ public class IoTDBConfigCheck {
     }
     // check whether upgrading from v0.10 or v0.11 to v0.12
     String versionString = properties.getProperty(IOTDB_VERSION_STRING);
-    if (versionString.startsWith("0.10") || versionString.startsWith("0.10")) {
-      logger.info("Upgrading IoTDB from {} to v0.12, checking files...", versionString);
+    if (versionString.startsWith("0.10") || versionString.startsWith("0.11")) {
+      logger.info("Upgrading IoTDB from {} to {}, checking files...",
+          versionString, IoTDBConstant.VERSION);
       checkUnClosedTsFileV2();
       moveTsFileV2();
       upgradePropertiesFile();
-      logger.info("Upgrade to IoTDB v0.12 successfully!");
+      logger.info("checking files successful");
+      MLogWriter.upgradeMLog();
+      logger.info("Mlog upgraded!");
       logger.info("Start upgrading Version-2 TsFiles...");
+      
     }
-
-    MLogWriter.upgradeMLog();
-
-    logger.info("Mlog upgraded!");
     checkProperties();
   }
 
