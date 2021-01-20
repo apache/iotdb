@@ -456,6 +456,7 @@ public class IoTDBConfigCheck {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void moveVersionFile() {
     File sgDir = SystemFileFactory.INSTANCE.getFile(
         FilePathUtils.regularizePath(SYSTEM_DIR) + "storage_groups");
