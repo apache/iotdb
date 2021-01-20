@@ -81,22 +81,22 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
       properties[0] = new Properties();
       URL iotdbEnginePropertiesUrl = IoTDBDescriptor.getInstance().getPropsUrl();
       if (iotdbEnginePropertiesUrl == null) {
-        logger.error("Fail to find config file {}");
+        logger.error("Fail to find the engine config file");
         throw new QueryProcessException("Fail to find config file");
       }
       try (InputStream inputStream = iotdbEnginePropertiesUrl.openStream()) {
         properties[0].load(inputStream);
       } catch (IOException e) {
-        logger.error("Fail to find config file {}", iotdbEnginePropertiesUrl, e);
-        throw new QueryProcessException("Fail to find iotdb-engine config file.");
+        logger.error("Fail to read iotdb-engine config file {}", iotdbEnginePropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-engine config file.");
       }
       String clusterPropertiesUrl = ClusterDescriptor.getInstance().getPropsUrl();
       properties[1] = new Properties();
       try (InputStream inputStream = new FileInputStream(new File(clusterPropertiesUrl))) {
         properties[1].load(inputStream);
       } catch (IOException e) {
-        logger.error("Fail to find config file {}", clusterPropertiesUrl, e);
-        throw new QueryProcessException("Fail to find cluster config file.");
+        logger.error("Fail to read iotdb-cluster config file {}", clusterPropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-cluster config file.");
       }
 
       return new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL, properties);
