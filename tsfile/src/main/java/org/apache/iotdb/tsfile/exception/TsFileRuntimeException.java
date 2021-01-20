@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.exception;
  * This Exception is the parent class for all runtime exceptions.<br>
  * This Exception extends super class {@link java.lang.RuntimeException}
  */
-public abstract class TsFileRuntimeException extends RuntimeException {
+public class TsFileRuntimeException extends RuntimeException {
 
   private static final long serialVersionUID = 6455048223316780984L;
 
