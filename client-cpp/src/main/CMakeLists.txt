@@ -21,7 +21,7 @@ PROJECT(iotdb_session CXX)
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 
 # TODO May use FIND_PACKAGE instead
@@ -31,6 +31,7 @@ ELSE()
     SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
 ENDIF()
 
+INCLUDE_DIRECTORIES(/usr/local/include)
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
 #ADD_SUBDIRECTORY(generated-sources-cpp)
 
