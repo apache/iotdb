@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.writelog.node;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 
@@ -76,12 +77,17 @@ public interface WriteLogNode {
    * Abandon all logs in this node and delete the log directory. Calling insert() after calling
    * this method is undefined.
    */
-  void delete() throws IOException;
+  ByteBuffer[] delete() throws IOException;
 
   /**
    * return an ILogReader which can iterate each log in this log node.
    * @return an ILogReader which can iterate each log in this log node.
    */
   ILogReader getLogReader();
+
+  /**
+   * init the buffers, this should be called after this node being created.
+   */
+  void initBuffer(ByteBuffer[] byteBuffers);
 
 }

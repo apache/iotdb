@@ -392,6 +392,8 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## Show Devices
 
+* SHOW DEVICES prefixPath? limitClause?
+
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
 * `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
