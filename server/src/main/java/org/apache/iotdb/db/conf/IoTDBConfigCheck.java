@@ -196,17 +196,16 @@ public class IoTDBConfigCheck {
             inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
-    // check whether upgrading from <=v0.10 to v0.12
-    if (!properties.containsKey(IOTDB_VERSION_STRING) ||
-      properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.10")) {
-      logger.error("DO NOT UPGRADE IoTDB from v0.10 or lower version to v0.12!"
-          + " Please upgrade to v0.11 first");
+    // check whether upgrading from <=v0.9 to v0.12
+    if (!properties.containsKey(IOTDB_VERSION_STRING)) {
+      logger.error("DO NOT UPGRADE IoTDB from v0.9 or lower version to v0.12!"
+          + " Please upgrade to v0.10 first");
       System.exit(-1);
     }
-
-    // check whether upgrading from v0.11 to v0.12
-    if (properties.getProperty(IOTDB_VERSION_STRING).startsWith("0.11")) {
-      logger.info("Upgrading IoTDB from v0.11 to v0.12, checking files...");
+    // check whether upgrading from v0.10 or v0.11 to v0.12
+    String versionString = properties.getProperty(IOTDB_VERSION_STRING);
+    if (versionString.startsWith("0.10") || versionString.startsWith("0.10")) {
+      logger.info("Upgrading IoTDB from {} to v0.12, checking files...", versionString);
       checkUnClosedTsFileV2();
       moveTsFileV2();
       upgradePropertiesFile();
@@ -221,7 +220,7 @@ public class IoTDBConfigCheck {
   }
 
   /**
-   * upgrade 0.11 properties to 0.12 properties
+   * upgrade 0.10 or 0.11 properties to 0.12 properties
    */
   private void upgradePropertiesFile()
       throws IOException {
@@ -323,13 +322,13 @@ public class IoTDBConfigCheck {
   }
 
   /**
-   * ensure all TsFiles are closed in 0.11 when starting 0.12
+   * ensure all TsFiles are closed when starting 0.12
    */
   private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
       && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-          + "on v0.11 IoTDB before upgrading to v0.12");
+          + "on v0.10 or v0.11 IoTDB before upgrading to v0.12");
       System.exit(-1);
     }
     checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
