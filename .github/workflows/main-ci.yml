@@ -117,4 +117,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true
