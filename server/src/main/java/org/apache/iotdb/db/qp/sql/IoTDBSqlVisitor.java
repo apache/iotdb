@@ -96,8 +96,7 @@ import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AliasClauseContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignInSpecialLimitContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceStatementOrDisableAlignInSpecialClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterUserContext;
@@ -1064,8 +1063,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitAlignByDeviceClauseOrDisableAlignInSpecialLimit(
-      AlignByDeviceClauseOrDisableAlignInSpecialLimitContext ctx) {
+  public Operator visitAlignByDeviceClauseOrDisableAlignStatement(
+      AlignByDeviceClauseOrDisableAlignStatementContext ctx) {
     if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
       parseAlignByDeviceClause(queryOp);
     } else {
@@ -1119,17 +1118,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       } else {
         parseDisableAlign(queryOp);
       }
-    }
-    return queryOp;
-  }
-
-  @Override
-  public Operator visitAlignByDeviceStatementOrDisableAlignInSpecialClause(
-      AlignByDeviceStatementOrDisableAlignInSpecialClauseContext ctx) {
-    if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-      parseAlignByDeviceClause(queryOp);
-    } else {
-      parseDisableAlign(queryOp);
     }
     return queryOp;
   }

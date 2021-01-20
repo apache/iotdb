@@ -244,14 +244,13 @@ specialClause
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
     ;
 
 specialLimit
     : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
     ;
 
 orderByTimeClause
