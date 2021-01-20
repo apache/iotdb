@@ -38,6 +38,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -58,6 +59,7 @@ public class IoTDBConfigCheck {
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
   private static final String SCHEMA_DIR = config.getSchemaDir();
+  private static final String SYSTEM_DIR = config.getSystemDir();
   private static final String WAL_DIR = config.getWalDir();
 
   private File propertiesFile;
@@ -209,6 +211,7 @@ public class IoTDBConfigCheck {
           versionString, IoTDBConstant.VERSION);
       checkUnClosedTsFileV2();
       moveTsFileV2();
+      moveVersionFile();
       upgradePropertiesFile();
       logger.info("checking files successful");
       MLogWriter.upgradeMLog();
@@ -453,5 +456,43 @@ public class IoTDBConfigCheck {
     }
   }
 
+  private void moveVersionFile() {
+    File sgDir = SystemFileFactory.INSTANCE.getFile(
+        FilePathUtils.regularizePath(SYSTEM_DIR) + "storage_groups");
+    if (sgDir.isDirectory()) {
+      for (File sg : sgDir.listFiles()) {
+        if (!sg.isDirectory()) {
+          continue;
+        }
+        for (File partition : sg.listFiles()) {
+          if (!partition.isDirectory()) {
+            continue;
+          }
+          File virtualSg = SystemFileFactory.INSTANCE.getFile(sg, "0");
+          if (!virtualSg.exists()) {
+            virtualSg.mkdir();
+          }
+          File newPartition =  SystemFileFactory.INSTANCE
+              .getFile(virtualSg, partition.getName());
+          if (!newPartition.exists()) {
+            newPartition.mkdir();
+          }
+          for (File versionFile : partition.listFiles()) {
+            if (!versionFile.isDirectory()) {
+              versionFile.renameTo(SystemFileFactory.INSTANCE
+                  .getFile(newPartition, versionFile.getName()));
+            }
+          }
+          if (partition.listFiles().length == 0) {
+            try {
+              Files.delete(partition.toPath());
+            } catch (IOException e) {
+              logger.error("Delete {} failed", partition);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
