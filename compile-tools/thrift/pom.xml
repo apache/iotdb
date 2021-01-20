@@ -332,6 +332,7 @@
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
                                 <option>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</option>
+                                <option>-DCMAKE_PREFIX_PATH=/usr/local/opt/bison/bin/bison</option>
                                 <option>${openssl.include.dir}</option>
                             </options>
                         </configuration>
