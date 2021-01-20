@@ -40,7 +40,6 @@
         <cmake.build.type/>
     </properties>
     <modules>
-        <module>boost</module>
         <module>thrift</module>
     </modules>
     <profiles>

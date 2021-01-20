@@ -27,10 +27,8 @@ SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 # TODO May use FIND_PACKAGE instead
 IF(MSVC)
     SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
 ELSE()
     SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
 ENDIF()
 
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)

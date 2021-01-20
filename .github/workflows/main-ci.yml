@@ -34,10 +34,14 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Install Bison
+      - name: Install CPP Dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: apt-get install boost
+      - name: Install CPP Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         shell: bash
-        run: brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && which bison && export LDFLAGS="-L/usr/local/opt/bison/lib"
+        run: brew install boost && brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && which bison && export LDFLAGS="-L/usr/local/opt/bison/lib"
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
@@ -113,4 +117,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dtest.port.closed=true

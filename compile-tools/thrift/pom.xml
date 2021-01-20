@@ -234,32 +234,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unpack-boost</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>org.apache.iotdb</groupId>
-                                    <artifactId>client-cpp-tools-boost</artifactId>
-                                    <version>${project.version}</version>
-                                    <type>zip</type>
-                                    <classifier>lib-${os.classifier}</classifier>
-                                    <overWrite>true</overWrite>
-                                </artifactItem>
-                            </artifactItems>
-                            <outputDirectory>${project.build.directory}/boost</outputDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <groupId>com.googlecode.cmake-maven-project</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <version>3.7.2-b1</version>
@@ -325,9 +299,6 @@
                                 <option>-DBUILD_JAVA=OFF</option>
                                 <option>-DBUILD_PYTHON=${thrift.with.python}</option>
                                 <option>-DBUILD_HASKELL=OFF</option>
-                                <!-- Tell CMake where our boost includes and libs are located -->
-                                <option>-DBOOST_INCLUDEDIR=${project.build.directory}/boost/include</option>
-                                <option>-DBOOST_LIBRARYDIR=${project.build.directory}/boost/lib</option>
                                 <option>-DWITH_SHARED_LIB=OFF</option>
                                 <option>-DWITH_STATIC_LIB=ON</option>
                                 <option>-DCMAKE_POSITION_INDEPENDENT_CODE=ON</option>
@@ -407,15 +378,4 @@
             </plugin>
         </plugins>
     </build>
-    <dependencies>
-        <!-- Make sure Boost is built first -->
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp-tools-boost</artifactId>
-            <version>${project.version}</version>
-            <type>zip</type>
-            <classifier>lib-${os.classifier}</classifier>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>

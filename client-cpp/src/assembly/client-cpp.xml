@@ -40,14 +40,6 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/../compile-tools/boost/target/lib/boost/include</directory>
-            <includes>
-                <include>**/*.h</include>
-                <include>**/*.hpp</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
             <directory>${project.build.directory}/build/main</directory>
             <includes>
                 <include>*.so</include>
