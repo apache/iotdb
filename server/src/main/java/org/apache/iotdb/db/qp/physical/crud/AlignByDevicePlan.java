@@ -41,10 +41,7 @@ public class AlignByDevicePlan extends QueryPlan {
   // to record the real type of the measurement
   private Map<String, TSDataType> measurementDataTypeMap;
 
-  private GroupByTimePlan groupByTimePlan;
-
-  private FillQueryPlan fillQueryPlan;
-  private AggregationPlan aggregationPlan;
+  private RawDataQueryPlan physicPlan;
 
   public AlignByDevicePlan() {
     super();
@@ -109,32 +106,13 @@ public class AlignByDevicePlan extends QueryPlan {
     this.measurementDataTypeMap = measurementDataTypeMap;
   }
 
-
-  public GroupByTimePlan getGroupByTimePlan() {
-    return groupByTimePlan;
+  public RawDataQueryPlan getPhysicPlan() {
+    return physicPlan;
   }
 
-  public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
-    this.groupByTimePlan = groupByTimePlan;
-    this.setOperatorType(OperatorType.GROUPBYTIME);
-  }
-
-  public FillQueryPlan getFillQueryPlan() {
-    return fillQueryPlan;
-  }
-
-  public void setFillQueryPlan(FillQueryPlan fillQueryPlan) {
-    this.fillQueryPlan = fillQueryPlan;
-    this.setOperatorType(OperatorType.FILL);
-  }
-
-  public AggregationPlan getAggregationPlan() {
-    return aggregationPlan;
-  }
-
-  public void setAggregationPlan(AggregationPlan aggregationPlan) {
-    this.aggregationPlan = aggregationPlan;
-    this.setOperatorType(Operator.OperatorType.AGGREGATION);
+  public void setPhysicPlan(RawDataQueryPlan physicPlan) {
+    this.physicPlan = physicPlan;
+    this.setOperatorType(physicPlan.getOperatorType());
   }
 
   /**

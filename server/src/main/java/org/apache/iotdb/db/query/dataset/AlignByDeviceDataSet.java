@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -66,10 +67,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   // record the real type of the corresponding measurement
   private Map<String, TSDataType> measurementDataTypeMap;
 
-  private GroupByTimePlan groupByTimePlan;
-  private FillQueryPlan fillQueryPlan;
-  private AggregationPlan aggregationPlan;
-  private RawDataQueryPlan rawDataQueryPlan;
+  private RawDataQueryPlan physicPlan;
 
   private boolean curDataSetInitialized;
   private PartialPath currentDevice;
@@ -90,27 +88,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
     this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
-    switch (alignByDevicePlan.getOperatorType()) {
-      case GROUPBYTIME:
-        this.dataSetType = DataSetType.GROUPBYTIME;
-        this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
-        this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
-        break;
-      case AGGREGATION:
-        this.dataSetType = DataSetType.AGGREGATE;
-        this.aggregationPlan = alignByDevicePlan.getAggregationPlan();
-        this.aggregationPlan.setAscending(alignByDevicePlan.isAscending());
-        break;
-      case FILL:
-        this.dataSetType = DataSetType.FILL;
-        this.fillQueryPlan = alignByDevicePlan.getFillQueryPlan();
-        this.fillQueryPlan.setAscending(alignByDevicePlan.isAscending());
-        break;
-      default:
-        this.dataSetType = DataSetType.QUERY;
-        this.rawDataQueryPlan = new RawDataQueryPlan();
-        this.rawDataQueryPlan.setAscending(alignByDevicePlan.isAscending());
-    }
+    this.physicPlan = alignByDevicePlan.getPhysicPlan();
+    this.physicPlan.setAscending(alignByDevicePlan.isAscending());
+    this.dataSetType = DataSetType.parser(physicPlan.getOperatorType());
 
     this.curDataSetInitialized = false;
     this.deviceIterator = devices.iterator();
@@ -164,31 +144,25 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       }
 
       try {
+        physicPlan.setDeduplicatedPaths(executePaths);
+        physicPlan.setDeduplicatedDataTypes(tsDataTypes);
+        physicPlan.setExpression(expression);
+        if (physicPlan instanceof AggregationPlan) {
+          ((AggregationPlan) physicPlan).setDeduplicatedAggregations(executeAggregations);
+        }
+
         switch (dataSetType) {
           case GROUPBYTIME:
-            groupByTimePlan.setDeduplicatedPaths(executePaths);
-            groupByTimePlan.setDeduplicatedDataTypes(tsDataTypes);
-            groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
-            groupByTimePlan.setExpression(expression);
-            currentDataSet = queryRouter.groupBy(groupByTimePlan, context);
+            currentDataSet = queryRouter.groupBy((GroupByTimePlan) physicPlan, context);
             break;
           case AGGREGATE:
-            aggregationPlan.setDeduplicatedPaths(executePaths);
-            aggregationPlan.setDeduplicatedAggregations(executeAggregations);
-            aggregationPlan.setDeduplicatedDataTypes(tsDataTypes);
-            aggregationPlan.setExpression(expression);
-            currentDataSet = queryRouter.aggregate(aggregationPlan, context);
+            currentDataSet = queryRouter.aggregate((AggregationPlan) physicPlan, context);
             break;
           case FILL:
-            fillQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
-            fillQueryPlan.setDeduplicatedPaths(executePaths);
-            currentDataSet = queryRouter.fill(fillQueryPlan, context);
+            currentDataSet = queryRouter.fill((FillQueryPlan) physicPlan, context);
             break;
           case QUERY:
-            rawDataQueryPlan.setDeduplicatedPaths(executePaths);
-            rawDataQueryPlan.setDeduplicatedDataTypes(tsDataTypes);
-            rawDataQueryPlan.setExpression(expression);
-            currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
+            currentDataSet = queryRouter.rawDataQuery(physicPlan, context);
             break;
           default:
             throw new IOException("unsupported DataSetType");
@@ -235,11 +209,11 @@ public class AlignByDeviceDataSet extends QueryDataSet {
           if (currentColumnMap.get(measurement) != null) {
             rowRecord.addField(currentColumnMap.get(measurement));
           } else {
-            rowRecord.addField(new Field(null));
+            rowRecord.addField(null);
           }
           break;
         case NonExist:
-          rowRecord.addField(new Field(null));
+          rowRecord.addField(null);
           break;
         case Constant:
           Field res = new Field(TSDataType.TEXT);
@@ -253,7 +227,19 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   }
 
   private enum DataSetType {
-    GROUPBYTIME, AGGREGATE, FILL, QUERY
-  }
+    GROUPBYTIME, AGGREGATE, FILL, QUERY;
 
+    public static DataSetType parser(OperatorType type) {
+      switch (type) {
+        case GROUPBYTIME:
+          return DataSetType.GROUPBYTIME;
+        case AGGREGATION:
+          return DataSetType.AGGREGATE;
+        case FILL:
+          return DataSetType.FILL;
+        default:
+          return DataSetType.QUERY;
+      }
+    }
+  }
 }
