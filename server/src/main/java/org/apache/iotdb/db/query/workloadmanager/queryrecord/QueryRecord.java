@@ -60,4 +60,12 @@ public abstract class QueryRecord {
   public QueryRecordType getRecordType() {
     return recordType;
   }
+
+  public String[] getSensors() {
+    return sensors;
+  }
+
+  public String getDevice() {
+    return device;
+  }
 }
