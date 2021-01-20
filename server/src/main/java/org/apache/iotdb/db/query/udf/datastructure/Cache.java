@@ -92,9 +92,8 @@ public abstract class Cache {
   }
 
   public void clear() {
-    head.succeeding = tail;
-    tail.previous = head;
-
-    cacheSize = 0;
+    while (cacheSize != 0) {
+      removeLast();
+    }
   }
 }
