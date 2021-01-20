@@ -36,6 +36,7 @@
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
         <cmake-version>3.17.3</cmake-version>
         <openssl.include.dir>-Dtrue1=true1</openssl.include.dir>
+        <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
         <cmake.build.type/>
     </properties>
     <modules>
@@ -89,6 +90,7 @@
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
                 <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
