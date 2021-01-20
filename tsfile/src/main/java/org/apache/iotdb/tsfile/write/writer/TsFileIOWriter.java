@@ -298,8 +298,8 @@ public class TsFileIOWriter {
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
       TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(
-          serializeStatistic ? (byte) 1 : (byte) 0, 0,
-          chunkMetadataListLength, path.getMeasurement(), dataType, seriesStatistics, publicBAOS);
+          serializeStatistic ? (byte) 1 : (byte) 0, chunkMetadataListLength, path.getMeasurement(),
+          dataType, seriesStatistics, publicBAOS);
       deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
           .add(timeseriesMetadata);
     }
