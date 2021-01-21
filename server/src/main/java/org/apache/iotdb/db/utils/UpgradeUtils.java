@@ -101,11 +101,13 @@ public class UpgradeUtils {
         partitionDir.mkdir();
       }
       // move upgraded TsFile
-      fsFactory.moveFile(upgradedFile,
+      if (upgradedFile.exists()) {
+        fsFactory.moveFile(upgradedFile,
           fsFactory.getFile(partitionDir, upgradedFile.getName()));
-      // delete generated temp resource
-      Files.delete(fsFactory
-          .getFile(upgradedResource.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      }
+      // get temp resource
+      File tempResourceFile = fsFactory
+          .getFile(upgradedResource.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX);
       // move upgraded mods file
       File newModsFile = fsFactory
           .getFile(upgradedResource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX);
@@ -116,10 +118,13 @@ public class UpgradeUtils {
       // re-serialize upgraded resource to correct place
       upgradedResource.setFile(
           fsFactory.getFile(partitionDir, upgradedFile.getName()));
-      if (newModsFile.exists()) {
+      if (fsFactory.getFile(partitionDir, newModsFile.getName()).exists()) {
         upgradedResource.getModFile();
       }
+      upgradedResource.setClosed(true);
       upgradedResource.serialize();
+      // delete generated temp resource file
+      Files.delete(tempResourceFile.toPath());
       // delete tmp partition folder when it is empty
       File tmpPartitionDir = upgradedFile.getParentFile();
       if (tmpPartitionDir.isDirectory() && tmpPartitionDir.listFiles().length == 0) {
@@ -161,6 +166,9 @@ public class UpgradeUtils {
             File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
                 .getParentFile();
             File[] partitionDirs = upgradeDir.listFiles();
+            if (partitionDirs == null) {
+              return;
+            }
             for (File partitionDir : partitionDirs) {
               if (partitionDir.isDirectory()) {
                 File[] generatedFiles = partitionDir.listFiles();
