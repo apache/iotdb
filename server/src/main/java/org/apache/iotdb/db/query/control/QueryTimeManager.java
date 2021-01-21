@@ -61,13 +61,13 @@ public class QueryTimeManager implements IService {
   }
 
   public void registerQuery(long queryId, long startTime, String sql, long timeout) {
-    timeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
+    final long finalTimeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
     queryInfoMap.put(queryId, new QueryInfo(startTime, sql));
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       killQuery(queryId);
-      logger.warn(String.format("Query is time out with queryId %d", queryId));
-    }, timeout, TimeUnit.MILLISECONDS);
+      logger.warn(String.format("Query is time out (%dms) with queryId %d", finalTimeout, queryId));
+    }, finalTimeout, TimeUnit.MILLISECONDS);
     queryScheduledTaskMap.put(queryId, scheduledFuture);
   }
 
