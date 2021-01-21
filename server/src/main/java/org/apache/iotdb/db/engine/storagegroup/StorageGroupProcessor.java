@@ -1465,8 +1465,8 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      tsFileManagement.readUnLock();
       insertLock.readLock().unlock();
+      tsFileManagement.readUnLock();
     }
   }
 
