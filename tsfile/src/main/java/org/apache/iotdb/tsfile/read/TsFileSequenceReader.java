@@ -1136,6 +1136,19 @@ public class TsFileSequenceReader implements AutoCloseable {
     return result;
   }
 
+  public Map<String, List<String>> getDeviceMeasurementsMap() throws IOException {
+    Map<String, List<String>> result = new HashMap<>();
+    for (String device : getAllDevices()) {
+      Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataMap.values()) {
+        result
+            .computeIfAbsent(device, d -> new ArrayList<>())
+            .add(timeseriesMetadata.getMeasurementId());
+      }
+    }
+    return result;
+  }
+
   /**
    * get device names which has valid chunks in [start, end)
    *
@@ -1218,8 +1231,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     Queue<Pair<Long, Long>> queue = new LinkedList<>();
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    collectEachLeafMeasurementNodeOffsetRange(buffer, MetadataIndexNodeType.INTERNAL_MEASUREMENT,
-        queue);
+    collectEachLeafMeasurementNodeOffsetRange(buffer, queue);
 
     return new Iterator<Map<String, List<ChunkMetadata>>>() {
 
@@ -1235,7 +1247,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         try {
           List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           ByteBuffer nextBuffer = readData(startEndPair.left, startEndPair.right);
-          while (buffer.hasRemaining()) {
+          while (nextBuffer.hasRemaining()) {
             timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, true));
           }
           for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
@@ -1253,8 +1265,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private void collectEachLeafMeasurementNodeOffsetRange(ByteBuffer buffer,
-      MetadataIndexNodeType type, Queue<Pair<Long, Long>> queue)
-      throws IOException {
+      Queue<Pair<Long, Long>> queue) throws IOException {
     try {
       MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
       final int metadataIndexListSize = metadataIndexNode.getChildren().size();
@@ -1264,11 +1275,11 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (i != metadataIndexListSize - 1) {
           endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
         }
-        if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
           queue.add(new Pair<>(startOffset, endOffset));
-          return;
+          continue;
         }
-        collectEachLeafMeasurementNodeOffsetRange(readData(startOffset, endOffset), type, queue);
+        collectEachLeafMeasurementNodeOffsetRange(readData(startOffset, endOffset), queue);
       }
     } catch (BufferOverflowException e) {
       logger.error("Error occurred while collecting offset ranges of measurement nodes of file {}",
