@@ -87,7 +87,7 @@ The characters supported in LayerName without double quotes are as below:
 * 'A' to 'Z', 'a' to 'z', '0' to '9'
 * '[', ']' (eg. 's[1', 's[1]', s[ab]')
 
-'-' and ':' cannot be the first character.
+'-' and ':' cannot be the first character. '+' cannot use alone.
 
 > Note: the LayerName of storage group can only be characters, numbers and underscores. 
 > 
