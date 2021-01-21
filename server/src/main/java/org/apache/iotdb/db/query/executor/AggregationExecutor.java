@@ -61,6 +61,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class AggregationExecutor {
 
@@ -106,35 +107,42 @@ public class AggregationExecutor {
     List<StorageGroupProcessor> list = StorageEngine.getInstance()
         .mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
     WorkloadManager manager = WorkloadManager.getInstance();
-    List<String> sensorList = new ArrayList<>();
-    List<String> opList = new ArrayList<>();
-    String curDevice = null;
+    // DeviceID -> MeasurementID -> List<Aggregation Operation>
+    Map<String, Map<String, List<String>>> deviceSensorMap = new HashMap<>();
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         aggregateOneSeries(entry, aggregateResultList,
             aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
             context);
-        // Workload manager monitor
-        List<Integer> AggrIndexes = entry.getValue();
-        if(!entry.getKey().getDevice().equals(curDevice)) {
-          if (sensorList.size() != 0 && opList.size() != 0) {
-            QueryRecord record = new AggregationQueryRecord(curDevice, sensorList, opList);
-            String sql = record.getSql();
-            manager.addRecord(record);
-          }
-          sensorList.clear();
-          opList.clear();
-          curDevice = entry.getKey().getDevice();
+
+        // Record the query in the map
+        if (!deviceSensorMap.containsKey(entry.getKey().getDevice())) {
+          deviceSensorMap.put(entry.getKey().getDevice(), new HashMap<>());
         }
-        for(int idx = 0; idx < AggrIndexes.size(); ++idx) {
-          sensorList.add(entry.getKey().getMeasurement());
-          opList.add(aggregationPlan.getDeduplicatedAggregations().get(AggrIndexes.get(idx)));
+        Map<String, List<String>> measurementOpMap = deviceSensorMap.get(entry.getKey().getDevice());
+        if (!measurementOpMap.containsKey(entry.getKey().getMeasurement())) {
+          measurementOpMap.put(entry.getKey().getMeasurement(), new ArrayList<>());
+        }
+        List<Integer> aggrIndexes = entry.getValue();
+        List<String> ops = measurementOpMap.get(entry.getKey().getMeasurement());
+        for(int idx = 0; idx < aggrIndexes.size(); ++idx) {
+          ops.add(aggregationPlan.getDeduplicatedAggregations().get(aggrIndexes.get(idx)));
         }
       }
-      // add the remaining record to the manager
-      if (sensorList.size() != 0 && opList.size() != 0) {
-        QueryRecord record = new AggregationQueryRecord(curDevice, sensorList, opList);
-        String sql = record.getSql();
+
+      // Put the query records into the manager
+      for (String device: deviceSensorMap.keySet()) {
+        Map<String, List<String>> measurementOpMap = deviceSensorMap.get(device);
+        List<String> curDeviceMeasurements = new ArrayList<>();
+        List<String> curDeviceOps = new ArrayList<>();
+        for (String measurement: measurementOpMap.keySet()) {
+          List<String> ops = measurementOpMap.get(measurement);
+          for(int i = 0; i < ops.size(); ++i) {
+            curDeviceMeasurements.add(measurement);
+            curDeviceOps.add(ops.get(i));
+          }
+        }
+        QueryRecord record = new AggregationQueryRecord(device, curDeviceMeasurements, curDeviceOps);
         manager.addRecord(record);
       }
     } finally {
@@ -356,25 +364,34 @@ public class AggregationExecutor {
     }
     // Workload collection
     WorkloadManager manager = WorkloadManager.getInstance();
-    String curDevice = null;
-    List<String> sensors = new ArrayList<>();
-    List<String> ops = new ArrayList<>();
+    // DeviceID -> MeasurementID -> List<Aggregation Operation>
+    Map<String, Map<String, List<String>>> deviceSensorMap = new HashMap<>();
+    // Record the query in the map
     for(int i = 0; i < selectedSeries.size(); ++i) {
-      if (!selectedSeries.get(i).getDevice().equals(curDevice)) {
-        if (sensors.size() != 0 && ops.size() != 0) {
-          QueryRecord record = new AggregationQueryRecord(curDevice, sensors, ops);
-          manager.addRecord(record);
-        }
-        curDevice = selectedSeries.get(i).getDevice();
-        ops.clear();
-        sensors.clear();
+      if (!deviceSensorMap.containsKey(selectedSeries.get(i).getDevice())) {
+        deviceSensorMap.put(selectedSeries.get(i).getDevice(), new HashMap<>());
       }
-      ops.add(aggregations.get(i));
-      sensors.add(selectedSeries.get(i).getMeasurement());
+      Map<String, List<String>> measurementOpMap = deviceSensorMap.get(selectedSeries.get(i).getDevice());
+      if (!measurementOpMap.containsKey(selectedSeries.get(i).getMeasurement())) {
+        measurementOpMap.put(selectedSeries.get(i).getMeasurement(), new ArrayList<>());
+      }
+      List<String> opList = measurementOpMap.get(selectedSeries.get(i).getMeasurement());
+      opList.add(aggregations.get(i));
     }
-    // add the remaining record to the manager
-    if (sensors.size() != 0 && ops.size() != 0) {
-      QueryRecord record = new AggregationQueryRecord(curDevice, sensors, ops);
+
+    // Put the query records to the manager
+    for (String device: deviceSensorMap.keySet()) {
+      Map<String, List<String>> measurementOpMap = deviceSensorMap.get(device);
+      List<String> curDeviceMeasurements = new ArrayList<>();
+      List<String> curDeviceOps = new ArrayList<>();
+      for (String measurement: measurementOpMap.keySet()) {
+        List<String> ops = measurementOpMap.get(measurement);
+        for(int i = 0; i < ops.size(); ++i) {
+          curDeviceMeasurements.add(measurement);
+          curDeviceOps.add(ops.get(i));
+        }
+      }
+      QueryRecord record = new AggregationQueryRecord(device, curDeviceMeasurements, curDeviceOps);
       manager.addRecord(record);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);

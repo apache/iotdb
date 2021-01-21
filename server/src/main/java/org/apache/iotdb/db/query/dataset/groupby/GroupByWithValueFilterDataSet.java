@@ -20,9 +20,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -95,36 +93,40 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     List<StorageGroupProcessor> list = StorageEngine.getInstance()
         .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
     WorkloadManager manager = WorkloadManager.getInstance();
-    List<String> sensors = new ArrayList<>();
-    List<String> ops = new ArrayList<>();
-    String curDevice = null;
+    Map<String, List<Integer>> deviceQueryIdxMap = new HashMap<>();
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         allDataReaderList
             .add(getReaderByTime(path, groupByTimePlan, dataTypes.get(i), context, null));
-        if (!path.getDevice().equals(curDevice)) {
-          if (sensors.size() != 0 && ops.size() != 0) {
-            QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
-                    groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
-            manager.addRecord(record);
-          }
-          sensors.clear();
-          ops.clear();
-          curDevice = path.getDevice();
+        // Map the device id to the corresponding path indexes
+        if (deviceQueryIdxMap.containsKey(path.getDevice())) {
+          deviceQueryIdxMap.get(path.getDevice()).add(i);
+        } else {
+          deviceQueryIdxMap.put(path.getDevice(), new ArrayList<>());
+          deviceQueryIdxMap.get(path.getDevice()).add(i);
         }
-        sensors.add(path.getMeasurement());
-        ops.add(groupByTimePlan.getDeduplicatedAggregations().get(i));
       }
-      // add the remaining records to the manager
-      if (sensors.size() != 0 && ops.size() != 0) {
-        QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+
+      // Add the query records to the workload manager
+      for(String device: deviceQueryIdxMap.keySet()) {
+        List<Integer> pathIndexes = deviceQueryIdxMap.get(device);
+        List<String> sensors = new ArrayList<>();
+        List<String> ops = new ArrayList<>();
+        for(int idx: pathIndexes) {
+          PartialPath path = (PartialPath) paths.get(idx);
+          sensors.add(path.getMeasurement());
+          ops.add(groupByTimePlan.getDeduplicatedAggregations().get(idx));
+        }
+        QueryRecord record = new GroupByQueryRecord(device, sensors, ops, groupByTimePlan.getStartTime(),
                 groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
         manager.addRecord(record);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
+
+
 
   }
 

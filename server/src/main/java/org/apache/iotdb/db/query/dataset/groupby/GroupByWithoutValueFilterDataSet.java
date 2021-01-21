@@ -95,9 +95,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     try {
       // init resultIndexes, group result indexes by path
       WorkloadManager manager = WorkloadManager.getInstance();
-      String curDevice = null;
-      List<String> sensors = new ArrayList<>();
-      List<String> ops = new ArrayList<>();
+      Map<String, List<Integer>> deviceQueryIdxMap = new HashMap<>();
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
         if (!pathExecutors.containsKey(path)) {
@@ -112,23 +110,26 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i),
                 dataTypes.get(i), ascending);
         pathExecutors.get(path).addAggregateResult(aggrResult);
-        // workload manager collection the records
-        if (!path.getDevice().equals(curDevice)) {
-          if (sensors.size() != 0 && ops.size() != 0) {
-            QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
-                    groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
-            manager.addRecord(record);
-          }
-          sensors.clear();
-          ops.clear();
-          curDevice = path.getDevice();
+        // Map the device id to the corresponding query indexes
+        if (deviceQueryIdxMap.containsKey(path.getDevice())) {
+          deviceQueryIdxMap.get(path.getDevice()).add(i);
+        } else {
+          deviceQueryIdxMap.put(path.getDevice(), new ArrayList<>());
+          deviceQueryIdxMap.get(path.getDevice()).add(i);
         }
-        sensors.add(path.getMeasurement());
-        ops.add(groupByTimePlan.getDeduplicatedAggregations().get(i));
       }
-      // add the remaining records to the manager
-      if (sensors.size() != 0 && ops.size() != 0) {
-        QueryRecord record = new GroupByQueryRecord(curDevice, sensors, ops, groupByTimePlan.getStartTime(),
+
+      // Add the query records to the workload manager
+      for(String device: deviceQueryIdxMap.keySet()) {
+        List<Integer> pathIndexes = deviceQueryIdxMap.get(device);
+        List<String> sensors = new ArrayList<>();
+        List<String> ops = new ArrayList<>();
+        for(int idx: pathIndexes) {
+          PartialPath path = (PartialPath) paths.get(idx);
+          sensors.add(path.getMeasurement());
+          ops.add(groupByTimePlan.getDeduplicatedAggregations().get(idx));
+        }
+        QueryRecord record = new GroupByQueryRecord(device, sensors, ops, groupByTimePlan.getStartTime(),
                 groupByTimePlan.getEndTime(), groupByTimePlan.getInterval(), groupByTimePlan.getSlidingStep());
         manager.addRecord(record);
       }
