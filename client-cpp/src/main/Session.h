@@ -514,6 +514,8 @@ private:
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
     std::shared_ptr<TSQueryDataSet> tsQueryDataSet;
     MyStringBuffer tsQueryDataSetTimeBuffer;
+    std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
+    std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
     char* currentBitmap; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
@@ -540,6 +542,8 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
+            this->valueBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[i])));
+            this->bitmapBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
         }
         this->tsQueryDataSet = queryDataSet;
     }
