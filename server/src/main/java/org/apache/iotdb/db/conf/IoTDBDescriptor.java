@@ -90,6 +90,10 @@ public class IoTDBDescriptor {
     return true;
   }
 
+  /**
+   * get props url location
+   * @return url object if location exit, otherwise null.
+   */
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);

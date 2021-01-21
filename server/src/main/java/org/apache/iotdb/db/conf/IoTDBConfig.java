@@ -805,7 +805,7 @@ public class IoTDBConfig {
    * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
    * udfCollectorMemoryBudgetInMB
    */
-  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+  private float udfMemoryBudgetInMB = (float) Math.min(30.0f, 0.2 * allocateMemoryForRead);
 
   private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 

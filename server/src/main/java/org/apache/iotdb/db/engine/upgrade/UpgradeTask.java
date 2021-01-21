@@ -99,8 +99,9 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       File upgradeFolder = upgradeResource.getTsFile().getParentFile();
       for (File tempPartitionDir : upgradeFolder.listFiles()) {
-        if (tempPartitionDir.isDirectory() && 
-            fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()).exists()) {
+        if (tempPartitionDir.isDirectory() &&
+            fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName() 
+                + TsFileResource.RESOURCE_SUFFIX).exists()) {
           TsFileResource resource = new TsFileResource(
               fsFactory.getFile(tempPartitionDir, upgradeResource.getTsFile().getName()));
           resource.deserialize();

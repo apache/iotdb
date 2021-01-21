@@ -37,14 +37,10 @@ public class TimeseriesMetadata implements Accountable {
   /**
    * used for old version tsfile
    */
-  @Deprecated
   private long startOffsetOfChunkMetaDataList;
-
-
   /**
-   * 0 means this time series has only one chunk, no need to save the statistic again in chunk
-   * metadata 1 means this time series has more than one chunk, should save the statistic again in
-   * chunk metadata
+   * 0 means this time series has only one chunk, no need to save the statistic again in chunk metadata
+   * 1 means this time series has more than one chunk, should save the statistic again in chunk metadata
    */
   private byte timeSeriesMetadataType;
 

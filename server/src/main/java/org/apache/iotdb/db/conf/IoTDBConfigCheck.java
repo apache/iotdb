@@ -212,11 +212,11 @@ public class IoTDBConfigCheck {
       checkUnClosedTsFileV2();
       moveTsFileV2();
       moveVersionFile();
-      upgradePropertiesFile();
       logger.info("checking files successful");
       MLogWriter.upgradeMLog();
       logger.info("Mlog upgraded!");
       logger.info("Start upgrading Version-2 TsFiles...");
+      upgradePropertiesFile();
     }
     checkProperties();
   }
@@ -421,7 +421,9 @@ public class IoTDBConfigCheck {
               .listFilesBySuffix(partitionDir.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
           deleteMergingTsFiles(oldTsfileArray, oldResourceFileArray);
           // move the old files to upgrade folder if exists
-          if (oldTsfileArray.length != 0) {
+          if (oldTsfileArray.length +
+              oldResourceFileArray.length +
+              oldModificationFileArray.length != 0) {
             // create upgrade directory if not exist
             File upgradeFolder = fsFactory.getFile(
                 partitionDir, IoTDBConstant.UPGRADE_FOLDER_NAME);
