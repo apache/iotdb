@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 public class WorkloadManager {
   List<QueryRecord> records = new ArrayList<>();
   private final Logger QUERY_RECORD_LOGGER = LoggerFactory.getLogger("QUERY_RECORD");
-  private final int RECORDS_NUM_THRESHOLD = 5;
+  private final int RECORDS_NUM_THRESHOLD = 300;
   private final ExecutorService flushExecutor = Executors.newFixedThreadPool(1);
 
   private WorkloadManager() {
@@ -56,16 +56,9 @@ public class WorkloadManager {
 
   public synchronized void addRecord(QueryRecord record) {
     records.add(record);
-    System.out.println(records.size());
     if (records.size() > RECORDS_NUM_THRESHOLD) {
       flushExecutor.execute(new QueryRecordFlushTask(records, QUERY_RECORD_LOGGER));
       this.records = new ArrayList<>();
-    }
-  }
-
-  public static void main(String[] args) {
-    for(int i = 0; i < 20; i++) {
-      WorkloadManager.getInstance().addRecord(new AggregationQueryRecord("S", new ArrayList<>(), new ArrayList<>()));
     }
   }
 }
