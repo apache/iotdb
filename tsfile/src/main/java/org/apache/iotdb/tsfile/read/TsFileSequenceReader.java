@@ -1269,7 +1269,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private void collectEachLeafMeasurementNodeOffsetRange(ByteBuffer buffer,
       Queue<Pair<Long, Long>> queue) throws IOException {
     try {
-      MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      final MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+      final MetadataIndexNodeType metadataIndexNodeType = metadataIndexNode.getNodeType();
       final int metadataIndexListSize = metadataIndexNode.getChildren().size();
       for (int i = 0; i < metadataIndexListSize; ++i) {
         long startOffset = metadataIndexNode.getChildren().get(i).getOffset();
@@ -1277,7 +1278,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (i != metadataIndexListSize - 1) {
           endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
         }
-        if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        if (metadataIndexNodeType.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
           queue.add(new Pair<>(startOffset, endOffset));
           continue;
         }

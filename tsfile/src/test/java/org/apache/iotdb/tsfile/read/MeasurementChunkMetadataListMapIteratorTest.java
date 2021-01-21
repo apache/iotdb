@@ -142,7 +142,12 @@ public class MeasurementChunkMetadataListMapIteratorTest {
     for (String measurement : expected.keySet()) {
       List<ChunkMetadata> expectedChunkMetadataList = expected.get(measurement);
       List<ChunkMetadata> actualChunkMetadataList = actual.get(measurement);
-      Assert.assertEquals(expectedChunkMetadataList.toString(), actualChunkMetadataList.toString());
+      Assert.assertEquals(expectedChunkMetadataList.size(), actualChunkMetadataList.size());
+      final int size = expectedChunkMetadataList.size();
+      for (int i = 0; i < size; ++i) {
+        Assert.assertEquals(expectedChunkMetadataList.get(i).toString(),
+            actualChunkMetadataList.get(i).toString());
+      }
     }
   }
 }
