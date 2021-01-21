@@ -350,7 +350,7 @@ public class ExportCsv extends AbstractCsvTool {
       throws SQLException, IOException {
     for (int j = 2; j <= count; j++) {
       if (j < count) {
-        if ("null".equals(rs.getString(j))) {
+        if (rs.getString(j) == null) {
           bw.write(",");
         } else {
           if(typeList.get(j-1) == Types.VARCHAR) {
@@ -360,7 +360,7 @@ public class ExportCsv extends AbstractCsvTool {
           }
         }
       } else {
-        if ("null".equals(rs.getString(j))) {
+        if (rs.getString(j) == null) {
           bw.write("\n");
         } else {
           if(typeList.get(j-1) == Types.VARCHAR) {
