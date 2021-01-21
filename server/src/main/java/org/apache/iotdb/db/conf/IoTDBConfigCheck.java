@@ -479,9 +479,12 @@ public class IoTDBConfigCheck {
             newPartition.mkdir();
           }
           for (File versionFile : partition.listFiles()) {
-            if (!versionFile.isDirectory()) {
-              versionFile.renameTo(SystemFileFactory.INSTANCE
-                  .getFile(newPartition, versionFile.getName()));
+            if (versionFile.isDirectory()) {
+              continue;
+            }
+            if (!versionFile.renameTo(SystemFileFactory.INSTANCE
+                .getFile(newPartition, versionFile.getName()))) {
+              logger.error("Rename {} failed", versionFile);
             }
           }
           if (partition.listFiles().length == 0) {
