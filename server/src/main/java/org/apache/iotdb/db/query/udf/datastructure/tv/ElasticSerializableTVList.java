@@ -21,11 +21,11 @@ package org.apache.iotdb.db.query.udf.datastructure.tv;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -231,7 +231,7 @@ public class ElasticSerializableTVList implements PointCollector {
 
       @Override
       public void readyForNext() {
-        setEvictionUpperBound(currentPointIndex);
+        setEvictionUpperBound(currentPointIndex + 1);
       }
 
       @Override
@@ -276,27 +276,25 @@ public class ElasticSerializableTVList implements PointCollector {
     };
   }
 
+  /**
+   * @param evictionUpperBound the index of the first element that cannot be evicted. in other
+   *                           words, elements whose index are <b>less than</b> the
+   *                           evictionUpperBound can be evicted.
+   */
   private void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  /**
-   * <b>Note: It's not thread safe.</b>
-   */
-  private class LRUCache {
-
-    private final int capacity;
-    private final LinkedList<Integer> cache;
+  private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
-      this.capacity = capacity;
-      cache = new LinkedList<>();
+      super(capacity);
     }
 
     BatchData get(int targetIndex) throws IOException {
-      if (!cache.removeFirstOccurrence(targetIndex)) {
-        if (capacity <= cache.size()) {
-          int lastIndex = cache.removeLast();
+      if (!removeFirstOccurrence(targetIndex)) {
+        if (cacheCapacity <= cacheSize) {
+          int lastIndex = removeLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
           } else {
@@ -305,7 +303,7 @@ public class ElasticSerializableTVList implements PointCollector {
         }
         tvLists.get(targetIndex).deserialize();
       }
-      cache.addFirst(targetIndex);
+      addFirst(targetIndex);
       return tvLists.get(targetIndex);
     }
   }
