@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 public class LongStatisticsTest {
 
@@ -38,7 +41,7 @@ public class LongStatisticsTest {
     assertEquals(secondValue, (long) longStats.getMaxValue());
     assertEquals(firstValue, (long) longStats.getMinValue());
     assertEquals(firstValue, (long) longStats.getFirstValue());
-    assertEquals(firstValue + secondValue, (long) longStats.getSumValue());
+    assertEquals(firstValue + secondValue, (long) longStats.getSumDoubleValue());
     assertEquals(secondValue, (long) longStats.getLastValue());
   }
 
@@ -63,14 +66,14 @@ public class LongStatisticsTest {
     assertFalse(longStats3.isEmpty());
     assertEquals(max1, (long) longStats3.getMaxValue());
     assertEquals(1, (long) longStats3.getMinValue());
-    assertEquals(max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(max1 + 1, (long) longStats3.getSumDoubleValue());
     assertEquals(1, (long) longStats3.getFirstValue());
     assertEquals(max1, (long) longStats3.getLastValue());
 
     longStats3.mergeStatistics(longStats2);
     assertEquals(max2, (long) longStats3.getMaxValue());
     assertEquals(1, (long) longStats3.getMinValue());
-    assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(max2 + max1 + 1, (long) longStats3.getSumDoubleValue());
     assertEquals(1, (long) longStats3.getFirstValue());
     assertEquals(max2, (long) longStats3.getLastValue());
 
@@ -89,7 +92,7 @@ public class LongStatisticsTest {
     // if not merge, the min value will not be changed by smaller value in
     // intStats5
     assertEquals(1, (long) longStats3.getMinValue());
-    assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
+    assertEquals(max2 + max1 + 1, (long) longStats3.getSumDoubleValue());
     assertEquals(1, (long) longStats3.getFirstValue());
     assertEquals(max2, (long) longStats3.getLastValue());
 

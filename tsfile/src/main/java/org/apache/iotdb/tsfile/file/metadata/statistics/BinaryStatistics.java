@@ -101,8 +101,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public double getSumValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "sum"));
+  public double getSumDoubleValue() {
+    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "double sum"));
+  }
+
+  @Override
+  public long getSumLongValue() {
+    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "long sum"));
   }
 
   @Override
@@ -197,13 +202,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBinary(inputStream);
     this.lastValue = ReadWriteIOUtils.readBinary(inputStream);
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
   }

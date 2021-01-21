@@ -52,6 +52,11 @@ public class LocalTsFileOutput implements TsFileOutput {
   }
 
   @Override
+  public void write(byte b) throws IOException {
+    bufferedStream.write(b);
+  }
+
+  @Override
   public void write(ByteBuffer b) throws IOException {
     bufferedStream.write(b.array());
   }
