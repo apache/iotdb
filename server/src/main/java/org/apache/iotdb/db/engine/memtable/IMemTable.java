@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -88,7 +89,7 @@ public interface IMemTable {
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound, List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
   /**
@@ -110,14 +111,6 @@ public interface IMemTable {
   void delete(PartialPath path, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   /**
-   * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries
-   * deviceId.measurementId. Only called for flushing MemTable.
-   *
-   * @param deletion and object representing this deletion
-   */
-  void delete(Deletion deletion);
-
-  /**
    * Make a copy of this MemTable.
    *
    * @return a MemTable with the same data as this one.
@@ -125,10 +118,6 @@ public interface IMemTable {
   IMemTable copy();
 
   boolean isSignalMemTable();
-
-  long getVersion();
-
-  void setVersion(long version);
 
   void release();
 

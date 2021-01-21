@@ -64,7 +64,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     initGroupByEngineDataSetFields(context, groupByTimePlan);
   }
 
-  protected void initGroupByEngineDataSetFields(QueryContext context, GroupByTimePlan groupByTimePlan) {
+  protected void initGroupByEngineDataSetFields(QueryContext context,
+      GroupByTimePlan groupByTimePlan) {
     this.queryId = context.getQueryId();
     this.interval = groupByTimePlan.getInterval();
     this.slidingStep = groupByTimePlan.getSlidingStep();
@@ -117,7 +118,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     if (hasCachedTimeInterval) {
       return true;
     }
-    
+
     // for group by natural months addition
     intervalTimes += ascending ? 1 : -1;
 
@@ -176,5 +177,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     return new Pair<>(curStartTime, curEndTime);
   }
 
-  public abstract Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException;
+  public abstract Pair<Long, Object> peekNextNotNullValue(Path path, int i)
+      throws IOException;
 }

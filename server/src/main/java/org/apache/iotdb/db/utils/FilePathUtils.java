@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +63,10 @@ public class FilePathUtils {
 
   public static String[] splitTsFilePath(TsFileResource resource) {
     return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
+  }
+
+  public static String[] splitTsFilePath(String tsFileAbsolutePath) {
+    return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
   }
 
   /**
@@ -195,4 +201,11 @@ public class FilePathUtils {
     return resultSet;
   }
 
+  public static long splitAndGetTsFileVersion(String tsFileName) {
+    String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
+    if (names.length != 3) {
+      return 0;
+    }
+    return Long.parseLong(names[1]);
+  }
 }

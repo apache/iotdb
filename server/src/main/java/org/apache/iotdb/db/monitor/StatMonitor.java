@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -80,7 +81,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     return StatMonitorHolder.INSTANCE;
   }
 
-  private void initMonitorSeriesInfo() {
+  public void initMonitorSeriesInfo() {
     String[] globalMonitorSeries = MonitorConstants.STAT_GLOBAL_ARRAY;
     for (int i = 0; i < StatMeasurementConstants.values().length; i++) {
       PartialPath globalMonitorPath = new PartialPath(globalMonitorSeries)
@@ -104,7 +105,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     TSRecord tsRecord = new TSRecord(insertTime, storageGroupSeries.getDevice());
     tsRecord.addTuple(
         new LongDataPoint(StatMeasurementConstants.TOTAL_POINTS.getMeasurement(),
-            storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
+            storageEngine.getProcessorMap().get(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
     storageEngine.insert(new InsertRowPlan(tsRecord));
 
     // update global monitor series
@@ -142,7 +143,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
               storageGroupPath.getFullPath());
           TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
           if (timeValuePair != null) {
-            storageEngine.getProcessor(storageGroupPath)
+            storageEngine.getProcessorMap().get(storageGroupPath)
                 .setMonitorSeriesValue(timeValuePair.getValue().getLong());
           }
         }
@@ -159,7 +160,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
           .calculateLastPairForSeriesLocally(Collections.singletonList(monitorSeries),
               Collections.singletonList(TSDataType.INT64),
               new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
-              null, Collections.emptyMap()).get(0).right;
+              null, Collections.singletonMap(monitorSeries.getDevice(),
+                  Collections.singleton(monitorSeries.getMeasurement()))).get(0).right;
       if (timeValuePair.getValue() != null) {
         return timeValuePair;
       }
@@ -193,6 +195,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
 
   public void close() {
     config.setEnableStatMonitor(false);
+    config.setEnableMonitorSeriesWrite(false);
   }
 
   // implements methods of StatMonitorMean from here
@@ -214,8 +217,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
   @Override
   public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      return storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue();
-    } catch (StorageEngineException | IllegalPathException e) {
+      VirtualStorageGroupManager virtualStorageGroupManager = storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
+      if(virtualStorageGroupManager == null){
+        return 0;
+      }
+
+      return virtualStorageGroupManager.getMonitorSeriesValue();
+    } catch (IllegalPathException e) {
       logger.error(e.getMessage());
       return -1;
     }

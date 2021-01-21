@@ -40,29 +40,29 @@ public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   /**
    * decoder for value column
    */
-  private Decoder valueDecoder;
+  protected Decoder valueDecoder;
 
   /**
    * decoder for time column
    */
-  private Decoder timeDecoder;
+  protected Decoder timeDecoder;
 
   /**
    * time column in memory
    */
-  private ByteBuffer timeBuffer;
+  protected ByteBuffer timeBuffer;
 
   /**
    * value column in memory
    */
-  private ByteBuffer valueBuffer;
+  protected ByteBuffer valueBuffer;
 
-  private Filter filter;
+  protected Filter filter;
 
   /**
    * A list of deleted intervals.
@@ -183,7 +183,7 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
-  private boolean isDeleted(long timestamp) {
+  protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
         return true;

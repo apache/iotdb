@@ -28,8 +28,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.server.member.MemberTest;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -67,6 +69,8 @@ public class BaseQueryTest extends MemberTest {
 
   @Before
   public void setUp() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     super.setUp();
     pathList = new ArrayList<>();
     dataTypes = new ArrayList<>();
@@ -74,7 +78,7 @@ public class BaseQueryTest extends MemberTest {
       pathList.add(new PartialPath(TestUtils.getTestSeries(i, 0)));
       dataTypes.add(TSDataType.DOUBLE);
     }
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     TestUtils.prepareData();
   }
 
@@ -82,7 +86,9 @@ public class BaseQueryTest extends MemberTest {
   @After
   public void tearDown() throws Exception {
     super.tearDown();
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   void checkSequentialDataset(QueryDataSet dataSet, int offset, int size) throws IOException {
@@ -98,7 +104,8 @@ public class BaseQueryTest extends MemberTest {
     assertFalse(dataSet.hasNext());
   }
 
-  protected void checkDoubleDataset(QueryDataSet queryDataSet, Object[] answers) throws IOException {
+  protected void checkDoubleDataset(QueryDataSet queryDataSet, Object[] answers)
+      throws IOException {
     Assert.assertTrue(queryDataSet.hasNext());
     RowRecord record = queryDataSet.next();
     List<Field> fields = record.getFields();

@@ -124,14 +124,14 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   private static String encodeDeletion(Deletion del) {
     return del.getType().toString() + SEPARATOR + del.getPathString()
-        + SEPARATOR + del.getVersionNum() + SEPARATOR
+        + SEPARATOR + del.getFileOffset() + SEPARATOR
         + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 
   /**
    * Decode a range deletion record. E.g. "DELETION,root.ln.wf01.wt01.temperature,111,100,300"
    * the index of field endTimestamp is length - 1, startTimestamp is length - 2,
-   * versionNum is length - 3. Fields in index range [1, length -3) all belong
+   * TsFile offset is length - 3. Fields in index range [1, length -3) all belong
    * to a timeseries path in case when the path contains comma.
    */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
@@ -142,9 +142,9 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     String path = "";
     long startTimestamp;
     long endTimestamp;
-    long versionNum;
+    long tsFileOffset;
     try {
-      versionNum = Long.parseLong(fields[fields.length - 3]);
+      tsFileOffset = Long.parseLong(fields[fields.length - 3]);
     } catch (NumberFormatException e) {
       return decodePointDeletion(fields);
     }
@@ -158,7 +158,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     try {
       String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 3);
       path = String.join(SEPARATOR, pathArray);
-      return new Deletion(new PartialPath(path), versionNum, startTimestamp, endTimestamp);
+      return new Deletion(new PartialPath(path), tsFileOffset, startTimestamp, endTimestamp);
     } catch (IllegalPathException e) {
       throw new IOException("Invalid series path: " + path);
     }

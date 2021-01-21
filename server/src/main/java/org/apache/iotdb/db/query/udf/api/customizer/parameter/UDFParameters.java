@@ -72,8 +72,10 @@ public class UDFParameters {
   }
 
   public TSDataType getDataType(int index) throws MetadataException {
-    return dataTypes != null ? dataTypes.get(index)
-        : SchemaUtils.getSeriesTypeByPath(paths.get(index));
+    if (dataTypes == null) {
+      dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
+    }
+    return dataTypes.get(index);
   }
 
   public TSDataType getDataType(String path) throws MetadataException {
@@ -82,6 +84,10 @@ public class UDFParameters {
 
   public TSDataType getDataType(PartialPath path) throws MetadataException {
     return SchemaUtils.getSeriesTypeByPath(path);
+  }
+
+  public boolean hasAttribute(String attributeKey) {
+    return attributes.containsKey(attributeKey);
   }
 
   public String getString(String key) {

@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
-  private static final short TYPE_RAW_STRING = -1;
+  private static final byte TYPE_RAW_STRING = -1;
 
   private long time;
   private Object[] values;
@@ -88,6 +88,18 @@ public class InsertRowPlan extends InsertPlan {
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
     isNeedInferType = true;
+  }
+
+  public InsertRowPlan(PartialPath deviceId, long insertTime, String[] measurementList,
+      ByteBuffer  values) throws QueryProcessException {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurementList.length];
+    this.values = new Object[measurementList.length];
+    this.fillValues(values);
+    isNeedInferType = false;
   }
 
   @TestOnly
@@ -256,7 +268,10 @@ public class InsertRowPlan extends InsertPlan {
     stream.writeLong(time);
 
     putString(stream, deviceId.getFullPath());
+    serializeMeasurementsAndValues(stream);
+  }
 
+  void serializeMeasurementsAndValues(DataOutputStream stream) throws IOException {
     stream.writeInt(
         measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -361,7 +376,7 @@ public class InsertRowPlan extends InsertPlan {
     for (int i = 0; i < measurements.length; i++) {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
-      short typeNum = ReadWriteIOUtils.readShort(buffer);
+      byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
       if (typeNum == TYPE_RAW_STRING) {
         values[i] = ReadWriteIOUtils.readString(buffer);
         continue;
@@ -400,7 +415,10 @@ public class InsertRowPlan extends InsertPlan {
     buffer.putLong(time);
 
     putString(buffer, deviceId.getFullPath());
+    serializeMeasurementsAndValues(buffer);
+  }
 
+  void serializeMeasurementsAndValues(ByteBuffer buffer) {
     buffer
         .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
@@ -425,7 +443,10 @@ public class InsertRowPlan extends InsertPlan {
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     this.time = buffer.getLong();
     this.deviceId = new PartialPath(readString(buffer));
+    deserializeMeasurementsAndValues(buffer);
+  }
 
+  void deserializeMeasurementsAndValues(ByteBuffer buffer) {
     int measurementSize = buffer.getInt();
 
     this.measurements = new String[measurementSize];
@@ -449,6 +470,10 @@ public class InsertRowPlan extends InsertPlan {
   public String toString() {
     return "deviceId: " + deviceId + ", time: " + time + ", measurements: " + Arrays
         .toString(measurements) + ", values: " + Arrays.toString(values);
+  }
+
+  boolean hasFailedValues() {
+    return failedValues != null && !failedValues.isEmpty();
   }
 
   public TimeValuePair composeTimeValuePair(int measurementIndex) {

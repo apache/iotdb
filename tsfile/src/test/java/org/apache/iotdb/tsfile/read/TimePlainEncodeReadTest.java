@@ -184,7 +184,6 @@ public class TimePlainEncodeReadTest {
       } else if (cnt == 4) {
         assertEquals(1480562618976L, r.getTimestamp());
       }
-      // System.out.println(r);
       cnt++;
     }
     assertEquals(5, cnt);
@@ -214,7 +213,6 @@ public class TimePlainEncodeReadTest {
     cnt = 1;
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
-      // System.out.println(r);
       if (cnt == 4) {
         assertEquals(1480562618913L, r.getTimestamp());
       } else if (cnt == 7) {
@@ -239,7 +237,6 @@ public class TimePlainEncodeReadTest {
     int cnt = 1;
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
-      System.out.println(r);
       if (cnt == 1) {
         assertEquals(1480562618972L, r.getTimestamp());
         Field f1 = r.getFields().get(0);
@@ -273,7 +270,6 @@ public class TimePlainEncodeReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.toString());
       }
-      System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(1, cnt);
@@ -294,7 +290,6 @@ public class TimePlainEncodeReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.getBinaryV().toString());
       }
-      // System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(0, cnt);

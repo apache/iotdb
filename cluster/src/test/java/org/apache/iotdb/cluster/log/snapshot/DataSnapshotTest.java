@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -61,6 +61,11 @@ public abstract class DataSnapshotTest {
   @Before
   public void setUp() throws MetadataException, StartupException {
     dataGroupMember = new TestDataGroupMember() {
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getAsyncClient(node);
+      }
+
       @Override
       public AsyncClient getAsyncClient(Node node) {
         return new AsyncDataClient(null, null, null) {

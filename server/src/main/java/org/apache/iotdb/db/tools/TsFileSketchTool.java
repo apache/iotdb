@@ -23,12 +23,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -60,12 +59,7 @@ public class TsFileSketchTool {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
         TsFileMetadata tsFileMetaData = reader.readFileMetadata();
         List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-        List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-        reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
-        Map<Long, Long> versionMap = new HashMap<>();
-        for (Pair<Long, Long> versionPair : versionInfo) {
-          versionMap.put(versionPair.left - Long.BYTES - 1, versionPair.right);
-        }
+        reader.selfCheck(null, allChunkGroupMetadata, false);
 
         // begin print
         StringBuilder str1 = new StringBuilder();
@@ -81,13 +75,21 @@ public class TsFileSketchTool {
                 String.format("%20d", TSFileConfig.MAGIC_STRING.getBytes().length)
                         + "|\t[version number] "
                         + reader.readVersionNumber());
+        long nextChunkGroupHeaderPos = (long) TSFileConfig.MAGIC_STRING.getBytes().length 
+            + Byte.BYTES;
         // ChunkGroup begins
         for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() +
                   ", num of Chunks:" + chunkGroupMetadata.getChunkMetadataList().size());
+          // chunkGroupHeader begins
+          printlnBoth(pw, String.format("%20s", nextChunkGroupHeaderPos) + "|\t[Chunk Group Header]");
+          ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader(nextChunkGroupHeaderPos, false);
+          printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
+          printlnBoth(pw,
+                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupHeader.getDeviceID());
           // chunk begins
-          long chunkEndPos = 0;
           for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+            Chunk chunk = reader.readMemChunk(chunkMetadata);
             printlnBoth(pw,
                     String.format("%20d", chunkMetadata.getOffsetOfChunkHeader()) + "|\t[Chunk] of "
                             + chunkMetadata.getMeasurementUid() + ", numOfPoints:" + chunkMetadata
@@ -95,36 +97,13 @@ public class TsFileSketchTool {
                             + chunkMetadata.getEndTime() + "], tsDataType:" + chunkMetadata.getDataType()
                             + ", \n" + String.format("%20s", "") + " \t" + chunkMetadata.getStatistics());
             printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 1");
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[ChunkHeader]");
-            Chunk chunk = reader.readMemChunk(chunkMetadata);
-            printlnBoth(pw,
-                    String.format("%20s", "") + "|\t\t" + chunk.getHeader().getNumOfPages() + " pages");
-            chunkEndPos =
+            nextChunkGroupHeaderPos =
                     chunkMetadata.getOffsetOfChunkHeader() + chunk.getHeader().getSerializedSize()
-                            + chunk.getHeader().getDataSize();
+                            + chunk.getHeader().getDataSize() - 1;
           }
-          // chunkGroupFooter begins
-          printlnBoth(pw, String.format("%20s", chunkEndPos) + "|\t[Chunk Group Footer]");
-          ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter(chunkEndPos, false);
-          printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 0");
-          printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[deviceID] " + chunkGroupFooter.getDeviceID());
-          printlnBoth(pw,
-                  String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupFooter.getDataSize());
-          printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupFooter
-                  .getNumberOfChunks());
+
           printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
                   + chunkGroupMetadata.getDevice() + " ends");
-          // versionInfo begins if there is a versionInfo
-          if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
-            printlnBoth(pw,
-                    String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize())
-                            + "|\t[Version Info]");
-            printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
-            printlnBoth(pw,
-                    String.format("%20s", "") + "|\t\t[version] "
-                            + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
-          }
         }
 
         // metadata begins
@@ -166,11 +145,6 @@ public class TsFileSketchTool {
         printlnBoth(pw,
                 String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().getChildren()
                         .size() + " key&TsMetadataIndex");
-        printlnBoth(pw,
-                String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());
-        printlnBoth(pw,
-                String.format("%20s", "") + "|\t\t[invalidChunkNum] " + tsFileMetaData
-                        .getInvalidChunkNum());
 
         // bloom filter
         BloomFilter bloomFilter = tsFileMetaData.getBloomFilter();

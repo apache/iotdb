@@ -71,7 +71,7 @@ public class ChunkMetadataCacheTest {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup,
-        new DirectFlushPolicy());
+        new DirectFlushPolicy(), storageGroup);
     insertData();
   }
 

@@ -29,10 +29,14 @@ public class RpcTransportFactory extends TTransportFactory {
   // TODO: make it a config
   public static boolean USE_SNAPPY = false;
   public static final RpcTransportFactory INSTANCE;
+
+  private static int initialBufferCapacity = RpcUtils.DEFAULT_BUF_CAPACITY;
+  private static int maxLength = RpcUtils.DEFAULT_MAX_LENGTH;
+
   static {
     INSTANCE = USE_SNAPPY ?
         new RpcTransportFactory(new TimeoutChangeableTSnappyFramedTransport.Factory()) :
-        new RpcTransportFactory(new Factory());
+        new RpcTransportFactory(new Factory(initialBufferCapacity, maxLength));
   }
 
   private TTransportFactory inner;
@@ -52,5 +56,13 @@ public class RpcTransportFactory extends TTransportFactory {
 
   public static void setUseSnappy(boolean useSnappy) {
     USE_SNAPPY = useSnappy;
+  }
+
+  public static void setInitialBufferCapacity(int initialBufferCapacity) {
+    RpcTransportFactory.initialBufferCapacity = initialBufferCapacity;
+  }
+
+  public static void setMaxLength(int maxLength) {
+    RpcTransportFactory.maxLength = maxLength;
   }
 }

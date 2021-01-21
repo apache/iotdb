@@ -56,13 +56,13 @@ public class MetadataIndexEntry {
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(name, outputStream);
+    byteLen += ReadWriteIOUtils.writeVar(name, outputStream);
     byteLen += ReadWriteIOUtils.write(offset, outputStream);
     return byteLen;
   }
 
   public static MetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
-    String name = ReadWriteIOUtils.readString(buffer);
+    String name = ReadWriteIOUtils.readVarIntString(buffer);
     long offset = ReadWriteIOUtils.readLong(buffer);
     return new MetadataIndexEntry(name, offset);
   }

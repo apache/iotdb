@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
@@ -174,7 +175,7 @@ public class IoTDBConfig {
   /**
    * When inserting rejected exceeds this, throw an exception
    */
-  private int maxWaitingTimeWhenInsertBlockedInMs = 10000; 
+  private int maxWaitingTimeWhenInsertBlockedInMs = 10000;
   /**
    * Is the write ahead log enable.
    */
@@ -476,6 +477,11 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /**
+   * the max executing time of query in ms.
+   */
+  private int queryTimeThreshold = 60000;
+
+  /**
    * Replace implementation class of JDBC service
    */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -764,6 +770,12 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
+  /**
+   * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
+   * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
+   */
+  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
@@ -797,7 +809,7 @@ public class IoTDBConfig {
    * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
    * udfCollectorMemoryBudgetInMB
    */
-  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+  private float udfMemoryBudgetInMB = (float) Math.min(30.0f, 0.2 * allocateMemoryForRead);
 
   private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
@@ -832,6 +844,16 @@ public class IoTDBConfig {
    * if the debug_state is true, we will print more details about the process of query
    */
   private boolean debugState = false;
+
+  /**
+   * the size of ioTaskQueue
+   */
+  private int ioTaskQueueSizeForFlushing = 10;
+
+  /**
+   * the number of virtual storage groups per user-defined storage group
+   */
+  private int virtualStorageGroupNum = 1;
 
   public IoTDBConfig() {
     // empty constructor
@@ -932,6 +954,14 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
+  }
+
+  public TimeIndexLevel getTimeIndexLevel() {
+    return timeIndexLevel;
+  }
+
+  public void setTimeIndexLevel(String timeIndexLevel) {
+    this.timeIndexLevel = TimeIndexLevel.valueOf(timeIndexLevel);
   }
 
   void updatePath() {
@@ -1119,7 +1149,7 @@ public class IoTDBConfig {
     return schemaDir;
   }
 
-  void setSchemaDir(String schemaDir) {
+  public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
   }
 
@@ -1297,6 +1327,14 @@ public class IoTDBConfig {
 
   public void setCacheFileReaderClearPeriod(long cacheFileReaderClearPeriod) {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
+  }
+
+  public int getQueryTimeThreshold() {
+    return queryTimeThreshold;
+  }
+
+  public void setQueryTimeThreshold(int queryTimeThreshold) {
+    this.queryTimeThreshold = queryTimeThreshold;
   }
 
   public boolean isReadOnly() {
@@ -2212,6 +2250,14 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
   public boolean isRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
@@ -2227,5 +2273,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getIoTaskQueueSizeForFlushing() {
+    return ioTaskQueueSizeForFlushing;
+  }
+
+  public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
+    this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
   }
 }

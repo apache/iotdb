@@ -43,6 +43,8 @@ public class LogicalGenerator {
     ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
+    lexer1.removeErrorListeners();
+    lexer1.addErrorListener(SQLParseError.INSTANCE);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
     SqlBaseParser parser1 = new SqlBaseParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
@@ -54,6 +56,8 @@ public class LogicalGenerator {
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(sql);
       SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
+      lexer2.removeErrorListeners();
+      lexer2.addErrorListener(SQLParseError.INSTANCE);
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
       SqlBaseParser parser2 = new SqlBaseParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);

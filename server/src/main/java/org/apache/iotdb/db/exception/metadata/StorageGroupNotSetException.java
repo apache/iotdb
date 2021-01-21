@@ -26,4 +26,9 @@ public class StorageGroupNotSetException extends MetadataException {
   public StorageGroupNotSetException(String path) {
     super(String.format("Storage group is not set for current seriesPath: [%s]", path));
   }
+
+  public StorageGroupNotSetException(String path, boolean isUserException) {
+    super(String.format("Storage group is not set for current seriesPath: [%s]", path));
+    this.isUserException = isUserException;
+  }
 }

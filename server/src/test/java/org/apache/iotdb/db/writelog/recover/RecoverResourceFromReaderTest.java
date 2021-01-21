@@ -21,12 +21,15 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -38,6 +41,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -87,7 +91,8 @@ public class RecoverResourceFromReaderTest {
     schema = new Schema();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        PartialPath path = new PartialPath("root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
+        PartialPath path = new PartialPath(
+            "root.sg.device" + i + IoTDBConstant.PATH_SEPARATOR + "sensor" + j);
         MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64,
             TSEncoding.PLAIN);
         schema.registerTimeseries(path.toTSFilePath(), measurementSchema);
@@ -99,17 +104,20 @@ public class RecoverResourceFromReaderTest {
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor4")),
         new MeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.sg.device99.sensor4"), TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor4"), TSDataType.INT64,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor2")),
         new MeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.sg.device99.sensor2"), TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor2"), TSDataType.INT64,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     schema.registerTimeseries(new Path(("root.sg.device99"), ("sensor1")),
         new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     IoTDB.metaManager
-        .createTimeseries(new PartialPath("root.sg.device99.sensor1"), TSDataType.INT64, TSEncoding.PLAIN,
+        .createTimeseries(new PartialPath("root.sg.device99.sensor1"), TSDataType.INT64,
+            TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     writer = new TsFileWriter(tsF, schema);
 
@@ -134,7 +142,14 @@ public class RecoverResourceFromReaderTest {
     writer.flushAllChunkGroups();
     writer.getIOWriter().close();
 
-    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());
+    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName(), () -> {
+      ByteBuffer[] byteBuffers = new ByteBuffer[2];
+      byteBuffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      byteBuffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return byteBuffers;
+    });
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
@@ -145,16 +160,19 @@ public class RecoverResourceFromReaderTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k + 10);
         }
-        InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i, measurements,
+        InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i,
+            measurements,
             types, values);
         node.write(insertRowPlan);
       }
       node.notifyStartFlush();
     }
-    InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 1, new String[]{"sensor4"},
+    InsertRowPlan insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 1,
+        new String[]{"sensor4"},
         new TSDataType[]{TSDataType.INT64}, new String[]{"4"});
     node.write(insertRowPlan);
-    insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 300, new String[]{"sensor2"},
+    insertRowPlan = new InsertRowPlan(new PartialPath("root.sg.device99"), 300,
+        new String[]{"sensor2"},
         new TSDataType[]{TSDataType.INT64}, new String[]{"2"});
     node.write(insertRowPlan);
     node.close();
@@ -167,7 +185,10 @@ public class RecoverResourceFromReaderTest {
     EnvironmentUtils.cleanEnv();
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
-    node.delete();
+    ByteBuffer[] array = node.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
   }
 
   @Test
@@ -181,9 +202,20 @@ public class RecoverResourceFromReaderTest {
       ReadWriteIOUtils.write(123, outputStream);
     }
 
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, false);
-    performer.recover(true).close();
+    performer.recover(true, () -> {
+      ByteBuffer[] byteBuffers = new ByteBuffer[2];
+      byteBuffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      byteBuffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return byteBuffers;
+    }, (ByteBuffer[] byteBuffers) -> {
+      for (ByteBuffer byteBuffer : byteBuffers) {
+        MmapUtil.clean((MappedByteBuffer) byteBuffer);
+      }
+    }).close();
     assertEquals(1, resource.getStartTime("root.sg.device99"));
     assertEquals(300, resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -87,7 +86,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void finalizeUDFExecutors(long queryId) throws IOException {
+  public void finalizeUDFExecutors(long queryId) {
     try {
       for (UDTFExecutor executor : columnName2Executor.values()) {
         executor.beforeDestroy();

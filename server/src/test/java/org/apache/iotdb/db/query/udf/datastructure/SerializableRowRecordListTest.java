@@ -46,7 +46,8 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   public void setUp() throws Exception {
     super.setUp();
     originalList = new ArrayList<>();
-    testList = SerializableRowRecordList.newSerializableRowRecordList(DATA_TYPES, QUERY_ID);
+    testList = SerializableRowRecordList
+        .newSerializableRowRecordList(QUERY_ID, DATA_TYPES, INTERNAL_ROW_RECORD_LIST_CAPACITY);
   }
 
   @After
@@ -96,7 +97,35 @@ public class SerializableRowRecordListTest extends SerializableListTest {
       }
     }
     originalList.add(rowRecord);
-    testList.put(rowRecord);
+    testList.put(convertRowRecordToRowInObjects(rowRecord));
+  }
+
+  protected Object[] convertRowRecordToRowInObjects(RowRecord rowRecord) {
+    Object[] rowInObjects = new Object[rowRecord.getFields().size() + 1];
+    rowInObjects[rowRecord.getFields().size()] = rowRecord.getTimestamp();
+    for (int i = 0; i < rowRecord.getFields().size(); ++i) {
+      switch (rowRecord.getFields().get(i).getDataType()) {
+        case INT32:
+          rowInObjects[i] = rowRecord.getFields().get(i).getIntV();
+          break;
+        case INT64:
+          rowInObjects[i] = rowRecord.getFields().get(i).getLongV();
+          break;
+        case FLOAT:
+          rowInObjects[i] = rowRecord.getFields().get(i).getFloatV();
+          break;
+        case DOUBLE:
+          rowInObjects[i] = rowRecord.getFields().get(i).getDoubleV();
+          break;
+        case BOOLEAN:
+          rowInObjects[i] = rowRecord.getFields().get(i).getBoolV();
+          break;
+        case TEXT:
+          rowInObjects[i] = rowRecord.getFields().get(i).getBinaryV();
+          break;
+      }
+    }
+    return rowInObjects;
   }
 
   protected void serializeAndDeserializeOnce() {
@@ -115,26 +144,26 @@ public class SerializableRowRecordListTest extends SerializableListTest {
     for (int i = 0; i < testList.size(); ++i) {
       assertEquals(originalList.get(i).getTimestamp(), testList.getTime(i));
       List<Field> originalFields = originalList.get(i).getFields();
-      List<Field> testFields = testList.getRowRecord(i).getFields();
-      for (int j = 0; j < testFields.size(); ++j) {
+      Object[] testFields = testList.getRowRecord(i);
+      for (int j = 0; j < DATA_TYPES.length; ++j) {
         switch (DATA_TYPES[j]) {
           case INT32:
-            assertEquals(originalFields.get(j).getIntV(), testFields.get(j).getIntV());
+            assertEquals(originalFields.get(j).getIntV(), (int) testFields[j]);
             break;
           case INT64:
-            assertEquals(originalFields.get(j).getLongV(), testFields.get(j).getLongV());
+            assertEquals(originalFields.get(j).getLongV(), (long) testFields[j]);
             break;
           case FLOAT:
-            assertEquals(originalFields.get(j).getFloatV(), testFields.get(j).getFloatV(), 0);
+            assertEquals(originalFields.get(j).getFloatV(), (float) testFields[j], 0);
             break;
           case DOUBLE:
-            assertEquals(originalFields.get(j).getDoubleV(), testFields.get(j).getDoubleV(), 0);
+            assertEquals(originalFields.get(j).getDoubleV(), (double) testFields[j], 0);
             break;
           case BOOLEAN:
-            assertEquals(originalFields.get(j).getBoolV(), testFields.get(j).getBoolV());
+            assertEquals(originalFields.get(j).getBoolV(), testFields[j]);
             break;
           case TEXT:
-            assertEquals(originalFields.get(j).getBinaryV(), testFields.get(j).getBinaryV());
+            assertEquals(originalFields.get(j).getBinaryV(), testFields[j]);
             break;
         }
       }

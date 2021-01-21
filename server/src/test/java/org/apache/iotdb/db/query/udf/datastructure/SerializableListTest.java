@@ -30,6 +30,8 @@ public abstract class SerializableListTest {
 
   protected final static long QUERY_ID = 0;
 
+  protected final static int INTERNAL_ROW_RECORD_LIST_CAPACITY = 8;
+
   public void setUp() throws Exception {
     TemporaryQueryDataFileService.getInstance().start();
   }

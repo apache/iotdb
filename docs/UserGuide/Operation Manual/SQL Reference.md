@@ -1024,6 +1024,21 @@ TRACING ON    // Open performance tracing
 TRACING OFF   // Close performance tracing
 ```
 
+## Kill query
+
+- Show the list of queries in progress
+
+```
+SHOW QUERY PROCESSLIST
+```
+
+- Kill query
+```
+KILL QUERY INT?
+E.g. KILL QUERY
+E.g. KILL QUERY 2
+```
+
 # Reference
 
 ## Identifiers

@@ -32,12 +32,16 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrat
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Counter implements UDTF {
 
+  private static final Logger logger = LoggerFactory.getLogger(Counter.class);
+
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
-    System.out.println("Counter#beforeStart");
+    logger.debug("Counter#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
     switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
       case ACCESS_STRATEGY_SLIDING_SIZE:
@@ -71,6 +75,6 @@ public class Counter implements UDTF {
 
   @Override
   public void beforeDestroy() {
-    System.out.println("Counter#beforeDestroy");
+    logger.debug("Counter#beforeDestroy");
   }
 }
