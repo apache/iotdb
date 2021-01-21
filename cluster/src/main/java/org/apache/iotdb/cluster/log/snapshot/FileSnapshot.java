@@ -379,7 +379,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @param resource
      */
     private void loadRemoteResource(RemoteTsFileResource resource) throws IllegalPathException {
-      // the new file is stored at: remote/<nodeIdentifier>/${resource.getAbsolutePath()}
+      // the new file is stored at: remote/<nodeIdentifier>/resource.getTsFile().getAbsolutePath()
       PartialPath storageGroupName = new PartialPath(
           FilePathUtils.getLogicalStorageGroupName(resource));
       File remoteModFile =

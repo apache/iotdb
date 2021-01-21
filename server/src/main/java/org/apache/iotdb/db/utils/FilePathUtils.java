@@ -64,7 +64,7 @@ public class FilePathUtils {
   }
 
   /**
-   * IMPORTANT, When the path of TsFile changes, the following methods should be changed
+   * IMPORTANT, when the path of TsFile changes, the following methods should be changed
    * accordingly.
    *
    * @param resource the tsFileResource
