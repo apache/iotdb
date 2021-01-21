@@ -16,11 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.encoding.common;
 
-/**
- * In current version, we only support BIG_ENDIAN mode.
- */
-public enum EndianType {
-  BIG_ENDIAN, LITTLE_ENDIAN
+package org.apache.iotdb.db.query.dataset;
+
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+public interface UDFInputDataSet {
+
+  List<TSDataType> getDataTypes();
+
+  boolean hasNextRowInObjects() throws IOException;
+
+  Object[] nextRowInObjects() throws IOException;
 }

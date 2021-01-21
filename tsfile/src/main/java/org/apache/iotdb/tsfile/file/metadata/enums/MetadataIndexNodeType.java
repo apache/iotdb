@@ -33,7 +33,31 @@ import java.nio.ByteBuffer;
  * LEAF_MEASUREMENT: leaf nodes of the index tree's device level, points to TimeseriesMetadata
  */
 public enum MetadataIndexNodeType {
-  INTERNAL_DEVICE, LEAF_DEVICE, INTERNAL_MEASUREMENT, LEAF_MEASUREMENT;
+  /**
+   * INTERNAL_DEVICE
+   */
+  INTERNAL_DEVICE((byte) 0),
+
+  /**
+   * LEAF_DEVICE
+   */
+  LEAF_DEVICE((byte) 1),
+
+  /**
+   * INTERNAL_MEASUREMENT
+   */
+  INTERNAL_MEASUREMENT((byte) 2),
+
+  /**
+   * INTERNAL_MEASUREMENT
+   */
+  LEAF_MEASUREMENT((byte) 3);
+
+  private final byte type;
+
+  MetadataIndexNodeType(byte type) {
+    this.type = type;
+  }
 
   /**
    * deserialize byte number.
@@ -42,19 +66,13 @@ public enum MetadataIndexNodeType {
    * @return MetadataIndexNodeType
    */
   public static MetadataIndexNodeType deserialize(byte i) {
-    if (i >= 4) {
-      throw new IllegalArgumentException("Invalid input: " + i);
+    for (MetadataIndexNodeType metadataIndexNodeType : MetadataIndexNodeType.values()) {
+      if (i == metadataIndexNodeType.type) {
+        return metadataIndexNodeType;
+      }
     }
-    switch (i) {
-      case 0:
-        return INTERNAL_DEVICE;
-      case 1:
-        return LEAF_DEVICE;
-      case 2:
-        return INTERNAL_MEASUREMENT;
-      default:
-        return LEAF_MEASUREMENT;
-    }
+
+    throw new IllegalArgumentException("Invalid input: " + i);
   }
 
   public static MetadataIndexNodeType deserializeFrom(ByteBuffer buffer) {
@@ -79,17 +97,6 @@ public enum MetadataIndexNodeType {
    * @return -enum type
    */
   public byte serialize() {
-    switch (this) {
-      case INTERNAL_DEVICE:
-        return 0;
-      case LEAF_DEVICE:
-        return 1;
-      case INTERNAL_MEASUREMENT:
-        return 2;
-      case LEAF_MEASUREMENT:
-        return 3;
-      default:
-        return -1;
-    }
+    return type;
   }
 }

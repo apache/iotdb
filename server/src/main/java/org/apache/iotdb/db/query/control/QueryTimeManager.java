@@ -44,8 +44,8 @@ public class QueryTimeManager implements IService {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
-   * the key of queryInfoMap is the query id and the value of queryInfoMap is the start
-   * time, the statement of this query.
+   * the key of queryInfoMap is the query id and the value of queryInfoMap is the start time, the
+   * statement of this query.
    */
   private Map<Long, QueryInfo> queryInfoMap;
 
@@ -61,13 +61,13 @@ public class QueryTimeManager implements IService {
   }
 
   public void registerQuery(long queryId, long startTime, String sql, long timeout) {
-    timeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
+    final long finalTimeout = timeout == 0 ? config.getQueryTimeThreshold() : timeout;
     queryInfoMap.put(queryId, new QueryInfo(startTime, sql));
     // submit a scheduled task to judge whether query is still running after timeout
     ScheduledFuture<?> scheduledFuture = executorService.schedule(() -> {
       killQuery(queryId);
-      logger.warn(String.format("Query is time out with queryId %d", queryId));
-    }, timeout, TimeUnit.MILLISECONDS);
+      logger.warn(String.format("Query is time out (%dms) with queryId %d", finalTimeout, queryId));
+    }, finalTimeout, TimeUnit.MILLISECONDS);
     queryScheduledTaskMap.put(queryId, scheduledFuture);
   }
 
@@ -94,7 +94,7 @@ public class QueryTimeManager implements IService {
 
   public static void checkQueryAlive(long queryId) {
     if (getInstance().queryInfoMap.get(queryId) != null &&
-          getInstance().queryInfoMap.get(queryId).isInterrupted()) {
+        getInstance().queryInfoMap.get(queryId).isInterrupted()) {
       if (getInstance().unRegisterQuery(queryId).get()) {
         throw new QueryTimeoutRuntimeException(
             QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
@@ -139,8 +139,8 @@ public class QueryTimeManager implements IService {
   public class QueryInfo {
 
     /**
-     *  To reduce the cost of memory, we only keep the a certain size statement.
-     *  For statement whose length is over this, we keep its head and tail.
+     * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
+     * length is over this, we keep its head and tail.
      */
     private static final int MAX_STATEMENT_LENGTH = 64;
 

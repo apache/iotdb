@@ -16,27 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.v2.file.metadata;
 
-package org.apache.iotdb.tsfile.v1.file.metadata;
+import java.nio.ByteBuffer;
 
-import java.io.IOException;
-import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+public class MetadataIndexEntryV2 {
 
-public class TimeseriesMetadataForV1 extends TimeseriesMetadata {
-  
-  private List<ChunkMetadata> chunkMetadataList;
-
-  public void setChunkMetadataList(List<ChunkMetadata> chunkMetadataList) {
-    this.chunkMetadataList = chunkMetadataList;
+  private MetadataIndexEntryV2() {
   }
 
-  @Override
-  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
-    chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
-    return chunkMetadataList;
+  public static MetadataIndexEntry deserializeFrom(ByteBuffer buffer) {
+    String name = ReadWriteIOUtils.readString(buffer);
+    long offset = ReadWriteIOUtils.readLong(buffer);
+    return new MetadataIndexEntry(name, offset);
   }
-
 }

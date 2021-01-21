@@ -22,10 +22,8 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 /**
@@ -38,11 +36,11 @@ public class IntRleEncoder extends RleEncoder<Integer> {
    */
   private IntPacker packer;
 
-  public IntRleEncoder(EndianType endianType) {
-    super(endianType);
+  public IntRleEncoder() {
+    super();
     bufferedValues = new Integer[TSFileConfig.RLE_MIN_REPEATED_NUM];
     preValue = 0;
-    values = new ArrayList<Integer>();
+    values = new ArrayList<>();
   }
 
   @Override

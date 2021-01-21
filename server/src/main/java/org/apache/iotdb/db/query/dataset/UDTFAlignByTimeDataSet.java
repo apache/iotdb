@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -32,6 +31,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignByTimeDataSet {
 
-  protected TreeSet<Long> timeHeap;
+  protected TimeSelector timeHeap;
 
   /**
    * execute with value filter
@@ -69,7 +69,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   }
 
   protected void initTimeHeap() throws IOException, QueryProcessException {
-    timeHeap = new TreeSet<>();
+    timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
       if (reader.next()) {
         timeHeap.add(reader.currentTime());

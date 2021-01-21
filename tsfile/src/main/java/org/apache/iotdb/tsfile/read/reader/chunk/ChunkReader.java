@@ -19,41 +19,41 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.v1.file.utils.HeaderUtils;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
+import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 
 public class ChunkReader implements IChunkReader {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
   private IUnCompressor unCompressor;
-  private Decoder timeDecoder = Decoder.getDecoderByType(
+  private final Decoder timeDecoder = Decoder.getDecoderByType(
       TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
       TSDataType.INT64);
 
   protected Filter filter;
 
   private List<IPageReader> pageReaderList = new LinkedList<>();
-  
-  private boolean isFromOldTsFile = false;
 
   /**
    * A list of deleted intervals.
@@ -72,28 +72,24 @@ public class ChunkReader implements IChunkReader {
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
-
-
-    initAllPageReaders();
+    if (chunk.isFromOldFile()) {
+      initAllPageReadersV2();
+    }
+    else {
+      initAllPageReaders(chunk.getChunkStatistic());
+    }
   }
 
-  public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile) throws IOException {
-    this.filter = filter;
-    this.chunkDataBuffer = chunk.getData();
-    this.deleteIntervalList = chunk.getDeleteIntervalList();
-    chunkHeader = chunk.getHeader();
-    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
-    this.isFromOldTsFile = isFromOldFile;
-
-    initAllPageReaders();
-  }
-
-  private void initAllPageReaders() throws IOException {
+  private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
-      PageHeader pageHeader = isFromOldTsFile ? HeaderUtils.deserializePageHeaderV1(chunkDataBuffer, chunkHeader.getDataType()) :
-          PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      PageHeader pageHeader;
+      if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkStatistic);
+      } else {
+        pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      }
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
         pageReaderList.add(constructPageReaderForNextPage(pageHeader));
@@ -102,7 +98,6 @@ public class ChunkReader implements IChunkReader {
       }
     }
   }
-
 
 
   /**
@@ -158,10 +153,18 @@ public class ChunkReader implements IChunkReader {
 
     chunkDataBuffer.get(compressedPageBody);
     Decoder valueDecoder = Decoder
-            .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+        .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
     byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    unCompressor.uncompress(compressedPageBody,0, compressedPageBodyLength,
-        uncompressedPageData, 0);
+    try {
+      unCompressor.uncompress(compressedPageBody, 0, compressedPageBodyLength,
+          uncompressedPageData, 0);
+    } catch (Exception e) {
+      throw new IOException("Uncompress error! uncompress size: " + pageHeader.getUncompressedSize() +
+          "compressed size: " + pageHeader.getCompressedSize() +
+          "page header: " + pageHeader +
+          e.getMessage());
+    }
+
     ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
@@ -180,5 +183,45 @@ public class ChunkReader implements IChunkReader {
   @Override
   public List<IPageReader> loadPageReaderList() {
     return pageReaderList;
+  }
+
+  // For reading TsFile V2
+  private void initAllPageReadersV2() throws IOException {
+    // construct next satisfied page header
+    while (chunkDataBuffer.remaining() > 0) {
+      // deserialize a PageHeader from chunkDataBuffer
+      PageHeader pageHeader = PageHeaderV2.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
+      // if the current page satisfies
+      if (pageSatisfied(pageHeader)) {
+        pageReaderList.add(constructPageReaderForNextPageV2(pageHeader));
+      } else {
+        skipBytesInStreamByLength(pageHeader.getCompressedSize());
+      }
+    }
+  }
+
+  //For reading TsFile V2
+  private PageReader constructPageReaderForNextPageV2(PageHeader pageHeader)
+      throws IOException {
+    int compressedPageBodyLength = pageHeader.getCompressedSize();
+    byte[] compressedPageBody = new byte[compressedPageBodyLength];
+
+    // doesn't has a complete page body
+    if (compressedPageBodyLength > chunkDataBuffer.remaining()) {
+      throw new IOException("do not has a complete page body. Expected:" + compressedPageBodyLength
+          + ". Actual:" + chunkDataBuffer.remaining());
+    }
+
+    chunkDataBuffer.get(compressedPageBody);
+    Decoder valueDecoder = Decoder
+            .getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    unCompressor.uncompress(compressedPageBody,0, compressedPageBodyLength,
+        uncompressedPageData, 0);
+    ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
+    PageReader reader = new PageReaderV2(pageHeader, pageData, chunkHeader.getDataType(),
+        valueDecoder, timeDecoder, filter);
+    reader.setDeleteIntervalList(deleteIntervalList);
+    return reader;
   }
 }

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LongStatistics extends Statistics<Long> {
 
@@ -67,7 +67,8 @@ public class LongStatistics extends Statistics<Long> {
     this.lastValue = lastValue;
   }
 
-  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue, double sumValue, long startTime, long endTime) {
+  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue,
+      double sumValue, long startTime, long endTime) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -113,8 +114,13 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public double getSumValue() {
+  public double getSumDoubleValue() {
     return sumValue;
+  }
+
+  @Override
+  public long getSumLongValue() {
+    throw new StatisticsClassException("Long statistics does not support: long sum");
   }
 
   @Override
@@ -154,11 +160,11 @@ public class LongStatistics extends Statistics<Long> {
     LongStatistics longStats = (LongStatistics) stats;
     if (isEmpty) {
       initializeStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(),
-          longStats.getLastValue(), longStats.getSumValue());
+          longStats.getLastValue(), longStats.sumValue);
       isEmpty = false;
     } else {
-      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(), longStats.getLastValue(),
-          longStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
+      updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(),
+          longStats.getLastValue(), longStats.sumValue, stats.getStartTime(), stats.getEndTime());
     }
 
   }
@@ -225,7 +231,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readLong(inputStream);
     this.maxValue = ReadWriteIOUtils.readLong(inputStream);
     this.firstValue = ReadWriteIOUtils.readLong(inputStream);
@@ -234,7 +240,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readLong(byteBuffer);
     this.firstValue = ReadWriteIOUtils.readLong(byteBuffer);
@@ -244,7 +250,8 @@ public class LongStatistics extends Statistics<Long> {
 
   @Override
   public String toString() {
-    return super.toString() + " [minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
+    return super.toString() + " [minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:"
+        + firstValue +
         ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
   }
 }
