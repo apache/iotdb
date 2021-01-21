@@ -25,11 +25,14 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -38,7 +41,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
@@ -84,6 +90,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -241,6 +248,100 @@ public class StorageGroupProcessor {
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
+  private static final int WAL_BUFFER_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2;
+
+  private static final int MAX_WAL_BYTEBUFFER_NUM =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * 4;
+
+  private static final long DEFAULT_POOL_TRIM_INTERVAL_MILLIS = 10_000;
+
+  private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
+
+  private int currentWalPoolSize = 0;
+
+  // this field is used to avoid when one writer release bytebuffer back to pool,
+  // and the next writer has already arrived, but the check thread get the lock first, it find the pool
+  // is not empty, so it free the memory. When the next writer get the lock, it will apply the memory again.
+  // So our free memory strategy is only when the expected size less than the current pool size
+  // and the pool is not empty and the time interval since the pool is not empty is larger than DEFAULT_POOL_TRIM_INTERVAL_MILLIS
+  private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
+
+
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer
+   */
+  public ByteBuffer[] getWalDirectByteBuffer() {
+    ByteBuffer[] res = new ByteBuffer[2];
+    synchronized (walByteBufferPool) {
+      while (walByteBufferPool.isEmpty() && currentWalPoolSize + 2 > MAX_WAL_BYTEBUFFER_NUM) {
+        try {
+          walByteBufferPool.wait();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger
+              .error("getDirectByteBuffer occurs error while waiting for DirectByteBuffer"
+                  + "group {}-{}", logicalStorageGroupName, virtualStorageGroupId, e);
+        }
+      }
+      // If the queue is not empty, it must have at least two.
+      if (!walByteBufferPool.isEmpty()) {
+        res[0] = walByteBufferPool.pollFirst();
+        res[1] = walByteBufferPool.pollFirst();
+      } else {
+        // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
+        // we can construct another two more new byte buffer
+        currentWalPoolSize += 2;
+        res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+      }
+      // if the pool is empty, set the time back to MAX_VALUE
+      if (walByteBufferPool.isEmpty()) {
+        timeWhenPoolNotEmpty = Long.MAX_VALUE;
+      }
+    }
+    return res;
+  }
+
+  /**
+   * put the byteBuffer back to pool
+   */
+  public void releaseWalBuffer(ByteBuffer[] byteBuffers) {
+    for (ByteBuffer byteBuffer : byteBuffers) {
+      byteBuffer.clear();
+    }
+    synchronized (walByteBufferPool) {
+      // if the pool is empty before, update the time
+      if (walByteBufferPool.isEmpty()) {
+        timeWhenPoolNotEmpty = System.nanoTime();
+      }
+      walByteBufferPool.addLast(byteBuffers[0]);
+      walByteBufferPool.addLast(byteBuffers[1]);
+      walByteBufferPool.notifyAll();
+    }
+  }
+
+  /**
+   * trim the size of the pool and release the memory of needless direct byte buffer
+   */
+  private void trimTask() {
+    synchronized (walByteBufferPool) {
+      int expectedSize =
+          (workSequenceTsFileProcessors.size() + workUnsequenceTsFileProcessors.size()) * 2;
+      // the unit is ms
+      long poolNotEmptyIntervalInMS = (System.nanoTime() - timeWhenPoolNotEmpty) / 1_000_000;
+      // only when the expected size less than the current pool size
+      // and the pool is not empty and the time interval since the pool is not empty is larger than 10s
+      // we will trim the size to expectedSize until the pool is empty
+      while (expectedSize < currentWalPoolSize && !walByteBufferPool.isEmpty()
+          && poolNotEmptyIntervalInMS >= DEFAULT_POOL_TRIM_INTERVAL_MILLIS) {
+        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
+        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
+        currentWalPoolSize -= 2;
+      }
+    }
+  }
+
   /**
    * constrcut a storage group processor
    *
@@ -267,6 +368,9 @@ public class StorageGroupProcessor {
     this.tsFileManagement = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
         .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
 
+    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    executorService.scheduleWithFixedDelay(this::trimTask, DEFAULT_POOL_TRIM_INTERVAL_MILLIS,
+        DEFAULT_POOL_TRIM_INTERVAL_MILLIS, TimeUnit.MILLISECONDS);
     recover();
 
   }
@@ -321,7 +425,7 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
-      String taskName = virtualStorageGroupId + "-" + System.currentTimeMillis();
+      String taskName = logicalStorageGroupName + "-" + virtualStorageGroupId + "-" + System.currentTimeMillis();
       File mergingMods = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
           MERGING_MODIFICATION_FILE_NAME);
       if (mergingMods.exists()) {
@@ -332,14 +436,22 @@ public class StorageGroupProcessor {
           tsFileManagement.getTsFileList(false), storageGroupSysDir.getPath(),
           tsFileManagement::mergeEndAction,
           taskName,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), logicalStorageGroupName);
-      logger.info("{} a RecoverMergeTask {} starts...", virtualStorageGroupId, taskName);
+          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(), logicalStorageGroupName + "-" + virtualStorageGroupId);
+      logger.info("{} - {} a RecoverMergeTask {} starts...", logicalStorageGroupName, virtualStorageGroupId, taskName);
       recoverMergeTask
           .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
       recoverCompaction();
+      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
       updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
@@ -365,18 +477,25 @@ public class StorageGroupProcessor {
   private void recoverCompaction() {
     if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
       compactionMergeWorking = true;
-      logger.info("{} submit a compaction merge task", virtualStorageGroupId);
+      logger.info("{} - {} submit a compaction merge task", logicalStorageGroupName, virtualStorageGroupId);
       try {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
-        logger.error("{} compaction submit task failed", virtualStorageGroupId);
+        logger.error("{} - {} compaction submit task failed", logicalStorageGroupName, virtualStorageGroupId);
       }
     } else {
       logger.error("{} compaction pool not started ,recover failed",
-          virtualStorageGroupId);
+          logicalStorageGroupName + "-" + virtualStorageGroupId);
+    }
+  }
+
+  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
+    if (fileVersion > oldVersion) {
+      partitionMaxFileVersions.put(partitionNum, fileVersion);
     }
   }
 
@@ -552,7 +671,8 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
-          writer = recoverPerformer.recover(false);
+          writer = recoverPerformer
+              .recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
             tsFileManagement.addRecover(tsFileResource, isSeq);
           } else {
@@ -561,7 +681,8 @@ public class StorageGroupProcessor {
           }
           continue;
         } else {
-          writer = recoverPerformer.recover(true);
+          writer = recoverPerformer
+              .recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(),
@@ -1163,6 +1284,15 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void releaseWalDirectByteBufferPool() {
+    synchronized (walByteBufferPool) {
+      while (!walByteBufferPool.isEmpty()) {
+        MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeFirst());
+        currentWalPoolSize--;
+      }
+    }
+  }
+
   public void syncDeleteDataFiles() {
     logger.info("{} will close all files for deleting data files", logicalStorageGroupName + "-" + virtualStorageGroupId);
     writeLock();
@@ -1524,7 +1654,8 @@ public class StorageGroupProcessor {
   }
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
-      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex) throws IOException {
+      Set<PartialPath> devicePaths, List<ModificationFile> updatedModFiles, long planIndex)
+      throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (canSkipDelete(tsFileResource, devicePaths, deletion.getStartTime(),
           deletion.getEndTime())) {
@@ -1842,6 +1973,8 @@ public class StorageGroupProcessor {
 
       // update latest time map
       updateLatestTimeMap(newTsFileResource);
+      long partitionNum = newTsFileResource.getTimePartition();
+      updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -2195,6 +2328,8 @@ public class StorageGroupProcessor {
           syncedResourceFile.getAbsolutePath(), targetResourceFile.getAbsolutePath(),
           e.getMessage()));
     }
+
+    updatePartitionFileVersion(filePartitionId, tsFileResource.getVersion());
     return true;
   }
 
@@ -2399,7 +2534,7 @@ public class StorageGroupProcessor {
     tsFileManagement.writeLock();
     try {
       // abort ongoing merges
-      MergeManager.getINSTANCE().abortMerge(virtualStorageGroupId);
+      MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet());
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet());

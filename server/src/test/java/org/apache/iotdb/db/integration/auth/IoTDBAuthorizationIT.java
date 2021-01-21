@@ -33,25 +33,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
  * defined as integration test.
  */
 public class IoTDBAuthorizationIT {
-  private static Logger logger = LoggerFactory.getLogger(IoTDBAuthorizationIT.class);
-
-
-  public static void main(String[] args) throws Exception {
-    for (int i = 0; i < 10; i++) {
-      IoTDBAuthorizationIT test = new IoTDBAuthorizationIT();
-      test.setUp();
-      test.authPerformanceTest();
-      test.tearDown();
-    }
-  }
 
   @Before
   public void setUp() throws Exception {
@@ -607,10 +594,6 @@ public class IoTDBAuthorizationIT {
           userStmt.executeBatch();
           userStmt.clearBatch();
         }
-        if (logger.isInfoEnabled()) {
-          logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
-                  System.currentTimeMillis() - time, privilegeCnt);
-        }
 
         time = System.currentTimeMillis();
         for (int i = 0; i < insertCnt; ) {
@@ -620,10 +603,6 @@ public class IoTDBAuthorizationIT {
           }
           adminStmt.executeBatch();
           adminStmt.clearBatch();
-        }
-        if (logger.isInfoEnabled()) {
-          logger.info("User inserted {} data points used {} ms with {} privileges.", insertCnt,
-                  System.currentTimeMillis() - time, privilegeCnt);
         }
       }
     }

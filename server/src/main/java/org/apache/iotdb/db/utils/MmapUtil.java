@@ -16,26 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.session;
+package org.apache.iotdb.db.utils;
 
-public class Config {
+import io.netty.util.internal.PlatformDependent;
+import java.nio.MappedByteBuffer;
 
-  public static final String DEFAULT_USER = "root";
-  public static final String DEFAULT_PASSWORD = "root";
-  public static final int DEFAULT_FETCH_SIZE = 5000;
-  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
-  public static final boolean DEFAULT_CACHE_LEADER_MODE = true;
+public class MmapUtil {
 
-  public static final int RETRY_NUM = 3;
-  public static final long RETRY_INTERVAL_MS = 1000;
-
-  /**
-   * thrift init buffer size, 1KB by default
-   */
-  public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
-
-  /**
-   * thrift max frame size (16384000 bytes by default), we change it to 64MB
-   */
-  public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
+  public static void clean(MappedByteBuffer mappedByteBuffer) {
+    if (mappedByteBuffer == null || !mappedByteBuffer.isDirect() || mappedByteBuffer.capacity()== 0) {
+      return;
+    }
+    PlatformDependent.freeDirectBuffer(mappedByteBuffer);
+  }
 }

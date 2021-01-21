@@ -417,6 +417,14 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  public void releaseWalDirectByteBufferPool() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.releaseWalDirectByteBufferPool();
+      }
+    }
+  }
+
   /**
    * only for test
    */

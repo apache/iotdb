@@ -90,6 +90,10 @@ public class IoTDBDescriptor {
     return true;
   }
 
+  /**
+   * get props url location
+   * @return url object if location exit, otherwise null.
+   */
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
@@ -287,6 +291,10 @@ public class IoTDBDescriptor {
       conf.setEstimatedSeriesSize(Integer.parseInt(properties
           .getProperty("estimated_series_size",
               Integer.toString(conf.getEstimatedSeriesSize()))));
+
+      conf.setIoTaskQueueSizeForFlushing(Integer.parseInt(properties
+          .getProperty("io_task_queue_size_for_flushing",
+              Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
 
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",

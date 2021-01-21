@@ -809,7 +809,7 @@ public class IoTDBConfig {
    * udfMemoryBudgetInMB = udfReaderMemoryBudgetInMB + udfTransformerMemoryBudgetInMB +
    * udfCollectorMemoryBudgetInMB
    */
-  private float udfMemoryBudgetInMB = (float) Math.min(300f, 0.2 * allocateMemoryForRead);
+  private float udfMemoryBudgetInMB = (float) Math.min(30.0f, 0.2 * allocateMemoryForRead);
 
   private float udfReaderMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
@@ -844,6 +844,11 @@ public class IoTDBConfig {
    * if the debug_state is true, we will print more details about the process of query
    */
   private boolean debugState = false;
+
+  /**
+   * the size of ioTaskQueue
+   */
+  private int ioTaskQueueSizeForFlushing = 10;
 
   /**
    * the number of virtual storage groups per user-defined storage group
@@ -2268,5 +2273,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getIoTaskQueueSizeForFlushing() {
+    return ioTaskQueueSizeForFlushing;
+  }
+
+  public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
+    this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
   }
 }
