@@ -24,6 +24,8 @@
 ## Requirements
 * Java 8+
 * Maven 3.5+
+* Flex
+* Bison 2.7+
 * Boost
 * OpenSSL 1.0+
 
@@ -31,7 +33,34 @@ Make sure a complete C++ building environment is prepared on your machine.
 
 ### Mac
 
-1. Boost
+- Bison
+
+ Bison 2.3 is preinstalled on OSX, but this version is too low.
+ When building Thrift with Bison 2.3, the following error would pop out:
+
+ 
+  ```invalid directive: '%code'```		
+		
+ For such case, please update `Bison`:		
+		
+```		
+     brew install bison		
+     brew link bison --force		
+```
+		
+ Then, you need to tell the OS where the new bison is.		
+		
+ For Bash users:		
+ ```    		
+     echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile		
+ ```
+		
+ For zsh users:		
+ ```    		
+     echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
+ ```
+
+- Boost
 
 Please make sure a relative new version of Boost is ready on your machine.
 If no Boost available, install the latest version of Boost:
@@ -42,7 +71,7 @@ If no Boost available, install the latest version of Boost:
 ```
 
 
-2. OpenSSL
+- OpenSSL
 
 Make sure the Openssl libraries has been install on your Mac.
 The default Openssl include file search path is "/usr/local/opt/openssl/include".
@@ -60,15 +89,20 @@ To install all dependencies, run:
 Debian/Ubuntu:
 
 ```
-sudo apt-get install gcc g++ libboost-all-dev
+sudo apt-get install gcc g++ bison flex libboost-all-dev
 ```
 
 CentOS:
 ```
-yum install gcc g++ boost-devel
+yum install gcc g++ bison flex boost-devel
 ```
 
 ### Windows
+
+#### Flex and Bison
+For Flex and Bison, they could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
+
+After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
 
 #### Boost
 For Boost, please download from the official website: https://www.boost.org/users/download/
