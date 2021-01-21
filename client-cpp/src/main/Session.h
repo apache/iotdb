@@ -591,7 +591,7 @@ class Session
         void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
-        void putValuesIntoBuffer(std::vector<TSDataType::TSDataType>& types, std::vector<char*>& values, std::string buf);
+        void putValuesIntoBuffer(std::vector<TSDataType::TSDataType>& types, std::vector<char*>& values, std::string& buf);
         int8_t getDataTypeNumber(TSDataType::TSDataType type);
     public:
         Session(std::string host, int rpcPort) : username("user"), password("password") {

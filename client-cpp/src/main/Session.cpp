@@ -417,7 +417,7 @@ void Session::sortIndexByTimestamp(int* index, int64_t* timestamps, int length) 
     }
 }
 
-void Session::putValuesIntoBuffer(vector<TSDataType::TSDataType>& types, vector<char*>& values, string buf) {
+void Session::putValuesIntoBuffer(vector<TSDataType::TSDataType>& types, vector<char*>& values, string& buf) {
     for (int i = 0; i < values.size(); i++) {
         int8_t typeNum = getDataTypeNumber(types[i]);
         buf.append((char*)(&typeNum), sizeof(int8_t));

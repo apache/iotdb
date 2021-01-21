@@ -55,16 +55,10 @@ TEST_CASE( "Delete timeseries success", "[deleteTimeseries]" ) {
 TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
   prepareTimeseries();
   string deviceId = "root.test.d1";
-  vector<string> measurements;
-  measurements.push_back("s1");
-  measurements.push_back("s2");
-  measurements.push_back("s3");
+  vector<string> measurements = { "s1", "s2", "s3" };
 
   for (long time = 0; time < 100; time++) {
-    vector<string> values;
-    values.push_back("1");
-    values.push_back("2");
-    values.push_back("3");
+    vector<string> values = { "1", "2", "3" };
     session->insertRecord(deviceId, time, measurements, values);
   }
 
@@ -87,20 +81,14 @@ TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
 TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
   prepareTimeseries();
   string deviceId = "root.test.d1";
-  vector<string> measurements;
-  measurements.push_back("s1");
-  measurements.push_back("s2");
-  measurements.push_back("s3");
+  vector<string> measurements = { "s1", "s2", "s3" };
   vector<string> deviceIds;
   vector<vector<string>> measurementsList;
   vector<vector<string>> valuesList;
   vector<int64_t> timestamps;
 
   for (int64_t time = 0; time < 500; time++) {
-    vector<string> values;
-    values.push_back("1");
-    values.push_back("2");
-    values.push_back("3");
+    vector<string> values = { "1", "2", "3" };
 
     deviceIds.push_back(deviceId);
     measurementsList.push_back(measurements);
@@ -129,6 +117,26 @@ TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
     }
   }
   REQUIRE( count == 500 );
+}
+
+TEST_CASE( "Test inserts ", "[testInserts]") {
+  prepareTimeseries();
+  string deviceId = "root.test.d1";
+  vector<string> measurements = { "s1", "s2", "s3" };
+
+  for (long time = 0; time < 100; time++) {
+    vector<string> values = { "1", "2", "3" };
+    session->insertRecord(deviceId, time, measurements, values);
+  }
+
+  SessionDataSet *sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
+  sessionDataSet->setBatchSize(1024);
+  long count = 0;
+  while (sessionDataSet->hasNext()) {
+    sessionDataSet->next();
+    count++;
+  }
+  REQUIRE( count == 100 );
 }
 
 TEST_CASE( "Test insertTablet ", "[testInsertTablet]") {
