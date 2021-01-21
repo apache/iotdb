@@ -1936,9 +1936,8 @@ public class StorageGroupProcessor {
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
       throws IllegalPathException, WriteProcessException {
-    for (Entry<String, Integer> entry : newTsFileResource.getDeviceToIndexMap().entrySet()) {
-      PartialPath device = new PartialPath(entry.getKey());
-      tryToDeleteLastCacheByDevice(device);
+    for (String device : newTsFileResource.getDevices()) {
+      tryToDeleteLastCacheByDevice(new PartialPath(device));
     }
   }
 
