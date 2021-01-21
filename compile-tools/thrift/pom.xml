@@ -228,7 +228,7 @@
                             <url>http://www.apache.org/dyn/closer.lua?action=download&amp;filename=/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>true</overwrite>
+                            <overwrite>false</overwrite>
                         </configuration>
                     </execution>
                 </executions>

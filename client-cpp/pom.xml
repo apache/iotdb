@@ -27,9 +27,7 @@
         <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp</artifactId>
-    <version>0.12.0-SNAPSHOT</version>
     <name>Client for cpp</name>
     <description>C++ client</description>
     <packaging>pom</packaging>
@@ -44,8 +42,15 @@
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
     </properties>
     <modules>
-        <module>client-cpp-example</module>
+        <module>../example/client-cpp-example</module>
     </modules>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp-tools-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -324,7 +329,7 @@
                                     <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                                     <skipCache>false</skipCache>
                                     <!-- must be true to avoid the local Catch2 has incorrect vesion.-->
-                                    <overwrite>true</overwrite>
+                                    <overwrite>false</overwrite>
                                 </configuration>
                             </execution>
                         </executions>
