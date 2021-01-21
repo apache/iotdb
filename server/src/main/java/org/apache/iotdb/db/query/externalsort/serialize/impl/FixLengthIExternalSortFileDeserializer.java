@@ -83,7 +83,7 @@ public class FixLengthIExternalSortFileDeserializer implements IExternalSortFile
   }
 
   private TSDataType readHeader() throws IOException {
-    return TSDataType.deserialize(ReadWriteIOUtils.readShort(inputStream));
+    return TSDataType.deserialize(ReadWriteIOUtils.readByte(inputStream));
   }
 
   private void setReader(TSDataType type) {

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -143,8 +143,13 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public double getSumValue() {
+  public double getSumDoubleValue() {
     return sumValue;
+  }
+
+  @Override
+  public long getSumLongValue() {
+    throw new StatisticsClassException("Double statistics does not support: long sum");
   }
 
   @Override
@@ -152,11 +157,11 @@ public class DoubleStatistics extends Statistics<Double> {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (this.isEmpty) {
       initializeStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue());
+          doubleStats.getLastValue(), doubleStats.sumValue);
       isEmpty = false;
     } else {
       updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
+          doubleStats.getLastValue(), doubleStats.sumValue, stats.getStartTime(), stats.getEndTime());
     }
   }
 
@@ -222,7 +227,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readDouble(inputStream);
     this.maxValue = ReadWriteIOUtils.readDouble(inputStream);
     this.firstValue = ReadWriteIOUtils.readDouble(inputStream);
@@ -231,7 +236,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);

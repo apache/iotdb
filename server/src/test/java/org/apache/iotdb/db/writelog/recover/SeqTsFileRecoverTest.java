@@ -76,7 +76,6 @@ public class SeqTsFileRecoverTest {
   private WriteLogNode node;
 
   private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testRecover");
-  private String storageGroup = "target";
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
@@ -140,6 +139,7 @@ public class SeqTsFileRecoverTest {
       }
     }
     writer.flushAllChunkGroups();
+    writer.getIOWriter().writePlanIndices();
     writer.getIOWriter().close();
 
     node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName(), () -> {

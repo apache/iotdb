@@ -42,7 +42,7 @@ public class GetAllDevicesTest {
   }
 
   @After
-  public void after() throws IOException {
+  public void after() {
     FileGenerator.after();
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
   }
@@ -70,19 +70,13 @@ public class GetAllDevicesTest {
   public void testGetAllDevices(int deviceNum, int measurementNum) throws IOException {
     FileGenerator.generateFile(10000, deviceNum, measurementNum);
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(FILE_PATH)) {
-      ReadOnlyTsFile tsFile = new ReadOnlyTsFile(fileReader);
-  
-      // test
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
-        List<String> devices = reader.getAllDevices();
+
+        List<String> devices = fileReader.getAllDevices();
         Assert.assertEquals(deviceNum, devices.size());
         for (int i = 0; i < deviceNum; i++) {
           Assert.assertTrue(devices.contains("d" + i));
         }
-      }
-  
-      // after
-      tsFile.close();
+
       FileGenerator.after();
     }
   }
