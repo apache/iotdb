@@ -366,6 +366,8 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## 查看设备
 
+* SHOW DEVICES prefixPath? limitClause?
+
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
 * `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。

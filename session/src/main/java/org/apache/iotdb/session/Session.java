@@ -310,15 +310,15 @@ public class Session {
    * execute query sql with explicit timeout
    *
    * @param sql query statement
-   * @param timeout the timeout of this query, in milliseconds
+   * @param timeoutInMs the timeout of this query, in milliseconds
    * @return result set
    */
-  public SessionDataSet executeQueryStatement(String sql, long timeout)
+  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (timeout <= 0) {
-      throw new StatementExecutionException("Timeout must be over 0, please check and try again.");
+    if (timeoutInMs < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
-    return defaultSessionConnection.executeQueryStatement(sql, timeout);
+    return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
   }
 
   /**

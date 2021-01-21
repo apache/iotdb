@@ -554,6 +554,7 @@ var config = {
 							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
 							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
 							['Operation Manual/UDF User Defined Function','UDF (User Defined Function)'],
+							['Operation Manual/Kill Query','Kill Query'],
 							['Operation Manual/Administration','Administration'],
 							['Operation Manual/SQL Reference','SQL Reference']
 						]
@@ -1175,6 +1176,7 @@ var config = {
 							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
 							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
 							['Operation Manual/UDF User Defined Function','UDF（用户自定义函数）'],
+							['Operation Manual/Kill Query','中止查询'],
 							['Operation Manual/Administration','权限管理语句'],
 							['Operation Manual/SQL Reference','SQL 参考文档']
 						]

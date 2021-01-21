@@ -143,4 +143,9 @@ public interface TsFileInput {
    * read 4 bytes from the Input and convert it to a integer.
    */
   int readInt() throws IOException;
+
+  /**
+   * read a string from the Input at the given position
+   */
+  String readVarIntString(long offset) throws IOException;
 }

@@ -239,14 +239,11 @@ class MergeFileTask {
       TsFileSequenceReader reader, TsFileIOWriter fileWriter)
       throws IOException {
     fileWriter.startChunkGroup(device);
-    long maxVersion = 0;
     for (ChunkMetadata chunkMetaData : chunkMetadataList) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
-      maxVersion = Math.max(chunkMetaData.getVersion(), maxVersion);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
-    fileWriter.writeVersion(maxVersion);
     fileWriter.endChunkGroup();
   }
 
@@ -275,7 +272,7 @@ class MergeFileTask {
         }
 
         fileWriter.startChunkGroup(path.getDevice());
-        long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
+        writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
 
         if (Thread.interrupted()) {
@@ -283,7 +280,6 @@ class MergeFileTask {
           return;
         }
 
-        fileWriter.writeVersion(maxVersion + 1);
         fileWriter.endChunkGroup();
       }
     }

@@ -29,24 +29,24 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.jdbc.IoTDBStatement;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 
 public class IoTDBQueryTimeoutTest {
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
@@ -93,11 +93,10 @@ public class IoTDBQueryTimeoutTest {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.setFetchSize(20000);
+      statement.setFetchSize(40000);
       try {
         ((IoTDBStatement) statement)
-            .executeQuery("select count(*) from root group by ([1, 40000), 2ms)", 1);
-        fail("QueryTimeoutRuntimeException is not thrown");
+            .executeQuery("select count(*) from root group by ([1, 80000), 2ms)", 1);
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(e.getMessage().contains("Current query is time out"));
       }
@@ -117,19 +116,19 @@ public class IoTDBQueryTimeoutTest {
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.setFetchSize(20000);
+      statement.setFetchSize(40000);
       try {
         ((IoTDBStatement) statement)
-            .executeQuery("select count(*) from root group by ([1, 20000), 2ms)", 1);
+            .executeQuery("select count(*) from root group by ([1, 80000), 2ms)", 1);
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(e.getMessage().contains("Current query is time out"));
       }
 
-      Boolean hasResultSet = statement.execute("select max_time(s1) from root.sg.d1");
+      Boolean hasResultSet = statement.execute("select max_time(s1) from root.sg1.d1");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
-        Assert.assertEquals(40000, resultSet.getLong("max_time(root.sg.d1.s1)"));
+        Assert.assertEquals(80000, resultSet.getLong("max_time(root.sg1.d1.s1)"));
       }
 
     } catch (Exception e) {
@@ -143,7 +142,7 @@ public class IoTDBQueryTimeoutTest {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      for (int i = 0; i <= 40000; i++) {
+      for (int i = 0; i <= 80000; i++) {
         statement.execute(String.format("insert into root.sg1.d1(time,s1) values(%d,%d)", i, i));
         statement.execute(String.format("insert into root.sg2.d2(time,s2) values(%d,%d)", i, i));
       }
