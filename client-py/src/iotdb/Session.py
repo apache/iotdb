@@ -63,7 +63,7 @@ class Session(object):
         self.__session_id = None
         self.__statement_id = None
         self.__zone_id = zone_id
-        self.__default_timeout = 1000
+        self.__default_timeout = 0
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
