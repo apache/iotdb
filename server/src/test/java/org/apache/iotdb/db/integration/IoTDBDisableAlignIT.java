@@ -334,7 +334,7 @@ public class IoTDBDisableAlignIT {
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(
-          "Fill doesn't support disable align clause."));
+          "FILL doesn't support disable align clause."));
     }
   }
 
@@ -348,7 +348,7 @@ public class IoTDBDisableAlignIT {
           "select count(*) from root.vehicle GROUP BY ([2,50),20ms) disable align");
       fail("No exception thrown.");
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Group by doesn't support disable align clause."));
+      Assert.assertTrue(e.getMessage().contains("GROUPBYTIME doesn't support disable align clause."));
     }
   }
 
@@ -363,7 +363,7 @@ public class IoTDBDisableAlignIT {
       fail("No exception thrown.");
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage().contains(
-          "Aggregation doesn't support disable align clause."));
+          "AGGREGATION doesn't support disable align clause."));
     }
   }
 

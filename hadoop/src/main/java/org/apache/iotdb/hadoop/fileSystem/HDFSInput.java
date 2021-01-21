@@ -129,7 +129,7 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public String readVarIntString(long position) throws IOException {
+  public synchronized String readVarIntString(long position) throws IOException {
     long srcPosition = fsDataInputStream.getPos();
 
     fsDataInputStream.seek(position);

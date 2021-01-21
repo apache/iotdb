@@ -24,14 +24,20 @@ import java.io.IOException;
 /**
  * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
  */
+@SuppressWarnings({ "squid:S1133" }) //Deprecated code should be removed
 public class MetaMarker {
 
   public static final byte CHUNK_GROUP_HEADER = 0;
   /**
-   * means this chunk has more than one page
+   * Chunk header marker and this chunk has more than one page.
    */
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
+  /**
+   * @deprecated (Since TsFile version 3, the marker VERSION is no longer used in TsFile.
+   * It should be removed when TsFile upgrade to version 4)
+   */
+  @Deprecated
   public static final byte VERSION = 3;
   
   // following this marker are two longs marking the minimum and maximum indices of operations
@@ -40,7 +46,7 @@ public class MetaMarker {
   public static final byte OPERATION_INDEX_RANGE = 4;
 
   /**
-   * means this chunk has only one page
+   * Chunk header marker and this chunk has only one page.
    */
   public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 

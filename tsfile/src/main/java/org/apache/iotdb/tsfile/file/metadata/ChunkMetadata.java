@@ -166,9 +166,13 @@ public class ChunkMetadata implements Accountable {
     chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
     chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
     if (timeseriesMetadata.getTimeSeriesMetadataType() != 0) {
       chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
     } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      //and that chunk's metadata has no statistic
       chunkMetaData.statistics = timeseriesMetadata.getStatistics();
     }
     return chunkMetaData;

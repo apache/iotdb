@@ -134,9 +134,7 @@ public class TsFileProcessor {
       throws IOException {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = new TsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
-    if (enableMemControl) {
-      this.storageGroupInfo = storageGroupInfo;
-    }
+    this.storageGroupInfo = storageGroupInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -152,9 +150,7 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    if (enableMemControl) {
-      this.storageGroupInfo = storageGroupInfo;
-    }
+    this.storageGroupInfo = storageGroupInfo;
     this.writer = writer;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -174,8 +170,7 @@ public class TsFileProcessor {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
         MemTableManager.getInstance().addMemtableNumber();
-      }
-      else {
+      } else {
         workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
@@ -223,8 +218,7 @@ public class TsFileProcessor {
       if (enableMemControl) {
         workMemTable = new PrimitiveMemTable(enableMemControl);
         MemTableManager.getInstance().addMemtableNumber();
-      }
-      else {
+      } else {
         workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
       }
     }
@@ -280,7 +274,7 @@ public class TsFileProcessor {
         tsFileResource.estimateRamIncrement(deviceId);
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
-      if (insertRowPlan.getDataTypes()[i] == null) {
+      if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
         continue;
       }
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
@@ -319,7 +313,7 @@ public class TsFileProcessor {
       TSDataType dataType = insertTabletPlan.getDataTypes()[i];
       String measurement = insertTabletPlan.getMeasurements()[i];
       Object column = insertTabletPlan.getColumns()[i];
-      if (dataType == null) {
+      if (dataType == null || column == null || measurement == null) {
         continue;
       }
       updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
@@ -754,7 +748,7 @@ public class TsFileProcessor {
 
     try {
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
-      while(iterator.hasNext()){
+      while (iterator.hasNext()){
         Pair<Modification, IMemTable> entry = iterator.next();
         if (entry.right.equals(memTableToFlush)) {
           entry.left.setFileOffset(tsFileResource.getTsFileSize());
@@ -765,7 +759,7 @@ public class TsFileProcessor {
       }
     } catch (IOException e) {
       logger.error("Meet error when writing into ModificationFile file of {} ",
-              tsFileResource.getTsFile().getName(), e);
+          tsFileResource.getTsFile().getName(), e);
     }
 
     if (logger.isDebugEnabled()) {
@@ -882,7 +876,8 @@ public class TsFileProcessor {
   public WriteLogNode getLogNode() {
     if (logNode == null) {
       logNode = MultiFileLogNodeManager.getInstance()
-          .getNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
+          .getNode(storageGroupName + "-" + tsFileResource.getTsFile().getName(),
+              storageGroupInfo.getWalSupplier());
     }
     return logNode;
   }
@@ -892,7 +887,8 @@ public class TsFileProcessor {
       // when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
+          .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName(),
+              storageGroupInfo.getWalConsumer());
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
@@ -922,15 +918,15 @@ public class TsFileProcessor {
     return modifications;
   }
 
-  private List<TimeRange> constructDeletionList(IMemTable memTable, String deviceId, String measurement,
-                                                long timeLowerBound) throws MetadataException {
+  private List<TimeRange> constructDeletionList(IMemTable memTable, String deviceId,
+      String measurement, long timeLowerBound) throws MetadataException {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : getModificationsForMemtable(memTable)) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
         if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
-                && deletion.getEndTime() > timeLowerBound) {
+            && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
         }
@@ -966,7 +962,7 @@ public class TsFileProcessor {
           continue;
         }
         List<TimeRange> deletionList = constructDeletionList(flushingMemTable,
-                deviceId, measurementId, context.getQueryTimeLowerBound());
+            deviceId, measurementId, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk = flushingMemTable.query(deviceId, measurementId,
             dataType, encoding, props, context.getQueryTimeLowerBound(), deletionList);
         if (memChunk != null) {
