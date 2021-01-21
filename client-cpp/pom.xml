@@ -113,6 +113,7 @@
                         <version>1.0</version>
                         <executions>
                             <execution>
+                                <!-- Copy rpc.thrift into target directory -->
                                 <id>copy-thrift-source</id>
                                 <goals>
                                     <goal>copy</goal>
@@ -127,6 +128,7 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <!-- Copy source file and CmakeLists.txt into target directory -->
                                 <id>copy-cmakelist-file</id>
                                 <phase>compile</phase>
                                 <goals>
@@ -158,7 +160,7 @@
                         <executions>
                             <execution>
                                 <id>generate-thrift-sources-cpp</id>
-                                <!-- Move from generate-sources to generate-resources to avoid executing twice -->
+                                <!-- Move from generate-sources to generate-resources to avoid double executions -->
                                 <phase>generate-resources</phase>
                                 <goals>
                                     <goal>compile</goal>
@@ -219,6 +221,7 @@
                                     <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                                 </configuration>
                             </execution>
+                            <!-- Generate Cmake build directory to compile testing program -->
                             <execution>
                                 <id>cmake-generate-test</id>
                                 <phase>test-compile</phase>
@@ -233,6 +236,7 @@
                                     <generator>${cmake.generator}</generator>
                                 </configuration>
                             </execution>
+                            <!-- Actually executes the testing compilation -->
                             <execution>
                                 <id>cmake-compile-test</id>
                                 <phase>test-compile</phase>
@@ -246,6 +250,7 @@
                                     <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                                 </configuration>
                             </execution>
+                            <!-- Run the integration test cases -->
                             <execution>
                                 <id>cmake-run-test</id>
                                 <phase>test</phase>
@@ -329,6 +334,7 @@
                         <artifactId>process-exec-maven-plugin</artifactId>
                         <version>0.7</version>
                         <executions>
+                            <!-- Start a local IoTDB server to run integration test cases -->
                             <execution>
                                 <id>iotdb-process</id>
                                 <phase>generate-test-resources</phase>
@@ -347,6 +353,7 @@
                                     </arguments>
                                 </configuration>
                             </execution>
+                            <!-- Stop the IoTDB server when integration test finishes -->
                             <execution>
                                 <id>stop-all</id>
                                 <phase>post-integration-test</phase>

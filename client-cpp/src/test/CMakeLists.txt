@@ -20,14 +20,18 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 INCLUDE( CTest )
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(TARGET_NAME tests)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+SET(TARGET_NAME session_tests)
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 ENABLE_TESTING()
 
+# Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
+# Add Session related include files
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
+# Add Thrift include directory
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.12.0/lib/cpp/src)
+
+# Link directories are different for Windows and Linux/Mac
 IF(MSVC)
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
 ELSE()
@@ -35,7 +39,10 @@ ELSE()
 ENDIF()
 
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
+
+# Link with shared library iotdb_session and pthread
 TARGET_LINK_LIBRARIES(${TARGET_NAME} PUBLIC iotdb_session pthread)
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
-ADD_TEST(NAME test1 COMMAND ${TARGET_NAME})
+# Add 'sessionIT' to the project to be run by ctest
+ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})

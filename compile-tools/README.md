@@ -24,48 +24,22 @@
 ## Requirements
 * Java 8+
 * Maven 3.5+
-* Flex
-* Bison 2.7+
+* Boost
 * OpenSSL 1.0+
 
 Make sure a complete C++ building environment is prepared on your machine.
 
 ### Mac
 
-1. Bison
+1. Boost
 
-Bison 2.3 is preinstalled on OSX, but this version is too low. 
-When building Thrift with Bison 2.3, the following error would pop out:
-
-```invalid directive: '%code'```
-
-For such case, please update `Bison`:
+Please make sure a relative new version of Boost is ready on your machine.
+If no Boost available, install the latest version of Boost:
 
 ```
-    brew install bison
-    brew link bison --force
+    brew install boost
+    brew link boost
 ```
-
-Then, you need to tell the OS where the new bison is.
-
-For Bash users:
-```    
-    echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.bash_profile
-```
-
-For zsh users:
-```    
-    echo 'export PATH="/usr/local/opt/bison/bin:$PATH"' >> ~/.zshrc
-```
-
-Then,
-
-```
-mv /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison2.3
-
-ln -s /usr/local/opt/bison/bin/bison /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bison
-``` 
-
 
 
 2. OpenSSL
@@ -86,22 +60,19 @@ To install all dependencies, run:
 Debian/Ubuntu:
 
 ```
-sudo apt install gcc g++ bison flex -y
+sudo apt-get install gcc g++ libboost-all-dev
 ```
 
 CentOS:
 ```
-yum install gcc g++ bison flex
+yum install gcc g++ boost-devel
 ```
-
-
 
 ### Windows
 
-#### Flex and Bison
-For Flex and Bison, they could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
+#### Boost
+For Boost, please download from the official website: https://www.boost.org/users/download/
 
-After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
 
 
 #### Cmake generator on Windows

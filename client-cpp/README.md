@@ -30,3 +30,22 @@ For more information, please refer to "compile-tools/README.md".
 
 `mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
 
+## 
+
+If the compilation finishes successfully, the packaged zip file will be placed under
+"client-cpp/target". 
+
+On Mac machines, the hierarchy of the package should look like this:
+```
+.
++-- client
+|   +-- include
+|       +-- Session.h
+|       +-- TSIService.h
+|       +-- rpc_types.h
+|       +-- rpc_constants.h
+|       +-- thrift
+|           +-- thrift_headers...
+|   +-- lib
+|       +-- libiotdb_session.dylib
+```
