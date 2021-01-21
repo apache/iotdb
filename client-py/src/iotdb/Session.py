@@ -63,7 +63,6 @@ class Session(object):
         self.__session_id = None
         self.__statement_id = None
         self.__zone_id = zone_id
-        self.__default_timeout = 0
 
     def open(self, enable_rpc_compression):
         if not self.__is_close:
@@ -463,13 +462,13 @@ class Session(object):
         return TSInsertTabletsReq(self.__session_id, device_id_lst, measurements_lst,
                                   values_lst, timestamps_lst, type_lst, size_lst)
 
-    def execute_query_statement(self, sql):
+    def execute_query_statement(self, sql, timeout = 0):
         """
         execute query sql statement and returns SessionDataSet
         :param sql: String, query sql statement
         :return: SessionDataSet, contains query results and relevant info (see SessionDataSet.py)
         """
-        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id, self.__fetch_size, self.__default_timeout)
+        request = TSExecuteStatementReq(self.__session_id, sql, self.__statement_id, self.__fetch_size, timeout)
         resp = self.__client.executeQueryStatement(request)
         return SessionDataSet(sql, resp.columns, resp.dataTypeList, resp.columnNameIndexMap, resp.queryId,
                               self.__client, self.__session_id, resp.queryDataSet, resp.ignoreTimeStamp)

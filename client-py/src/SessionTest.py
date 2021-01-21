@@ -141,7 +141,6 @@ expect_count = 16
 actual_count = 0
 while session_data_set.has_next():
   actual_count += 1
-  print(session_data_set.next())
 session_data_set.close_operation_handle()
 
 if actual_count != expect_count:
