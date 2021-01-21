@@ -544,14 +544,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       fetchSize = fetchSize == 0 ? DEFAULT_FETCH_SIZE : fetchSize;
 
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
-        if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-          throw new QueryProcessException("Aggregation doesn't support disable align clause.");
-        }
-        if (plan.getOperatorType() == OperatorType.FILL) {
-          throw new QueryProcessException("Fill doesn't support disable align clause.");
-        }
-        if (plan.getOperatorType() == OperatorType.GROUPBYTIME) {
-          throw new QueryProcessException("Group by doesn't support disable align clause.");
+        OperatorType operatorType = plan.getOperatorType();
+        if (operatorType == OperatorType.AGGREGATION || operatorType == OperatorType.FILL
+            || operatorType == OperatorType.GROUPBYTIME) {
+          throw new QueryProcessException(operatorType.name() + " doesn't support disable align clause.");
         }
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
