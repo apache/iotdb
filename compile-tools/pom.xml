@@ -36,6 +36,8 @@
         <openssl.include.dir>-Dtrue1=true1</openssl.include.dir>
         <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
         <cmake.build.type/>
+        <boost.include.setting> </boost.include.setting>
+        <boost.library.setting> </boost.library.setting>
     </properties>
     <modules>
         <module>thrift</module>
@@ -114,6 +116,8 @@
                 <thrift.make.executable>make</thrift.make.executable>
                 <thrift.compiler.executable>thrift.exe</thrift.compiler.executable>
                 <gradlew.executable>gradlew.bat</gradlew.executable>
+                <boost.include.setting>-DBOOST_INCLUDEDIR=${boost.include.dir}</boost.include.setting>
+                <boost.library.setting>-DDBOOST_LIBRARYDIR=${boost.library.dir}</boost.library.setting>
             </properties>
         </profile>
     </profiles>

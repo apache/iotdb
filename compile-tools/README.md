@@ -116,3 +116,5 @@ There is a long list of supported Cmake generators on Windows environment.
 
 When building client-cpp project, use -Dcmake.generator="" option to specify a Cmake generator.
 E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
+
+on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`

@@ -45,6 +45,4 @@ You can find some files to form a complete project:
 +-- SessionExample.cpp
 ```
 
-## compile the project
-
 
