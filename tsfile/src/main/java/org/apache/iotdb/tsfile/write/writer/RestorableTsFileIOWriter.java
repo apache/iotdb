@@ -95,7 +95,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
         minPlanIndex = reader.getMinPlanIndex();
         maxPlanIndex = reader.getMaxPlanIndex();
-        totalChunkNum = reader.getTotalChunkNum();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
           canWrite = false;

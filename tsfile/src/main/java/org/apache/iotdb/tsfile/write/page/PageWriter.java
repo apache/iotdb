@@ -22,13 +22,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -36,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This writer is used to write time-value into a page. It consists of a time
@@ -233,29 +230,35 @@ public class PageWriter {
   /**
    * write the page header and data into the PageWriter's output stream.
    */
-  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+  public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer, boolean first) throws IOException {
     if (statistics.getCount() == 0) {
-      return;
+      return 0;
     }
 
     ByteBuffer pageData = getUncompressedBytes();
     int uncompressedSize = pageData.remaining();
     int compressedSize;
-    int compressedPosition = 0;
     byte[] compressedBytes = null;
 
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
-      compressedSize = pageData.remaining();
+      compressedSize = uncompressedSize;
     } else {
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
-      compressedPosition = 0;
       // data is never a directByteBuffer now, so we can use data.array()
       compressedSize = compressor.compress(pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
     }
 
+
     // write the page header to IOWriter
-    PageHeader header = new PageHeader(uncompressedSize, compressedSize, statistics);
-    header.serializeTo(pageBuffer);
+    int sizeWithoutStatistic = 0;
+    if (first) {
+      sizeWithoutStatistic += ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, pageBuffer);
+      sizeWithoutStatistic += ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, pageBuffer);
+    } else {
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, pageBuffer);
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, pageBuffer);
+      statistics.serialize(pageBuffer);
+    }
 
     // write page content to temp PBAOS
     logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
@@ -264,9 +267,10 @@ public class PageWriter {
         channel.write(pageData);
       }
     } else {
-      pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
+      pageBuffer.write(compressedBytes, 0, compressedSize);
     }
     logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    return sizeWithoutStatistic;
   }
 
   /**

@@ -63,8 +63,11 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
         || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
 
+    // For chunkMetadata from old TsFile, do not set version
     for (ChunkMetadata metadata : chunkMetadataList) {
-      metadata.setVersion(resource.getVersion());
+      if (!metadata.isFromOldTsFile()) {
+        metadata.setVersion(resource.getVersion());
+      }
     }
     return chunkMetadataList;
   }

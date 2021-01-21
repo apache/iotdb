@@ -24,17 +24,14 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Encodes values using a combination of run length encoding and bit packing,
@@ -65,16 +62,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
 
   private static final Logger logger = LoggerFactory.getLogger(RleEncoder.class);
-
-  private EndianType endianType;
-
-  public EndianType getEndianType() {
-    return endianType;
-  }
-
-  public void setEndianType(EndianType endianType) {
-    this.endianType = endianType;
-  }
 
   /**
    * we save all value in a list and calculate its bitwidth.
@@ -134,9 +121,8 @@ public abstract class RleEncoder<T extends Comparable<T>> extends Encoder {
   /**
    * constructor.
    */
-  public RleEncoder(EndianType endianType) {
+  protected RleEncoder() {
     super(TSEncoding.RLE);
-    this.endianType = endianType;
     bytesBuffer = new ArrayList<>();
     isBitPackRun = false;
     isBitWidthSaved = false;
