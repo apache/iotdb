@@ -140,7 +140,6 @@ public class IoTDBMergeTest {
                   + "%d,%d)", j, j + 10, j + 20, j + 30));
         }
         statement.execute("FLUSH");
-        statement.execute("MERGE");
         try {
           Thread.sleep(1000);
         } catch (InterruptedException e) {
