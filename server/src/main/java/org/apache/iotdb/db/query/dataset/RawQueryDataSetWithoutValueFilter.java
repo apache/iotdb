@@ -22,9 +22,7 @@ package org.apache.iotdb.db.query.dataset;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
@@ -33,6 +31,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -126,7 +125,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
 
   protected List<ManagedSeriesReader> seriesReaderList;
 
-  protected TreeSet<Long> timeHeap;
+  protected TimeSelector timeHeap;
 
   // Blocking queue list for each batch reader
   private final BlockingQueue<BatchData>[] blockingQueueArray;
@@ -174,8 +173,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet implements
   }
 
   private void init() throws IOException, InterruptedException {
-    timeHeap = new TreeSet<>(
-        super.ascending ? Long::compareTo : Collections.reverseOrder());
+    timeHeap = new TimeSelector(seriesReaderList.size() << 1, ascending);
     for (int i = 0; i < seriesReaderList.size(); i++) {
       ManagedSeriesReader reader = seriesReaderList.get(i);
       reader.setHasRemaining(true);
