@@ -79,6 +79,7 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -1917,15 +1918,43 @@ public class StorageGroupProcessor {
           newFilePartitionId)) {
         updateLatestTimeMap(newTsFileResource);
       }
+      resetLastCacheWhenLoadingTsfile(newTsFileResource);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
+    } catch (IllegalPathException | WriteProcessException e) {
+      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
+      throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
       writeUnlock();
+    }
+  }
+
+  private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
+      throws IllegalPathException, WriteProcessException {
+    for (String device : newTsFileResource.getDevices()) {
+      tryToDeleteLastCacheByDevice(new PartialPath(device));
+    }
+  }
+
+  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) throws WriteProcessException {
+    if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
+      return;
+    }
+    try {
+      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+
+      for (MNode measurementNode : node.getChildren().values()) {
+        if (measurementNode != null) {
+          ((MeasurementMNode) measurementNode).resetCache();
+        }
+      }
+    } catch (MetadataException e) {
+      throw new WriteProcessException(e);
     }
   }
 
@@ -1977,6 +2006,7 @@ public class StorageGroupProcessor {
         loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
             newFilePartitionId);
       }
+      resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
       // update latest time map
       updateLatestTimeMap(newTsFileResource);
@@ -1987,6 +2017,9 @@ public class StorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(), tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+      throw new LoadFileException(e);
+    } catch (IllegalPathException | WriteProcessException e) {
+      logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
     } finally {
       tsFileManagement.writeUnlock();
