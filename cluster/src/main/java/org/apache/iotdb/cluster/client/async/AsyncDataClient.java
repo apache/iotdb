@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
 import java.util.Date;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
@@ -109,10 +110,12 @@ public class AsyncDataClient extends AsyncClient {
 
     public SingleManagerFactory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
-      try {
-        manager = new TAsyncClientManager();
-      } catch (IOException e) {
-        logger.error("Cannot init manager of SingleThreadFactoryAsync", e);
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        try {
+          manager = new TAsyncClientManager();
+        } catch (IOException e) {
+          logger.error("Cannot init manager of SingleThreadFactoryAsync", e);
+        }
       }
     }
 

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,8 +149,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
 
-      if (seqSelectedNum != resource.getSeqFiles().size() && !UpgradeUtils
-          .isNeedUpgrade(unseqFile)) {
+      if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
       boolean isClosed = checkClosed(unseqFile);

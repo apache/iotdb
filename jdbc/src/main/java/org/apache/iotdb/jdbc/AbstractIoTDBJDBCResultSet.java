@@ -58,11 +58,11 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   public AbstractIoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       TSIService.Iface client,
-      String sql, long queryId, long sessionId)
+      String sql, long queryId, long sessionId, long timeout)
       throws SQLException {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
         columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
-        statement.getFetchSize());
+        statement.getFetchSize(), timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
   }

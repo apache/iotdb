@@ -142,7 +142,10 @@ public class InsertTabletPlan extends InsertPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);
+    subSerialize(stream);
+  }
 
+  public void subSerialize(DataOutputStream stream) throws IOException {
     putString(stream, deviceId.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
@@ -167,7 +170,7 @@ public class InsertTabletPlan extends InsertPlan {
         continue;
       }
       TSDataType dataType = dataTypes[i];
-      stream.writeShort(dataType.serialize());
+      stream.write(dataType.serialize());
     }
   }
 
@@ -209,7 +212,10 @@ public class InsertTabletPlan extends InsertPlan {
   public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
+    subSerialize(buffer);
+  }
 
+  public void subSerialize(ByteBuffer buffer) {
     putString(buffer, deviceId.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
@@ -406,7 +412,7 @@ public class InsertTabletPlan extends InsertPlan {
 
     this.dataTypes = new TSDataType[measurementSize];
     for (int i = 0; i < measurementSize; i++) {
-      dataTypes[i] = TSDataType.deserialize(buffer.getShort());
+      dataTypes[i] = TSDataType.deserialize(buffer.get());
     }
 
     int rows = buffer.getInt();

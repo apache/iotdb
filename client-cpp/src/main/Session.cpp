@@ -259,44 +259,44 @@ void SessionDataSet::constructOneRow() {
         if (duplicateLocation.find(i) != duplicateLocation.end()) {
             field = new Field(*outFields[duplicateLocation[i]]);
         } else {
-            MyStringBuffer bitmapBuffer = MyStringBuffer(tsQueryDataSet->bitmapList[loc]);
+            MyStringBuffer *bitmapBuffer = bitmapBuffers[loc].get();
             // another new 8 row, should move the bitmap buffer position to next byte
             if (rowsIndex % 8 == 0) {
-                currentBitmap[loc] = bitmapBuffer.getChar();
+                currentBitmap[loc] = bitmapBuffer->getChar();
             }
 
             if (!isNull(loc, rowsIndex)) {
-                MyStringBuffer valueBuffer = MyStringBuffer(tsQueryDataSet->valueList[loc]);
+                MyStringBuffer *valueBuffer = valueBuffers[loc].get();
                 TSDataType::TSDataType dataType = getTSDataTypeFromString(columnTypeDeduplicatedList[loc]);
                 field = new Field(dataType);
                 switch (dataType) {
                 case TSDataType::BOOLEAN: {
-                    bool booleanValue = valueBuffer.getBool();
+                    bool booleanValue = valueBuffer->getBool();
                     field->boolV = booleanValue;
                     break;
                 }
                 case TSDataType::INT32: {
-                    int intValue = valueBuffer.getInt();
+                    int intValue = valueBuffer->getInt();
                     field->intV = intValue;
                     break;
                 }
                 case TSDataType::INT64: {
-                    int64_t longValue = valueBuffer.getLong();
+                    int64_t longValue = valueBuffer->getLong();
                     field->longV = longValue;
                     break;
                 }
                 case TSDataType::FLOAT: {
-                    float floatValue = valueBuffer.getFloat();
+                    float floatValue = valueBuffer->getFloat();
                     field->floatV = floatValue;
                     break;
                 }
                 case TSDataType::DOUBLE: {
-                    double doubleValue = valueBuffer.getDouble();
+                    double doubleValue = valueBuffer->getDouble();
                     field->doubleV = doubleValue;
                     break;
                 }
                 case TSDataType::TEXT: {
-                    string stringValue = valueBuffer.getString();
+                    string stringValue = valueBuffer->getString();
                     field->stringV = stringValue;
                     break;
                 }

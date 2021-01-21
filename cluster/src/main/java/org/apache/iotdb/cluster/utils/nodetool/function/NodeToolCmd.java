@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -25,6 +25,8 @@ import com.google.common.base.Throwables;
 import io.airlift.airline.Option;
 import io.airlift.airline.OptionType;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import javax.management.JMX;
 import javax.management.MBeanServerConnection;
 import javax.management.MalformedObjectNameException;
@@ -37,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
+@SuppressWarnings("squid:S2068")
 public abstract class NodeToolCmd implements Runnable {
 
   @Option(type = OptionType.GLOBAL, name = {"-h",
@@ -46,6 +49,14 @@ public abstract class NodeToolCmd implements Runnable {
   @Option(type = OptionType.GLOBAL, name = {"-p",
       "--port"}, description = "Remote jmx agent port number")
   private String port = "31999";
+
+  @Option(type = OptionType.GLOBAL, name = {"-u",
+      "--user"}, description = "The username to access the remote jmx")
+  private String user = "iotdb";
+
+  @Option(type = OptionType.GLOBAL, name = {"-pw",
+      "--password"}, description = "The password to access the remote jmx")
+  private String password = "passw!d";
 
   private static final String JMX_URL_FORMAT = "service:jmx:rmi:///jndi/rmi://%s:%s/jmxrmi";
 
@@ -72,7 +83,9 @@ public abstract class NodeToolCmd implements Runnable {
     try {
       String jmxURL = String.format(JMX_URL_FORMAT, host, port);
       JMXServiceURL serviceURL = new JMXServiceURL(jmxURL);
-      JMXConnector connector = JMXConnectorFactory.connect(serviceURL);
+      Map<String, Object> environment = Collections
+          .singletonMap(JMXConnector.CREDENTIALS, new String[]{user, password});
+      JMXConnector connector = JMXConnectorFactory.connect(serviceURL, environment);
       mbsc = connector.getMBeanServerConnection();
     } catch (IOException e) {
       Throwable rootCause = Throwables.getRootCause(e);
@@ -84,8 +97,9 @@ public abstract class NodeToolCmd implements Runnable {
     return mbsc;
   }
 
-  String nodeToString(Node node){
-    return String.format("%s:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort());
+  String nodeToString(Node node) {
+    return String.format("%s:%d:%d:%d", node.getIp(), node.getMetaPort(), node.getDataPort(),
+        node.getClientPort());
   }
 
   String partitionGroupToString(PartitionGroup group) {

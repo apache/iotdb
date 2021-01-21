@@ -26,6 +26,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,8 +43,8 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -118,13 +119,13 @@ public class TsFileResource {
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /**
-   * generated upgraded TsFile ResourceList used for upgrading v0.9.x/v1 -> 0.10/v2
+   * generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3
    */
   private List<TsFileResource> upgradedResources;
 
   /**
-   * load upgraded TsFile Resources to storage group processor used for upgrading v0.9.x/v1 ->
-   * 0.10/v2
+   * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
+   * 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
@@ -151,6 +152,8 @@ public class TsFileResource {
    */
   protected long minPlanIndex = Long.MAX_VALUE;
 
+  private long version = 0;
+
   public TsFileResource() {
   }
 
@@ -170,6 +173,7 @@ public class TsFileResource {
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
   }
 
   /**
@@ -177,6 +181,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file) {
     this.file = file;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
@@ -186,6 +191,7 @@ public class TsFileResource {
    */
   public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
     this.file = file;
+    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
     this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
@@ -203,6 +209,7 @@ public class TsFileResource {
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
+    this.version = originTsFileResource.version;
     generateTimeSeriesMetadata();
   }
 
@@ -276,7 +283,45 @@ public class TsFileResource {
       timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
+      if (inputStream.available() > 0) {
+        String modFileName = ReadWriteIOUtils.readString(inputStream);
+        if (modFileName != null) {
+          File modF = new File(file.getParentFile(), modFileName);
+          modFile = new ModificationFile(modF.getPath());
+        }
+      }
+    }
+  }
 
+  public void deserializeFromOldFile() throws IOException {
+    try (InputStream inputStream = fsFactory.getBufferedInputStream(
+        file + RESOURCE_SUFFIX)) {
+      // deserialize old TsfileResource
+      int size = ReadWriteIOUtils.readInt(inputStream);
+      Map<String, Integer> deviceMap = new HashMap<>();
+      long[] startTimesArray = new long[size];
+      long[] endTimesArray = new long[size];
+      for (int i = 0; i < size; i++) {
+        String path = ReadWriteIOUtils.readString(inputStream);
+        long time = ReadWriteIOUtils.readLong(inputStream);
+        deviceMap.put(path, i);
+        startTimesArray[i] = time;
+      }
+      size = ReadWriteIOUtils.readInt(inputStream);
+      for (int i = 0; i < size; i++) {
+        ReadWriteIOUtils.readString(inputStream); // String path
+        long time = ReadWriteIOUtils.readLong(inputStream);
+        endTimesArray[i] = time;
+      }
+      timeIndexType = (byte) 1;
+      timeIndex = new DeviceTimeIndex(deviceMap, startTimesArray, endTimesArray);
+      if (inputStream.available() > 0) {
+        int versionSize = ReadWriteIOUtils.readInt(inputStream);
+        for (int i = 0; i < versionSize; i++) {
+          // historicalVersions
+          ReadWriteIOUtils.readLong(inputStream);
+        }
+      }
       if (inputStream.available() > 0) {
         String modFileName = ReadWriteIOUtils.readString(inputStream);
         if (modFileName != null) {
@@ -413,9 +458,7 @@ public class TsFileResource {
   }
 
   void doUpgrade() {
-    if (UpgradeUtils.isNeedUpgrade(this)) {
-      UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-    }
+    UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
   }
 
   public void removeModFile() throws IOException {
@@ -718,5 +761,13 @@ public class TsFileResource {
 
   public void setMinPlanIndex(long minPlanIndex) {
     this.minPlanIndex = minPlanIndex;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
+  }
+
+  public long getVersion() {
+    return version;
   }
 }

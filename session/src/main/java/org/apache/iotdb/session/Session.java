@@ -135,11 +135,11 @@ public class Session {
   }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, Config.DEFAULT_TIMEOUT_MS);
+    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, Config.DEFAULT_TIMEOUT_MS);
+    open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -296,7 +296,7 @@ public class Session {
   }
 
   /**
-   * execure query sql
+   * execute query sql
    *
    * @param sql query statement
    * @return result set
@@ -304,6 +304,21 @@ public class Session {
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
     return defaultSessionConnection.executeQueryStatement(sql);
+  }
+
+  /**
+   * execute query sql with explicit timeout
+   *
+   * @param sql query statement
+   * @param timeoutInMs the timeout of this query, in milliseconds
+   * @return result set
+   */
+  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (timeoutInMs < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
+    }
+    return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
   }
 
   /**

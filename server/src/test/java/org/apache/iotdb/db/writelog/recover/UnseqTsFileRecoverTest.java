@@ -23,9 +23,12 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -142,7 +146,14 @@ public class UnseqTsFileRecoverTest {
     writer.flushAllChunkGroups();
     writer.getIOWriter().close();
 
-    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());
+    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName(), () -> {
+      ByteBuffer[] buffers = new ByteBuffer[2];
+      buffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      buffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return buffers;
+    });
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
@@ -172,15 +183,29 @@ public class UnseqTsFileRecoverTest {
   public void tearDown() throws IOException, StorageEngineException {
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
-    node.delete();
+    ByteBuffer[] array = node.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, false, false);
-    performer.recover(true).close();
+        resource, false, false);
+    performer.recover(true, () -> {
+      ByteBuffer[] buffers = new ByteBuffer[2];
+      buffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      buffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return buffers;
+    }, (ByteBuffer[] array) -> {
+      for (ByteBuffer byteBuffer : array) {
+        MmapUtil.clean((MappedByteBuffer) byteBuffer);
+      }
+    }).close();
 
     assertEquals(1, resource.getStartTime("root.sg.device99"));
     assertEquals(300, resource.getEndTime("root.sg.device99"));
@@ -201,8 +226,7 @@ public class UnseqTsFileRecoverTest {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, null);
       unSeqMergeReader
-          .addReader(new ChunkDataIterator(chunkReader), priorityValue);
-      priorityValue++;
+          .addReader(new ChunkDataIterator(chunkReader), priorityValue++);
     }
 
     for (int i = 0; i < 10; i++) {

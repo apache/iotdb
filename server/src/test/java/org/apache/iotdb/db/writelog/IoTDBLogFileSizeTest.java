@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.writelog;
 
 import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -57,7 +60,7 @@ public class IoTDBLogFileSizeTest {
       return;
     }
     groupSize = TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
-    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte( 8 * 1024 * 1024);
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(8 * 1024 * 1024);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(8 * 1024 * 1024);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
@@ -81,6 +84,11 @@ public class IoTDBLogFileSizeTest {
       return;
     }
     final long[] maxLength = {0};
+    ByteBuffer[] buffers = new ByteBuffer[2];
+    buffers[0] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    buffers[1] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     Thread writeThread = new Thread(() -> {
       int cnt = 0;
       try {
@@ -100,7 +108,7 @@ public class IoTDBLogFileSizeTest {
               cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-              "root.logFileTest.seq" + IoTDBConstant.SEQFILE_LOG_NODE_SUFFIX);
+              "root.logFileTest.seq" + IoTDBConstant.SEQFILE_LOG_NODE_SUFFIX, () -> buffers);
           File bufferWriteWALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (bufferWriteWALFile.exists() && bufferWriteWALFile.length() > maxLength[0]) {
@@ -117,6 +125,9 @@ public class IoTDBLogFileSizeTest {
     while (writeThread.isAlive()) {
 
     }
+    for (ByteBuffer byteBuffer : buffers) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
   }
 
   @Test
@@ -124,6 +135,11 @@ public class IoTDBLogFileSizeTest {
     if (skip) {
       return;
     }
+    ByteBuffer[] buffers = new ByteBuffer[2];
+    buffers[0] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    buffers[1] = ByteBuffer
+        .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
     final long[] maxLength = {0};
     Thread writeThread = new Thread(() -> {
       int cnt = 0;
@@ -143,7 +159,7 @@ public class IoTDBLogFileSizeTest {
                   ++cnt, cnt);
           statement.execute(sql);
           WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
-              .getNode("root.logFileTest.unsequence" + IoTDBConstant.UNSEQFILE_LOG_NODE_SUFFIX);
+              .getNode("root.logFileTest.unsequence" + IoTDBConstant.UNSEQFILE_LOG_NODE_SUFFIX, () -> buffers);
           File WALFile = new File(
               logNode.getLogDirectory() + File.separator + ExclusiveWriteLogNode.WAL_FILE_NAME);
           if (WALFile.exists() && WALFile.length() > maxLength[0]) {
@@ -159,6 +175,9 @@ public class IoTDBLogFileSizeTest {
     writeThread.interrupt();
     while (writeThread.isAlive()) {
 
+    }
+    for (ByteBuffer byteBuffer : buffers) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
     }
   }
 

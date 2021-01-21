@@ -48,7 +48,8 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
-  private int queryTimeout = 10;
+
+  private int queryTimeout = 60;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
@@ -92,7 +93,7 @@ public class IoTDBStatement implements Statement {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
-    this.fetchSize = Config.fetchSize;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
     this.stmtId = statementId;
@@ -100,7 +101,7 @@ public class IoTDBStatement implements Statement {
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       long sessionId, ZoneId zoneId) throws SQLException {
-    this(connection, client, sessionId, Config.fetchSize, zoneId);
+    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
 
   @Override
@@ -236,11 +237,11 @@ public class IoTDBStatement implements Statement {
       if (execResp.queryDataSet == null) {
         this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp,
-            client, sql, queryId, sessionId, execResp.nonAlignQueryDataSet);
+            client, sql, queryId, sessionId, execResp.nonAlignQueryDataSet, execReq.timeout);
       } else {
         this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp,
-            client, sql, queryId, sessionId, execResp.queryDataSet);
+            client, sql, queryId, sessionId, execResp.queryDataSet, execReq.timeout);
       }
       return true;
     }
@@ -299,14 +300,21 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
+    return this.executeQuery(sql, 0);
+  }
+
+  public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
+    if (timeoutInMS < 0) {
+      throw new SQLException("Timeout must be >= 0, please check and try again.");
+    }
     isClosed = false;
     try {
-      return executeQuerySQL(sql);
+      return executeQuerySQL(sql, timeoutInMS);
     } catch (TException e) {
       if (reConnect()) {
         try {
-          return executeQuerySQL(sql);
+          return executeQuerySQL(sql, timeoutInMS);
         } catch (TException e2) {
           throw new SQLException(
               "Fail to executeQuery " + sql + "after reconnecting. please check server status", e2);
@@ -319,10 +327,11 @@ public class IoTDBStatement implements Statement {
     }
   }
 
-  private ResultSet executeQuerySQL(String sql) throws TException, SQLException {
+  private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
+    execReq.setTimeout(timeoutInMS);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
@@ -338,11 +347,11 @@ public class IoTDBStatement implements Statement {
     if (execResp.queryDataSet == null) {
       this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client,
-          sql, queryId, sessionId, execResp.nonAlignQueryDataSet);
+          sql, queryId, sessionId, execResp.nonAlignQueryDataSet, execReq.timeout);
     } else {
       this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client,
-          sql, queryId, sessionId, execResp.queryDataSet);
+          sql, queryId, sessionId, execResp.queryDataSet, execReq.timeout);
     }
     return resultSet;
   }
@@ -477,7 +486,7 @@ public class IoTDBStatement implements Statement {
     if (fetchSize < 0) {
       throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
     }
-    this.fetchSize = fetchSize == 0 ? Config.fetchSize : fetchSize;
+    this.fetchSize = fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize;
   }
 
   @Override
@@ -524,7 +533,7 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
     checkConnection("setQueryTimeout");
-    if (seconds <= 0) {
+    if (seconds < 0) {
       throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
     }
     this.queryTimeout = seconds;

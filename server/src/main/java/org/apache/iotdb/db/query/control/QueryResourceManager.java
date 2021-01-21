@@ -208,6 +208,9 @@ public class QueryResourceManager {
 
     // close and delete UDF temp files
     TemporaryQueryDataFileService.getInstance().deregister(queryId);
+
+    // remove query info in QueryTimeManager
+    QueryTimeManager.getInstance().unRegisterQuery(queryId);
   }
 
   private static class QueryTokenManagerHelper {

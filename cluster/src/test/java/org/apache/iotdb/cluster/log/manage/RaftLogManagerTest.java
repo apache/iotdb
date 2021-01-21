@@ -153,7 +153,6 @@ public class RaftLogManagerTest {
       instance.append(logs.subList(0, 50));
       instance.commitTo(49);
 
-      blocked = true;
       instance.setBlockAppliedCommitIndex(99);
       instance.append(logs.subList(50, 100));
       instance.commitTo(98);
@@ -750,16 +749,14 @@ public class RaftLogManagerTest {
 
     try {
       instance.append(logs.subList(0, 10));
-      blocked = true;
       instance.commitTo(10);
       instance.setBlockAppliedCommitIndex(9);
 
+      blocked = false;
       // as [0, 10) are blocked and we require a block index of 9, [10, 20) should be added to the
       // blocked list
       instance.append(logs.subList(10, 20));
       instance.commitTo(20);
-
-      blocked = false;
       while (instance.getMaxHaveAppliedCommitIndex() < 9) {
         // wait until [0, 10) are applied
       }

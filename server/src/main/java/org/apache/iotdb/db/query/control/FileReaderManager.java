@@ -33,7 +33,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForV1;
+import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,15 +167,13 @@ public class FileReaderManager implements IService {
       }
       else {
         tsFileReader = new TsFileSequenceReader(filePath);
-        switch (tsFileReader.readVersionNumber()) {
-          case TSFileConfig.VERSION_NUMBER_V1:
-            tsFileReader.close();
-            tsFileReader = new TsFileSequenceReaderForV1(filePath);
-            break;
-          case TSFileConfig.VERSION_NUMBER:
-            break;
-          default:
+        if (tsFileReader.readVersionNumber() != TSFileConfig.VERSION_NUMBER) {
+          tsFileReader.close();
+          tsFileReader = new TsFileSequenceReaderForV2(filePath);
+          if (!((TsFileSequenceReaderForV2) tsFileReader).readVersionNumberV2()
+              .equals(TSFileConfig.VERSION_NUMBER_V2)) {
             throw new IOException("The version of this TsFile is not corrent. ");
+          }
         }
       }
       readerMap.put(filePath, tsFileReader);

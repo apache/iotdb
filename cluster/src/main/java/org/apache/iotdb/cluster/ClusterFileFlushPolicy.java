@@ -58,7 +58,7 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
       // find the related DataGroupMember and close the processor through it
       // we execute it in another thread to avoid deadlocks
       closePartitionExecutor
-          .submit(() -> metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
+          .submit(() -> metaGroupMember.closePartition(storageGroupProcessor.getVirtualStorageGroupId(),
               processor.getTimeRangeId(), isSeq));
     }
     // flush the memtable anyway to avoid the insertion trigger the policy again
