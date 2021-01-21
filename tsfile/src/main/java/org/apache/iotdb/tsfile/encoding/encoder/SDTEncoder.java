@@ -65,14 +65,14 @@ public class SDTEncoder {
    * if current point time to the last stored point time distance <= compMinTime,
    * current point will NOT be stored regardless of compression deviation
    */
-  private double compMinTime ;
+  private long compMinTime ;
 
   /**
    * the maximum time distance between two stored data points
    * if current point time to the last stored point time distance >= compMaxTime,
    * current point will be stored regardless of compression deviation
    */
-  private double compMaxTime;
+  private long compMaxTime;
 
   /**
    * isFirstValue is true when the encoder takes the first point or reset() when cur point's
@@ -84,8 +84,8 @@ public class SDTEncoder {
     upperDoor = Integer.MIN_VALUE;
     lowerDoor = Integer.MAX_VALUE;
     compDeviation = -1;
-    compMinTime = Integer.MIN_VALUE;
-    compMaxTime = Integer.MAX_VALUE;
+    compMinTime = 0;
+    compMaxTime = Long.MAX_VALUE;
     isFirstValue = true;
   }
 
@@ -410,19 +410,19 @@ public class SDTEncoder {
     return compDeviation;
   }
 
-  public void setCompMinTime(double compMinTime) {
+  public void setCompMinTime(long compMinTime) {
     this.compMinTime = compMinTime;
   }
 
-  public double getCompMinTime() {
+  public long getCompMinTime() {
     return compMinTime;
   }
 
-  public void setCompMaxTime(double compMaxTime) {
+  public void setCompMaxTime(long compMaxTime) {
     this.compMaxTime = compMaxTime;
   }
 
-  public double getCompMaxTime() {
+  public long getCompMaxTime() {
     return compMaxTime;
   }
 

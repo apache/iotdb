@@ -38,14 +38,14 @@ current sample and the current linear trend. CompDev needs to be greater than 0 
 CompMinTime is a parameter measures the time distance between two stored data points, which is used for noisy reduction.
 If the time interval between the current point and the last stored point is less than or equal to its value, 
 current point will NOT be stored regardless of compression deviation. 
-The default value is -2147483647 with time unit ms.
+The default value is 0 with time unit ms.
 
 * CompMaxTime (Compression Maximum Time Interval)
 
 CompMaxTime is a parameter measure the time distance between two stored data points.
 If the time interval between the current point and the last stored point is greater than or equal to its value, 
 current point will be stored regardless of compression deviation. 
-The default value is 2147483647 with time unit ms.
+The default value is 9,223,372,036,854,775,807 with time unit ms.
 
 The specified syntax for SDT is detailed in [Create Timeseries Statement](../Operation%20Manual/SQL%20Reference.md).
 
