@@ -435,11 +435,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           node.getNodeIdentifier() + File.separator + FilePathUtils.getTsFilePrefixPath(resource)
               + File.separator + tempFileName;
       File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
-      boolean success = tempFile.getParentFile().mkdirs();
-      if (!success) {
-        logger.error("mkdir failed when pull remote file, {}", tempFile);
-        return null;
-      }
+      tempFile.getParentFile().mkdirs();
       if (pullRemoteFile(resource.getTsFile().getAbsolutePath(), node, tempFile)) {
         // TODO-Cluster#353: implement file examination, may be replaced with other algorithm
         if (resource.isWithModification()) {
