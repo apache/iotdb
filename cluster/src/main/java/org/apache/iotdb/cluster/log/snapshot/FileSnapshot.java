@@ -379,7 +379,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @param resource
      */
     private void loadRemoteResource(RemoteTsFileResource resource) throws IllegalPathException {
-      // the new file is stored at: remote/<nodeIdentifier>/resource.getTsFile().getAbsolutePath()
+      // the new file is stored at: remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<tsfile>
+      // you can see FilePathUtils.splitTsFilePath() method for details.
       PartialPath storageGroupName = new PartialPath(
           FilePathUtils.getLogicalStorageGroupName(resource));
       File remoteModFile =
@@ -428,8 +429,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       logger.info("{}: pulling remote file {} from {}, plan index [{}, {}]", name, resource, node
           , resource.getMinPlanIndex(), resource.getMaxPlanIndex());
       // the new file is stored at:
-      // remote/<nodeIdentifier>/resource.getTsFile().getAbsolutePath()
-      // the file in the snapshot is a hardlink, remove the hardlink suffix
+      // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<newTsFile>
+      // you can see FilePathUtils.splitTsFilePath() method for details.
       String tempFileName = FilePathUtils.getTsFileNameWithoutHardLink(resource);
       String tempFilePath =
           node.getNodeIdentifier() + File.separator + FilePathUtils.getTsFilePrefixPath(resource)

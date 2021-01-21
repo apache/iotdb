@@ -65,10 +65,12 @@ public class FilePathUtils {
 
   /**
    * IMPORTANT, when the path of TsFile changes, the following methods should be changed
-   * accordingly.
+   * accordingly. The sequence TsFile is located at ${IOTDB_DATA_DIR}/data/sequence/. The unsequence
+   * TsFile is located at ${IOTDB_DATA_DIR}/data/unsequence/. Where different storage group's TsFile
+   * is located at <logicalStorageGroupName>/<virtualStorageGroupName>/<timePartitionId>/<fileName>.
+   * For example, one sequence TsFile may locate at /data/data/sequence/root.group_9/0/0/1611199237113-4-0.tsfile
    *
    * @param resource the tsFileResource
-   * @return An array of length 4: <logicalStorageGroupName>/<virtualStorageGroupName>/<timePartitionId>/<fileName>
    */
   public static String[] splitTsFilePath(TsFileResource resource) {
     return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
