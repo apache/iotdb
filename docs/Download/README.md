@@ -69,7 +69,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * We recommend to backup the data file (also the wal files and mlog.txt) before upgrading for rolling back.
   * Just download, unzip v0.12.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
   directories point to the folders set in previous version (or the backup folder). 
-  You can also modify other settings if you want. 
+  You can also modify other settings if you want. Any other config changes in v0.11 should be moved to v0.12. 
   * Stop IoTDB v0.11 or v0.10 instance, and start v0.12.x, then the IoTDB will upgrade data file format automatically. We are able to read and write when data files are upgrading.
   * After a log `All files upgraded successfully!` printed, the upgrading completes.
   * __NOTICE 1: V0.12 changes many settings in conf/iotdb-engine.properties, so do not use previous 
