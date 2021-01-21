@@ -495,37 +495,37 @@ class Session(object):
         values_tobe_packed = []
         for data_type, value in zip(data_types, values):
             if data_type == TSDataType.BOOLEAN.value:
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("?")
-                values_tobe_packed.append(TSDataType.BOOLEAN.value)
+                values_tobe_packed.append(bytes([TSDataType.BOOLEAN.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.INT32.value:
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("i")
-                values_tobe_packed.append(TSDataType.INT32.value)
+                values_tobe_packed.append(bytes([TSDataType.INT32.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.INT64.value:
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("q")
-                values_tobe_packed.append(TSDataType.INT64.value)
+                values_tobe_packed.append(bytes([TSDataType.INT64.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.FLOAT.value:
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("f")
-                values_tobe_packed.append(TSDataType.FLOAT.value)
+                values_tobe_packed.append(bytes([TSDataType.FLOAT.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.DOUBLE.value:
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("d")
-                values_tobe_packed.append(TSDataType.DOUBLE.value)
+                values_tobe_packed.append(bytes([TSDataType.DOUBLE.value]))
                 values_tobe_packed.append(value)
             elif data_type == TSDataType.TEXT.value:
                 value_bytes = bytes(value, 'utf-8')
-                format_str_list.append("h")
+                format_str_list.append("c")
                 format_str_list.append("i")
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
-                values_tobe_packed.append(TSDataType.TEXT.value)
+                values_tobe_packed.append(bytes([TSDataType.TEXT.value]))
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
