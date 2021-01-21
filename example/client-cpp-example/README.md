@@ -18,26 +18,19 @@
     under the License.
 
 -->
-# Building C++ Client
 
-To compile cpp client, add "-P client-cpp" option to maven build command.
+# How to get a complete CPP client demo project
 
-The compiling requires the module "compile-tools" to be built first.
-For more information, please refer to "compile-tools/README.md".
+## get a project
 
+using maven to build this example project:
 
-## Compile and Test:
+* cd the root path of the whole project
+* run `mvn package -DskipTests -P client-cpp -pl example/client-cpp-example -am`
+* cd example/client-cpp-example/target
 
-`mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
-
-## 
-
-If the compilation finishes successfully, the packaged zip file will be placed under
-"client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip". 
-
-On Mac machines, the hierarchy of the package should look like this:
+You can find some files to form a complete project:
 ```
-.
 +-- client
 |   +-- include
 |       +-- Session.h
@@ -48,4 +41,10 @@ On Mac machines, the hierarchy of the package should look like this:
 |           +-- thrift_headers...
 |   +-- lib
 |       +-- libiotdb_session.dylib
++-- CMakeLists.txt
++-- SessionExample.cpp
 ```
+
+## compile the project
+
+
