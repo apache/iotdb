@@ -255,7 +255,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public int getNetworkTimeout() {
-    return Config.connectionTimeoutInMs;
+    return Config.DEFAULT_CONNECTION_TIMEOUT_MS;
   }
 
   @Override
@@ -418,7 +418,7 @@ public class IoTDBConnection implements Connection {
     RpcTransportFactory.setMaxLength(params.getMaxFrameSize());
     transport = RpcTransportFactory.INSTANCE
         .getTransport(new TSocket(params.getHost(), params.getPort(),
-            Config.connectionTimeoutInMs));
+            Config.DEFAULT_CONNECTION_TIMEOUT_MS));
     if (!transport.isOpen()) {
       transport.open();
     }

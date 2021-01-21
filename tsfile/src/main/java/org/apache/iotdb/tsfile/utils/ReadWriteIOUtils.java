@@ -364,7 +364,7 @@ public class ReadWriteIOUtils {
       return len;
     }
 
-    byte[] bytes = s.getBytes();
+    byte[] bytes = s.getBytes(TSFileConfig.STRING_CHARSET);
     len += ReadWriteForEncodingUtils.writeVarInt(bytes.length, outputStream);
     outputStream.write(bytes);
     len += bytes.length;

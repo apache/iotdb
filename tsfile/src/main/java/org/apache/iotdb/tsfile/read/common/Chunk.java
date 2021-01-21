@@ -69,47 +69,72 @@ public class Chunk implements Accountable {
 
   public void mergeChunk(Chunk chunk) throws IOException {
     int dataSize = 0;
+    // from where the page data of the merged chunk starts, if -1, it means the merged chunk has more than one page
     int offset1 = -1;
+    // if the merged chunk has only one page, after merge with current chunk ,it will have more than page
+    // so we should add page statistics for it
     if (chunk.chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunk.chunkData);
+      // record the position from which we can reuse
       offset1 = chunk.chunkData.position();
       chunk.chunkData.flip();
+      // the actual size should add another page statistics size
       dataSize += (chunk.chunkData.array().length + chunk.chunkStatistic.getSerializedSize());
     } else {
+      // if the merge chunk already has more than one page, we can reuse all the part of its data
+      // the dataSize is equal to the before
       dataSize += chunk.chunkData.array().length;
     }
+    // from where the page data of the current chunk starts, if -1, it means the current chunk has more than one page
     int offset2 = -1;
+    // if the current chunk has only one page, after merge with the merged chunk ,it will have more than page
+    // so we should add page statistics for it
     if (chunkHeader.getChunkType() == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+      // change the chunk type
       chunkHeader.setChunkType(MetaMarker.CHUNK_HEADER);
+      // read the uncompressedSize and compressedSize of this page
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
       ReadWriteForEncodingUtils.readUnsignedVarInt(chunkData);
+      // record the position from which we can reuse
       offset2 = chunkData.position();
       chunkData.flip();
+      // the actual size should add another page statistics size
       dataSize += (chunkData.array().length + chunkStatistic.getSerializedSize());
     } else {
+      // if the current chunk already has more than one page, we can reuse all the part of its data
+      // the dataSize is equal to the before
       dataSize += chunkData.array().length;
     }
     chunkHeader.setDataSize(dataSize);
     ByteBuffer newChunkData = ByteBuffer.allocate(dataSize);
+    // the current chunk has more than one page, we can use its data part directly without any changes
     if (offset2 == -1) {
       newChunkData.put(chunkData.array());
-    } else {
+    } else { // the current chunk has only one page, we need to add one page statistics for it
       byte[] b = chunkData.array();
+      // put the uncompressedSize and compressedSize of this page
       newChunkData.put(b, 0, offset2);
+      // add page statistics
       PublicBAOS a = new PublicBAOS();
       chunkStatistic.serialize(a);
       newChunkData.put(a.getBuf(), 0, a.size());
+      // put the remaining page data
       newChunkData.put(b, offset2, b.length - offset2);
     }
+    // the merged chunk has more than one page, we can use its data part directly without any changes
     if (offset1 == -1) {
       newChunkData.put(chunk.chunkData.array());
     } else {
+      // put the uncompressedSize and compressedSize of this page
       byte[] b = chunk.chunkData.array();
       newChunkData.put(b, 0, offset1);
+      // add page statistics
       PublicBAOS a = new PublicBAOS();
       chunk.chunkStatistic.serialize(a);
       newChunkData.put(a.getBuf(), 0, a.size());
+      // put the remaining page data
       newChunkData.put(b, offset1, b.length - offset1);
     }
     chunkData = newChunkData;

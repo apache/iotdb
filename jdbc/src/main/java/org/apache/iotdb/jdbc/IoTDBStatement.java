@@ -49,9 +49,6 @@ public class IoTDBStatement implements Statement {
   private IoTDBConnection connection;
   private int fetchSize;
 
-  /**
-   * query timeout with seconds unit
-   */
   private int queryTimeout = 60;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
@@ -96,7 +93,7 @@ public class IoTDBStatement implements Statement {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
-    this.fetchSize = Config.fetchSize;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
     this.stmtId = statementId;
@@ -104,7 +101,7 @@ public class IoTDBStatement implements Statement {
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       long sessionId, ZoneId zoneId) throws SQLException {
-    this(connection, client, sessionId, Config.fetchSize, zoneId);
+    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId);
   }
 
   @Override
@@ -227,7 +224,6 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
-    execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -304,13 +300,13 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    return this.executeQuery(sql, (long) this.queryTimeout * 1000);
+    return this.executeQuery(sql, 0);
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {
     checkConnection("execute query");
-    if (timeoutInMS <= 0) {
-      throw new SQLException("Timeout must be over 0, please check and try again.");
+    if (timeoutInMS < 0) {
+      throw new SQLException("Timeout must be >= 0, please check and try again.");
     }
     isClosed = false;
     try {
@@ -490,7 +486,7 @@ public class IoTDBStatement implements Statement {
     if (fetchSize < 0) {
       throw new SQLException(String.format("fetchSize %d must be >= 0!", fetchSize));
     }
-    this.fetchSize = fetchSize == 0 ? Config.fetchSize : fetchSize;
+    this.fetchSize = fetchSize == 0 ? Config.DEFAULT_FETCH_SIZE : fetchSize;
   }
 
   @Override
@@ -537,7 +533,7 @@ public class IoTDBStatement implements Statement {
   @Override
   public void setQueryTimeout(int seconds) throws SQLException {
     checkConnection("setQueryTimeout");
-    if (seconds <= 0) {
+    if (seconds < 0) {
       throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
     }
     this.queryTimeout = seconds;

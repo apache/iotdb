@@ -119,7 +119,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    *
    * @throws IOException, WriteProcessException
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  @SuppressWarnings({ "squid:S3776", "deprecation" }) // Suppress high Cognitive Complexity warning
   private void upgradeFile(List<TsFileResource> upgradedResources)
       throws IOException, WriteProcessException {
 
@@ -249,6 +249,11 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     }
   }
 
+  /**
+   * Due to TsFile version-3 changed the serialize way of integer in TEXT data and 
+   * INT32 data with PLAIN encoding, and also add a sum statistic for BOOLEAN data,
+   * these types of data need to decode to points and rewrite in new TsFile.
+   */
   private boolean checkIfNeedToDecode(TSDataType dataType, TSEncoding encoding,
       PageHeader pageHeader) {
     return dataType == TSDataType.BOOLEAN ||
@@ -308,8 +313,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           if (!partitionDir.exists()) {
             partitionDir.mkdirs();
           }
-          File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-              + File.separator + partition + File.separator + oldTsFile.getName());
+          File newFile = FSFactoryProducer.getFSFactory().getFile(partitionDir 
+              + File.separator + oldTsFile.getName());
           try {
             if (!newFile.createNewFile()) {
               logger.error("The TsFile {} has been created ", newFile);

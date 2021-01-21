@@ -217,6 +217,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public boolean isComplete() throws IOException {
     long size = tsFileInput.size();
+    // TSFileConfig.MAGIC_STRING.getBytes().length * 2 for two magic string
+    // Byte.BYTES for the file version number
     if (size >= TSFileConfig.MAGIC_STRING.getBytes().length * 2 + Byte.BYTES) {
       String tailMagic = readTailMagic();
       String headMagic = readHeadMagic();

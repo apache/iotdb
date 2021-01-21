@@ -73,12 +73,15 @@ public class UpgradeUtils {
     } finally {
       tsFileResource.readUnlock();
     }
+    tsFileResource.readLock();
     try (TsFileSequenceReaderForV2 tsFileSequenceReader = new TsFileSequenceReaderForV2(
         tsFileResource.getTsFile().getAbsolutePath())) {
-      if (tsFileSequenceReader.readVersionNumberV2().equals(TSFileConfig.VERSION_NUMBER_V2)) {
+      String versionNumber = tsFileSequenceReader.readVersionNumberV2();
+      if (versionNumber.equals(TSFileConfig.VERSION_NUMBER_V2) 
+          || versionNumber.equals(TSFileConfig.VERSION_NUMBER_V1)) {
         return true;
       }
-    } catch (Exception e) {
+    } catch (IOException e) {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
           tsFileResource.getTsFile().getAbsolutePath(), e);
     } finally {
@@ -92,8 +95,8 @@ public class UpgradeUtils {
     for (TsFileResource upgradedResource : upgradedResources) {
       File upgradedFile = upgradedResource.getTsFile();
       long partition = upgradedResource.getTimePartition();
-      String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
-      File partitionDir = fsFactory.getFile(storageGroupPath, partition + "");
+      String virtualStorageGroupDir = upgradedFile.getParentFile().getParentFile().getParent();
+      File partitionDir = fsFactory.getFile(virtualStorageGroupDir, String.valueOf(partition));
       if (!partitionDir.exists()) {
         partitionDir.mkdir();
       }
@@ -104,7 +107,8 @@ public class UpgradeUtils {
       Files.delete(fsFactory
           .getFile(upgradedResource.getTsFile().toPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       // move upgraded mods file
-      File newModsFile = fsFactory.getFile(upgradedResource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX);
+      File newModsFile = fsFactory
+          .getFile(upgradedResource.getTsFile().toPath() + ModificationFile.FILE_SUFFIX);
       if (newModsFile.exists()) {
         fsFactory.moveFile(newModsFile,
             fsFactory.getFile(partitionDir, newModsFile.getName()));
@@ -117,11 +121,15 @@ public class UpgradeUtils {
       }
       upgradedResource.serialize();
       // delete tmp partition folder when it is empty
-      if (upgradedFile.getParentFile().isDirectory()
-          && upgradedFile.getParentFile().listFiles().length == 0) {
-        Files.delete(upgradedFile.getParentFile().toPath());
+      File tmpPartitionDir = upgradedFile.getParentFile();
+      if (tmpPartitionDir.isDirectory() && tmpPartitionDir.listFiles().length == 0) {
+        Files.delete(tmpPartitionDir.toPath());
       }
-      upgradedResource.serialize();
+      // delete upgrade folder when it is empty
+      File upgradeDir = tmpPartitionDir.getParentFile();
+      if (upgradeDir.isDirectory() && upgradeDir.listFiles().length == 0) {
+        Files.delete(upgradeDir.toPath());
+      }
     }
   }
 

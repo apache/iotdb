@@ -841,6 +841,16 @@ public class IoTDBConfig {
    */
   private boolean debugState = false;
 
+  /**
+   * the size of ioTaskQueue
+   */
+  private int ioTaskQueueSizeForFlushing = 10;
+
+  /**
+   * the number of virtual storage groups per user-defined storage group
+   */
+  private int virtualStorageGroupNum = 1;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1135,7 +1145,7 @@ public class IoTDBConfig {
     return schemaDir;
   }
 
-  void setSchemaDir(String schemaDir) {
+  public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
   }
 
@@ -2228,6 +2238,14 @@ public class IoTDBConfig {
     this.defaultIndexWindowRange = defaultIndexWindowRange;
   }
 
+  public int getVirtualStorageGroupNum() {
+    return virtualStorageGroupNum;
+  }
+
+  public void setVirtualStorageGroupNum(int virtualStorageGroupNum) {
+    this.virtualStorageGroupNum = virtualStorageGroupNum;
+  }
+
   public boolean isRpcAdvancedCompressionEnable() {
     return rpcAdvancedCompressionEnable;
   }
@@ -2243,5 +2261,13 @@ public class IoTDBConfig {
 
   public void setMlogBufferSize(int mlogBufferSize) {
     this.mlogBufferSize = mlogBufferSize;
+  }
+
+  public int getIoTaskQueueSizeForFlushing() {
+    return ioTaskQueueSizeForFlushing;
+  }
+
+  public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
+    this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
   }
 }

@@ -104,6 +104,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -222,6 +223,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
+        return true;
+      case MULTI_BATCH_INSERT:
+        insertTablet((InsertMultiTabletPlan) plan);
         return true;
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -348,10 +352,7 @@ public class PlanExecutor implements IPlanExecutor {
     long killQueryId = killQueryPlan.getQueryId();
     if (killQueryId != -1) {
       if (queryTimeManager.getQueryInfoMap().get(killQueryId) != null) {
-        queryTimeManager.getQueryInfoMap().computeIfPresent(killQueryId, (k, v) -> {
-          queryTimeManager.killQuery(k);
-          return null;
-        });
+        queryTimeManager.killQuery(killQueryId);
       } else {
         throw new QueryIdNotExsitException(String
             .format("Query Id %d is not exist, please check it.", killQueryPlan.getQueryId()));
@@ -1104,6 +1105,17 @@ public class PlanExecutor implements IPlanExecutor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
       }
+    }
+  }
+
+  @Override
+  public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
+      throws QueryProcessException {
+    for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
+      if (insertMultiTabletPlan.getResults().containsKey(i)) {
+        continue;
+      }
+      insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
     }
   }
 
