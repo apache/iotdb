@@ -245,15 +245,15 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示所有设备语句
 
 ```
-SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES
+SHOW DEVICES limitClause?
+Eg: IoTDB > SHOW DEVICES 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PrefixPath>
+SHOW DEVICES <PrefixPath> limitClause?
 Eg: IoTDB > SHOW DEVICES root
 Eg: IoTDB > SHOW DEVICES root.ln
 Eg: IoTDB > SHOW DEVICES root.*.wf01

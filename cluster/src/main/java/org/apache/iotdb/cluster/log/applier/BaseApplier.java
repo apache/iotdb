@@ -79,7 +79,7 @@ abstract class BaseApplier implements LogApplier {
       } catch (StorageGroupNotSetException e) {
         executeAfterSync(plan);
       }
-    } else if (plan != null){
+    } else if (plan != null) {
       logger.error("Unsupported physical plan: {}", plan);
     }
   }

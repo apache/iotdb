@@ -45,10 +45,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -60,16 +59,13 @@ public class MergeTask implements Callable<Void> {
   String storageGroupName;
   MergeLogger mergeLogger;
   MergeContext mergeContext = new MergeContext();
-
-  private MergeCallback callback;
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
-
   States states = States.START;
-
   MergeMultiChunkTask chunkTask;
   MergeFileTask fileTask;
+  private MergeCallback callback;
 
   MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
@@ -212,14 +208,6 @@ public class MergeTask implements Callable<Void> {
     return storageGroupName;
   }
 
-  enum States {
-    START,
-    MERGE_CHUNKS,
-    MERGE_FILES,
-    CLEAN_UP,
-    ABORTED
-  }
-
   public String getProgress() {
     switch (states) {
       case ABORTED:
@@ -238,5 +226,13 @@ public class MergeTask implements Callable<Void> {
 
   public String getTaskName() {
     return taskName;
+  }
+
+  enum States {
+    START,
+    MERGE_CHUNKS,
+    MERGE_FILES,
+    CLEAN_UP,
+    ABORTED
   }
 }
