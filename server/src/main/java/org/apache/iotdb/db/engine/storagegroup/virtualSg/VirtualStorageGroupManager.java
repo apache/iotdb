@@ -58,8 +58,14 @@ public class VirtualStorageGroupManager {
    */
   private long monitorSeriesValue;
 
-  public VirtualStorageGroupManager() {
-    virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
+  /**
+   *  storageGroupMNode logical sg mnode
+   */
+  private StorageGroupMNode storageGroupMNode;
+
+  public VirtualStorageGroupManager(StorageGroupMNode storageGroupMNode) {
+    this.storageGroupMNode = storageGroupMNode;
+    this.virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
   }
 
   /**
@@ -103,8 +109,7 @@ public class VirtualStorageGroupManager {
    */
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  public StorageGroupProcessor getProcessor(PartialPath partialPath,
-      StorageGroupMNode storageGroupMNode)
+  public StorageGroupProcessor getProcessor(PartialPath partialPath)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
@@ -134,10 +139,8 @@ public class VirtualStorageGroupManager {
 
   /**
    * recover
-   *
-   * @param storageGroupMNode logical sg mnode
    */
-  public void recover(StorageGroupMNode storageGroupMNode) {
+  public void recover() {
     List<Thread> threadList = new ArrayList<>(partitioner.getPartitionCount());
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;

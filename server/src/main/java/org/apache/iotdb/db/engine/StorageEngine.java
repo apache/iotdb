@@ -270,9 +270,9 @@ public class StorageEngine implements IService {
           // for recovery in test
           VirtualStorageGroupManager virtualStorageGroupManager = processorMap
               .computeIfAbsent(storageGroup.getPartialPath(),
-                  id -> new VirtualStorageGroupManager());
+                  id -> new VirtualStorageGroupManager(storageGroup));
 
-          virtualStorageGroupManager.recover(storageGroup);
+          virtualStorageGroupManager.recover();
 
           logger.info("Storage Group Processor {} is recovered successfully",
               storageGroup.getFullPath());
@@ -422,7 +422,7 @@ public class StorageEngine implements IService {
         synchronized (storageGroupMNode) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
-            virtualStorageGroupManager = new VirtualStorageGroupManager();
+            virtualStorageGroupManager = new VirtualStorageGroupManager(storageGroupMNode);
             processorMap.put(storageGroupMNode.getPartialPath(), virtualStorageGroupManager);
           }
         }
@@ -434,7 +434,7 @@ public class StorageEngine implements IService {
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
-    return virtualStorageGroupManager.getProcessor(devicePath, storageGroupMNode);
+    return virtualStorageGroupManager.getProcessor(devicePath);
   }
 
   /**
