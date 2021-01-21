@@ -1443,7 +1443,7 @@ public class StorageGroupProcessor {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
-    tsFileManagement.writeLock();
+    tsFileManagement.readLock();
     insertLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
@@ -1465,8 +1465,8 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
+      tsFileManagement.readUnLock();
       insertLock.readLock().unlock();
-      tsFileManagement.writeUnlock();
     }
   }
 
