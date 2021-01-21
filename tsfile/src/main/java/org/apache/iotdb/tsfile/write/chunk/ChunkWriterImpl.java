@@ -133,40 +133,15 @@ public class ChunkWriterImpl implements IChunkWriter {
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compdev")) {
-        try {
-          sdtEncoder
-              .setCompDeviation(Double.parseDouble(measurementSchema.getProps().get("compdev")));
-        } catch (NumberFormatException e) {
-          logger.error("meet error when formatting SDT compression deviation");
-        }
-        if (sdtEncoder.getCompDeviation() < 0) {
-          logger
-              .error("SDT compression deviation cannot be negative. SDT encoding is turned off.");
-          isSdtEncoding = false;
-        }
+        sdtEncoder.setCompDeviation(Double.parseDouble(measurementSchema.getProps().get("compdev")));
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compmintime")) {
-        try {
-          sdtEncoder.setCompMinTime(Long.parseLong(measurementSchema.getProps().get("compmintime")));
-        } catch (NumberFormatException e) {
-          logger.error("meet error when formatting SDT compression minimum");
-        }
+        sdtEncoder.setCompMinTime(Long.parseLong(measurementSchema.getProps().get("compmintime")));
       }
 
       if (isSdtEncoding && measurementSchema.getProps().containsKey("compmaxtime")) {
-        try {
-          sdtEncoder.setCompMaxTime(Long.parseLong(measurementSchema.getProps().get("compmaxtime")));
-        } catch (NumberFormatException e) {
-          logger.error("meet error when formatting SDT compression maximum");
-        }
-      }
-
-      if (isSdtEncoding && sdtEncoder.getCompMaxTime() <= sdtEncoder.getCompMinTime()) {
-        logger
-            .error(
-                "SDT compression maximum needs to be greater than compression minimum. SDT encoding is turned off");
-        isSdtEncoding = false;
+        sdtEncoder.setCompMaxTime(Long.parseLong(measurementSchema.getProps().get("compmaxtime")));
       }
     }
   }

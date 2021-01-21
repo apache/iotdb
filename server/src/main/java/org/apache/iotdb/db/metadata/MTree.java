@@ -191,7 +191,7 @@ public class MTree implements Serializable {
    */
   MeasurementMNode createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
       CompressionType compressor, Map<String, String> props, String alias)
-      throws MetadataException {
+      throws MetadataException, IOException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
@@ -212,6 +212,11 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
+
+    if (props != null && props.containsKey("loss") && props.get("loss").equals("sdt")) {
+      checkSDTFormat(path, props);
+    }
+
     String leafName = nodeNames[nodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
@@ -234,6 +239,58 @@ public class MTree implements Serializable {
       }
 
       return leaf;
+    }
+  }
+
+  //check if sdt parameters are valid
+  private void checkSDTFormat(PartialPath path, Map<String, String> props) throws IOException {
+    String s = "Failed to create timeseries.";
+
+    if (!props.containsKey("compdev")) {
+      throw new IOException("SDT compression deviation is required. " + s);
+    }
+
+    try {
+      double d = Double.parseDouble(props.get("compdev"));
+      if (d < 0) {
+        throw new IOException("Error occurred SDT compression deviation cannot be negative. " + s);
+      }
+    } catch (NumberFormatException e) {
+      throw new IOException("Error occurred when formatting SDT compression deviation. " + s);
+    }
+
+    long compMaxTime = Long.MAX_VALUE;
+    long compMinTime = 0;
+    if (props.containsKey("compmintime")) {
+      try {
+        compMinTime = Long.parseLong(props.get("compmintime"));
+        if (compMinTime < 0) {
+          throw new NumberFormatException();
+        }
+      } catch (NumberFormatException e) {
+        throw new IOException("Error occurred when formatting SDT compression minimum time. " + s);
+      }
+    } else {
+      logger.info(path + " enabled SDT but did not set compression minimum time.");
+    }
+
+    if (props.containsKey("compmaxtime")) {
+      try {
+        compMaxTime = Long.parseLong(props.get("compmaxtime"));
+        if (compMaxTime < 0) {
+          throw new NumberFormatException();
+        }
+      } catch (NumberFormatException e) {
+        throw new IOException("Error occurred when formatting SDT compression maximum time. " + s);
+      }
+    } else {
+      logger.info(path + " enabled SDT but did not set compression maximum time.");
+    }
+
+    if (compMaxTime <= compMinTime) {
+      throw new IOException(
+          "Error occurred SDT compression maximum needs to be greater than compression minimum. "
+              + s);
     }
   }
 
