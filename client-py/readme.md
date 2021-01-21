@@ -75,7 +75,6 @@ session.close()
 
 ## test file
 
-You can use `client-py/src/SessionTest.py` to test python session, if all test has been passed, it will return 0
-Otherwise it will return 1. You can use print message to locate failed operations and the reason of them
+You can use `client-py/src/SessionTest.py` to test python session, if the test has been passed, it will return 0. Otherwise it will return 1. You can use the printed message to locate failed operations and the reason of them.
 
-Notice: you should start IoTDB server firstly and then run the test
+Notice: you should start IoTDB server firstly and then run the test.
