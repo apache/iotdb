@@ -62,21 +62,21 @@ public class SDTEncoder {
 
   /**
    * the minimum time distance between two stored data points
-   * if current point time to the last stored point time distance <= compMin,
+   * if current point time to the last stored point time distance <= compMinTime,
    * current point will NOT be stored regardless of compression deviation
    */
-  private double compMin;
+  private long compMinTime ;
 
   /**
    * the maximum time distance between two stored data points
-   * if current point time to the last stored point time distance >= compMax,
+   * if current point time to the last stored point time distance >= compMaxTime,
    * current point will be stored regardless of compression deviation
    */
-  private double compMax;
+  private long compMaxTime;
 
   /**
    * isFirstValue is true when the encoder takes the first point or reset() when cur point's
-   * distance to the last stored point's distance exceeds compMax
+   * distance to the last stored point's distance exceeds compMaxTime
    */
   private boolean isFirstValue;
 
@@ -84,8 +84,8 @@ public class SDTEncoder {
     upperDoor = Integer.MIN_VALUE;
     lowerDoor = Integer.MAX_VALUE;
     compDeviation = -1;
-    compMin = Integer.MIN_VALUE;
-    compMax = Integer.MAX_VALUE;
+    compMinTime = 0;
+    compMaxTime = Long.MAX_VALUE;
     isFirstValue = true;
   }
 
@@ -96,15 +96,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -141,15 +141,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -186,15 +186,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -231,15 +231,15 @@ public class SDTEncoder {
       return true;
     }
 
-    // if current point to the last stored point's time distance is within compMin,
-    // will not check two doors nor store any point within the compMin time range
-    if (time - lastStoredTimestamp <= compMin) {
+    // if current point to the last stored point's time distance is within compMinTime,
+    // will not check two doors nor store any point within the compMinTime time range
+    if (time - lastStoredTimestamp <= compMinTime) {
       return false;
     }
 
-    // if current point to the last stored point's time distance is larger than compMax,
+    // if current point to the last stored point's time distance is larger than compMaxTime,
     // will reset two doors, and store current point;
-    if (time - lastStoredTimestamp >= compMax) {
+    if (time - lastStoredTimestamp >= compMaxTime) {
       reset(time, value);
       return true;
     }
@@ -373,7 +373,7 @@ public class SDTEncoder {
   }
 
   /**
-   * if current point to the last stored point's time distance >= compMax, will store current point
+   * if current point to the last stored point's time distance >= compMaxTime, will store current point
    * and reset upperDoor and lowerDoor
    * @param time current time
    * @param value current value
@@ -410,20 +410,20 @@ public class SDTEncoder {
     return compDeviation;
   }
 
-  public void setCompMin(double compMin) {
-    this.compMin = compMin;
+  public void setCompMinTime(long compMinTime) {
+    this.compMinTime = compMinTime;
   }
 
-  public double getCompMin() {
-    return compMin;
+  public long getCompMinTime() {
+    return compMinTime;
   }
 
-  public void setCompMax(double compMax) {
-    this.compMax = compMax;
+  public void setCompMaxTime(long compMaxTime) {
+    this.compMaxTime = compMaxTime;
   }
 
-  public double getCompMax() {
-    return compMax;
+  public long getCompMaxTime() {
+    return compMaxTime;
   }
 
   public long getTime() {
