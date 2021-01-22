@@ -21,14 +21,17 @@ package main
 
 import (
 	"github.com/apache/iotdb/openapi/go-rest/src/iotdbrestimpl"
+	"github.com/apache/iotdb/openapi/go-rest/src/util"
 	"github.com/iotdbrest"
 	"log"
 	"net/http"
 )
 
 func main() {
-	log.Printf("Server started")
-
+	util.Config.ReadConf()
+	util.Session.Open(false, 0)
+	util.RecoverSchema()
+	util.Session.Close()
 	DefaultApiService := iotdbrestimpl.NewDefaultApiService()
 	DefaultApiController := iotdbrest.NewDefaultApiController(DefaultApiService)
 

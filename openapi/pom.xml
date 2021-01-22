@@ -39,11 +39,8 @@
         <openapi-generator-version>5.0.0</openapi-generator-version>
     </properties>
     <build>
-        <plugins>
-
-        </plugins>
+        <plugins/>
     </build>
-
     <profiles>
         <profile>
             <id>openapi-generation</id>
@@ -117,7 +114,6 @@
                             </execution>
                         </executions>
                     </plugin>
-
                 </plugins>
             </build>
         </profile>
