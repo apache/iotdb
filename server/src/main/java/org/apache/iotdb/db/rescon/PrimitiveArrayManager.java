@@ -153,7 +153,7 @@ public class PrimitiveArrayManager {
    * @param size     needed capacity
    * @return an array of primitive data arrays
    */
-  public static synchronized Object createDataListsByType(TSDataType dataType, int size) {
+  public static Object createDataListsByType(TSDataType dataType, int size) {
     int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
     switch (dataType) {
       case BOOLEAN:
