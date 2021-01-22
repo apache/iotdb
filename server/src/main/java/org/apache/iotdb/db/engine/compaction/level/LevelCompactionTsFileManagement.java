@@ -216,6 +216,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           sequenceTsFileResources
               .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
               .add(tsFileResource);
+          System.out.println("add a resource: " + tsFileResource.getTsFile().getName());
         } else {
           // current file has too high level
           sequenceTsFileResources
@@ -465,7 +466,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   @Override
   public void forkCurrentFileList(long timePartition) {
     synchronized (sequenceTsFileResources) {
-      forkTsFileList(
+      forkSeqTsFileList(
           forkedSequenceTsFileResources,
           sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
           seqLevelNum, seqFileNumInEachLevel);
@@ -498,6 +499,31 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       }
       forkedTsFileResources.add(forkedLevelTsFileResources);
     }
+  }
+
+  private void forkSeqTsFileList(
+      List<List<TsFileResource>> forkedTsFileResources,
+      List rawTsFileResources, int currMaxLevel, int currFileNumInEachLevel) {
+    forkedTsFileResources.clear();
+    for (int i = 0; i < currMaxLevel - 1; i++) {
+      List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
+      Collection<TsFileResource> levelRawTsFileResources = (Collection<TsFileResource>) rawTsFileResources
+          .get(i);
+      for (TsFileResource tsFileResource : levelRawTsFileResources) {
+        if (tsFileResource.isClosed()) {
+          forkedLevelTsFileResources.add(tsFileResource);
+          if (forkedLevelTsFileResources.size() > currFileNumInEachLevel) {
+            break;
+          }
+        }
+      }
+      forkedTsFileResources.add(forkedLevelTsFileResources);
+    }
+    System.out.println("---------");
+    for (TsFileResource tsFileResource : forkedTsFileResources.get(0)){
+      System.out.print("file fork" + tsFileResource.getTsFile().getName());
+    }
+    System.out.println("---------");
   }
 
   @Override
@@ -546,15 +572,21 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             }
             File newLevelFile = createNewTsFileName(mergeResources.get(i).get(0).getTsFile(),
                 i + 1);
+            System.out.println("new file name" + newLevelFile.getName());
+            System.out.println("merge resource 0" + mergeResources.get(i).get(0));
+
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
             List<TsFileResource> toMergeTsFiles = mergeResources.get(i);
             logger.info("{} [Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName, i, toMergeTsFiles.size());
+            System.out.println("merge files used");
             for (TsFileResource toMergeTsFile : toMergeTsFiles) {
               logger.info("{} [Compaction] start to merge TsFile {}", storageGroupName,
                   toMergeTsFile);
+              System.out.print("merge file:" + toMergeTsFile.getTsFile().getName());
             }
+            System.out.println("--------");
 
             TsFileResource newResource = new TsFileResource(newLevelFile);
             // merge, read from source files and write to target file

@@ -1087,6 +1087,7 @@ public class StorageGroupProcessor {
         // build new processor
         TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
         tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
+        System.out.println("put a processor to the tree map:" + newProcessor.getTsFileResource().getTsFile().getName());
         tsFileManagement.add(newProcessor.getTsFileResource(), sequence);
         res = newProcessor;
       }
