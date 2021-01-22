@@ -81,7 +81,7 @@ public class FilePathUtils {
     return pathSegments[pathSegments.length - 4];
   }
 
-  public static String getVirtualStorageGroupName(TsFileResource resource) {
+  public static String getVirtualStorageGroupId(TsFileResource resource) {
     String[] pathSegments = splitTsFilePath(resource);
     return pathSegments[pathSegments.length - 3];
   }

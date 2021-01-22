@@ -76,7 +76,7 @@ public class FilePathUtilsTest {
   public void getVirtualStorageGroupNameTest() {
     TsFileResource tsFileResource = new TsFileResource();
     tsFileResource.setFile(tsFile);
-    String tmpVirtualSgName = FilePathUtils.getVirtualStorageGroupName(tsFileResource);
+    String tmpVirtualSgName = FilePathUtils.getVirtualStorageGroupId(tsFileResource);
     Assert.assertEquals(virtualSgName, tmpVirtualSgName);
   }
 

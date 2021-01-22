@@ -32,14 +32,18 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IoTDBFilePathUtilsIT {
 
   private static Connection connection;
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBFilePathUtilsIT.class);
 
   @BeforeClass
   public static void setUp() {
@@ -80,6 +84,10 @@ public class IoTDBFilePathUtilsIT {
     for (TsFileResource tsFileResource : tsFileResources) {
       String sgName = FilePathUtils.getLogicalStorageGroupName(tsFileResource);
       Assert.assertEquals(storageGroupName, sgName);
+
+      Pair<String, Long> logicalSgNameAndTimePartitionIdPair = FilePathUtils
+          .getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
+      Assert.assertEquals(storageGroupName, logicalSgNameAndTimePartitionIdPair.left);
     }
   }
 
@@ -88,7 +96,7 @@ public class IoTDBFilePathUtilsIT {
       try {
         connection.close();
       } catch (Exception e) {
-        e.printStackTrace();
+        logger.error("close the connection failed,", e);
       }
     }
   }
