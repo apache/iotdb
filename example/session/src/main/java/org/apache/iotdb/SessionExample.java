@@ -107,13 +107,13 @@ public class SessionExample {
 
     // create timeseries with SDT property, SDT will take place when flushing
     if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
-      // compDev is required
-      // compMax and compMin are optional and their unit is ms
+      // COMPDEV is required
+      // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
       Map<String, String> props = new HashMap<>();
-      props.put("loss", "sdt");
-      props.put("compDev", "0.01");
-      props.put("compMin", "2");
-      props.put("compMax", "10");
+      props.put("LOSS", "sdt");
+      props.put("COMPDEV", "0.01");
+      props.put("COMPMINTIME", "2");
+      props.put("COMPMAXTIME", "10");
       session.createTimeseries(ROOT_SG1_D1_S5, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY, props, null, null, null);
     }

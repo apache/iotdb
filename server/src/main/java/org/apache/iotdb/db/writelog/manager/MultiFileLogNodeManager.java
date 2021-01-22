@@ -19,11 +19,14 @@
 package org.apache.iotdb.db.writelog.manager;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -35,18 +38,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile
- * (either seq or unseq).
+ * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile (either
+ * seq or unseq).
  */
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
-  private Map<String, WriteLogNode> nodeMap;
+  private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final void forceTask() {
+  private void forceTask() {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       logger.warn("system mode is read-only, the force flush WAL task is stopped");
       return;
@@ -75,23 +78,25 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
 
   @Override
-  public WriteLogNode getNode(String identifier) {
+  public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
     WriteLogNode node = nodeMap.get(identifier);
     if (node == null) {
       node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
         return oldNode;
+      } else {
+        node.initBuffer(supplier.get());
       }
     }
     return node;
   }
 
   @Override
-  public void deleteNode(String identifier) throws IOException {
+  public void deleteNode(String identifier, Consumer<ByteBuffer[]> consumer) throws IOException {
     WriteLogNode node = nodeMap.remove(identifier);
     if (node != null) {
-      node.delete();
+      consumer.accept(node.delete());
     }
   }
 
@@ -148,9 +153,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   private static class InstanceHolder {
-    private InstanceHolder(){}
 
-    private static MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
+    private InstanceHolder() {
+    }
+
+    private static final MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
   }
 
 }

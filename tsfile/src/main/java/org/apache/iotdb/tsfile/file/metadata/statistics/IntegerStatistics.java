@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for int type.
@@ -36,7 +36,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   private int maxValue;
   private int firstValue;
   private int lastValue;
-  private double sumValue;
+  private long sumValue;
 
   static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
 
@@ -51,7 +51,7 @@ public class IntegerStatistics extends Statistics<Integer> {
     return 24;
   }
 
-  public void initializeStats(int min, int max, int first, int last, double sum) {
+  public void initializeStats(int min, int max, int first, int last, long sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;
@@ -59,7 +59,7 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.sumValue = sum;
   }
 
-  private void updateStats(int minValue, int maxValue, int lastValue, double sumValue) {
+  private void updateStats(int minValue, int maxValue, int lastValue, long sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -70,7 +70,8 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.lastValue = lastValue;
   }
 
-  private void updateStats(int minValue, int maxValue, int firstValue, int lastValue, double sumValue, long startTime, long endTime) {
+  private void updateStats(int minValue, int maxValue, int firstValue, int lastValue,
+      long sumValue, long startTime, long endTime) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -102,7 +103,6 @@ public class IntegerStatistics extends Statistics<Integer> {
       isEmpty = false;
     } else {
       updateStats(value, value, value, value);
-      isEmpty = false;
     }
   }
 
@@ -139,7 +139,12 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public double getSumValue() {
+  public double getSumDoubleValue() {
+    throw new StatisticsClassException("Integer statistics does not support: double sum");
+  }
+
+  @Override
+  public long getSumLongValue() {
     return sumValue;
   }
 
@@ -147,14 +152,13 @@ public class IntegerStatistics extends Statistics<Integer> {
   protected void mergeStatisticsValue(Statistics stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {
-      initializeStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(), intStats.getLastValue(),
-          intStats.getSumValue());
+      initializeStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(),
+          intStats.getLastValue(), intStats.sumValue);
       isEmpty = false;
     } else {
-      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(), intStats.getLastValue(),
-          intStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
+      updateStats(intStats.getMinValue(), intStats.getMaxValue(), intStats.getFirstValue(),
+          intStats.getLastValue(), intStats.sumValue, stats.getStartTime(), stats.getEndTime());
     }
-
   }
 
   @Override
@@ -204,7 +208,7 @@ public class IntegerStatistics extends Statistics<Integer> {
 
   @Override
   public byte[] getSumValueBytes() {
-    return BytesUtils.doubleToBytes(sumValue);
+    return BytesUtils.longToBytes(sumValue);
   }
 
   @Override
@@ -219,26 +223,26 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readInt(inputStream);
     this.maxValue = ReadWriteIOUtils.readInt(inputStream);
     this.firstValue = ReadWriteIOUtils.readInt(inputStream);
     this.lastValue = ReadWriteIOUtils.readInt(inputStream);
-    this.sumValue = ReadWriteIOUtils.readDouble(inputStream);
+    this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.firstValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readInt(byteBuffer);
-    this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+    this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return super.toString() + " [minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
-        ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
+    return super.toString() + " [minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:"
+        + firstValue + ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
   }
 }

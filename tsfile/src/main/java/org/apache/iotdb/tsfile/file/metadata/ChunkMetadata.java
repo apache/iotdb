@@ -83,9 +83,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param statistics value statistics
+   * @param tsDataType     time series data type
+   * @param fileOffset     file offset
+   * @param statistics     value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -142,31 +142,36 @@ public class ChunkMetadata implements Accountable {
    * @return length
    * @throws IOException IOException
    */
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException {
     int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(measurementUid, outputStream);
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
-    byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
-    byteLen += statistics.serialize(outputStream);
+    if (serializeStatistic) {
+      byteLen += statistics.serialize(outputStream);
+    }
     return byteLen;
   }
 
   /**
    * deserialize from ByteBuffer.
    *
-   * @param buffer ByteBuffer
+   * @param buffer          ByteBuffer
    * @return ChunkMetaData object
    */
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) {
+  public static ChunkMetadata deserializeFrom(ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
-
-    chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
-
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
+    if (timeseriesMetadata.getTimeSeriesMetadataType() != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
+    } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      //and that chunk's metadata has no statistic
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
     return chunkMetaData;
   }
 

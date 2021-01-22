@@ -321,10 +321,10 @@ public class TsFileWriter implements AutoCloseable {
   public boolean flushAllChunkGroups() throws IOException {
     if (recordCount > 0) {
       for (Map.Entry<String, IChunkGroupWriter> entry : groupWriters.entrySet()) {
-        long pos = fileWriter.getPos();
         String deviceId = entry.getKey();
         IChunkGroupWriter groupWriter = entry.getValue();
         fileWriter.startChunkGroup(deviceId);
+        long pos = fileWriter.getPos();
         long dataSize = groupWriter.flushToFileWriter(fileWriter);
         if (fileWriter.getPos() - pos != dataSize) {
           throw new IOException(
