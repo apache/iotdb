@@ -103,7 +103,5 @@ public class IoTDBConnectionTest {
   public void setTimeoutTest() throws SQLException {
     connection.setQueryTimeout(60);
     Assert.assertEquals(60, connection.getQueryTimeout());
-    Statement statement = connection.createStatement();
-    Assert.assertEquals(60, statement.getQueryTimeout());
   }
 }
