@@ -110,7 +110,8 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   protected boolean fetchResults() throws SQLException {
     TSFetchResultsReq req = new TSFetchResultsReq(ioTDBRpcDataSet.sessionId,
         ioTDBRpcDataSet.sql, ioTDBRpcDataSet.fetchSize, ioTDBRpcDataSet.queryId,
-        false, ioTDBRpcDataSet.timeout);
+        false);
+    req.setTimeout(ioTDBRpcDataSet.timeout);
     try {
       TSFetchResultsResp resp = ioTDBRpcDataSet.client.fetchResults(req);
 
