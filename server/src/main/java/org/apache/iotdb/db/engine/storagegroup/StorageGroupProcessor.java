@@ -92,6 +92,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -105,7 +106,10 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -1443,7 +1447,7 @@ public class StorageGroupProcessor {
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(PartialPath deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
-    tsFileManagement.readLock();
+//    tsFileManagement.readLock();
     insertLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(
@@ -1457,6 +1461,14 @@ public class StorageGroupProcessor {
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       // is null only in tests
+      for (TsFileResource tsFileResource: seqResources){
+        System.out.println("sequence file :" +tsFileResource.getTsFile().getName().toString());
+        printTsFilePoint(tsFileResource);
+      }
+      for (TsFileResource tsFileResource: unseqResources){
+        System.out.println("unsequence file :" + tsFileResource.getTsFile().getName().toString());
+        printTsFilePoint(tsFileResource);
+      }
       if (filePathsManager != null) {
         filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
       }
@@ -1466,7 +1478,31 @@ public class StorageGroupProcessor {
       throw new QueryProcessException(e);
     } finally {
       insertLock.readLock().unlock();
-      tsFileManagement.readUnLock();
+//      tsFileManagement.readUnLock();
+    }
+  }
+
+  private void printTsFilePoint(TsFileResource tsFileResource){
+    String path = "root.compactionTest.s1";
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
+      if (!reader.isComplete()){
+        throw new RuntimeException("The analyzed data file is incomplete, process will stop");
+      }
+      // get the chunkMetaList of the specific path
+      List<ChunkMetadata> chunkMetadataList = reader
+          .getChunkMetadataList(new Path(path, true));
+      for (ChunkMetadata metadata : chunkMetadataList) {
+        System.out.println("|--[Chunk]");
+        ChunkReader chunkReader = new ChunkReader(reader.readMemChunk(metadata), null);
+        ChunkDataIterator chunkDataIterator = new ChunkDataIterator(chunkReader);
+        while (chunkDataIterator.hasNextTimeValuePair()) {
+          TimeValuePair pair = chunkDataIterator.nextTimeValuePair();
+          System.out.println(
+              "\t\t\ttime, value: " + pair.getTimestamp() + ", " + pair.getValue());
+        }
+      }
+    } catch (Exception e){
+      // do nothing
     }
   }
 
