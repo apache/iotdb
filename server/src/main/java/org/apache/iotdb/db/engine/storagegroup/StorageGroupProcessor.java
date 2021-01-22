@@ -1830,7 +1830,6 @@ public class StorageGroupProcessor {
     if (upgradeFileCount.get() == 0) {
       tsFileManagement.writeLock();
       writeLock();
-      insertLock.writeLock().lock();  
       try {
         loadUpgradedResources(upgradeSeqFileList, true);
         loadUpgradedResources(upgradeUnseqFileList, false);
