@@ -1553,8 +1553,8 @@ public class StorageGroupProcessor {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
@@ -1595,8 +1595,8 @@ public class StorageGroupProcessor {
       }
       throw new IOException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
