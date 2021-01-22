@@ -49,7 +49,11 @@ public class IoTDBStatement implements Statement {
   private IoTDBConnection connection;
   private int fetchSize;
 
-  private int queryTimeout = 60;
+  /**
+   * Timeout of query can be set by users.
+   * If not set, default value 0 will be used, which will use server configuration.
+   */
+  private int queryTimeout = 0;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
@@ -224,6 +228,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
+    execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());

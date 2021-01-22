@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -187,5 +188,13 @@ public class SessionUT {
     assertEquals("+05:00", session.getTimeZone());
     session.setTimeZone("+09:00");
     assertEquals("+09:00", session.getTimeZone());
+  }
+
+  @Test
+  public void setTimeout() throws StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
+    Assert.assertEquals(20000, session.getTimeout());
+    session.setTimeout(60000);
+    Assert.assertEquals(60000, session.getTimeout());
   }
 }
