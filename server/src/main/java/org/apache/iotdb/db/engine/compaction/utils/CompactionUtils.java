@@ -85,8 +85,8 @@ public class CompactionUtils {
           newChunkMetadata = chunkMetadata;
           newChunk = chunk;
         } else {
-          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
           newChunk.mergeChunk(chunk);
+          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
         }
       }
     }
