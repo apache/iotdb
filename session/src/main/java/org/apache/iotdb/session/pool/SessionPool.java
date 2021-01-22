@@ -663,7 +663,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("testInsertRecord failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
