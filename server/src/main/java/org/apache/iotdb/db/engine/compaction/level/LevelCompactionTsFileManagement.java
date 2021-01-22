@@ -216,6 +216,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           sequenceTsFileResources
               .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources).get(level)
               .add(tsFileResource);
+          System.out.println(tsFileResource.getTsFile().getName().toString());
         } else {
           // current file has too high level
           sequenceTsFileResources
