@@ -1828,14 +1828,14 @@ public class StorageGroupProcessor {
     upgradeFileCount.getAndAdd(-1);
     // load all upgraded resources in this sg to tsFileManagement
     if (upgradeFileCount.get() == 0) {
-      insertLock.writeLock().lock();  
       tsFileManagement.writeLock();
+      insertLock.writeLock().lock();  
       try {
         loadUpgradedResources(upgradeSeqFileList, true);
         loadUpgradedResources(upgradeUnseqFileList, false);
       } finally {
-        tsFileManagement.writeUnlock(); 
         insertLock.writeLock().unlock();
+        tsFileManagement.writeUnlock();
       }
       // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
@@ -1911,8 +1911,8 @@ public class StorageGroupProcessor {
   public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     try {
       if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
           newFilePartitionId)) {
@@ -1929,8 +1929,8 @@ public class StorageGroupProcessor {
       logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -1976,8 +1976,8 @@ public class StorageGroupProcessor {
       throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     try {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
@@ -2022,8 +2022,8 @@ public class StorageGroupProcessor {
       logger.error("Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -2385,8 +2385,8 @@ public class StorageGroupProcessor {
    * @UsedBy sync module, load external tsfile module.
    */
   public boolean deleteTsfile(File tsfieToBeDeleted) {
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2410,8 +2410,8 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
     if (tsFileResourceToBeDeleted == null) {
       return false;
@@ -2443,8 +2443,8 @@ public class StorageGroupProcessor {
    * @UsedBy load external tsfile module.
    */
   public boolean moveTsfile(File fileToBeMoved, File targetDir) {
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2468,8 +2468,8 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
     if (tsFileResourceToBeMoved == null) {
       return false;
@@ -2570,8 +2570,8 @@ public class StorageGroupProcessor {
    */
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
-    insertLock.writeLock().lock();
     tsFileManagement.writeLock();
+    insertLock.writeLock().lock();
     try {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
@@ -2584,8 +2584,8 @@ public class StorageGroupProcessor {
       removePartitions(filter, tsFileManagement.getIterator(false));
 
     } finally {
-      tsFileManagement.writeUnlock();
       insertLock.writeLock().unlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
