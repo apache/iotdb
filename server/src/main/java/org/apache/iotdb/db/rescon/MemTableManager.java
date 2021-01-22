@@ -52,30 +52,29 @@ public class MemTableManager {
     if (!reachMaxMemtableNumber()) {
       currentMemtableNumber++;
       return new PrimitiveMemTable();
-    } else {
-      // wait until the total number of memtable is less than the system capacity
-      int waitCount = 1;
-      while (true) {
-        if (!reachMaxMemtableNumber()) {
-          currentMemtableNumber++;
-          return new PrimitiveMemTable();
-        }
-        try {
-          wait(WAIT_TIME);
-        } catch (InterruptedException e) {
-          logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
-          Thread.currentThread().interrupt();
-          throw new WriteProcessException(e);
-        }
-        if (waitCount++ % 10 == 0) {
-          logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
-        }
+    }
+
+    // wait until the total number of memtable is less than the system capacity
+    int waitCount = 1;
+    while (true) {
+      if (!reachMaxMemtableNumber()) {
+        currentMemtableNumber++;
+        return new PrimitiveMemTable();
       }
-      
+      try {
+        wait(WAIT_TIME);
+      } catch (InterruptedException e) {
+        logger.error("{} fails to wait for memtables {}, continue to wait", storageGroup, e);
+        Thread.currentThread().interrupt();
+        throw new WriteProcessException(e);
+      }
+      if (waitCount++ % 10 == 0) {
+        logger.info("{} has waited for a memtable for {}ms", storageGroup, waitCount * WAIT_TIME);
+      }
     }
   }
 
-  public synchronized int getCurrentMemtableNumber() {
+  public int getCurrentMemtableNumber() {
     return currentMemtableNumber;
   }
 
