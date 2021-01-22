@@ -307,8 +307,6 @@
                                 <option>${openssl.include.dir}</option>
                                 <!-- Specify new version Bison path for Mac OS -->
                                 <option>${bison.executable.dir}</option>
-                                <option>${boost.include.setting}</option>
-                                <option>${boost.library.setting}</option>
                             </options>
                         </configuration>
                     </execution>
