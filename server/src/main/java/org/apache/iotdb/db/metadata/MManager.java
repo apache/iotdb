@@ -987,7 +987,7 @@ public class MManager {
 
   protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement,
       TSDataType dataType, CompressionType compressionType) throws MetadataException {
-    MNode child = deviceMNode.getChild(measurement);  //可能会有不一致的问题，即写入文件的元数据中root.a.b.c.d,b不是measurement节点，然后内存中是，则需要修改文件中的
+    MNode child = deviceMNode.getChild(measurement);
 
     if (child == null) {
       return null;
