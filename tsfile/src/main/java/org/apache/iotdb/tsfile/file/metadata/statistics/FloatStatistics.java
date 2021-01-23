@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for float type.
@@ -138,8 +138,13 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public double getSumValue() {
+  public double getSumDoubleValue() {
     return sumValue;
+  }
+
+  @Override
+  public long getSumLongValue() {
+    throw new StatisticsClassException("Float statistics does not support: long sum");
   }
 
   @Override
@@ -147,11 +152,11 @@ public class FloatStatistics extends Statistics<Float> {
     FloatStatistics floatStats = (FloatStatistics) stats;
     if (isEmpty) {
       initializeStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
-          floatStats.getLastValue(), floatStats.getSumValue());
+          floatStats.getLastValue(), floatStats.sumValue);
       isEmpty = false;
     } else {
       updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
-          floatStats.getLastValue(), floatStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
+          floatStats.getLastValue(), floatStats.sumValue, stats.getStartTime(), stats.getEndTime());
     }
   }
 
@@ -217,7 +222,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.minValue = ReadWriteIOUtils.readFloat(inputStream);
     this.maxValue = ReadWriteIOUtils.readFloat(inputStream);
     this.firstValue = ReadWriteIOUtils.readFloat(inputStream);
@@ -226,7 +231,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.minValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.maxValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.firstValue = ReadWriteIOUtils.readFloat(byteBuffer);

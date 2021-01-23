@@ -200,13 +200,12 @@ public class MManager {
       }
     };
 
-
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
-        "timedCreateMTreeSnapshotThread"));
+          "timedCreateMTreeSnapshotThread"));
       timedCreateMTreeSnapshotThread
-        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
-          MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
+          .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+              MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
     }
   }
 
@@ -240,7 +239,8 @@ public class MManager {
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
-      logger.error("Cannot recover all MTree from file, we try to recover as possible as we can", e);
+      logger
+          .error("Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     reportedDataTypeTotalNum = 0L;
     initialized = true;
@@ -271,13 +271,14 @@ public class MManager {
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
-      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(), MetadataConstant.METADATA_LOG);) {
+      try (MLogReader mLogReader = new MLogReader(config.getSchemaDir(),
+          MetadataConstant.METADATA_LOG);) {
         idx = applyMlog(mLogReader);
         logger.debug("spend {} ms to deserialize mtree from mlog.bin",
             System.currentTimeMillis() - time);
         return idx;
       } catch (Exception e) {
-        throw new IOException("Failed to parser mlog.bin for err:" +  e.toString());
+        throw new IOException("Failed to parser mlog.bin for err:" + e.toString());
       }
     } else {
       return 0;
@@ -296,7 +297,8 @@ public class MManager {
         operation(plan);
         idx++;
       } catch (Exception e) {
-        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+        logger.error("Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(),
+            e);
       }
     }
     return idx;
@@ -487,8 +489,8 @@ public class MManager {
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
-   * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * TODO: directly return the failed string set
+   * @param prefixPath path to be deleted, could be root or a prefix path or a full path TODO:
+   *                   directly return the failed string set
    * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(PartialPath prefixPath) throws MetadataException {
@@ -497,7 +499,7 @@ public class MManager {
     }
     try {
       List<PartialPath> allTimeseries = mtree.getAllTimeseriesPath(prefixPath);
-      if(allTimeseries.isEmpty()){
+      if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
       }
       // Monitor storage group seriesPath is not allowed to be deleted
@@ -521,6 +523,8 @@ public class MManager {
       if (!isRecovering) {
         if (emptyStorageGroup != null) {
           StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+          StorageEngine.getInstance()
+              .releaseWalDirectByteBufferPoolInOneStorageGroup(emptyStorageGroup);
         }
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
@@ -583,7 +587,7 @@ public class MManager {
     // TODO: delete the path node and all its ancestors
     mNodeCache.clear();
     totalSeriesNumber.addAndGet(-1);
-    if (!allowToCreateNewSeries && 
+    if (!allowToCreateNewSeries &&
         totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
       logger.info("Current series number {} come back to normal level", totalSeriesNumber);
       allowToCreateNewSeries = true;
@@ -620,7 +624,7 @@ public class MManager {
       for (PartialPath storageGroup : storageGroups) {
         totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
-        if (!allowToCreateNewSeries && 
+        if (!allowToCreateNewSeries &&
             totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
           logger.info("Current series number {} come back to normal level", totalSeriesNumber);
           allowToCreateNewSeries = true;
@@ -837,7 +841,7 @@ public class MManager {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan,
-                                                             QueryContext context) throws MetadataException {
+      QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
@@ -1241,14 +1245,14 @@ public class MManager {
       if (tagsMap != null) {
         for (Entry<String, String> entry : tagsMap.entrySet()) {
           tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
       return;
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     if (tagsMap != null) {
       for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1263,8 +1267,8 @@ public class MManager {
           if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
-                      key, beforeValue, leafMNode.getOffset()));
+                  String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
+                  key, beforeValue, leafMNode.getOffset()));
             }
 
             tagIndex.get(key).get(beforeValue).remove(leafMNode);
@@ -1274,8 +1278,9 @@ public class MManager {
           } else {
             if (logger.isDebugEnabled()) {
               logger.debug(String.format(
-                      String.format(DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                      key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+                  String
+                      .format(DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+                  key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
             }
           }
         }
@@ -1284,7 +1289,7 @@ public class MManager {
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
           tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode);
         }
       }
     }
@@ -1292,7 +1297,6 @@ public class MManager {
     if (attributesMap != null) {
       pair.right.putAll(attributesMap);
     }
-
 
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
@@ -1320,14 +1324,14 @@ public class MManager {
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Entry<String, String> entry : attributesMap.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       if (pair.right.containsKey(key)) {
         throw new MetadataException(
-          String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+            String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
       }
       pair.right.put(key, value);
     }
@@ -1357,20 +1361,20 @@ public class MManager {
       // update inverted Index map
       for (Entry<String, String> entry : tagsMap.entrySet()) {
         tagIndex.computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
+            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>()).add(leafMNode);
       }
       return;
     }
 
     Pair<Map<String, String>, Map<String, String>> pair =
-      tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
     for (Entry<String, String> entry : tagsMap.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
       if (pair.left.containsKey(key)) {
         throw new MetadataException(
-          String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+            String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
       }
       pair.left.put(key, value);
     }
@@ -1380,7 +1384,7 @@ public class MManager {
 
     // update tag inverted map
     tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-      .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
+        .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>()).add(leafMNode));
   }
 
   /**
@@ -1449,8 +1453,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-                  String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key, value, leafMNode.getOffset(), tagIndex.containsKey(key)));
+              String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+              key, value, leafMNode.getOffset(), tagIndex.containsKey(key)));
         }
       }
 
@@ -1495,7 +1499,8 @@ public class MManager {
         pair.right.put(key, value);
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key), true);
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key),
+            true);
       }
     }
 
@@ -1511,16 +1516,16 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-                  String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
-                  entry.getKey(), beforeValue, leafMNode.getOffset()));
+              String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
+              entry.getKey(), beforeValue, leafMNode.getOffset()));
         }
 
         tagIndex.get(key).get(beforeValue).remove(leafMNode);
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-                  String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+              String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+              key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
         }
       }
       tagIndex.computeIfAbsent(key, k -> new ConcurrentHashMap<>())
@@ -1545,7 +1550,8 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey), true);
+          String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
+          true);
     }
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -1569,8 +1575,8 @@ public class MManager {
 
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-                  String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
-                  oldKey, value, leafMNode.getOffset()));
+              String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
+              oldKey, value, leafMNode.getOffset()));
         }
 
         tagIndex.get(oldKey).get(value).remove(leafMNode);
@@ -1578,8 +1584,8 @@ public class MManager {
       } else {
         if (logger.isDebugEnabled()) {
           logger.debug(String.format(
-                  String.format(DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  oldKey, value, leafMNode.getOffset(), tagIndex.containsKey(oldKey)));
+              String.format(DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
+              oldKey, value, leafMNode.getOffset(), tagIndex.containsKey(oldKey)));
         }
       }
       tagIndex.computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
@@ -1591,7 +1597,8 @@ public class MManager {
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
     } else {
       throw new MetadataException(
-          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey), true);
+          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey),
+          true);
     }
   }
 

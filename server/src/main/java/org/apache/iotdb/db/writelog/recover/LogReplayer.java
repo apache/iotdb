@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -81,9 +83,10 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs() {
-    WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
-        logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
+  public void replayLogs(Supplier<ByteBuffer[]> supplier) {
+    WriteLogNode logNode = MultiFileLogNodeManager.getInstance()
+        .getNode(logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName(),
+            supplier);
 
     ILogReader logReader = logNode.getLogReader();
     try {
@@ -95,12 +98,14 @@ public class LogReplayer {
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
           }
+        } catch (PathNotExistException ignored) {
+          // can not get path because it is deleted
         } catch (Exception e) {
-          logger.error("recover wal of {} failed", insertFilePath, e);
+          logger.warn("recover wal of {} failed", insertFilePath, e);
         }
       }
     } catch (IOException e) {
-      logger.error("meet error when redo wal of {}", insertFilePath, e);
+      logger.warn("meet error when redo wal of {}", insertFilePath, e);
     } finally {
       logReader.close();
       try {
@@ -167,7 +172,8 @@ public class LogReplayer {
     if (plan instanceof InsertRowPlan) {
       recoverMemTable.insert((InsertRowPlan) plan);
     } else {
-      recoverMemTable.insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      recoverMemTable
+          .insertTablet((InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
     }
   }
 

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -104,7 +105,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
     TSRecord tsRecord = new TSRecord(insertTime, storageGroupSeries.getDevice());
     tsRecord.addTuple(
         new LongDataPoint(StatMeasurementConstants.TOTAL_POINTS.getMeasurement(),
-            storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
+            storageEngine.getProcessorMap().get(new PartialPath(storageGroupName)).getMonitorSeriesValue()));
     storageEngine.insert(new InsertRowPlan(tsRecord));
 
     // update global monitor series
@@ -142,7 +143,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
               storageGroupPath.getFullPath());
           TimeValuePair timeValuePair = getLastValue(monitorSeriesPath);
           if (timeValuePair != null) {
-            storageEngine.getProcessor(storageGroupPath)
+            storageEngine.getProcessorMap().get(storageGroupPath)
                 .setMonitorSeriesValue(timeValuePair.getValue().getLong());
           }
         }
@@ -216,8 +217,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
   @Override
   public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      return storageEngine.getProcessor(new PartialPath(storageGroupName)).getMonitorSeriesValue();
-    } catch (StorageEngineException | IllegalPathException e) {
+      VirtualStorageGroupManager virtualStorageGroupManager = storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
+      if(virtualStorageGroupManager == null){
+        return 0;
+      }
+
+      return virtualStorageGroupManager.getMonitorSeriesValue();
+    } catch (IllegalPathException e) {
       logger.error(e.getMessage());
       return -1;
     }

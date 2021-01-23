@@ -22,10 +22,8 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -39,16 +37,6 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * see RleEncoder
  */
 public abstract class RleDecoder extends Decoder {
-
-  private EndianType endianType;
-
-  public EndianType getEndianType() {
-    return endianType;
-  }
-
-  public void setEndianType(EndianType endianType) {
-    this.endianType = endianType;
-  }
 
   protected TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   /**
@@ -87,9 +75,8 @@ public abstract class RleDecoder extends Decoder {
    * a constructor, init with endianType, default encoding is
    * <code>TSEncoding.RLE</code>.
    */
-  public RleDecoder(EndianType endianType) {
+  protected RleDecoder() {
     super(TSEncoding.RLE);
-    this.endianType = endianType;
     reset();
   }
 

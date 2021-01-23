@@ -20,17 +20,14 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Each subclass of TSEncodingBuilder responds a enumerate value in {@linkplain TSEncoding
@@ -105,7 +102,7 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      return new PlainEncoder(EndianType.BIG_ENDIAN, type, maxStringLength);
+      return new PlainEncoder(type, maxStringLength);
     }
 
     @Override
@@ -137,9 +134,9 @@ public abstract class TSEncodingBuilder {
       switch (type) {
         case INT32:
         case BOOLEAN:
-          return new IntRleEncoder(EndianType.BIG_ENDIAN);
+          return new IntRleEncoder();
         case INT64:
-          return new LongRleEncoder(EndianType.BIG_ENDIAN);
+          return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);

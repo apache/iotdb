@@ -20,7 +20,21 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
 
-  PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, BITMAP, GORILLA_V1, REGULAR, GORILLA;
+  PLAIN((byte) 0),
+  PLAIN_DICTIONARY((byte) 1),
+  RLE((byte) 2),
+  DIFF((byte) 3),
+  TS_2DIFF((byte) 4),
+  BITMAP((byte) 5),
+  GORILLA_V1((byte) 6),
+  REGULAR( (byte) 7),
+  GORILLA((byte) 8);
+
+  private final byte type;
+
+  TSEncoding(byte type) {
+    this.type = type;
+  }
 
   /**
    * judge the encoding deserialize type.
@@ -28,55 +42,23 @@ public enum TSEncoding {
    * @param encoding -use to determine encoding type
    * @return -encoding type
    */
-  public static TSEncoding deserialize(short encoding) {
+  public static TSEncoding deserialize(byte encoding) {
     return getTsEncoding(encoding);
   }
 
-  public static byte deserializeToByte(short encoding) {
-    if (encoding < 0 || 8 < encoding) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
-    }
-    return (byte) encoding;
-  }
 
-  private static TSEncoding getTsEncoding(short encoding) {
-    if (encoding < 0 || 8 < encoding) {
-      throw new IllegalArgumentException("Invalid input: " + encoding);
+  private static TSEncoding getTsEncoding(byte encoding) {
+    for (TSEncoding tsEncoding : TSEncoding.values()) {
+      if (encoding == tsEncoding.type) {
+        return tsEncoding;
+      }
     }
-    switch (encoding) {
-      case 1:
-        return PLAIN_DICTIONARY;
-      case 2:
-        return RLE;
-      case 3:
-        return DIFF;
-      case 4:
-        return TS_2DIFF;
-      case 5:
-        return BITMAP;
-      case 6:
-        return GORILLA_V1;
-      case 7:
-        return REGULAR;
-      case 8:
-        return GORILLA;
-      default:
-        return PLAIN;
-    }
-  }
 
-  /**
-   * give an byte to return a encoding type.
-   *
-   * @param encoding byte number
-   * @return encoding type
-   */
-  public static TSEncoding byteToEnum(byte encoding) {
-    return getTsEncoding(encoding);
+    throw new IllegalArgumentException("Invalid input: " + encoding);
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   /**
@@ -84,33 +66,7 @@ public enum TSEncoding {
    *
    * @return -encoding type
    */
-  public short serialize() {
-    return enumToByte();
-  }
-
-  /**
-   * @return byte number
-   */
-  public byte enumToByte() {
-    switch (this) {
-      case PLAIN_DICTIONARY:
-        return 1;
-      case RLE:
-        return 2;
-      case DIFF:
-        return 3;
-      case TS_2DIFF:
-        return 4;
-      case BITMAP:
-        return 5;
-      case GORILLA_V1:
-        return 6;
-      case REGULAR:
-        return 7;
-      case GORILLA:
-        return 8;
-      default:
-        return 0;
-    }
+  public byte serialize() {
+    return type;
   }
 }

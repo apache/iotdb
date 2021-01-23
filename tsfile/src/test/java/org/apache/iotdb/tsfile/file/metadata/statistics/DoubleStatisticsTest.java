@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+
+import org.junit.Test;
 
 public class DoubleStatisticsTest {
 
@@ -36,7 +36,7 @@ public class DoubleStatisticsTest {
     assertFalse(doubleStats.isEmpty());
     assertEquals(2.32d, doubleStats.getMaxValue(), maxError);
     assertEquals(1.34d, doubleStats.getMinValue(), maxError);
-    assertEquals(2.32d + 1.34d, doubleStats.getSumValue(), maxError);
+    assertEquals(2.32d + 1.34d, doubleStats.getSumDoubleValue(), maxError);
     assertEquals(1.34d, doubleStats.getFirstValue(), maxError);
     assertEquals(2.32d, doubleStats.getLastValue(), maxError);
   }
@@ -60,14 +60,14 @@ public class DoubleStatisticsTest {
     assertFalse(doubleStats3.isEmpty());
     assertEquals(100.13453d, doubleStats3.getMaxValue(), maxError);
     assertEquals(1.34d, doubleStats3.getMinValue(), maxError);
-    assertEquals(100.13453d + 1.34d, doubleStats3.getSumValue(), maxError);
+    assertEquals(100.13453d + 1.34d, doubleStats3.getSumDoubleValue(), maxError);
     assertEquals(1.34d, doubleStats3.getFirstValue(), maxError);
     assertEquals(100.13453d, doubleStats3.getLastValue(), maxError);
 
     doubleStats3.mergeStatistics(doubleStats2);
     assertEquals(200.435d, doubleStats3.getMaxValue(), maxError);
     assertEquals(1.34d, doubleStats3.getMinValue(), maxError);
-    assertEquals(100.13453d + 1.34d + 200.435d, doubleStats3.getSumValue(), maxError);
+    assertEquals(100.13453d + 1.34d + 200.435d, doubleStats3.getSumDoubleValue(), maxError);
     assertEquals(1.34d, doubleStats3.getFirstValue(), maxError);
     assertEquals(200.435d, doubleStats3.getLastValue(), maxError);
 

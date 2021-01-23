@@ -45,8 +45,8 @@ import org.slf4j.LoggerFactory;
 public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
-  private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
+  private IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -90,6 +90,10 @@ public class IoTDBDescriptor {
     return true;
   }
 
+  /**
+   * get props url location
+   * @return url object if location exit, otherwise null.
+   */
   public URL getPropsUrl() {
     // Check if a config-directory was specified first.
     String urlString = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
@@ -288,6 +292,10 @@ public class IoTDBDescriptor {
           .getProperty("estimated_series_size",
               Integer.toString(conf.getEstimatedSeriesSize()))));
 
+      conf.setIoTaskQueueSizeForFlushing(Integer.parseInt(properties
+          .getProperty("io_task_queue_size_for_flushing",
+              Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
+
       conf.setMergeChunkPointNumberThreshold(Integer.parseInt(properties
           .getProperty("merge_chunk_point_number",
               Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
@@ -443,6 +451,7 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("performance_stat_memory_in_kb",
               Integer.toString(conf.getPerformanceStatMemoryInKB())).trim()));
 
+
       int maxConcurrentClientNum = Integer.parseInt(properties.
           getProperty("rpc_max_concurrent_client_num",
               Integer.toString(conf.getRpcMaxConcurrentClientNum()).trim()));
@@ -538,6 +547,9 @@ public class IoTDBDescriptor {
 
       conf.setDebugState(Boolean.parseBoolean(properties
           .getProperty("debug_state", String.valueOf(conf.isDebugOn()))));
+      conf.setVirtualStorageGroupNum(Integer.parseInt(properties
+          .getProperty("virtual_storage_group_num",
+              String.valueOf(conf.getVirtualStorageGroupNum()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

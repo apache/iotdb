@@ -67,6 +67,10 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
+  //TestOnly
+  public SessionConnection() {
+  }
+
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
@@ -258,7 +262,7 @@ public class SessionConnection {
 
   protected SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return this.executeQueryStatement(sql, Config.DEFAULT_QUERY_TIMEOUT_MS);
+    return this.executeQueryStatement(sql, 0);
   }
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)

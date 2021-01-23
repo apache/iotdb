@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -540,19 +541,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
 
       // In case users forget to set this field in query, use the default value
-      if (fetchSize == 0) {
-        fetchSize = DEFAULT_FETCH_SIZE;
-      }
+      fetchSize = fetchSize == 0 ? DEFAULT_FETCH_SIZE : fetchSize;
 
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
-        if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-          throw new QueryProcessException("Aggregation doesn't support disable align clause.");
-        }
-        if (plan.getOperatorType() == OperatorType.FILL) {
-          throw new QueryProcessException("Fill doesn't support disable align clause.");
-        }
-        if (plan.getOperatorType() == OperatorType.GROUPBYTIME) {
-          throw new QueryProcessException("Group by doesn't support disable align clause.");
+        OperatorType operatorType = plan.getOperatorType();
+        if (operatorType == OperatorType.AGGREGATION || operatorType == OperatorType.FILL
+            || operatorType == OperatorType.GROUPBYTIME) {
+          throw new QueryProcessException(operatorType.name() + " doesn't support disable align clause.");
         }
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
@@ -586,8 +581,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       // register query info to queryTimeManager
       if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager
-            .registerQuery(queryId, startTime, statement, timeout, Thread.currentThread());
+        queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
       }
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         TracingManager tracingManager = TracingManager.getInstance();
@@ -855,8 +849,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // register query info to queryTimeManager
       queryTimeManager
-          .registerQuery(req.queryId, System.currentTimeMillis(), req.statement, req.timeout,
-              Thread.currentThread());
+          .registerQuery(req.queryId, System.currentTimeMillis(), req.statement, req.timeout);
 
       QueryDataSet queryDataSet = queryId2DataSet.get(req.queryId);
       if (req.isAlign) {
@@ -913,15 +906,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSQueryNonAlignDataSet fillRpcNonAlignReturnData(
       int fetchSize, QueryDataSet queryDataSet, String userName)
-      throws TException, AuthException, IOException, QueryProcessException {
+      throws TException, AuthException, IOException, QueryProcessException, InterruptedException {
     WatermarkEncoder encoder = getWatermarkEncoder(userName);
-    try {
-      return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new QueryTimeoutRuntimeException(
-          QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
-    }
+    return ((DirectNonAlignDataSet) queryDataSet).fillBuffer(fetchSize, encoder);
   }
 
   private WatermarkEncoder getWatermarkEncoder(String userName) throws TException, AuthException {
@@ -1139,7 +1126,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           TSStatusCode.INTERNAL_SERVER_ERROR));
     }
 
-    return RpcUtils.getStatus(statusList);
+    TSStatus resp = RpcUtils.getStatus(statusList);
+    for(TSStatus status : resp.subStatus){
+      if(status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()){
+        return resp;
+      }
+    }
+
+    resp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    return resp;
   }
 
   @Override
@@ -1337,17 +1333,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      List<TSStatus> statusList = insertTabletsInternal(req);
-      boolean isAllSuccessful = true;
-      for (TSStatus subStatus : statusList) {
-        isAllSuccessful =
-            ((subStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                && isAllSuccessful);
-      }
-
-      return isAllSuccessful
-          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-          : RpcUtils.getStatus(statusList);
+      return insertTabletsInternal(req);
+    } catch (NullPointerException e) {
+      LOGGER.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(e, "inserting tablets",
           TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1356,26 +1345,41 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  public List<TSStatus> insertTabletsInternal(TSInsertTabletsReq req) throws IllegalPathException {
-    List<TSStatus> statusList = new ArrayList<>();
+  private InsertTabletPlan constructInsertTabletPlan(TSInsertTabletsReq req, int i)
+      throws IllegalPathException {
+    InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
+        new PartialPath(req.deviceIds.get(i)),
+        req.measurementsList.get(i));
+    insertTabletPlan.setTimes(
+        QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+    insertTabletPlan.setColumns(
+        QueryDataSetUtils.readValuesFromBuffer(
+            req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(),
+            req.sizeList.get(i)));
+    insertTabletPlan.setRowCount(req.sizeList.get(i));
+    insertTabletPlan.setDataTypes(req.typesList.get(i));
+    return insertTabletPlan;
+  }
 
+  /**
+   * construct one InsertMultiTabletPlan and process it
+   */
+  public TSStatus insertTabletsInternal(TSInsertTabletsReq req)
+      throws IllegalPathException {
+    List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
+    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
-      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(
-          new PartialPath(req.deviceIds.get(i)),
-          req.measurementsList.get(i));
-      insertTabletPlan.setTimes(
-          QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
-      insertTabletPlan.setColumns(
-          QueryDataSetUtils.readValuesFromBuffer(
-              req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(),
-              req.sizeList.get(i)));
-      insertTabletPlan.setRowCount(req.sizeList.get(i));
-      insertTabletPlan.setDataTypes(req.typesList.get(i));
-
+      InsertTabletPlan insertTabletPlan = constructInsertTabletPlan(req, i);
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
-      statusList.add(status != null ? status : executeNonQueryPlan(insertTabletPlan));
+      if (status != null) {
+        // not authorized
+        insertMultiTabletPlan.getResults().put(i, status);
+      }
+      insertTabletPlanList.add(insertTabletPlan);
     }
-    return statusList;
+
+    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlanList);
+    return executeNonQueryPlan(insertMultiTabletPlan);
   }
 
   @Override
@@ -1606,10 +1610,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private TSStatus tryCatchQueryException(Exception e) {
     if (e instanceof QueryTimeoutRuntimeException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
-      // just recover the state of thread here
-      if (Thread.interrupted()) {
-        DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn("Recover the state of the thread interrupted");
-      }
       return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
     } else if (e instanceof ParseCancellationException) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);

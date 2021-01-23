@@ -541,41 +541,6 @@ Total line number = 7
 It costs 0.006s
 ```
 
-#### Down-Frequency Aggregate Query Specifying the value Filtering Conditions
-
-The SQL statement is:
-
-```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 where group by([2017-11-01T00:00:00, 2017-11-07T23:00:00), 3h, 1d);
-```
-which means:
-
-Since the user specifies the sliding step parameter as 1d, the GROUP BY statement will move the time interval `1 day` long instead of `3 hours` as default.
-
-The first parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
-
-The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (3h) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-01T00:00:00, 2017-11-01T03:00:00), [2017-11-02T00:00:00, 2017-11-02T03:00:00), [2017-11-03T00:00:00, 2017-11-03T03:00:00), etc.
-
-The third parameter of the GROUP BY statement above is the sliding step for each time interval moving.
-
-Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T00:00:00, 2017-11-07T23:00:00]), and map these data to the previously segmented time axis (in this case there are mapped data in every 3-hour period for each day from 2017-11-01T00:00:00 to 2017-11-07T23:00:00).
-
-```
-+-----------------------------+-------------------------------+----------------------------------------+
-|                         Time|count(root.ln.wf01.wt01.status)|max_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-------------------------------+----------------------------------------+
-|2017-11-01T00:00:00.000+08:00|                            180|                                   25.98|
-|2017-11-02T00:00:00.000+08:00|                            179|                                   25.98|
-|2017-11-03T00:00:00.000+08:00|                            180|                                   25.96|
-|2017-11-04T00:00:00.000+08:00|                            180|                                   25.96|
-|2017-11-05T00:00:00.000+08:00|                            180|                                    26.0|
-|2017-11-06T00:00:00.000+08:00|                            180|                                   25.85|
-|2017-11-07T00:00:00.000+08:00|                            180|                                   25.99|
-+-----------------------------+-------------------------------+----------------------------------------+
-Total line number = 7
-It costs 0.018s
-```
-
 #### Down-Frequency Aggregate Query by Natural Month
 
 The SQL statement is:
@@ -620,7 +585,7 @@ The SQL execution result is:
 +-----------------------------+-------------------------------+
 ```
 
-对应的SQL语句是:
+The SQL statement is:
 
 ```
 select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
