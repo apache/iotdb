@@ -1513,8 +1513,8 @@ public class StorageGroupProcessor {
     // TODO: how to avoid partial deletion?
     // FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
@@ -1559,8 +1559,8 @@ public class StorageGroupProcessor {
       }
       throw new IOException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -1786,8 +1786,8 @@ public class StorageGroupProcessor {
               resource.getEndTime(index))
       );
     }
-    insertLock.writeLock().lock();
     tsFileManagement.writeLock();
+    writeLock();
     try {
       if (tsFileResource.isSeq()) {
         tsFileManagement.addAll(upgradedResources, true);
@@ -1797,8 +1797,8 @@ public class StorageGroupProcessor {
         upgradeUnseqFileList.remove(tsFileResource);
       }
     } finally {
+      writeUnlock();
       tsFileManagement.writeUnlock();
-      insertLock.writeLock().unlock();
     }
 
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
@@ -1848,8 +1848,8 @@ public class StorageGroupProcessor {
   public void loadNewTsFileForSync(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     try {
       if (loadTsFileByType(LoadTsFileType.LOAD_SEQUENCE, tsfileToBeInserted, newTsFileResource,
           newFilePartitionId)) {
@@ -1862,8 +1862,8 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -1884,8 +1884,8 @@ public class StorageGroupProcessor {
   public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     try {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
@@ -1929,8 +1929,8 @@ public class StorageGroupProcessor {
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
   }
 
@@ -2281,8 +2281,8 @@ public class StorageGroupProcessor {
    * @UsedBy sync module, load external tsfile module.
    */
   public boolean deleteTsfile(File tsfieToBeDeleted) {
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     TsFileResource tsFileResourceToBeDeleted = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2306,8 +2306,8 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
     if (tsFileResourceToBeDeleted == null) {
       return false;
@@ -2339,8 +2339,8 @@ public class StorageGroupProcessor {
    * @UsedBy load external tsfile module.
    */
   public boolean moveTsfile(File fileToBeMoved, File targetDir) {
-    writeLock();
     tsFileManagement.writeLock();
+    writeLock();
     TsFileResource tsFileResourceToBeMoved = null;
     try {
       Iterator<TsFileResource> sequenceIterator = tsFileManagement.getIterator(true);
@@ -2364,8 +2364,8 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      tsFileManagement.writeUnlock();
       writeUnlock();
+      tsFileManagement.writeUnlock();
     }
     if (tsFileResourceToBeMoved == null) {
       return false;
@@ -2450,8 +2450,8 @@ public class StorageGroupProcessor {
    */
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
-    insertLock.writeLock().lock();
     tsFileManagement.writeLock();
+    insertLock.writeLock().lock();
     try {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(storageGroupName);
