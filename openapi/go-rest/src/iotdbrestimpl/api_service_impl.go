@@ -26,13 +26,11 @@ import (
 	"errors"
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/apache/iotdb/openapi/go-rest/src/util"
-	"github.com/cespare/xxhash"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 	. "github.com/iotdbrest"
 	"github.com/prometheus/prometheus/prompb"
 	"net/http"
-	"strconv"
 )
 
 // DefaultApiService is a service that implents the logic for the DefaultApiServicer
@@ -108,8 +106,7 @@ func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent
 		if util.MetricTagOrder[metricName] == nil {
 			continue
 		} else {
-			sgNum := strconv.Itoa(int(xxhash.Sum64String(metricName)%(uint64(util.Config.Sg))))
-			sgName := util.SgPrefix + sgNum
+			sgName := util.TransMetricToSg(metricName)
 			dvId, sensor = util.TransReadSchema(tagKeyValues, metricName, sgName)
 			if dvId == util.NullString && sensor == util.NullString {
 				continue
@@ -138,8 +135,7 @@ func (s *DefaultApiService) PostV1PrometheusReceive(ctx context.Context, userAge
 		for _ , label := range ts.Labels {
 			metricName, tagKeyValues = util.AddDoubleQuotes(label.Name, label.Value, metricName, tagKeyValues)
 		}
-		sgNum := strconv.Itoa(int(xxhash.Sum64String(metricName)%(uint64(util.Config.Sg))))
-		sgName := util.SgPrefix + sgNum
+		sgName := util.TransMetricToSg(metricName)
 		dvId, sensor := util.TransWriteSchema(tagKeyValues, metricName, sgName)
 		time := ts.Samples[0].Timestamp
 		value := ts.Samples[0].Value

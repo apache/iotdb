@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/apache/iotdb-client-go/client"
+	"github.com/cespare/xxhash"
 	"github.com/prometheus/prometheus/prompb"
 	"strconv"
 	"strings"
@@ -170,4 +171,11 @@ func TransToPointQuery(sensor string, dvId string, start int64, end int64) strin
 	sql := Select + sensor + From+ dvId + Where+ Time + Ge + strconv.Itoa(int(start)) + And + Time + Le +
 		strconv.Itoa(int(end))
 	return sql
+}
+
+// Trans metricName to storage group
+func TransMetricToSg(metricName string) string {
+	sgNum := strconv.Itoa(int(xxhash.Sum64String(metricName)%(uint64(Config.Sg))))
+	sgName := SgPrefix + sgNum
+	return sgName
 }
