@@ -624,6 +624,11 @@ public class IoTDBNewTsFileCompactionIT {
         }
       }
       assertEquals(retArray.length, cnt);
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT count(s1) FROM root.sg1.d1 where time < 4")) {
+        assertTrue(resultSet.next());
+        assertEquals(3L, resultSet.getLong("count(root.sg1.d1.s1)"));
+      }
     } catch (StorageEngineException | InterruptedException e) {
       e.printStackTrace();
       fail();

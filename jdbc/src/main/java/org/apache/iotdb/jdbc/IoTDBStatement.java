@@ -19,6 +19,18 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.nio.ByteBuffer;
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,14 +46,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 
-import java.nio.ByteBuffer;
-import java.sql.*;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 public class IoTDBStatement implements Statement {
 
   ZoneId zoneId;
@@ -49,7 +53,11 @@ public class IoTDBStatement implements Statement {
   private IoTDBConnection connection;
   private int fetchSize;
 
-  private int queryTimeout = 60;
+  /**
+   * Timeout of query can be set by users. Unit: s
+   * If not set, default value 0 will be used, which will use server configuration.
+   */
+  private int queryTimeout;
   protected TSIService.Iface client;
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
@@ -77,31 +85,38 @@ public class IoTDBStatement implements Statement {
    * Constructor of IoTDBStatement.
    */
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      long sessionId, int fetchSize, ZoneId zoneId) throws SQLException {
+      long sessionId, int fetchSize, ZoneId zoneId, int seconds) throws SQLException {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
     this.fetchSize = fetchSize;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
+    this.queryTimeout = seconds;
     requestStmtId();
   }
 
   // only for test
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
-      long sessionId, ZoneId zoneId, long statementId) {
+      long sessionId, ZoneId zoneId, int seconds, long statementId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
     this.batchSQLList = new ArrayList<>();
     this.zoneId = zoneId;
+    this.queryTimeout = seconds;
     this.stmtId = statementId;
   }
 
   IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
       long sessionId, ZoneId zoneId) throws SQLException {
-    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId);
+    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId, 0);
+  }
+
+  IoTDBStatement(IoTDBConnection connection, TSIService.Iface client,
+      long sessionId, ZoneId zoneId, int seconds) throws SQLException {
+    this(connection, client, sessionId, Config.DEFAULT_FETCH_SIZE, zoneId, seconds);
   }
 
   @Override
@@ -224,6 +239,7 @@ public class IoTDBStatement implements Statement {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
     execReq.setFetchSize(fetchSize);
+    execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
       RpcUtils.verifySuccess(execResp.getStatus());
@@ -300,7 +316,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    return this.executeQuery(sql, 0);
+    return this.executeQuery(sql, (long) queryTimeout * 1000);
   }
 
   public ResultSet executeQuery(String sql, long timeoutInMS) throws SQLException {

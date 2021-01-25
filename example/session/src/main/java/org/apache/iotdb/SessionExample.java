@@ -76,6 +76,7 @@ public class SessionExample {
     queryByIterator();
     deleteData();
     deleteTimeseries();
+    setTimeout();
     session.close();
   }
 
@@ -510,5 +511,10 @@ public class SessionExample {
 
   private static void nonQuery() throws IoTDBConnectionException, StatementExecutionException {
     session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
+  }
+
+  private static void setTimeout() throws StatementExecutionException {
+    Session tempSession = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
+    tempSession.setTimeout(60000);
   }
 }

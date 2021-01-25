@@ -154,6 +154,13 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public synchronized TVList getSortedTVListForQuery() {
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    return list;
+  }
+
+  private void sortTVList() {
     // check reference count
     if ((list.getReferenceCount() > 0 && !list.isSorted())) {
       list = list.clone();
@@ -162,24 +169,11 @@ public class WritableMemChunk implements IWritableMemChunk {
     if (!list.isSorted()) {
       list.sort();
     }
-
-    // increase reference count
-    list.increaseReferenceCount();
-
-    return list;
   }
 
   @Override
   public synchronized TVList getSortedTVListForFlush() {
-    // check reference count
-    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
-      list = list.clone();
-    }
-
-    if (!list.isSorted()) {
-      list.sort();
-    }
-
+    sortTVList();
     return list;
   }
 
