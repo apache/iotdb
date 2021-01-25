@@ -237,7 +237,7 @@ public class CompactionUtils {
         Iterator<Map<String, List<ChunkMetadata>>> iterator = reader
             .getMeasurementChunkMetadataListMapIterator(device);
         chunkMetadataListIteratorCache.put(reader, iterator);
-        chunkMetadataListCacheForMerge.put(reader, new HashMap<>());
+        chunkMetadataListCacheForMerge.put(reader, new TreeMap<>());
       }
       while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
         String lastSensor = null;
@@ -247,10 +247,13 @@ public class CompactionUtils {
           TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
           Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap = chunkMetadataListCacheForMergeEntry
               .getValue();
-          if (sensorChunkMetadataListMap.size() <= 0 && chunkMetadataListIteratorCache.get(reader)
-              .hasNext()) {
-            sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
-            chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
+          if (sensorChunkMetadataListMap.size() <= 0) {
+            if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
+              sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
+              chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
+            } else {
+              continue;
+            }
           }
           // get the min last sensor in the current chunkMetadata cache list for merge
           String maxSensor = Collections.max(sensorChunkMetadataListMap.keySet());

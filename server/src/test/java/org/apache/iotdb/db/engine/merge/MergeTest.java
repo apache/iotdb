@@ -120,10 +120,10 @@ abstract class MergeTest {
   void prepareFiles(int seqFileNum, int unseqFileNum)
       throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
-              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
+      File file = new File(
+          TestConstant.BASE_OUTPUT_PATH.concat(
+              i + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
+                  + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
@@ -134,10 +134,8 @@ abstract class MergeTest {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR
-              + i + IoTDBConstant.FILE_NAME_SEPARATOR
-              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
+          (10000 + i) + IoTDBConstant.FILE_NAME_SEPARATOR + (10000 + i)
+              + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
@@ -147,9 +145,8 @@ abstract class MergeTest {
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
 
-    File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(unseqFileNum + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+    File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
+        unseqFileNum + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
             + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
