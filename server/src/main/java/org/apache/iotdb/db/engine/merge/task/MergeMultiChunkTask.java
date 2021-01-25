@@ -230,7 +230,7 @@ public class MergeMultiChunkTask {
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (seqChunkMeta[i].isEmpty()
+      if (seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty()
           && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
         continue;
       }
