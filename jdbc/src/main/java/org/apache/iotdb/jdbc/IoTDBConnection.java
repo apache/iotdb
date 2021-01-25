@@ -71,6 +71,11 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+  /**
+   * Timeout of query can be set by users. Unit: s
+   * If not set, default value 0 will be used, which will use server configuration.
+   */
+  private int queryTimeout = 0;
   private ZoneId zoneId;
   private boolean autoCommit;
 
@@ -171,7 +176,7 @@ public class IoTDBConnection implements Connection {
     if (isClosed) {
       throw new SQLException("Cannot create statement because connection is closed");
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
   }
 
   @Override
@@ -186,7 +191,7 @@ public class IoTDBConnection implements Connection {
       throw new SQLException(String.format("Statements with ResultSet type %d are not supported",
           resultSetType));
     }
-    return new IoTDBStatement(this, getClient(), sessionId, zoneId);
+    return new IoTDBStatement(this, getClient(), sessionId, zoneId, queryTimeout);
   }
 
   @Override
@@ -389,6 +394,17 @@ public class IoTDBConnection implements Connection {
   @Override
   public void setNetworkTimeout(Executor arg0, int arg1) throws SQLException {
     throw new SQLException("Does not support setNetworkTimeout");
+  }
+
+  public int getQueryTimeout() {
+    return this.queryTimeout;
+  }
+
+  public void setQueryTimeout(int seconds) throws SQLException {
+    if (seconds < 0) {
+      throw new SQLException(String.format("queryTimeout %d must be >= 0!", seconds));
+    }
+    this.queryTimeout = seconds;
   }
 
   @Override
