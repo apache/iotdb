@@ -510,7 +510,7 @@ public class SessionExample {
   }
 
   private static void nonQuery() throws IoTDBConnectionException, StatementExecutionException {
-    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
+    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
   }
 
   private static void setTimeout() throws StatementExecutionException {
