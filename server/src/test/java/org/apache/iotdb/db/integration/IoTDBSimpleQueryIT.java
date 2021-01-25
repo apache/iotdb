@@ -186,7 +186,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -226,8 +226,8 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "15", "16", "17"};
-      String[] values = {"1", "10", "20", "1"};
+      String[] timestamps = {"1", "7", "15", "16", "17", "18"};
+      String[] values = {"1", "1", "10", "20", "1", "30"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -272,8 +272,9 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "15", "17"};
-      String[] values = {"1", "10", "1"};
+      //will not store time = 16 since time distance to last stored time 15 is within compMinTime
+      String[] timestamps = {"1", "7", "15", "17", "18"};
+      String[] values = {"1", "1", "10", "1", "30"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -305,13 +306,11 @@ public class IoTDBSimpleQueryIT {
       }
       statement.execute("flush");
 
-
-      statement.execute("flush");
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "21", "41"};
-      String[] values = {"1", "1", "1"};
+      String[] timestamps = {"1", "21", "41", "49"};
+      String[] values = {"1", "1", "1", "1"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -364,7 +363,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -408,7 +407,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
       //no sdt encoding when merging
       statement.execute("merge");
@@ -417,7 +416,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -465,7 +464,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
       //no sdt encoding when merging
       statement.execute("merge");
@@ -474,7 +473,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
     } catch (SQLException e) {
       e.printStackTrace();

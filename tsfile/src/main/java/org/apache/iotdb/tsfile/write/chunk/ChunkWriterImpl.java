@@ -82,17 +82,18 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * SDT parameters
    */
-  private SDTEncoder sdtEncoder;
   private boolean isSdtEncoding;
+  // When the ChunkWriter WILL write the last data point in the chunk, set it to true to tell SDT saves the point.
+  private boolean isLastPoint;
+  // do not re-execute SDT compression when merging chunks
+  private boolean isMerging;
+  private SDTEncoder sdtEncoder;
+
   private static final String LOSS = "loss";
   private static final String SDT = "sdt";
   private static final String SDT_COMP_DEV = "compdev";
   private static final String SDT_COMP_MIN_TIME = "compmintime";
   private static final String SDT_COMP_MAX_TIME = "compmaxtime";
-  /**
-   * do not re-execute SDT compression when merging chunks
-   */
-  private boolean isMerging;
 
   /**
    * first page info
@@ -154,27 +155,22 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, long value) {
-    if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
-      if (isSdtEncoding) {
-        //store last read time and value
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getLongValue();
-      }
+    if (!isSdtEncoding || isLastPoint) {
       pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+    } else if (sdtEncoder.encodeLong(time, value)) {
+      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getLongValue());
     }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, int value) {
-    if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getIntValue();
-      }
+    if (!isSdtEncoding || isLastPoint) {
       pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+    } else if (sdtEncoder.encodeInt(time, value)) {
+      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getIntValue());
     }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
@@ -185,26 +181,22 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, float value) {
-    if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getFloatValue();
-      }
+    if (!isSdtEncoding || isLastPoint) {
       pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+    } else if (sdtEncoder.encodeFloat(time, value)) {
+      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getFloatValue());
     }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, double value) {
-    if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getDoubleValue();
-      }
+    if (!isSdtEncoding || isLastPoint) {
       pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+    } else if (sdtEncoder.encodeDouble(time, value)) {
+      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getDoubleValue());
     }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
@@ -441,5 +433,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public boolean isMerging() {
     return isMerging;
+  }
+
+  public void setLastPoint(boolean isLastPoint) {
+    this.isLastPoint = isLastPoint;
   }
 }
