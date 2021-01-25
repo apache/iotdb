@@ -121,8 +121,7 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testFailedToCreateTimeseriesSDTProperties()
-      throws ClassNotFoundException, MetadataException {
+  public void testFailedToCreateTimeseriesSDTProperties() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
@@ -134,8 +133,7 @@ public class IoTDBSimpleQueryIT {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=-2");
       } catch (Exception e) {
-        assertEquals(e.getMessage(), "303: Error occurred SDT compression deviation cannot be "
-            + "negative. Failed to create timeseries.");
+        assertEquals("318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1", e.getMessage());
       }
 
       int count = 0;

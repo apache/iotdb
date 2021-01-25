@@ -79,10 +79,16 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private Statistics<?> statistics;
 
-  private boolean isSdtEncoding;
-
+  /**
+   * SDT parameters
+   */
   private SDTEncoder sdtEncoder;
-
+  private boolean isSdtEncoding;
+  private static final String LOSS = "loss";
+  private static final String SDT = "sdt";
+  private static final String SDT_COMP_DEV = "compdev";
+  private static final String SDT_COMP_MIN_TIME = "compmintime";
+  private static final String SDT_COMP_MAX_TIME = "compmaxtime";
   /**
    * do not re-execute SDT compression when merging chunks
    */
@@ -127,21 +133,21 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   private void checkSdtEncoding() {
     if (measurementSchema.getProps() != null && !isMerging) {
-      if (measurementSchema.getProps().getOrDefault("loss", "").equals("sdt")) {
+      if (measurementSchema.getProps().getOrDefault(LOSS, "").equals(SDT)) {
         isSdtEncoding = true;
         sdtEncoder = new SDTEncoder();
       }
 
-      if (isSdtEncoding && measurementSchema.getProps().containsKey("compdev")) {
-        sdtEncoder.setCompDeviation(Double.parseDouble(measurementSchema.getProps().get("compdev")));
+      if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_DEV)) {
+        sdtEncoder.setCompDeviation(Double.parseDouble(measurementSchema.getProps().get(SDT_COMP_DEV)));
       }
 
-      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmintime")) {
-        sdtEncoder.setCompMinTime(Long.parseLong(measurementSchema.getProps().get("compmintime")));
+      if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_MIN_TIME)) {
+        sdtEncoder.setCompMinTime(Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MIN_TIME)));
       }
 
-      if (isSdtEncoding && measurementSchema.getProps().containsKey("compmaxtime")) {
-        sdtEncoder.setCompMaxTime(Long.parseLong(measurementSchema.getProps().get("compmaxtime")));
+      if (isSdtEncoding && measurementSchema.getProps().containsKey(SDT_COMP_MAX_TIME)) {
+        sdtEncoder.setCompMaxTime(Long.parseLong(measurementSchema.getProps().get(SDT_COMP_MAX_TIME)));
       }
     }
   }
