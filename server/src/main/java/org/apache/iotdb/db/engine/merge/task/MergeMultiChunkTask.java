@@ -300,10 +300,7 @@ public class MergeMultiChunkTask {
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if(seqChunkMeta[i]==null){
-        System.out.println(i);
-      }
-      if (seqChunkMeta[i].isEmpty()
+      if (seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty()
           && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
         continue;
       }
@@ -328,7 +325,7 @@ public class MergeMultiChunkTask {
     int idx = 0;
     for (int i = 0; i < currMergingPaths.size(); i++) {
       chunkIdxHeaps[idx % mergeChunkSubTaskNum].add(i);
-      if (seqChunkMeta[i].isEmpty()) {
+      if (seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty()) {
         continue;
       }
 
