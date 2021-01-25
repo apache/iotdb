@@ -108,11 +108,30 @@ public class ListDataSetTest {
   @Test
   public void showDevices()
       throws QueryProcessException, TException, StorageEngineException, QueryFilterOptimizationException, MetadataException, IOException, InterruptedException, SQLException {
+    String[] results = new String [] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.vehicle.d0"};
+    PhysicalPlan plan = processor
+        .parseSQLToPhysicalPlan(
+            "show devices");
+    QueryDataSet dataSet = queryExecutor
+        .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);
+    Assert.assertEquals("[devices]", dataSet.getPaths().toString());
+    int i = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(results[i], record.toString());
+      i++;
+    }
+  }
+
+  @Test
+  public void showDevicesWithSg()
+      throws QueryProcessException, TException, StorageEngineException, QueryFilterOptimizationException, MetadataException, IOException, InterruptedException, SQLException {
     String[] results = new String [] {"0\troot.test.d0\troot.test", "0\troot.test.d1\troot.test",
         "0\troot.vehicle.d0\troot.vehicle"};
     PhysicalPlan plan = processor
         .parseSQLToPhysicalPlan(
-            "show devices");
+            "show devices with storage group");
     QueryDataSet dataSet = queryExecutor
         .processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ShowDevicesDataSet);

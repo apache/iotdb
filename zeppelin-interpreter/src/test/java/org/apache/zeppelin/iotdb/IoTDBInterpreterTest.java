@@ -314,6 +314,18 @@ public class IoTDBInterpreterTest {
   public void testShowDevices() {
     InterpreterResult actual = interpreter
         .internalInterpret("show devices", null);
+    String gt = "devices\n"
+        + "root.test.wf01.wt01\n"
+        + "root.test.wf02.wt02";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowDevicesWithSg() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("show devices with storage group", null);
     String gt = "devices\tstorage group\n"
         + "root.test.wf01.wt01\troot.test.wf01\n"
         + "root.test.wf02.wt02\troot.test.wf02";

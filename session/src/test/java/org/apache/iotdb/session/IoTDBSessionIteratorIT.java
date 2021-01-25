@@ -19,7 +19,6 @@
 package org.apache.iotdb.session;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -226,7 +225,7 @@ public class IoTDBSessionIteratorIT {
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
       sessionDataSet.setFetchSize(1024);
-      assertEquals(2, sessionDataSet.getColumnNames().size());
+      assertEquals(1, sessionDataSet.getColumnNames().size());
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {

@@ -23,4 +23,8 @@ public class ShowDevicesResult extends ShowResult {
   public ShowDevicesResult(String name, String sgName) {
     super(name, sgName);
   }
+
+  public ShowDevicesResult(String name) {
+    super(name);
+  }
 }

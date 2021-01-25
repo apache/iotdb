@@ -34,12 +34,18 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
-  private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false),
+  private static final Path[] resourcePathsWithSg = {new PartialPath(COLUMN_DEVICES, false),
       new PartialPath(COLUMN_STORAGE_GROUP, false),};
-  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT};
+  private static final TSDataType[] resourceTypesWithSg = {TSDataType.TEXT, TSDataType.TEXT};
+  private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false)};
+  private static final TSDataType[] resourceTypes = {TSDataType.TEXT};
+
+  private boolean hasSgCol;
 
   public ShowDevicesDataSet(ShowDevicesPlan showDevicesPlan) throws MetadataException {
-    super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
+    super(showDevicesPlan.hasSgCol() ? Arrays.asList(resourcePathsWithSg) : Arrays.asList(resourcePaths),
+        showDevicesPlan.hasSgCol() ? Arrays.asList(resourceTypesWithSg) : Arrays.asList(resourceTypes));
+    hasSgCol = showDevicesPlan.hasSgCol();
     this.plan = showDevicesPlan;
     hasLimit = plan.hasLimit();
     getQueryDataSet();
@@ -51,7 +57,9 @@ public class ShowDevicesDataSet extends ShowDataSet {
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
-      updateRecord(record, result.getSgName());
+      if (hasSgCol) {
+        updateRecord(record, result.getSgName());
+      }
       records.add(record);
       putRecord(record);
     }

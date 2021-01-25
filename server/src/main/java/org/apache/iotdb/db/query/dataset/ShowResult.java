@@ -28,6 +28,10 @@ public class ShowResult implements Comparable<ShowResult> {
     this.sgName = sgName;
   }
 
+  public ShowResult(String name) {
+    this.name = name;
+  }
+
   public ShowResult() {
   }
 

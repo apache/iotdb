@@ -1141,7 +1141,11 @@ public class MTree implements Serializable {
     count.remove();
     List<ShowDevicesResult> res = new ArrayList<>();
     for (PartialPath device : devices) {
-      res.add(new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+      if (plan.hasSgCol()) {
+        res.add(new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+      } else {
+        res.add(new ShowDevicesResult(device.getFullPath()));
+      }
     }
     return res;
   }

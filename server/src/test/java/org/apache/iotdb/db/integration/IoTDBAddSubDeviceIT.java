@@ -32,8 +32,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import java.sql.Types;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
@@ -75,10 +73,50 @@ public class IoTDBAddSubDeviceIT {
   }
 
   @Test
-  public void showDevices() throws ClassNotFoundException {
+  public void showDevicesWithSg() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "root.sg1.d1,root.sg1,",
         "root.sg1.d1.s1,root.sg1,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("SHOW DEVICES WITH STORAGE GROUP");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("devices,storage group,", header.toString());
+        Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void showDevices() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "root.sg1.d1,",
+        "root.sg1.d1.s1,",
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -94,7 +132,7 @@ public class IoTDBAddSubDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("devices,storage group,", header.toString());
+        Assert.assertEquals("devices,", header.toString());
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
 
         int cnt = 0;
