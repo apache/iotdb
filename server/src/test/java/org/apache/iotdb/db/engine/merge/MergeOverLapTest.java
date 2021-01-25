@@ -72,10 +72,10 @@ public class MergeOverLapTest extends MergeTest {
   @Override
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
-      File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
-              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
+      File file = new File(
+          TestConstant.BASE_OUTPUT_PATH.concat(
+              i + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
+                  + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
@@ -85,10 +85,8 @@ public class MergeOverLapTest extends MergeTest {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + i
-              + IoTDBConstant.FILE_NAME_SEPARATOR
-              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
-              + ".tsfile"));
+          (10000 + i) + IoTDBConstant.FILE_NAME_SEPARATOR + (10000 + i)
+              + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
@@ -97,10 +95,8 @@ public class MergeOverLapTest extends MergeTest {
       prepareUnseqFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
     File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-        unseqFileNum + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.FILE_NAME_SEPARATOR + 0
-            + ".tsfile"));
+        unseqFileNum + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
@@ -160,10 +156,12 @@ public class MergeOverLapTest extends MergeTest {
     mergeTask.call();
 
     QueryContext context = new QueryContext();
-    PartialPath path = new PartialPath(deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
+    PartialPath path = new PartialPath(
+        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(seqResources.get(0));
-    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(), context,
+    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
+        context,
         resources, new ArrayList<>(), null, null, true);
     int cnt = 0;
     try {
