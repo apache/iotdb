@@ -27,6 +27,7 @@ import java.nio.channels.FileChannel;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,6 +69,7 @@ public class TimeSeriesMetadataTest {
       fch.read(buffer);
       buffer.flip();
       metaData = TimeseriesMetadata.deserializeFrom(buffer, true);
+      metaData.setChunkMetadataListBuffer(new PublicBAOS());
       return metaData;
     } catch (IOException e) {
       e.printStackTrace();

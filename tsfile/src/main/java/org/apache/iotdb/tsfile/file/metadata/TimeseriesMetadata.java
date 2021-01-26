@@ -128,6 +128,7 @@ public class TimeseriesMetadata implements Accountable {
     byteLen += ReadWriteIOUtils.write(dataType, outputStream);
     byteLen += ReadWriteForEncodingUtils
         .writeUnsignedVarInt(chunkMetaDataListDataSize, outputStream);
+    System.out.println(chunkMetaDataListDataSize);
     byteLen += statistics.serialize(outputStream);
     chunkMetadataListBuffer.writeTo(outputStream);
     byteLen += chunkMetadataListBuffer.size();
@@ -217,5 +218,10 @@ public class TimeseriesMetadata implements Accountable {
 
   public boolean isSeq() {
     return isSeq;
+  }
+
+  // For Test Only
+  public void setChunkMetadataListBuffer(PublicBAOS chunkMetadataListBuffer) {
+    this.chunkMetadataListBuffer = chunkMetadataListBuffer;
   }
 }
