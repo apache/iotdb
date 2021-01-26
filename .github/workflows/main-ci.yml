@@ -81,7 +81,7 @@ jobs:
           Invoke-WebRequest https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.zip -OutFile D\a\cpp\boost_1_72_0.zip ; `
           Expand-Archive D\a\cpp\boost_1_72_0.zip -DestinationPath D\a\cpp ; `
           Invoke-WebRequest https://sourceforge.net/projects/winflexbison/files/latest/download/win_flex_bison-latest.zip -OutFile D\a\cpp\win_flex_bison-latest.zip ; `
-          Expand-Archive win_flex_bison-latest.zip -DestinationPath D\a\cpp ; `
+          Expand-Archive D\a\cpp\win_flex_bison-latest.zip -DestinationPath D\a\cpp ; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp\win_flex_bison-latest", "User") ; `
       - name: Prepare CPP Build Environment
         shell: bash
