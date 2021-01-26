@@ -45,7 +45,9 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
@@ -61,7 +63,6 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,9 +75,13 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private List<TsFileResource> tsFileResources;
   private boolean hintRegistered;
   private int requiredRetries;
+  private CompactionStrategy defaultCompaction = IoTDBDescriptor.getInstance().getConfig()
+      .getCompactionStrategy();
 
   @Before
   public void setUp() throws MetadataException, StartupException {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     super.setUp();
     hintRegistered = false;
     sourceMember = new TestDataGroupMember() {
@@ -263,7 +268,8 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor(partitionGroup, slots,
         requiresReadOnly);
 
-    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember, FileSnapshot.Factory.INSTANCE, null);
+    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember,
+        FileSnapshot.Factory.INSTANCE, null);
     task.call();
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
@@ -300,5 +306,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
   }
 }
