@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -365,13 +364,18 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testSetStorageGroupWithIllegalName() {
+  public void testSetStorageGroupWithIllegalName1() {
     MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop\n"));
       fail();
     } catch (MetadataException e) {
     }
+  }
+
+  @Test
+  public void testSetStorageGroupWithIllegalName2() {
+    MManager manager = IoTDB.metaManager;
     try {
       manager.setStorageGroup(new PartialPath("root.laptop\t"));
       fail();
@@ -380,7 +384,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testCreateTimeseriesWithIllegalName() {
+  public void testCreateTimeseriesWithIllegalName1() {
     MManager manager = IoTDB.metaManager;
     try {
       manager.createTimeseries(new PartialPath("root.laptop.d1\n.s1"), TSDataType.INT32, TSEncoding.PLAIN,
@@ -388,6 +392,11 @@ public class MManagerBasicTest {
       fail();
     } catch (MetadataException e) {
     }
+  }
+
+  @Test
+  public void testCreateTimeseriesWithIllegalName2() {
+    MManager manager = IoTDB.metaManager;
     try {
       manager.createTimeseries(new PartialPath("root.laptop.d1\t.s1"), TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.SNAPPY, null);
