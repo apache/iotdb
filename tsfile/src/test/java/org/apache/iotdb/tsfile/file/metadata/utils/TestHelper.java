@@ -58,7 +58,7 @@ public class TestHelper {
     timeseriesMetaData.setMeasurementId(measurementuid);
     timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
     timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
-    timeseriesMetaData.setDataSizeOfChunkMetaDataList(1);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
     timeseriesMetaData.setStatistics(statistics);
     timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());
     return timeseriesMetaData;
