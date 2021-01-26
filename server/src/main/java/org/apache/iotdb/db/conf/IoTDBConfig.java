@@ -58,6 +58,7 @@ public class IoTDBConfig {
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
+  // TODO: need a correct NODE_MATCHER for checking timeseries format
   private static final String NODE_MATCHER =
       "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
 

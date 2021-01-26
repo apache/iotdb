@@ -365,6 +365,38 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testSetStorageGroupWithIllegalName() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop\n"));
+      fail();
+    } catch (MetadataException e) {
+    }
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop\t"));
+      fail();
+    } catch (MetadataException e) {
+    }
+  }
+
+  @Test
+  public void testCreateTimeseriesWithIllegalName() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createTimeseries(new PartialPath("root.laptop.d1\n.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.SNAPPY, null);
+      fail();
+    } catch (MetadataException e) {
+    }
+    try {
+      manager.createTimeseries(new PartialPath("root.laptop.d1\t.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.SNAPPY, null);
+      fail();
+    } catch (MetadataException e) {
+    }
+  }
+
+  @Test
   public void testGetDevicesWithGivenPrefix() {
     MManager manager = IoTDB.metaManager;
 
