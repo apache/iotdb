@@ -28,14 +28,14 @@
 	    <th>release notes</th>  
 	</tr>
 		<tr>
-              <td>0.11.1</td>
-              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip">可执行程序</a></td>
-              <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip.sha512">SHA512</a></td>
-              <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-bin.zip.asc">ASC</a></td>
-              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip">源代码</a></td>
-              <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip.sha512">SHA512</a></td>
-              <td><a href="https://downloads.apache.org/iotdb/0.11.1/apache-iotdb-0.11.1-source-release.zip.asc">ASC</a></td>
-              <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.1/RELEASE_NOTES.md">release notes</a></td>
+              <td>0.11.2</td>
+              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.2/apache-iotdb-0.11.2-bin.zip">可执行程序</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.2/apache-iotdb-0.11.2-bin.zip.sha512">SHA512</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.2/apache-iotdb-0.11.2-bin.zip.asc">ASC</a></td>
+              <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.2/apache-iotdb-0.11.2-source-release.zip">源代码</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.2/apache-iotdb-0.11.2-source-release.zip.sha512">SHA512</a></td>
+              <td><a href="https://downloads.apache.org/iotdb/0.11.2/apache-iotdb-0.11.2-source-release.zip.asc">ASC</a></td>
+              <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.2/RELEASE_NOTES.md">release notes</a></td>
         </tr>
 		<tr>
             <td>0.10.1</td>
@@ -55,7 +55,7 @@
 
 **<font color=red>升级注意事项</font>**:
 
-- 如何升级小版本 (例如，从 v0.11.0 to v0.11.1)?
+- 如何升级小版本 (例如，从 v0.11.0 to v0.11.2)?
   * 同一个大版本下的多个小版本是互相兼容的。
   * 只需要下载新的小版本， 然后修改其配置文件，使其与原有版本的设置一致。
   * 停掉旧版本进程，启动新版本即可。

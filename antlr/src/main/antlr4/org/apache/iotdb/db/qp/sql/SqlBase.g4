@@ -191,6 +191,7 @@ compressor
     : UNCOMPRESSED
     | SNAPPY
     | LZ4
+    | GZIP
     ;
 
 attributeClause
@@ -521,7 +522,7 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -632,7 +633,7 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
