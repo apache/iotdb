@@ -5,19 +5,19 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - 'rel/*'
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: 
+    branches:
       - master
       - 'rel/*'
       - cluster_new
     paths-ignore:
       - 'docs/**'
-        
+
 jobs:
   build:
     strategy:
@@ -76,16 +76,18 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
-      - name: Download Boost
-        run: mkdir D\a\cpp ; `
-          Invoke-WebRequest https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.zip -OutFile D\a\cpp\boost_1_72_0.zip ; `
-          Expand-Archive D\a\cpp\boost_1_72_0.zip -DestinationPath D\a\cpp ; `
-          Invoke-WebRequest https://sourceforge.net/projects/winflexbison/files/latest/download/win_flex_bison-latest.zip -OutFile D\a\cpp\win_flex_bison-latest.zip ; `
-          Expand-Archive D\a\cpp\win_flex_bison-latest.zip -DestinationPath D\a\cpp ; `
-          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp\win_flex_bison-latest", "User") ; `
-      - name: Prepare CPP Build Environment
+      - name: Install Boost and Win_Flex_Bison
+        run: mkdir D:\a\cpp ; `
+          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
+          Invoke-WebRequest https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.zip -OutFile D:\a\cpp\boost_1_72_0.zip ; `
+          Expand-Archive D:\a\cpp\boost_1_72_0.zip -DestinationPath D:\a\cpp ; `
+          cd D:\a\cpp\boost_1_72_0 ; `
+          .\bootstrap.bat ; `
+          .\b2.exe
+      - name: Add Flex and Bison Path
         shell: bash
-        run: D\a\boost\boost_1_72_0\bootstrap.bat && D\a\boost\boost_1_72_0\b2.exe && echo &PATH && mv D:\a\cpp\win_flex_bison-latest\win_flex.exe D:\a\cpp\win_flex_bison-latest\flex.exe && mv D:\a\cpp\win_flex_bison-latest\win_bison.exe D:\a\cpp\win_flex_bison-latest\bison.exe
+        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Download Hadoop Tools if Needed
         # Using Powershell ...
         # github action put codes to d:\a
@@ -127,4 +129,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dboost.include.dir=D\a\boost\boost_1_72_0 -Dboost.library.dir=D\a\boost\boost_1_72_0\stage\lib -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtest.port.closed=true
