@@ -50,7 +50,7 @@ public class IoTDBConfig {
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
   // e.g., a31+/$%#&[]{}3e4
-  private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+  private static final String ID_MATCHER = "([a-zA-Z0-9/\"\s,:@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
   private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
 
@@ -58,9 +58,8 @@ public class IoTDBConfig {
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
-  // TODO: need a correct NODE_MATCHER for checking timeseries format
   private static final String NODE_MATCHER =
-      "[" + PATH_SEPARATOR + "]([\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
+      "([" + PATH_SEPARATOR + "][\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
 
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
