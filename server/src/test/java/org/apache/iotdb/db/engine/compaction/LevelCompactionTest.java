@@ -55,9 +55,9 @@ abstract class LevelCompactionTest {
 
   static final String COMPACTION_TEST_SG = "root.compactionTest";
 
-  int seqFileNum = 6;
+  protected int seqFileNum = 6;
   int unseqFileNum = 0;
-  int measurementNum = 10;
+  protected int measurementNum = 10;
   int deviceNum = 10;
   long ptNum = 100;
   long flushInterval = 20;
@@ -94,7 +94,7 @@ abstract class LevelCompactionTest {
     EnvironmentUtils.cleanAllDir();
   }
 
-  private void prepareSeries() throws MetadataException {
+  void prepareSeries() throws MetadataException {
     measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] = new MeasurementSchema("sensor" + i, TSDataType.DOUBLE,
