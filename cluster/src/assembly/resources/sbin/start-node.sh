@@ -18,6 +18,7 @@
 # under the License.
 #
 
+
 echo ---------------------
 echo "Starting IoTDB (Cluster Mode)"
 echo ---------------------

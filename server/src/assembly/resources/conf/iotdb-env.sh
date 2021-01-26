@@ -26,7 +26,7 @@ max_num=$(ulimit -n)
 if [ $max_num -le 65535 ]; then
     ulimit -n 65535
     if [ $? -ne 0 ]; then
-        echo "Warning: Failed to set max number of files to be 65535, please use 'ulimit -n 65535' to set it when you use iotdb in production environments."
+        echo "Warning: Failed to set max number of files to be 65535, maybe you need to use 'sudo ulimit -n 65535' to set it when you use iotdb in production environments."
     fi
 fi
 
