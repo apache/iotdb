@@ -58,6 +58,7 @@ public class IoTDBConfig {
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3", root.sg.d1."1.2.3"
+  // TODO : need to match the rule of antlr grammar
   private static final String NODE_MATCHER =
       "([" + PATH_SEPARATOR + "][\"])?" + ID_MATCHER + "(" + PARTIAL_NODE_MATCHER + ")*([\"])?";
 
