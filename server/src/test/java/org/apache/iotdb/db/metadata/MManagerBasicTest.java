@@ -364,44 +364,54 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testSetStorageGroupWithIllegalName1() {
+  public void testSetStorageGroupWithIllegalName() {
     MManager manager = IoTDB.metaManager;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop\n"));
+      PartialPath path1 = new PartialPath("root.laptop\n");
+      try {
+        manager.setStorageGroup(path1);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
       fail();
-    } catch (MetadataException e) {
+    }
+    try {
+      PartialPath path2 = new PartialPath("root.laptop\t");
+      try {
+        manager.setStorageGroup(path2);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
+      fail();
     }
   }
 
   @Test
-  public void testSetStorageGroupWithIllegalName2() {
+  public void testCreateTimeseriesWithIllegalName() {
     MManager manager = IoTDB.metaManager;
     try {
-      manager.setStorageGroup(new PartialPath("root.laptop\t"));
+      PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
+      try {
+        manager.createTimeseries(path1, TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.SNAPPY, null);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
       fail();
-    } catch (MetadataException e) {
     }
-  }
-
-  @Test
-  public void testCreateTimeseriesWithIllegalName1() {
-    MManager manager = IoTDB.metaManager;
     try {
-      manager.createTimeseries(new PartialPath("root.laptop.d1\n.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-          CompressionType.SNAPPY, null);
+      PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
+      try {
+        manager.createTimeseries(path2, TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.SNAPPY, null);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
       fail();
-    } catch (MetadataException e) {
-    }
-  }
-
-  @Test
-  public void testCreateTimeseriesWithIllegalName2() {
-    MManager manager = IoTDB.metaManager;
-    try {
-      manager.createTimeseries(new PartialPath("root.laptop.d1\t.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-          CompressionType.SNAPPY, null);
-      fail();
-    } catch (MetadataException e) {
     }
   }
 
