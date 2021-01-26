@@ -21,8 +21,7 @@ include "rpc.thrift"
 namespace java org.apache.iotdb.cluster.rpc.thrift
 namespace py iotdb.thrift.cluster
 
-typedef i32 int 
-typedef i16 short
+typedef i32 int
 typedef i64 long
 
 // TODO-Cluster: update rpc change list when ready to merge
@@ -114,6 +113,7 @@ struct Node {
   2: required int metaPort
   3: required int nodeIdentifier
   4: required int dataPort
+  5: required int clientPort
 }
 
 // leader -> follower
@@ -177,6 +177,9 @@ struct SingleSeriesQueryRequest {
   6: required Node header
   7: required int dataTypeOrdinal
   8: required set<string> deviceMeasurements
+  9: required bool ascending
+  10: required int fetchSize
+  11: required int deduplicatedPathNum
 }
 
 struct PreviousFillRequest {
@@ -204,6 +207,7 @@ struct GetAggrResultRequest {
   6: required long queryId
   7: required Node requestor
   8: required set<string> deviceMeasurements
+  9: required bool ascending
 }
 
 struct GroupByRequest {
@@ -215,15 +219,22 @@ struct GroupByRequest {
   6: required Node header
   7: required Node requestor
   8: required set<string> deviceMeasurements
+  9: required bool ascending
 }
 
 struct LastQueryRequest {
-  1: required string path
-  2: required int dataTypeOrdinal
+  1: required list<string> paths
+  2: required list<int> dataTypeOrdinals
   3: required long queryId
-  4: required set<string> deviceMeasurements
-  5: required Node header
-  6: required Node requestor
+  4: required map<string, set<string>> deviceMeasurements
+  5: optional binary filterBytes
+  6: required Node header
+  7: required Node requestor
+}
+
+struct GetAllPathsResult {
+  1: required list<string> paths
+  2: optional list<string> aliasList
 }
 
 
@@ -290,12 +301,18 @@ service RaftService {
   * bytes, only the remaining will be returned.
   * Notice that when the last chunk of the file is read, the file will be deleted immediately.
   **/
-  binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+  binary readFile(1:string filePath, 2:long offset, 3:int length)
 
   /**
   * Test if a log of "index" and "term" exists.
   **/
   bool matchTerm(1:long index, 2:long term, 3:Node header)
+
+  /**
+  * When a follower finds that it already has a file in a snapshot locally, it calls this
+  * interface to notify the leader to remove the associated hardlink.
+  **/
+  void removeHardLink(1: string hardLinkPath)
 }
 
 
@@ -338,7 +355,7 @@ service TSDataService extends RaftService {
   /**
   * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  list<string> getAllPaths(1:Node header, 2:list<string> path)
+  GetAllPathsResult getAllPaths(1:Node header, 2:list<string> path, 3:bool withAlias)
 
   /**
    * Given path patterns (paths with wildcard), return all devices they match.
@@ -400,6 +417,10 @@ service TSDataService extends RaftService {
   * method to inform the group that one replica of such slots has been pulled.
   **/
   bool onSnapshotApplied(1: Node header 2: list<int> slots)
+
+  binary peekNextNotNullValue(1: Node header, 2: long executorId, 3: long startTime, 4: long
+  endTime)
+
 }
 
 service TSMetaService extends RaftService {
@@ -434,4 +455,11 @@ service TSMetaService extends RaftService {
 
   Node checkAlive()
 
+  /**
+  * When a node starts, it send handshakes to all other nodes so they know the node is alive
+  * again. Notice that heartbeats exists only between leaders and followers, so coordinators
+  * cannot know when another node resumes, and handshakes are mainly used to update node status
+  * on coordinator side.
+  **/
+  void handshake(Node sender);
 }

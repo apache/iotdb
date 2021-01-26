@@ -20,15 +20,19 @@
 -->
 
 # Python Client
+
 ## Introduction
+
 This is an example of how to connect to IoTDB with python, using the thrift rpc interfaces. Things 
 are almost the same on Windows or Linux, but pay attention to the difference like path separator.
 
 ## Prerequisites
+
 python3.7 or later is preferred.
 
 You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official
 tutorial of installation, eventually, you should have a thrift executable.
+
 ```
 http://thrift.apache.org/docs/install/
 ```
@@ -49,14 +53,14 @@ Do not upload `client-py/src/thrift` to the git repo.
 
 
 ## Session Client & Example
+
 We packed up the Thrift interface in `client-py/src/iotdb/Session.py` (similar with its Java counterpart), also provided 
 an example file `client-py/src/SessionExample.py` of how to use the session module. please read it carefully.
 
 
 Or, another simple example:
 
-```$python
-
+```python
 from iotdb.Session import Session
 
 ip = "127.0.0.1"
@@ -67,5 +71,10 @@ session = Session(ip, port_, username_, password_)
 session.open(False)
 zone = session.get_time_zone()
 session.close()
-
 ```
+
+## test file
+
+You can use `client-py/src/SessionTest.py` to test python session, if the test has been passed, it will return 0. Otherwise it will return 1. You can use the printed message to locate failed operations and the reason of them.
+
+Notice: you should start IoTDB server firstly and then run the test.

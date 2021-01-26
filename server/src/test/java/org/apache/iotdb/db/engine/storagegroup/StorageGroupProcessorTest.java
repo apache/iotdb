@@ -63,6 +63,7 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
@@ -164,7 +165,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testIoTDBTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException {
-
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -233,7 +233,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
-
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -567,6 +566,7 @@ public class StorageGroupProcessorTest {
     }
     processor.syncCloseAllWorkingTsFileProcessors();
 
+
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -596,7 +596,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
 
   }

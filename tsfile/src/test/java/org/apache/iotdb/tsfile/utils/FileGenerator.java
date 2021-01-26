@@ -60,6 +60,16 @@ public class FileGenerator {
     config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
+  public static void generateFile(int rowCount, int maxNumberOfPointsInPage, String filePath) throws IOException {
+    ROW_COUNT = rowCount;
+    int oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
+    config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
+
+    prepare();
+    write(filePath);
+    config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
+  }
+
   public static void generateFile(int maxNumberOfPointsInPage, int deviceNum,
       int measurementNum) throws IOException {
     ROW_COUNT = 1;
@@ -90,11 +100,15 @@ public class FileGenerator {
   }
 
   public static void after() {
+    after(outputDataFile);
+  }
+
+  public static void after(String filePath) {
     File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
     }
-    file = new File(outputDataFile);
+    file = new File(filePath);
     if (file.exists()) {
       file.delete();
     }
@@ -184,7 +198,11 @@ public class FileGenerator {
   }
 
   static public void write() throws IOException {
-    File file = new File(outputDataFile);
+    write(outputDataFile);
+  }
+
+  static public void write(String filePath) throws IOException {
+    File file = new File(filePath);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
       file.delete();

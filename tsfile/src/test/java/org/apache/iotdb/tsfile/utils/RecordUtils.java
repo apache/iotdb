@@ -105,7 +105,7 @@ public class RecordUtils {
               break;
           }
         } catch (NumberFormatException e) {
-          LOG.warn("parsing measurement meets error, omit it", e.getMessage());
+          LOG.warn("parsing measurement meets error, omit it", e);
         }
       }
     }

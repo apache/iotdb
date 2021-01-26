@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
-import com.clearspring.analytics.util.Lists;
+import java.util.ArrayList;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -43,7 +43,7 @@ import java.util.Objects;
  * @time 27/9/20 20:56
  **/
 public class IOTDBInsertIT {
-  private static List<String> sqls = Lists.newArrayList();
+  private static List<String> sqls = new ArrayList<>();
   private static Connection connection;
 
 

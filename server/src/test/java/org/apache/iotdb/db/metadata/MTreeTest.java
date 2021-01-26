@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -187,9 +186,9 @@ public class MTreeTest {
           .getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.s0"), 0, 0).left;
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
-      assertNull(result2.get(0).getMeasurementAlias());
+      assertFalse(result2.get(0).isMeasurementAliasExists());
       assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
-      assertNull(result2.get(1).getMeasurementAlias());
+      assertFalse(result2.get(1).isMeasurementAliasExists());
 
       result2 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.*.temperature"), 0, 0).left;
       assertEquals(2, result2.size());
@@ -439,7 +438,13 @@ public class MTreeTest {
 
       assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop")));
       assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
-      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
+      PartialPath partialPath = new PartialPath("root.laptop.d1.s3");
+      try {
+        root.getAllTimeseriesCount(partialPath);
+        fail("Expected exception");
+      } catch (MetadataException e) {
+        assertEquals("Path [root.laptop.d1.s3] does not exist", e.getMessage());
+      }
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 3));
@@ -498,5 +503,28 @@ public class MTreeTest {
 
     assertEquals(root.searchAllRelatedStorageGroups(new PartialPath("root.vehicle.d1.s1")),
         Collections.singletonList(new PartialPath(sgPath1)));
+  }
+
+  @Test
+  public void testDeleteChildOfMeasurementMNode() throws MetadataException {
+    MTree root = new MTree();
+    String sgPath = "root.sg1";
+    root.setStorageGroup(new PartialPath(sgPath));
+    try {
+      root.createTimeseries(new PartialPath("root.sg1.a.b"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.createTimeseries(new PartialPath("root.sg1.a.b.c"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
+
+      root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.sg1.a.b.c"));
+
+      assertFalse(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+
+    } catch (MetadataException e1) {
+      fail(e1.getMessage());
+    }
   }
 }

@@ -18,7 +18,7 @@
  */
 
 #include "catch.hpp"
-#include "IOTDBSession.h"
+#include "Session.h"
 
 using namespace std;
 
@@ -168,4 +168,26 @@ TEST_CASE( "Test insertTablet ", "[testInsertTablet]") {
     }
   }
   REQUIRE( count == 100 );
+}
+
+TEST_CASE( "Test Last query ", "[testLastQuery]") {
+  prepareTimeseries();
+  string deviceId = "root.test.d1";
+  vector<string> measurements = { "s1", "s2", "s3" };
+
+  for (long time = 0; time < 100; time++) {
+    vector<string> values = { "1", "2", "3" };
+    session->insertRecord(deviceId, time, measurements, values);
+  }
+
+  vector<string> measurementValues = { "1", "2", "3" };
+  SessionDataSet *sessionDataSet = session->executeQueryStatement("select last s1,s2,s3 from root.test.d1");
+  sessionDataSet->setBatchSize(1024);
+  long index = 0;
+  while (sessionDataSet->hasNext()) {
+    vector<Field*> fields = sessionDataSet->next()->fields;
+    REQUIRE( fields[0]->stringV == deviceId + "." + measurements[index] );
+    REQUIRE( fields[1]->stringV == measurementValues[index] );
+    index++;
+  }
 }

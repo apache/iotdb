@@ -21,15 +21,12 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decoder for int value using rle or bit-packing.
@@ -53,8 +50,8 @@ public class IntRleDecoder extends RleDecoder {
    */
   private IntPacker packer;
 
-  public IntRleDecoder(EndianType endianType) {
-    super(endianType);
+  public IntRleDecoder() {
+    super();
     currentValue = 0;
   }
 

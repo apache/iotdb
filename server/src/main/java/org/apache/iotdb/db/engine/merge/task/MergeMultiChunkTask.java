@@ -133,7 +133,7 @@ public class MergeMultiChunkTask {
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
       double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
-      if (newProgress - progress >= 1.0) {
+      if (newProgress - progress >= 10.0) {
         progress = newProgress;
         logger.info("{} has merged {}% series", taskName, progress);
       }
@@ -217,10 +217,9 @@ public class MergeMultiChunkTask {
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
         mergeFileWriter, currTsFile);
     if (dataWritten) {
-      mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.putStartTime(deviceId, currDeviceMinTime);
+      currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }
 

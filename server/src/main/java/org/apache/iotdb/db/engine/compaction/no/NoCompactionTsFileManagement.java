@@ -34,9 +34,13 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   // includes sealed and unsealed sequence TsFiles
   private TreeSet<TsFileResource> sequenceFileTreeSet = new TreeSet<>(
       (o1, o2) -> {
-        int rangeCompare = Long.compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
-            Long.parseLong(o2.getTsFile().getParentFile().getName()));
-        return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile()) : rangeCompare;
+        try {
+          int rangeCompare = Long.compare(Long.parseLong(o1.getTsFile().getParentFile().getName()),
+              Long.parseLong(o2.getTsFile().getParentFile().getName()));
+          return rangeCompare == 0 ? compareFileName(o1.getTsFile(), o2.getTsFile()) : rangeCompare;
+        } catch (NumberFormatException e) {
+          return compareFileName(o1.getTsFile(), o2.getTsFile());
+        }
       });
 
   // includes sealed and unsealed unSequence TsFiles
@@ -47,16 +51,11 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getStableTsFileList(boolean sequence) {
-    return getTsFileList(sequence);
-  }
-
-  @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
     if (sequence) {
       return new ArrayList<>(sequenceFileTreeSet);
     } else {
-      return unSequenceFileList;
+      return new ArrayList<>(unSequenceFileList);
     }
   }
 
@@ -90,6 +89,11 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
     } else {
       unSequenceFileList.add(tsFileResource);
     }
+  }
+
+  @Override
+  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+    logger.info("{} do not need to recover", storageGroupName);
   }
 
   @Override

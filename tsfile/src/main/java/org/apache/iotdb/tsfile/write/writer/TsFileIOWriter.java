@@ -30,7 +30,7 @@ import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -46,10 +46,8 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,21 +57,19 @@ import org.slf4j.LoggerFactory;
  */
 public class TsFileIOWriter {
 
-  public static final byte[] magicStringBytes;
-  public static final byte[] versionNumberBytes;
+  protected static final byte[] MAGIC_STRING_BYTES;
+  public static final byte VERSION_NUMBER_BYTE;
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(TsFileIOWriter.class);
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   static {
-    magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
-    versionNumberBytes = TSFileConfig.VERSION_NUMBER.getBytes();
+    MAGIC_STRING_BYTES = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
+    VERSION_NUMBER_BYTE = TSFileConfig.VERSION_NUMBER;
   }
 
   protected TsFileOutput out;
   protected boolean canWrite = true;
-  protected int totalChunkNum = 0;
-  protected int invalidChunkNum;
   protected File file;
 
   // current flushed Chunk
@@ -85,11 +81,14 @@ public class TsFileIOWriter {
 
   private long markedPosition;
   private String currentChunkGroupDeviceId;
-  private long currentChunkGroupStartOffset;
-  protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-  
+
   // for upgrade tool
   Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
+
+  // the two longs marks the index range of operations in current MemTable
+  // and are serialized after MetaMarker.OPERATION_INDEX_RANGE to recover file-level range
+  private long minPlanIndex;
+  private long maxPlanIndex;
 
   /**
    * empty construct function.
@@ -135,17 +134,18 @@ public class TsFileIOWriter {
   }
 
   protected void startFile() throws IOException {
-    out.write(magicStringBytes);
-    out.write(versionNumberBytes);
+    out.write(MAGIC_STRING_BYTES);
+    out.write(VERSION_NUMBER_BYTE);
   }
 
   public void startChunkGroup(String deviceId) throws IOException {
     this.currentChunkGroupDeviceId = deviceId;
-    currentChunkGroupStartOffset = out.getPosition();
     if (logger.isDebugEnabled()) {
       logger.debug("start chunk group:{}, file position {}", deviceId, out.getPosition());
     }
     chunkMetadataList = new ArrayList<>();
+    ChunkGroupHeader chunkGroupHeader = new ChunkGroupHeader(currentChunkGroupDeviceId);
+    chunkGroupHeader.serializeTo(out.wrapAsStream());
   }
 
   /**
@@ -155,10 +155,6 @@ public class TsFileIOWriter {
     if (currentChunkGroupDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
-    long dataSize = out.getPosition() - currentChunkGroupStartOffset;
-    ChunkGroupFooter chunkGroupFooter = new ChunkGroupFooter(currentChunkGroupDeviceId, dataSize,
-        chunkMetadataList.size());
-    chunkGroupFooter.serializeTo(out.wrapAsStream());
     chunkGroupMetadataList
         .add(new ChunkGroupMetadata(currentChunkGroupDeviceId, chunkMetadataList));
     currentChunkGroupDeviceId = null;
@@ -169,11 +165,11 @@ public class TsFileIOWriter {
   /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
-   * @param measurementSchema - schema of this time series
+   * @param measurementSchema    - schema of this time series
    * @param compressionCodecName - compression name of this time series
-   * @param tsDataType - data type
-   * @param statistics - Chunk statistics
-   * @param dataSize - the serialized size of all pages
+   * @param tsDataType           - data type
+   * @param statistics           - Chunk statistics
+   * @param dataSize             - the serialized size of all pages
    * @throws IOException if I/O error occurs
    */
   public void startFlushChunk(MeasurementSchema measurementSchema,
@@ -201,7 +197,7 @@ public class TsFileIOWriter {
     out.write(chunk.getData());
     endCurrentChunk();
     if (logger.isDebugEnabled()) {
-      logger.debug("end flushing a chunk:{}, totalvalue:{}", currentChunkMetadata,
+      logger.debug("end flushing a chunk:{}, totalvalue:{}", chunkHeader.getMeasurementID(),
           chunkMetadata.getNumOfPoints());
     }
   }
@@ -212,7 +208,6 @@ public class TsFileIOWriter {
   public void endCurrentChunk() {
     chunkMetadataList.add(currentChunkMetadata);
     currentChunkMetadata = null;
-    totalChunkNum++;
   }
 
   /**
@@ -238,9 +233,6 @@ public class TsFileIOWriter {
     MetadataIndexNode metadataIndex = flushMetadataIndex(chunkMetadataListMap);
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
     tsFileMetaData.setMetadataIndex(metadataIndex);
-    tsFileMetaData.setVersionInfo(versionInfo);
-    tsFileMetaData.setTotalChunkNum(totalChunkNum);
-    tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
     tsFileMetaData.setMetaOffset(metaOffset);
 
     long footerIndex = out.getPosition();
@@ -264,7 +256,7 @@ public class TsFileIOWriter {
     ReadWriteIOUtils.write(size, out.wrapAsStream());// write the size of the file metadata.
 
     // write magic string
-    out.write(magicStringBytes);
+    out.write(MAGIC_STRING_BYTES);
 
     // close file
     out.close();
@@ -295,15 +287,18 @@ public class TsFileIOWriter {
       Statistics seriesStatistics = Statistics.getStatsByType(dataType);
 
       int chunkMetadataListLength = 0;
+      boolean serializeStatistic = (entry.getValue().size() > 1);
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
         if (!chunkMetadata.getDataType().equals(dataType)) {
           continue;
         }
-        chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
+        chunkMetadataListLength += chunkMetadata
+            .serializeTo(out.wrapAsStream(), serializeStatistic);
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
-      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(offsetOfChunkMetadataList,
+      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(
+          serializeStatistic ? (byte) 1 : (byte) 0, offsetOfChunkMetadataList,
           chunkMetadataListLength, path.getMeasurement(), dataType, seriesStatistics);
       deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
           .add(timeseriesMetadata);
@@ -328,7 +323,6 @@ public class TsFileIOWriter {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
-      VersionUtils.applyVersion(chunkGroupMetadata.getChunkMetadataList(), versionInfo);
       deviceChunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), k -> new ArrayList<>())
           .addAll(chunkGroupMetadata.getChunkMetadataList());
     }
@@ -364,14 +358,6 @@ public class TsFileIOWriter {
     out.write(new byte[]{MetaMarker.CHUNK_HEADER});
   }
 
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
-  public int getInvalidChunkNum() {
-    return invalidChunkNum;
-  }
-
   public File getFile() {
     return file;
   }
@@ -405,7 +391,6 @@ public class TsFileIOWriter {
         if (!chunkValid) {
           chunkMetaDataIterator.remove();
           chunkNum--;
-          invalidChunkNum++;
         } else {
           startTimeIdxes.put(path, startTimeIdx + 1);
         }
@@ -416,20 +401,11 @@ public class TsFileIOWriter {
     }
   }
 
-  /**
-   * write MetaMarker.VERSION with version Then, cache offset-version in versionInfo
-   */
-  public void writeVersion(long version) throws IOException {
-    ReadWriteIOUtils.write(MetaMarker.VERSION, out.wrapAsStream());
-    ReadWriteIOUtils.write(version, out.wrapAsStream());
-    versionInfo.add(new Pair<>(getPos(), version));
-  }
-
-  public void setDefaultVersionPair() {
-    // only happen when using tsfile module write api
-    if (versionInfo.isEmpty()) {
-      versionInfo.add(new Pair<>(Long.MAX_VALUE, 0L));
-    }
+  public void writePlanIndices() throws IOException {
+    ReadWriteIOUtils.write(MetaMarker.OPERATION_INDEX_RANGE, out.wrapAsStream());
+    ReadWriteIOUtils.write(minPlanIndex, out.wrapAsStream());
+    ReadWriteIOUtils.write(maxPlanIndex, out.wrapAsStream());
+    out.flush();
   }
 
   /**
@@ -448,5 +424,21 @@ public class TsFileIOWriter {
    */
   public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
     return deviceTimeseriesMetadataMap;
+  }
+
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  public void setMinPlanIndex(long minPlanIndex) {
+    this.minPlanIndex = minPlanIndex;
+  }
+
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
+  }
+
+  public void setMaxPlanIndex(long maxPlanIndex) {
+    this.maxPlanIndex = maxPlanIndex;
   }
 }

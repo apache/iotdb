@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,7 +66,7 @@ public class SessionUT {
     Before testing, change the sortTablet from private method to public method
     !!!
      */
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     // insert three rows data
@@ -118,7 +119,7 @@ public class SessionUT {
   @Test
   public void testInsertByStrAndSelectFailedData()
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
     session.open();
 
     String deviceId = "root.sg1.d1";
@@ -169,7 +170,7 @@ public class SessionUT {
       RowRecord record = dataSet.next();
       int nullCount = 0;
       for (int j = 0; j < 4; ++j) {
-        if (record.getFields().get(j).isNull()) {
+        if (record.getFields().get(j) == null) {
           ++nullCount;
         } else {
           assertEquals(i, record.getFields().get(j).getLongV());
@@ -187,5 +188,13 @@ public class SessionUT {
     assertEquals("+05:00", session.getTimeZone());
     session.setTimeZone("+09:00");
     assertEquals("+09:00", session.getTimeZone());
+  }
+
+  @Test
+  public void setTimeout() throws StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
+    Assert.assertEquals(20000, session.getTimeout());
+    session.setTimeout(60000);
+    Assert.assertEquals(60000, session.getTimeout());
   }
 }

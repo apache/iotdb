@@ -26,7 +26,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.thrift.EncodingUtils;
 
 public class WatermarkDetector {

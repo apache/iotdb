@@ -343,23 +343,41 @@
 |默认值| MaxDiskUsableSpaceFirstStrategy |
 |改后生效方式|触发生效|
 
-* rpc_address
+* rpc\_address
 
-|名字| rpc_address |
+|名字| rpc\_address |
 |:---:|:---|
 |描述| |
 |类型|String|
 |默认值| "0.0.0.0" |
 |改后生效方式|重启服务器生效|
 
-* rpc_port
+* rpc\_port
 
-|名字| rpc_port |
+|名字| rpc\_port |
 |:---:|:---|
 |描述|jdbc服务监听端口。请确认该端口不是系统保留端口并且未被占用。|
 |类型|Short Int : [0,65535]|
 |默认值| 6667 |
-|改后生效方式|重启服务器生效||
+|改后生效方式|重启服务器生效|
+
+* rpc\_thrift\_compression\_enable
+
+|名字| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|描述|是否启用thrift的压缩机制。|
+|类型|true 或者 false|
+|默认值| false |
+|改后生效方式|重启服务器生效|
+
+* rpc\_advanced\_compression\_enable
+
+|名字| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|描述|是否启用thrift的自定制压缩机制。|
+|类型|true 或者 false|
+|默认值| false |
+|改后生效方式|重启服务器生效|
 
 * time\_zone
 
@@ -517,6 +535,16 @@
 |改后生效方式|重启服务器生效|
 
 
+* thrift\_max\_frame\_size
+
+|名字| thrift\_max\_frame\_size |
+|:---:|:---|
+|描述| RPC 请求/响应的最大字节数|
+|类型| long |
+|默认值| 67108864 (应大于等于 8 * 1024 * 1024) |
+|改后生效方式|重启服务器生效|
+
+
 ## 数据类型自动推断
 
 
@@ -574,6 +602,23 @@
 |默认值|FLOAT |
 |改后生效方式|重启服务器生效|
 
+* enable\_partition
+
+|名字| enable\_partition |
+|:---:|:---|
+|描述| 是否启用数据分区。如果禁用，则所有数据都属于分区0 |
+|取值| BOOLEAN |
+|默认值| false |
+|改后生效方式|重启服务器生效|
+
+* partition\_interval
+
+|名字| partition\_interval |
+|:---:|:---|
+|描述| 对每个存储组内的数据进行分区的时间范围，单位为秒|
+|取值| LONG |
+|默认值|604800 |
+|改后生效方式|重启服务器生效|
 
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要收集GC信息。

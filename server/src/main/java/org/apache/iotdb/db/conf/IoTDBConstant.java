@@ -72,6 +72,9 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String QUERY_ID = "queryId";
+  public static final String START_TIME = "startTime";
+  public static final String STATEMENT = "statement";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -85,6 +88,16 @@ public class IoTDBConstant {
   public static final String COLUMN_PROGRESS = "progress";
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
+
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
+  public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
@@ -102,6 +115,8 @@ public class IoTDBConstant {
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
+  public static final String EXT_FOLDER_NAME = "ext";
+  public static final String UDF_FOLDER_NAME = "udf";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -110,4 +125,7 @@ public class IoTDBConstant {
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
+
+  // thrift
+  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
 }

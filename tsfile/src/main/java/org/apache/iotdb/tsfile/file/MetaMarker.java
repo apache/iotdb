@@ -24,12 +24,31 @@ import java.io.IOException;
 /**
  * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
  */
+@SuppressWarnings({ "squid:S1133" }) //Deprecated code should be removed
 public class MetaMarker {
 
-  public static final byte CHUNK_GROUP_FOOTER = 0;
+  public static final byte CHUNK_GROUP_HEADER = 0;
+  /**
+   * Chunk header marker and this chunk has more than one page.
+   */
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
+  /**
+   * @deprecated (Since TsFile version 3, the marker VERSION is no longer used in TsFile.
+   * It should be removed when TsFile upgrade to version 4)
+   */
+  @Deprecated
   public static final byte VERSION = 3;
+  
+  // following this marker are two longs marking the minimum and maximum indices of operations
+  // involved in the last flushed MemTable, which are generally used to support checkpoint,
+  // snapshot, or backup.
+  public static final byte OPERATION_INDEX_RANGE = 4;
+
+  /**
+   * Chunk header marker and this chunk has only one page.
+   */
+  public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 
   private MetaMarker() {
   }

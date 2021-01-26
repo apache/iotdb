@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -65,7 +65,9 @@ public class TsFileIOWriterTest {
     writer.endCurrentChunk();
     writer.endChunkGroup();
 
-    writer.writeVersion(0L);
+    writer.setMinPlanIndex(100);
+    writer.setMaxPlanIndex(10000);
+    writer.writePlanIndices();
     // end file
     writer.endFile();
   }
@@ -87,22 +89,22 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(TSFileConfig.VERSION_NUMBER, reader.readVersionNumber());
     Assert.assertEquals(TSFileConfig.MAGIC_STRING, reader.readTailMagic());
 
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+
+    // chunk group header
+    Assert.assertEquals(MetaMarker.CHUNK_GROUP_HEADER, reader.readMarker());
+    ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+    Assert.assertEquals(deviceId, chunkGroupHeader.getDeviceID());
+
     // chunk header
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
-        .getBytes().length);
-    Assert.assertEquals(MetaMarker.CHUNK_HEADER, reader.readMarker());
-    ChunkHeader header = reader.readChunkHeader();
+    Assert.assertEquals(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, reader.readMarker());
+    ChunkHeader header = reader.readChunkHeader(MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER);
     Assert.assertEquals(TimeSeriesMetadataTest.measurementUID, header.getMeasurementID());
 
-    // chunk group footer
-    Assert.assertEquals(MetaMarker.CHUNK_GROUP_FOOTER, reader.readMarker());
-    ChunkGroupFooter footer = reader.readChunkGroupFooter();
-    Assert.assertEquals(deviceId, footer.getDeviceID());
-
-    // separator
-    Assert.assertEquals(MetaMarker.VERSION, reader.readMarker());
-
-    reader.readVersion();
+    Assert.assertEquals(MetaMarker.OPERATION_INDEX_RANGE, reader.readMarker());
+    reader.readPlanIndex();
+    Assert.assertEquals(100, reader.getMinPlanIndex());
+    Assert.assertEquals(10000, reader.getMaxPlanIndex());
 
     Assert.assertEquals(MetaMarker.SEPARATOR, reader.readMarker());
 

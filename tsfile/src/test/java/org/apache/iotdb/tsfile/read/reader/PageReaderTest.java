@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DoublePrecisionDecoderV1;
@@ -54,11 +53,11 @@ public class PageReaderTest {
   public void testLong() {
 
     LoopWriteReadTest test = new LoopWriteReadTest("Test INT64",
-        new LongRleEncoder(EndianType.BIG_ENDIAN),
-        new LongRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT64, POINTS_COUNT_IN_ONE_PAGE) {
+        new LongRleEncoder(),
+        new LongRleDecoder(), TSDataType.INT64, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Long.valueOf(Long.MAX_VALUE - i);
+        return Long.MAX_VALUE - i;
       }
     };
     test.test(TSDataType.INT64);
@@ -67,11 +66,11 @@ public class PageReaderTest {
   @Test
   public void testBoolean() {
     LoopWriteReadTest test = new LoopWriteReadTest("Test Boolean",
-        new IntRleEncoder(EndianType.BIG_ENDIAN),
-        new IntRleDecoder(EndianType.BIG_ENDIAN), TSDataType.BOOLEAN, POINTS_COUNT_IN_ONE_PAGE) {
+        new IntRleEncoder(),
+        new IntRleDecoder(), TSDataType.BOOLEAN, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return i % 3 == 0 ? true : false;
+        return i % 3 == 0;
       }
     };
     test.test(TSDataType.BOOLEAN);
@@ -79,12 +78,11 @@ public class PageReaderTest {
 
   @Test
   public void testInt() {
-    LoopWriteReadTest test = new LoopWriteReadTest("Test INT32",
-        new IntRleEncoder(EndianType.BIG_ENDIAN),
-        new IntRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT32, POINTS_COUNT_IN_ONE_PAGE) {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test INT32", new IntRleEncoder(),
+        new IntRleDecoder(), TSDataType.INT32, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Integer.valueOf(i);
+        return i;
       }
     };
     test.test(TSDataType.INT32);
@@ -96,7 +94,7 @@ public class PageReaderTest {
         new SinglePrecisionDecoderV1(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Float.valueOf(i) / 10 - Float.valueOf(i) / 100;
+        return (float) i / 10 - (float) i / 100;
       }
     };
     test.test(TSDataType.FLOAT);
@@ -105,7 +103,7 @@ public class PageReaderTest {
         new SinglePrecisionDecoderV1(), TSDataType.FLOAT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Float.valueOf(i) / 100 - Float.valueOf(i) / 10;
+        return (float) i / 100 - (float) i / 10;
       }
     };
     test2.test(TSDataType.FLOAT);
@@ -117,7 +115,7 @@ public class PageReaderTest {
         new DoublePrecisionDecoderV1(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Double.valueOf(i) / 10 - Double.valueOf(i) / 100;
+        return (double) i / 10 - (double) i / 100;
       }
     };
     test.test(TSDataType.DOUBLE);
@@ -126,7 +124,7 @@ public class PageReaderTest {
         new DoublePrecisionDecoderV1(), TSDataType.DOUBLE, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Double.valueOf(i) / 1000 - Double.valueOf(i) / 100;
+        return (double) i / 1000 - (double) i / 100;
       }
     };
     test2.test(TSDataType.DOUBLE);
@@ -135,11 +133,11 @@ public class PageReaderTest {
   @Test
   public void testBinary() {
     LoopWriteReadTest test = new LoopWriteReadTest("Test Double",
-        new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.TEXT, 1000),
-        new PlainDecoder(EndianType.BIG_ENDIAN), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
+        new PlainEncoder(TSDataType.TEXT, 1000),
+        new PlainDecoder(), TSDataType.TEXT, POINTS_COUNT_IN_ONE_PAGE) {
       @Override
       public Object generateValueByIndex(int i) {
-        return new Binary(new StringBuilder("TEST TEXT").append(i).toString());
+        return new Binary("TEST TEXT" + i);
       }
     };
     test.test(TSDataType.TEXT);
@@ -238,26 +236,26 @@ public class PageReaderTest {
       }
     }
 
-    private void writeData() throws IOException {
+    private void writeData() {
       for (int i = 0; i < count; i++) {
         switch (dataType) {
           case BOOLEAN:
-            pageWriter.write(Long.valueOf(i), (Boolean) generateValueByIndex(i));
+            pageWriter.write(i, (Boolean) generateValueByIndex(i));
             break;
           case INT32:
-            pageWriter.write(Long.valueOf(i), (Integer) generateValueByIndex(i));
+            pageWriter.write(i, (Integer) generateValueByIndex(i));
             break;
           case INT64:
-            pageWriter.write(Long.valueOf(i), (Long) generateValueByIndex(i));
+            pageWriter.write(i, (Long) generateValueByIndex(i));
             break;
           case FLOAT:
-            pageWriter.write(Long.valueOf(i), (Float) generateValueByIndex(i));
+            pageWriter.write(i, (Float) generateValueByIndex(i));
             break;
           case DOUBLE:
-            pageWriter.write(Long.valueOf(i), (Double) generateValueByIndex(i));
+            pageWriter.write(i, (Double) generateValueByIndex(i));
             break;
           case TEXT:
-            pageWriter.write(Long.valueOf(i), (Binary) generateValueByIndex(i));
+            pageWriter.write(i, (Binary) generateValueByIndex(i));
             break;
 
         }
@@ -270,11 +268,11 @@ public class PageReaderTest {
   @Test
   public void testPageDelete() {
     LoopWriteReadTest test = new LoopWriteReadTest("Test INT64",
-        new LongRleEncoder(EndianType.BIG_ENDIAN),
-        new LongRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT64, 100) {
+        new LongRleEncoder(),
+        new LongRleDecoder(), TSDataType.INT64, 100) {
       @Override
       public Object generateValueByIndex(int i) {
-        return Long.valueOf(Long.MAX_VALUE - i);
+        return Long.MAX_VALUE - i;
       }
     };
     test.testDelete(TSDataType.INT64);

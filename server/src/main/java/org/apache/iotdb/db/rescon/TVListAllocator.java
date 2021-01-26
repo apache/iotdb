@@ -64,19 +64,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
 
   public synchronized void release(TVList list) {
     list.clear();
-    if (list instanceof BinaryTVList) {
-      tvListCache.get(TSDataType.TEXT).add(list);
-    } else if (list instanceof BooleanTVList) {
-      tvListCache.get(TSDataType.BOOLEAN).add(list);
-    } else if (list instanceof DoubleTVList) {
-      tvListCache.get(TSDataType.DOUBLE).add(list);
-    } else if (list instanceof FloatTVList) {
-      tvListCache.get(TSDataType.FLOAT).add(list);
-    } else if (list instanceof IntTVList) {
-      tvListCache.get(TSDataType.INT32).add(list);
-    } else if (list instanceof LongTVList) {
-      tvListCache.get(TSDataType.INT64).add(list);
-    }
+    tvListCache.get(list.getDataType()).add(list);
   }
 
   @Override

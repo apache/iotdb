@@ -19,11 +19,17 @@
 namespace java org.apache.iotdb.service.rpc.thrift
 namespace py iotdb.thrift.rpc
 
+struct EndPoint {
+  1: required string ip
+  2: required i32 port
+}
+
 // The return status code and message in each response.
 struct TSStatus {
   1: required i32 code
   2: optional string message
   3: optional list<TSStatus> subStatus
+  4: optional EndPoint redirectNode
 }
 
 struct TSQueryDataSet{
@@ -109,6 +115,8 @@ struct TSExecuteStatementReq {
   3: required i64 statementId
 
   4: optional i32 fetchSize
+
+  5: optional i64 timeout
 }
 
 struct TSExecuteBatchStatementReq{
@@ -147,6 +155,7 @@ struct TSFetchResultsReq{
   3: required i32 fetchSize
   4: required i64 queryId
   5: required bool isAlign
+  6: optional i64 timeout
 }
 
 struct TSFetchResultsResp{
@@ -223,6 +232,14 @@ struct TSInsertRecordsReq {
   3: required list<list<string>> measurementsList
   4: required list<binary> valuesList
   5: required list<i64> timestamps
+}
+
+struct TSInsertRecordsOfOneDeviceReq {
+    1: required i64 sessionId
+    2: required string deviceId
+    3: required list<list<string>> measurementsList
+    4: required list<binary> valuesList
+    5: required list<i64> timestamps
 }
 
 struct TSInsertStringRecordsReq {
@@ -326,6 +343,8 @@ service TSIService {
 
   TSStatus insertRecords(1:TSInsertRecordsReq req);
 
+  TSStatus insertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
+
   TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
   TSStatus testInsertTablet(1:TSInsertTabletReq req);
@@ -337,6 +356,8 @@ service TSIService {
   TSStatus testInsertStringRecord(1:TSInsertStringRecordReq req);
 
   TSStatus testInsertRecords(1:TSInsertRecordsReq req);
+
+  TSStatus testInsertRecordsOfOneDevice(1:TSInsertRecordsOfOneDeviceReq req);
 
   TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 

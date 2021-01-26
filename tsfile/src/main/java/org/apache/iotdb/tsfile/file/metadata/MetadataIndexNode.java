@@ -24,22 +24,23 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
 
-  private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
-      .getMaxDegreeOfIndexNode();
-  private List<MetadataIndexEntry> children;
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  private final List<MetadataIndexEntry> children;
   private long endOffset;
 
   /**
    * type of the child node at offset
    */
-  private MetadataIndexNodeType nodeType;
+  private final MetadataIndexNodeType nodeType;
 
   public MetadataIndexNode(MetadataIndexNodeType nodeType) {
     children = new ArrayList<>();
@@ -75,7 +76,7 @@ public class MetadataIndexNode {
   }
 
   boolean isFull() {
-    return children.size() == MAX_DEGREE_OF_INDEX_NODE;
+    return children.size() == config.getMaxDegreeOfIndexNode();
   }
 
   MetadataIndexEntry peek() {
@@ -87,7 +88,7 @@ public class MetadataIndexNode {
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(children.size(), outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(children.size(), outputStream);
     for (MetadataIndexEntry metadataIndexEntry : children) {
       byteLen += metadataIndexEntry.serializeTo(outputStream);
     }
@@ -98,7 +99,7 @@ public class MetadataIndexNode {
 
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
-    int size = ReadWriteIOUtils.readInt(buffer);
+    int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }

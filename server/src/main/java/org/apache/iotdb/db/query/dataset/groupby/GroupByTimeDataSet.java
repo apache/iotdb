@@ -86,12 +86,12 @@ public class GroupByTimeDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     return index < records.size();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return records.get(index++);
   }
 }

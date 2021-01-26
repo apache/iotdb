@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 public abstract class AggregateResult {
 
   private final AggregationType aggregationType;
-  private TSDataType resultDataType;
+  protected TSDataType resultDataType;
 
   private boolean booleanValue;
   private int intValue;
@@ -72,7 +72,8 @@ public abstract class AggregateResult {
    *
    * @param dataInThisPage the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage) throws IOException;
+  public abstract void updateResultFromPageData(BatchData dataInThisPage)
+      throws IOException, QueryProcessException;
 
   /**
    * Aggregate results cannot be calculated using Statistics directly, using the data in each page
@@ -108,7 +109,7 @@ public abstract class AggregateResult {
 
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
-    TSDataType dataType = TSDataType.deserialize(buffer.getShort());
+    TSDataType dataType = TSDataType.deserialize(buffer.get());
     boolean ascending = ReadWriteIOUtils.readBool(buffer);
     AggregateResult aggregateResult = AggregateResultFactory
         .getAggrResultByType(aggregationType, dataType, ascending);
