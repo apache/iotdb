@@ -219,6 +219,7 @@ public class TimeseriesMetadata implements Accountable {
     return isSeq;
   }
 
+  // For Test Only
   public void setChunkMetadataListBuffer(PublicBAOS chunkMetadataListBuffer) {
     this.chunkMetadataListBuffer = chunkMetadataListBuffer;
   }

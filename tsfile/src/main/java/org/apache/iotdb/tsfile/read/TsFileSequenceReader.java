@@ -1244,6 +1244,9 @@ public class TsFileSequenceReader implements AutoCloseable {
 
       @Override
       public Map<String, List<ChunkMetadata>> next() {
+        if(!hasNext()){
+          throw new NoSuchElementException();
+        }
         Pair<Long, Long> startEndPair = queue.remove();
         Map<String, List<ChunkMetadata>> measurementChunkMetadataList = new HashMap<>();
         try {

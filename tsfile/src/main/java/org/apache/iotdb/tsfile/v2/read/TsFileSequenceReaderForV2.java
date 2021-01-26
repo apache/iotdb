@@ -545,7 +545,6 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    *
    * @return List of ChunkMetaData
    */
-  @Override
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     readFileMetadata();

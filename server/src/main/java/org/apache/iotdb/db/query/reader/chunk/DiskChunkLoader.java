@@ -31,7 +31,7 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 public class DiskChunkLoader implements IChunkLoader {
 
   public DiskChunkLoader() {
-
+    // do nothing
   }
 
   @Override

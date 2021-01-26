@@ -63,7 +63,7 @@ public class UpgradeUtils {
   /**
    * judge whether a tsfile needs to be upgraded
    */
-  public static boolean isNeedUpgrade(TsFileResource tsFileResource) throws Exception {
+  public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
     tsFileResource.readLock();
     //case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
     try {
