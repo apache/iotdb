@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
@@ -30,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
@@ -60,7 +58,8 @@ public class TestHelper {
     timeseriesMetaData.setMeasurementId(measurementuid);
     timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
     timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
-    timeseriesMetaData.setDataSizeOfChunkMetaDataList(200);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(0);
+    timeseriesMetaData.setChunkMetadataListBuffer(new PublicBAOS());
     timeseriesMetaData.setStatistics(statistics);
     return timeseriesMetaData;
   }
