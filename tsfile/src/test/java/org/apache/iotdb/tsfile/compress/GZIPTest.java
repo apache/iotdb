@@ -70,7 +70,7 @@ public class GZIPTest {
 
   @Test
   public void testByteBuffer() throws IOException {
-    for (int i = 1; i < 500000; i+= 1000) {
+    for (int i = 1; i < 500000; i+= 100000) {
       String input = randomString(i);
       //String input = "this is test";
       ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
