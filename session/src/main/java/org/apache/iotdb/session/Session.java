@@ -1119,7 +1119,7 @@ public class Session {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
-      res += Short.BYTES;
+      res += Byte.BYTES;
       switch (types.get(i)) {
         case BOOLEAN:
           res += 1;
