@@ -38,7 +38,10 @@ public class SyncUtils {
    * sender.
    */
   public static File getSnapshotFile(File file) {
-    String relativeFilePath = file.getParentFile().getName() + File.separator + file.getName();
+    String relativeFilePath =
+      file.getParentFile().getParentFile().getParentFile().getName() + File.separator
+      + file.getParentFile().getParentFile().getName() + File.separator
+      + file.getParentFile().getName() + File.separator + file.getName();
     String snapshotDir = SyncSenderDescriptor.getInstance().getConfig().getSnapshotPath();
     if (!new File(snapshotDir).exists()) {
       new File(snapshotDir).mkdirs();

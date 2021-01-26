@@ -448,6 +448,7 @@ public class SyncClient implements ISyncClient {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void sync() throws IOException {
     try {
@@ -477,7 +478,7 @@ public class SyncClient implements ISyncClient {
             lastLocalFilesMap.get(sgName).putIfAbsent(vgEntry.getKey(), new HashMap<>());
             for (Long timeRangeId : vgEntry.getValue()) {
               lastLocalFilesMap.get(sgName).get(vgEntry.getKey()).putIfAbsent(timeRangeId, new HashSet<>());
-              syncDeletedFilesNameInOneGroup(sgName, timeRangeId,
+              syncDeletedFilesNameInOneGroup(sgName, vgEntry.getKey(), timeRangeId,
                 deletedFilesMap.getOrDefault(sgName, Collections.emptyMap())
                   .getOrDefault(vgEntry.getKey(), Collections.emptyMap())
                   .getOrDefault(timeRangeId, Collections.emptySet()));
@@ -509,7 +510,7 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void syncDeletedFilesNameInOneGroup(String sgName, Long timeRangeId,
+  public void syncDeletedFilesNameInOneGroup(String sgName, Long vgId, Long timeRangeId,
       Set<File> deletedFilesName)
       throws IOException {
     if (deletedFilesName.isEmpty()) {
@@ -520,9 +521,9 @@ public class SyncClient implements ISyncClient {
     logger.info("Start to sync names of deleted files in storage group {}", sgName);
     for (File file : deletedFilesName) {
       try {
-        if (serviceClient.syncDeletedFileName(file.getName()).code == SUCCESS_CODE) {
+        if (serviceClient.syncDeletedFileName(getFileNameWithSG(file)).code == SUCCESS_CODE) {
           logger.info("Receiver has received deleted file name {} successfully.", file.getName());
-          lastLocalFilesMap.get(sgName).get(timeRangeId).remove(file);
+          lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }
       } catch (TException e) {
@@ -591,7 +592,7 @@ public class SyncClient implements ISyncClient {
     try {
       int retryCount = 0;
       MessageDigest md = MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME);
-      serviceClient.initSyncData(snapshotFile.getName());
+      serviceClient.initSyncData(getFileNameWithSG(snapshotFile));
       outer:
       while (true) {
         retryCount++;
@@ -707,5 +708,12 @@ public class SyncClient implements ISyncClient {
 
   public void setConfig(SyncSenderConfig config) {
     SyncClient.config = config;
+  }
+
+  private String getFileNameWithSG(File file) {
+    return file.getParentFile().getParentFile().getParentFile().getName()
+      + file.getParentFile().getParentFile().getName()
+      + file.getParentFile().getName()
+      + file.getName();
   }
 }

@@ -773,7 +773,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(newTsFileResource.getTsFile().getParentFile().getName()))
+    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile())))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -791,7 +791,7 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(deletedTsfile.getParentFile().getName()))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
         .deleteTsfile(deletedTsfile);
   }
 

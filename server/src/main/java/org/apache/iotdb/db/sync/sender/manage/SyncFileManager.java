@@ -113,16 +113,12 @@ public class SyncFileManager implements ISyncFileManager {
             currentAllLocalFiles.get(sgFolder.getName()).putIfAbsent(vgId, new HashMap<>());
 
             for (File timeRangeFolder : virtualSgFolder.listFiles()) {
-              try {
-                Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
-                currentAllLocalFiles.get(sgFolder.getName()).get(vgId).putIfAbsent(timeRangeId, new HashSet<>());
-                File[] files = timeRangeFolder.listFiles();
-                Arrays.stream(files)
-                  .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(vgId).get(timeRangeId)
-                    .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
-              } catch (Exception e) {
-                LOGGER.error("Invalid time range folder: {}", timeRangeFolder.getAbsolutePath(), e);
-              }
+              Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
+              currentAllLocalFiles.get(sgFolder.getName()).get(vgId).putIfAbsent(timeRangeId, new HashSet<>());
+              File[] files = timeRangeFolder.listFiles();
+              Arrays.stream(files)
+                .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(vgId).get(timeRangeId)
+                  .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
             }
           } catch (Exception e) {
             LOGGER.error("Invalid virtual storage group folder: {}", virtualSgFolder.getAbsolutePath(), e);
