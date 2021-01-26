@@ -225,7 +225,7 @@
                             <goal>wget</goal>
                         </goals>
                         <configuration>
-                            <url>http://www.apache.org/dyn/closer.lua?action=download&amp;filename=/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
+                            <url>https://github.com/apache/thrift/archive/v${thrift.version}.tar.gz</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
                             <overwrite>false</overwrite>
@@ -307,6 +307,8 @@
                                 <option>${openssl.include.dir}</option>
                                 <!-- Specify new version Bison path for Mac OS -->
                                 <option>${bison.executable.dir}</option>
+                                <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
+                                <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
                             </options>
                         </configuration>
                     </execution>

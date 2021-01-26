@@ -45,6 +45,14 @@
                 <include>*.so</include>
                 <include>*.dylib</include>
                 <include>**/*.dll</include>
+                <include>**/*.lib</include>
+            </includes>
+            <outputDirectory>lib</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../compile-tools/thrift/target/build/lib/Release</directory>
+            <includes>
+                <include>**/*.lib</include>
             </includes>
             <outputDirectory>lib</outputDirectory>
         </fileSet>

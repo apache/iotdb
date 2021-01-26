@@ -23,6 +23,11 @@ SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 
+FIND_PACKAGE(Boost REQUIRED)
+IF (DEFINED BOOST_INCLUDEDIR)
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
+ENDIF()
+
 IF(MSVC)
     SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
 ELSE()
@@ -37,7 +42,11 @@ INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
 # Add ./generated-sources-cpp as a Cmake subdirectory
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
 
-ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
+IF(MSVC)
+    ADD_LIBRARY(iotdb_session ${SESSION_SRCS})
+ELSE()
+    ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
+ENDIF()
 
 # Link with Thrift static library
 TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})

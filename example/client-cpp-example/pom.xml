@@ -137,6 +137,10 @@
                             <sourcePath>${project.build.directory}</sourcePath>
                             <targetPath>${project.build.directory}</targetPath>
                             <generator>${cmake.generator}</generator>
+                            <options>
+                                <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
+                                <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                            </options>
                         </configuration>
                     </execution>
                     <execution>

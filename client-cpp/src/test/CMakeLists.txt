@@ -31,9 +31,15 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
 
+find_package(Boost REQUIRED)
+IF (DEFINED BOOST_INCLUDEDIR)
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
+ENDIF()
+
 # Link directories are different for Windows and Linux/Mac
 IF(MSVC)
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
 ELSE()
     LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
 ENDIF()
@@ -41,8 +47,16 @@ ENDIF()
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
 
 # Link with shared library iotdb_session and pthread
-TARGET_LINK_LIBRARIES(${TARGET_NAME} PUBLIC iotdb_session pthread)
+IF(MSVC)
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
+ELSE()
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
+ENDIF()
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
 # Add 'sessionIT' to the project to be run by ctest
-ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
+IF(MSVC)
+    ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
+ELSE()
+    ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
+ENDIF()

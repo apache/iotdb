@@ -205,6 +205,10 @@
                                     -->
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
+                                        <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                    </options>
                                 </configuration>
                             </execution>
                             <!-- Actually executes the build -->
@@ -239,6 +243,10 @@
                                     <sourcePath>${project.build.directory}/build/test</sourcePath>
                                     <targetPath>${project.build.directory}/build/test</targetPath>
                                     <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
+                                        <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                    </options>
                                 </configuration>
                             </execution>
                             <!-- Actually executes the testing compilation -->
@@ -337,7 +345,7 @@
                     <plugin>
                         <groupId>com.bazaarvoice.maven.plugins</groupId>
                         <artifactId>process-exec-maven-plugin</artifactId>
-                        <version>0.7</version>
+                        <version>0.9</version>
                         <executions>
                             <!-- Start a local IoTDB server to run integration test cases -->
                             <execution>
@@ -352,9 +360,9 @@
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
                                     <waitAfterLaunch>5</waitAfterLaunch>
                                     <!-- Redirect IoTDB server log to /dev/null -->
-                                    <processLogFile>${dev.null.path}</processLogFile>
+                                    <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                                     <arguments>
-                                        <argument>../../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
+                                        <argument>${project.basedir}/../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
