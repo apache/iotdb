@@ -63,6 +63,8 @@ public class IoTDBConfig {
 
   public static final Pattern STORAGE_GROUP_PATTERN = Pattern.compile(STORAGE_GROUP_MATCHER);
 
+  public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
+  
   /**
    * Port which the metrics service listens to.
    */

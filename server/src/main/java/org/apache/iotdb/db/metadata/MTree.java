@@ -196,6 +196,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
+    checkTimeseries(path.getFullPath());
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
@@ -234,6 +235,14 @@ public class MTree implements Serializable {
       }
 
       return leaf;
+    }
+  }
+
+  private void checkTimeseries(String timeseries) throws IllegalPathException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+      throw new IllegalPathException(String
+          .format("The timeseries name contains unsupported character. %s",
+              timeseries));
     }
   }
 
