@@ -307,8 +307,8 @@
                                 <option>${openssl.include.dir}</option>
                                 <!-- Specify new version Bison path for Mac OS -->
                                 <option>${bison.executable.dir}</option>
-                                <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
-                                <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                             </options>
                         </configuration>
                     </execution>

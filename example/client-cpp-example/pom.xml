@@ -50,6 +50,7 @@
             </activation>
             <properties>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
             </properties>
         </profile>
         <profile>
@@ -61,6 +62,7 @@
             </activation>
             <properties>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <boost.include.dir/>
             </properties>
         </profile>
     </profiles>
@@ -138,8 +140,7 @@
                             <targetPath>${project.build.directory}</targetPath>
                             <generator>${cmake.generator}</generator>
                             <options>
-                                <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
-                                <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                             </options>
                         </configuration>
                     </execution>

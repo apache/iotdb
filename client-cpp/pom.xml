@@ -66,7 +66,6 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.sh</iotdb.server.script>
-                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -83,7 +82,6 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.sh</iotdb.server.script>
-                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -100,7 +98,8 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.bat</iotdb.server.script>
-                <dev.null.path>NUL</dev.null.path>
+                <boost.include.dir/>
+                <boost.library.dir/>
             </properties>
         </profile>
         <profile>
@@ -206,8 +205,8 @@
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
                                     <options>
-                                        <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
-                                        <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                                     </options>
                                 </configuration>
                             </execution>
@@ -244,8 +243,8 @@
                                     <targetPath>${project.build.directory}/build/test</targetPath>
                                     <generator>${cmake.generator}</generator>
                                     <options>
-                                        <option>-DBOOST_INCLUDEDIR=C:\Users\Administrator\Downloads\boost_1_72_0</option>
-                                        <option>-DBOOST_LIBRARYDIR=C:\Users\Administrator\Downloads\boost_1_72_0\stage\lib</option>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
                                     </options>
                                 </configuration>
                             </execution>
