@@ -66,9 +66,12 @@ import org.apache.thrift.transport.TTransport;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PullSnapshotTaskTest extends DataSnapshotTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(PullSnapshotTaskTest.class);
   private DataGroupMember sourceMember;
   private DataGroupMember targetMember;
   private List<TimeseriesSchema> timeseriesSchemas;
@@ -281,6 +284,11 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
+      if (i != loadedFiles.get(i).getMaxPlanIndex()) {
+        logger.error("error occurred, i={}, minPlanIndex={}, maxPlanIndex={}, tsFileName={}", i,
+            loadedFiles.get(i).getMinPlanIndex(), loadedFiles.get(i).getMaxPlanIndex(),
+            loadedFiles.get(i).getTsFile().getAbsolutePath());
+      }
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
