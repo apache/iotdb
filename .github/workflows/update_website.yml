@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - master
-    paths:
-      - 'docs/**'
+    # disable for testing
+    #paths:
+    #  - 'docs/**'
   pull_request:
       branches:
         - master
-      paths:
-        - 'docs/**'
+    # disable for testing
+    #  paths:
+    #    - 'docs/**'
 jobs:
   build:
     runs-on: ubuntu-latest
