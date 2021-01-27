@@ -482,7 +482,11 @@ public class MManager {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
     } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
-      // ignore
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
+                + " a non-exist time series {}", path);
+      }
     }
   }
 
@@ -1826,7 +1830,7 @@ public class MManager {
             }
           } else {
             // create it, may concurrent created by multiple thread
-            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);   // TODO: 2021/1/7 在这里自动创建时间序列，有默认编码（注意，只有measurement的node有编码的属性，在这创建：org/apache/iotdb/db/metadata/MTree.java:225）
+            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
             measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
           }
         } else {
@@ -1888,20 +1892,12 @@ public class MManager {
    */
   private void internalCreateTimeseries(PartialPath path, TSDataType dataType)
       throws MetadataException {
-    try {
       createTimeseries(
           path,
           dataType,
           getDefaultEncoding(dataType),
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {   // TODO: 2021/1/7 这个exception不会抛出来
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}", path);
-      }
-    }
   }
 
   /**
