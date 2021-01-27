@@ -170,7 +170,7 @@ public class SessionUT {
       RowRecord record = dataSet.next();
       int nullCount = 0;
       for (int j = 0; j < 4; ++j) {
-        if (record.getFields().get(j) == null || record.getFields().get(j).getDataType() == null) {
+        if (record.getFields().get(j) == null) {
           ++nullCount;
         } else {
           assertEquals(i, record.getFields().get(j).getLongV());
