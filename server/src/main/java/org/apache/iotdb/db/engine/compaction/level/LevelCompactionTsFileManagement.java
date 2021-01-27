@@ -96,18 +96,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     logger.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
-      modifications.addAll(
-          new ModificationFile(mergeTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX)
-              .getModifications());
-      deleteLevelFile(mergeTsFile);
+      try (ModificationFile sourceModificationFile = new ModificationFile(
+          mergeTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+        modifications.addAll(sourceModificationFile.getModifications());
+      }
     }
     if (!modifications.isEmpty()) {
-      ModificationFile modificationFile = new ModificationFile(
-          targetTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX);
-      for (Modification modification : modifications) {
-        modificationFile.write(modification);
+      try (ModificationFile modificationFile = new ModificationFile(
+          targetTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+        for (Modification modification : modifications) {
+          modificationFile.write(modification);
+        }
       }
-      modificationFile.close();
     }
   }
 
