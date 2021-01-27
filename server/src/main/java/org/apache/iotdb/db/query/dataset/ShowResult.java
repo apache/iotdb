@@ -44,6 +44,6 @@ public class ShowResult implements Comparable<ShowResult> {
 
   @Override
   public int compareTo(ShowResult o) {
-    return 0;
+    return this.getName().compareTo(o.getName());
   }
 }
