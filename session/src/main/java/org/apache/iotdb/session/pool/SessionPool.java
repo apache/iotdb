@@ -555,7 +555,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("insertRecord failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -673,7 +673,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("testInsertRecord failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -721,7 +721,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteTimeseries failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -745,7 +745,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteTimeseries failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -770,7 +770,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteData failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -795,7 +795,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteData failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -821,7 +821,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteData failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -840,7 +840,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("setStorageGroup failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -859,7 +859,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteStorageGroup failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -878,7 +878,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("deleteStorageGroups failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -897,7 +897,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("createTimeseries failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -919,7 +919,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("createTimeseries failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -942,7 +942,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("createMultiTimeseries failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -961,7 +961,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("checkTimeseriesExists failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -979,6 +979,7 @@ public class SessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    * happen
    */
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -992,7 +993,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("executeQueryStatement failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
@@ -1018,13 +1019,14 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("executeNonQueryStatement failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }
     }
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public SessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1038,7 +1040,7 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("executeRawDataQuery failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException e) {
+      } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
         throw e;
       }

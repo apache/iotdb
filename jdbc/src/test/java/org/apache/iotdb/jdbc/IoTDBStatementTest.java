@@ -25,13 +25,11 @@ import static org.mockito.Mockito.when;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -55,7 +53,8 @@ public class IoTDBStatementTest {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(connection.getMetaData()).thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
+    when(connection.getMetaData())
+        .thenReturn(new IoTDBDatabaseMetadata(connection, client, sessionId));
     when(connection.isClosed()).thenReturn(false);
     when(client.fetchMetadata(any(TSFetchMetadataReq.class))).thenReturn(fetchMetadataResp);
     when(fetchMetadataResp.getStatus()).thenReturn(RpcUtils.SUCCESS_STATUS);
@@ -87,7 +86,7 @@ public class IoTDBStatementTest {
   @Test
   public void testSetFetchSize3() throws SQLException {
     final int fetchSize = 10000;
-    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, fetchSize, zoneID);
+    IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, fetchSize, zoneID, 0);
     assertEquals(fetchSize, stmt.getFetchSize());
   }
 
@@ -96,5 +95,13 @@ public class IoTDBStatementTest {
   public void testSetFetchSize4() throws SQLException {
     IoTDBStatement stmt = new IoTDBStatement(connection, client, sessionId, zoneID);
     stmt.setFetchSize(-1);
+  }
+
+  @Test
+  public void setTimeoutTest() throws SQLException {
+    IoTDBStatement statement = new IoTDBStatement(connection, client, sessionId, zoneID, 60);
+    Assert.assertEquals(60, statement.getQueryTimeout());
+    statement.setQueryTimeout(100);
+    Assert.assertEquals(100, statement.getQueryTimeout());
   }
 }

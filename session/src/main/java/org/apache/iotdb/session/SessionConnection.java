@@ -247,22 +247,17 @@ public class SessionConnection {
     }
   }
 
-  protected boolean checkTimeseriesExists(String path)
+  protected boolean checkTimeseriesExists(String path, long timeout)
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = null;
     try {
-      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
+      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       return dataSet.hasNext();
     } finally {
       if (dataSet != null) {
         dataSet.closeOperationHandle();
       }
     }
-  }
-
-  protected SessionDataSet executeQueryStatement(String sql)
-      throws StatementExecutionException, IoTDBConnectionException {
-    return this.executeQueryStatement(sql, 0);
   }
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)
