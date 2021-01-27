@@ -254,14 +254,14 @@ public class MNode implements Serializable {
   }
 
   public void replaceChild(String measurement, MNode newChildNode) {
-    MNode child = this.getChild(measurement);
-    if (child == null) {
+    MNode oldChildNode = this.getChild(measurement);
+    if (oldChildNode == null) {
       return;
     }
-    Map<String, MNode> children = child.getChildren();
+    Map<String, MNode> grandChildren = oldChildNode.getChildren();
     //newChildNode builds parent-child relationship
-    newChildNode.setChildren(children);
-    children.forEach((name, childNode) -> childNode.setParent(newChildNode));
+    newChildNode.setChildren(grandChildren);
+    grandChildren.forEach((grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
     newChildNode.setParent(this);
 
     this.deleteChild(measurement);
