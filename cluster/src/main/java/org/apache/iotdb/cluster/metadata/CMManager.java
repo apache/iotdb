@@ -1283,13 +1283,17 @@ public class CMManager extends MManager {
     }
   }
 
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement) {
-    MNode child;
-    child = deviceMNode.getChild(measurement);
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement, TSDataType dataType)
+      throws MetadataException {
+    MNode child = deviceMNode.getChild(measurement);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurement));
     }
-    return child != null ? (MeasurementMNode) child : null;
+
+    if (child == null) {
+      return null;
+    }
+    return changeMNodeToMeasurementMNode(child, dataType);
   }
 
   public List<ShowTimeSeriesResult> showLocalTimeseries(ShowTimeSeriesPlan plan,
