@@ -712,8 +712,8 @@ public class SyncClient implements ISyncClient {
 
   private String getFileNameWithSG(File file) {
     return file.getParentFile().getParentFile().getParentFile().getName()
-      + file.getParentFile().getParentFile().getName()
-      + file.getParentFile().getName()
-      + file.getName();
+      + File.separator + file.getParentFile().getParentFile().getName()
+      + File.separator + file.getParentFile().getName()
+      + File.separator + file.getName();
   }
 }
