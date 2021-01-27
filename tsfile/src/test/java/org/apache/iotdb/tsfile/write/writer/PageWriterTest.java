@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write.writer;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.PlainDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,13 +32,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Test;
 
 public class PageWriterTest {
@@ -42,14 +39,14 @@ public class PageWriterTest {
   @Test
   public void testWriteInt() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.LITTLE_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT32, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(TSDataType.INT32, 0));
     writer.initStatistics(TSDataType.INT32);
     int value = 1;
     int timeCount = 0;
     try {
       writer.write(timeCount++, value);
-      assertEquals(12, writer.estimateMaxMemSize());
+      assertEquals(9, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
       writer.reset(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
@@ -58,12 +55,11 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.LITTLE_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
       decoder.reset();
-      decoder.setEndianType(EndianType.BIG_ENDIAN);
       assertEquals(value, decoder.readInt(buffer));
     } catch (IOException e) {
       fail();
@@ -73,8 +69,8 @@ public class PageWriterTest {
   @Test
   public void testWriteLong() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(TSDataType.INT64, 0));
     writer.initStatistics(TSDataType.INT64);
     long value = 123142120391L;
     int timeCount = 0;
@@ -89,7 +85,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
@@ -103,8 +99,8 @@ public class PageWriterTest {
   @Test
   public void testWriteFloat() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.FLOAT, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(TSDataType.FLOAT, 0));
     writer.initStatistics(TSDataType.FLOAT);
     float value = 2.2f;
     int timeCount = 0;
@@ -119,7 +115,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
@@ -133,8 +129,8 @@ public class PageWriterTest {
   @Test
   public void testWriteBoolean() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.BOOLEAN, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder( TSDataType.BOOLEAN, 0));
     writer.initStatistics(TSDataType.BOOLEAN);
     boolean value = false;
     int timeCount = 0;
@@ -149,7 +145,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
@@ -162,14 +158,14 @@ public class PageWriterTest {
   @Test
   public void testWriteBinary() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.TEXT, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(TSDataType.TEXT, 0));
     writer.initStatistics(TSDataType.TEXT);
     String value = "I have a dream";
     int timeCount = 0;
     try {
       writer.write(timeCount++, new Binary(value));
-      assertEquals(26, writer.estimateMaxMemSize());
+      assertEquals(23, writer.estimateMaxMemSize());
       ByteBuffer buffer1 = writer.getUncompressedBytes();
       ByteBuffer buffer = ByteBuffer.wrap(buffer1.array());
       writer.reset(new MeasurementSchema("s0", TSDataType.INT64, TSEncoding.RLE));
@@ -178,7 +174,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }
@@ -192,8 +188,8 @@ public class PageWriterTest {
   @Test
   public void testWriteDouble() {
     PageWriter writer = new PageWriter();
-    writer.setTimeEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.INT64, 0));
-    writer.setValueEncoder(new PlainEncoder(EndianType.BIG_ENDIAN, TSDataType.DOUBLE, 0));
+    writer.setTimeEncoder(new PlainEncoder(TSDataType.INT64, 0));
+    writer.setValueEncoder(new PlainEncoder(TSDataType.DOUBLE, 0));
     writer.initStatistics(TSDataType.DOUBLE);
     double value = 1d;
     int timeCount = 0;
@@ -208,7 +204,7 @@ public class PageWriterTest {
       byte[] timeBytes = new byte[timeSize];
       buffer.get(timeBytes);
       ByteBuffer buffer2 = ByteBuffer.wrap(timeBytes);
-      PlainDecoder decoder = new PlainDecoder(EndianType.BIG_ENDIAN);
+      PlainDecoder decoder = new PlainDecoder();
       for (int i = 0; i < timeCount; i++) {
         assertEquals(i, decoder.readLong(buffer2));
       }

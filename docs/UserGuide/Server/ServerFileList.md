@@ -96,7 +96,7 @@
     + record which files have been upgraded
 
 #### Merge
-> under directory basedir/system/storage_groups/{StrorageGroup}/
+> under directory basedir/system/storage_groups/{StorageGroup}/
 1. merge.mods
     + modification file generated during a merge
 2. merge.log
@@ -120,7 +120,6 @@
 
 ## Configuration Files
 1. iotdb-cluster.properties
-2. cluster-env.sh
 
 ## State Related Files
 > under directory basedir/

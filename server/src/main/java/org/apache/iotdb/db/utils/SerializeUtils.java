@@ -82,7 +82,7 @@ public class SerializeUtils {
     return result;
   }
 
-  public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntList(List<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -93,14 +93,14 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(List<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntList(List<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
     }
   }
 
-  public static void serialize(Set<Integer> ints, DataOutputStream dataOutputStream) {
+  public static void serializeIntSet(Set<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
       for (Integer anInt : ints) {
@@ -111,7 +111,7 @@ public class SerializeUtils {
     }
   }
 
-  public static void deserialize(Set<Integer> ints, ByteBuffer buffer) {
+  public static void deserializeIntSet(Set<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
@@ -321,6 +321,8 @@ public class SerializeUtils {
   public static void serializeTVPairs(List<TimeValuePair> timeValuePairs,
       DataOutputStream dataOutputStream) {
     try {
+      TSDataType dataType = timeValuePairs.get(0).getValue().getDataType();
+      dataOutputStream.write(dataType.ordinal());
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
         case TEXT:
@@ -461,7 +463,7 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         pair = new TimeValuePair(time, primitiveType);
       } else {
         pair = new TimeValuePair(time, null);

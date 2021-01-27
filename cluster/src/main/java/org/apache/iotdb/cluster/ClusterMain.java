@@ -69,7 +69,7 @@ public class ClusterMain {
           + "[-cluster_rpc_port <cluster rpc port>] "
           + "[-seed_nodes <node1:meta_port:data_port:cluster_rpc_port,"
           +               "node2:meta_port:data_port:cluster_rpc_port,"
-          +           "...,noden:meta_port:data_port:cluster_rpc_port,>] "
+          +           "...,noden:meta_port:data_port:cluster_rpc_port>] "
           + "[-sc] "
           + "[-rpc_port <rpc port>]");
       return;
@@ -92,7 +92,7 @@ public class ClusterMain {
       try {
         metaServer = new MetaClusterServer();
         startServerCheck();
-        preStartCustomize();
+        // preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
       } catch (TTransportException | StartupException | QueryProcessException |
@@ -103,7 +103,7 @@ public class ClusterMain {
     } else if (MODE_ADD.equals(mode)) {
       try {
         metaServer = new MetaClusterServer();
-        preStartCustomize();
+        // preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
       } catch (TTransportException | StartupException | QueryProcessException | StartUpCheckFailureException | ConfigInconsistentException e) {
@@ -148,7 +148,21 @@ public class ClusterMain {
       }
       seedNodes.add(node);
     }
-    // assert this node is in NodeList
+
+    // assert this node is in all nodes when restart
+    if (!metaServer.getMember().getAllNodes().isEmpty()) {
+      if (!metaServer.getMember().getAllNodes().contains(metaServer.getMember().getThisNode())) {
+        String message = String.format(
+            "All nodes in partitionTables must contains local node in start-server mode. "
+                + "LocalNode: %s, AllNodes: %s",
+            metaServer.getMember().getThisNode(), metaServer.getMember().getAllNodes());
+        throw new StartupException(metaServer.getMember().getName(), message);
+      } else {
+        return;
+      }
+    }
+
+    // assert this node is in seed nodes list
     Node localNode = new Node();
     localNode.setIp(config.getClusterRpcIp()).setMetaPort(config.getInternalMetaPort())
         .setDataPort(config.getInternalDataPort()).setClientPort(config.getClusterRpcPort());
@@ -201,14 +215,15 @@ public class ClusterMain {
     }
 
     // 1. check the cluster_rpc_ip and seed_nodes consistent or not
+    // when clusterRpcIp is 127.0.0.1, the entire cluster must be start locally
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    String clusterRpcIp = "127.0.0.1";
+    String localhostIp = "127.0.0.1";
     String configClusterRpcIp = config.getClusterRpcIp();
     List<String> seedNodes = config.getSeedNodeUrls();
-    boolean isClusterRpcIp = clusterRpcIp.equals(configClusterRpcIp);
+    boolean isLocalCluster = localhostIp.equals(configClusterRpcIp);
     for (String seedNodeIP : seedNodes) {
-      if ((isClusterRpcIp && !seedNodeIP.contains(clusterRpcIp)) ||
-          (!isClusterRpcIp && seedNodeIP.contains(clusterRpcIp))) {
+      if ((isLocalCluster && !seedNodeIP.contains(localhostIp)) ||
+          (!isLocalCluster && seedNodeIP.contains(localhostIp))) {
         logger.error(
             "cluster_rpc_ip={} and seed_nodes={} should be consistent, both use local ip or real ip please",
             configClusterRpcIp, seedNodes);
@@ -272,12 +287,11 @@ public class ClusterMain {
 
   /**
    * Developers may perform pre-start customizations here for debugging or experiments.
-   *
    */
   @SuppressWarnings("java:S125") // leaving examples
   private static void preStartCustomize() {
     // customize data distribution
-    // The given example tries to divide storage groups like "root.sg_0", "root.sg_1"... into k
+    // The given example tries to divide storage groups like "root.sg_1", "root.sg_2"... into k
     // nodes evenly, and use default strategy for other groups
     SlotPartitionTable.setSlotStrategy(new SlotStrategy() {
       SlotStrategy defaultStrategy = new SlotStrategy.DefaultStrategy();
@@ -285,7 +299,7 @@ public class ClusterMain {
       @Override
       public int calculateSlotByTime(String storageGroupName, long timestamp, int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
           return defaultStrategy.calculateSlotByTime(storageGroupName, timestamp, maxSlotNum);
@@ -296,10 +310,11 @@ public class ClusterMain {
       public int calculateSlotByPartitionNum(String storageGroupName, long partitionId,
           int maxSlotNum) {
         int sgSerialNum = extractSerialNumInSGName(storageGroupName) % k;
-        if (sgSerialNum >= 0) {
+        if (sgSerialNum > 0) {
           return maxSlotNum / k * sgSerialNum;
         } else {
-          return defaultStrategy.calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
+          return defaultStrategy
+              .calculateSlotByPartitionNum(storageGroupName, partitionId, maxSlotNum);
         }
       }
 

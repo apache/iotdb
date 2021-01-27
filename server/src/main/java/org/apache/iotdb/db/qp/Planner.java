@@ -87,8 +87,8 @@ public class Planner {
   /**
    * convert raw data query to physical plan directly
    */
-  public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq)
-      throws QueryProcessException, IllegalPathException {
+  public PhysicalPlan rawDataQueryReqToPhysicalPlan(TSRawDataQueryReq rawDataQueryReq,
+      ZoneId zoneId) throws QueryProcessException, IllegalPathException {
     List<String> paths = rawDataQueryReq.getPaths();
     long startTime = rawDataQueryReq.getStartTime();
     long endTime = rawDataQueryReq.getEndTime();
@@ -96,7 +96,7 @@ public class Planner {
     //construct query operator and set its global time filter
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
     FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
 
     //iterate the path list and add it to from operator
     for (String p : paths) {
@@ -174,9 +174,11 @@ public class Planner {
       case SHOW_MERGE_STATUS:
       case DELETE_PARTITION:
       case CREATE_SCHEMA_SNAPSHOT:
+      case KILL:
+      case CREATE_FUNCTION:
+      case DROP_FUNCTION:
         return operator;
       case QUERY:
-      case UPDATE:
       case DELETE:
       case CREATE_INDEX:
       case DROP_INDEX:

@@ -43,7 +43,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
-import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +114,7 @@ public abstract class RaftLogManager {
    * Each time new logs are appended, this condition will be notified so logs that have larger
    * indices but arrived earlier can proceed.
    */
-  private final Object logUpdateCondition = new Object();
+  private final Object[] logUpdateConditions = new Object[1024];
 
   private List<Log> blockedUnappliedLogList;
 
@@ -175,6 +175,10 @@ public abstract class RaftLogManager {
      */
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
       this.applyAllCommittedLogWhenStartUp();
+    }
+
+    for (int i = 0; i < logUpdateConditions.length; i++) {
+      logUpdateConditions[i] = new Object();
     }
   }
 
@@ -426,6 +430,8 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
+    Object logUpdateCondition = getLogUpdateCondition(
+        entries.get(entries.size() - 1).getCurrLogIndex());
     synchronized (logUpdateCondition) {
       logUpdateCondition.notifyAll();
     }
@@ -446,6 +452,7 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entry);
+    Object logUpdateCondition = getLogUpdateCondition(entry.getCurrLogIndex());
     synchronized (logUpdateCondition) {
       logUpdateCondition.notifyAll();
     }
@@ -568,7 +575,7 @@ public abstract class RaftLogManager {
           .clear();
     }
     try {
-      int currentSize = (int) committedEntryManager.getTotalSize();
+      int currentSize = committedEntryManager.getTotalSize();
       int deltaSize = entries.size();
       if (currentSize + deltaSize > maxNumOfLogsInMem) {
         int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
@@ -598,7 +605,8 @@ public abstract class RaftLogManager {
       if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
         logger.debug("There are too many unapplied logs [{}], wait for a while to avoid memory "
             + "overflow", unappliedLogSize);
-        Thread.sleep(unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+        Thread.sleep(
+            unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       }
     } catch (TruncateCommittedEntryException e) {
       logger.error("{}: Unexpected error:", name, e);
@@ -641,6 +649,7 @@ public abstract class RaftLogManager {
         logApplier.apply(entry);
       } catch (Exception e) {
         entry.setException(e);
+        entry.setApplied(true);
       }
     }
   }
@@ -711,6 +720,9 @@ public abstract class RaftLogManager {
         new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
             .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
+    for (int i = 0; i < logUpdateConditions.length; i++) {
+      logUpdateConditions[i] = new Object();
+    }
   }
 
   @TestOnly
@@ -810,7 +822,7 @@ public abstract class RaftLogManager {
   }
 
   private void innerDeleteLog(int sizeToReserve) {
-    long removeSize = committedEntryManager.getTotalSize() - sizeToReserve;
+    long removeSize = (long) committedEntryManager.getTotalSize() - sizeToReserve;
     if (removeSize <= 0) {
       return;
     }
@@ -835,8 +847,8 @@ public abstract class RaftLogManager {
   }
 
 
-  public Object getLogUpdateCondition() {
-    return logUpdateCondition;
+  public Object getLogUpdateCondition(long logIndex) {
+    return logUpdateConditions[(int) (logIndex % logUpdateConditions.length)];
   }
 
   void applyAllCommittedLogWhenStartUp() {

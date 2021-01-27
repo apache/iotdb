@@ -42,8 +42,7 @@ import org.junit.Test;
 
 public class IoTDBLastIT {
 
-  private static String[] dataSet1 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01.wt01",
+  private static final String[] dataSet1 = new String[]{
       "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt01.id WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -60,8 +59,7 @@ public class IoTDBLastIT {
       "flush",
   };
 
-  private static String[] dataSet2 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01.wt02",
+  private static final String[] dataSet2 = new String[]{
       "CREATE TIMESERIES root.ln.wf01.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt02.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt02.id WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -74,8 +72,7 @@ public class IoTDBLastIT {
       "flush",
   };
 
-  private static String[] dataSet3 = new String[]{
-      "SET STORAGE GROUP TO root.ln.wf01.wt03",
+  private static final String[] dataSet3 = new String[]{
       "CREATE TIMESERIES root.ln.wf01.wt03.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt03.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
       "CREATE TIMESERIES root.ln.wf01.wt03.id WITH DATATYPE=INT32, ENCODING=PLAIN",
@@ -101,6 +98,43 @@ public class IoTDBLastIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void lastWithEmptySeriesTest() throws Exception {
+    String[] retArray = new String[]{
+            "root.ln.wf02.status,true",
+    };
+
+    try (Connection connection =
+             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf02.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf02.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute(
+          "INSERT INTO root.ln.wf02(timestamp, status) values(200, true)");
+      statement.execute("select last temperature,status from root.ln.wf02");
+
+      ResultSet resultSet = statement.getResultSet();
+      int cnt = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString(TIMESEIRES_STR) + ","
+            + resultSet.getString(VALUE_STR);
+        Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
+      }
+
+      // Last query resultSet is empty after deletion
+      statement.execute("INSERT INTO root.ln.wf02(timestamp, temperature) values(300, 100.0)");
+      statement.execute("delete from root.ln.wf02.status where time > 0");
+      statement.execute("select last status from root.ln.wf02");
+
+      resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    }
   }
 
   @Test
@@ -253,6 +287,7 @@ public class IoTDBLastIT {
         }
       }
 
+      // Inject unsequential data
       statement.execute(
           "INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status, id) values(600, 10.2, false, 6)");
       statement.execute(
@@ -294,7 +329,6 @@ public class IoTDBLastIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TIMESEIRES_STR) + ","
               + resultSet.getString(VALUE_STR);
-          System.out.println(ans);
           Assert.assertEquals(retArray3[cnt], ans);
           cnt++;
         }
@@ -307,7 +341,7 @@ public class IoTDBLastIT {
   public void lastWithEmptyChunkMetadataTest() throws SQLException, MetadataException {
     String[] retArray =
         new String[]{
-            "300,root.ln.wf01.wt03.temperature,23.1",
+            "300,root.ln.wf01.wt03.temperature,23.1"
         };
 
     try (Connection connection =
@@ -347,14 +381,13 @@ public class IoTDBLastIT {
   public void lastWithUnseqTimeLargerThanSeqTimeTest() throws SQLException, MetadataException {
     String[] retArray =
         new String[]{
-            "150,root.ln.wf01.wt04.temperature,31.2",
+            "150,root.ln.wf01.wt04.temperature,31.2"
         };
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
       statement.execute(
           "CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute(
@@ -367,7 +400,7 @@ public class IoTDBLastIT {
       statement.execute("flush");
 
       MNode node = IoTDB.metaManager
-          .getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
+          .getNodeByPath(new PartialPath("root.ln.wf01.wt04.temperature"));
       ((MeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute(
@@ -390,31 +423,28 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastWithDeletionTest() throws SQLException, MetadataException {
+  public void lastAfterDeletionTest() throws SQLException, MetadataException {
     String[] retArray =
         new String[]{
-            "350,root.ln.wf01.wt04.temperature,31.2",
-            "200,root.ln.wf01.wt04.temperature,78.2"
+            "350,root.ln.wf01.wt05.temperature,31.2",
+            "200,root.ln.wf01.wt05.temperature,78.2"
         };
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
       statement.execute(
-          "CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+          "CREATE TIMESERIES root.ln.wf01.wt05.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute(
-          "CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
+          "CREATE TIMESERIES root.ln.wf01.wt05.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.wf01.wt05(timestamp,temperature) values(100,22.1)");
       statement.execute(
-          "INSERT INTO root.ln.wf01.wt04(timestamp,temperature, status) values(200, 78.2, true)");
-      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(350,31.2)");
+          "INSERT INTO root.ln.wf01.wt05(timestamp,temperature, status) values(200, 78.2, true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt05(timestamp,temperature) values(350,31.2)");
       statement.execute("flush");
 
-      boolean hasResultSet = statement.execute(
-          "select last temperature from root.ln.wf01.wt04");
-
+      boolean hasResultSet = statement.execute("select last temperature from root.ln.wf01.wt05");
       assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -430,7 +460,8 @@ public class IoTDBLastIT {
       }
 
       statement
-          .execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
+          .execute("delete from root.ln.wf01.wt05.temperature where time > 200 and time < 400");
+      statement.execute("select last temperature from root.ln.wf01.wt05");
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
@@ -445,10 +476,10 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastCacheWithFilterTest() throws SQLException, MetadataException {
+  public void lastWithFilterTest() throws SQLException, MetadataException {
     String[] retArray =
         new String[]{
-            "500,root.ln.wf01.wt01.temperature,22.1",
+            "500,root.ln.wf01.wt01.temperature,22.1"
         };
 
     try (Connection connection =

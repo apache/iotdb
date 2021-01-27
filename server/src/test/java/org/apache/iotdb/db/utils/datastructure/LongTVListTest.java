@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
@@ -72,6 +73,23 @@ public class LongTVListTest {
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(inputs.get((int)i).getTimestamp(), tvList.getTime((int)i));
       Assert.assertEquals(inputs.get((int)i).getValue().getLong(), tvList.getLong((int)i));
+    }
+  }
+
+  @Test
+  public void testLongTVLists() {
+    LongTVList tvList = new LongTVList();
+    List<Long> longList = new ArrayList<>();
+    List<Long> timeList = new ArrayList<>();
+    for (long i = 1000; i >= 0; i--) {
+      timeList.add(i);
+      longList.add(i);
+    }
+    tvList.putLongs(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])),
+        ArrayUtils.toPrimitive(longList.toArray(new Long[0])), 0, 1000);
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.size - i, tvList.getLong((int)i));
+      Assert.assertEquals(tvList.size - i, tvList.getTime((int)i));
     }
   }
 }

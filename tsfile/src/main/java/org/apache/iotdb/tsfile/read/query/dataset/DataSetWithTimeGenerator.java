@@ -55,12 +55,12 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() throws IOException {
     return timeGenerator.hasNext();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     long timestamp = timeGenerator.next();
     RowRecord rowRecord = new RowRecord(timestamp);
 

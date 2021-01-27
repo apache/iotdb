@@ -196,7 +196,7 @@ public class IoTDBFlushQueryMergeIT {
         StorageGroupNotSetException tmpsgnse = new StorageGroupNotSetException(
             "root.notExistGroup1,root.notExistGroup2");
         SQLException sqlException = new SQLException(
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode() + ": " +
+            TSStatusCode.METADATA_ERROR.getStatusCode() + ": " +
                 tmpsgnse.getMessage());
         assertEquals(sqlException.getMessage(), sqe.getMessage());
       }

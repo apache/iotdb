@@ -92,8 +92,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException,
+      QueryProcessException, MetadataException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -194,7 +194,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
 
     ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
-    List<Future<?>> remoteFutures = new ArrayList<>();
+    List<Future<Void>> remoteFutures = new ArrayList<>();
     // query each data group separately
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
@@ -206,28 +206,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
           logger.warn("Cannot get remote path count of {} from {}", pathsToQuery, partitionGroup,
               e);
         }
+        return null;
       }));
     }
-    for (Future<?> remoteFuture : remoteFutures) {
-      try {
-        remoteFuture.get();
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
-        return result.get();
-      } catch (ExecutionException e) {
-        logger.warn("Cannot get remote path count of {} level {}", sgPathMap, level, e);
-      }
-    }
-    remoteQueryThreadPool.shutdown();
-    try {
-      remoteQueryThreadPool
-          .awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
-      return result.get();
-    }
+    waitForThreadPool(remoteFutures, remoteQueryThreadPool, "getPathCount()");
 
     return result.get();
   }
@@ -305,24 +287,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         return null;
       }));
     }
-    for (Future<Void> future : futureList) {
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        logger.error("Interrupted when getting node lists");
-        Thread.currentThread().interrupt();
-      } catch (RuntimeException | ExecutionException e) {
-        throw new MetadataException(e);
-      }
-    }
-
-    pool.shutdown();
-    try {
-      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for getNodeList()", e);
-    }
+    waitForThreadPool(futureList, pool, "getNodesList()");
     return new ArrayList<>(nodeSet);
   }
 
@@ -407,18 +372,18 @@ public class ClusterPlanExecutor extends PlanExecutor {
         return null;
       }));
     }
-
-    waitForThreadPool(futureList, pool);
+    waitForThreadPool(futureList, pool, "getPathNextChildren()");
     return resultSet;
   }
 
-  public static void waitForThreadPool(List<Future<Void>> futures, ExecutorService pool)
+  public static void waitForThreadPool(List<Future<Void>> futures, ExecutorService pool,
+      String methodName)
       throws MetadataException {
     for (Future<Void> future : futures) {
       try {
         future.get();
       } catch (InterruptedException e) {
-        logger.error("Unexpected interruption when waiting for getNextChildren()", e);
+        logger.error("Unexpected interruption when waiting for {}", methodName, e);
         Thread.currentThread().interrupt();
       } catch (RuntimeException | ExecutionException e) {
         throw new MetadataException(e);
@@ -430,7 +395,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for getNextChildren()", e);
+      logger.error("Unexpected interruption when waiting for {}", methodName, e);
     }
   }
 
@@ -526,12 +491,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (PartialPath path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(), deletePlan.getIndex());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime(),
+          deletePlan.getIndex());
     }
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex) throws QueryProcessException {
+  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+      throws QueryProcessException {
     try {
       StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
     } catch (StorageEngineException e) {

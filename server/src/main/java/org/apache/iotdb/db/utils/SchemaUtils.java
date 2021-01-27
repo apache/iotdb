@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 public class SchemaUtils {
 
   private SchemaUtils() {
-
   }
 
   private static final Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(
@@ -99,8 +98,7 @@ public class SchemaUtils {
     } catch (MetadataException e) {
       if (!(e.getCause() instanceof ClosedByInterruptException) &&
           !(e.getCause() instanceof ClosedChannelException)) {
-        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
-            e);
+        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
       }
     }
   }
@@ -124,11 +122,11 @@ public class SchemaUtils {
     IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -146,7 +144,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -169,7 +167,7 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }
 
@@ -177,12 +175,13 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      String aggrStr = aggregations != null ? aggregations.get(i) : null;
       TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i)));
+        PartialPath path = paths.get(i);
+        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
       }
     }
     return tsDataTypes;
@@ -192,7 +191,7 @@ public class SchemaUtils {
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
-  public static TSDataType getAggregationType(String aggregation) throws MetadataException {
+  public static TSDataType getAggregationType(String aggregation) {
     if (aggregation == null) {
       return null;
     }
@@ -201,17 +200,15 @@ public class SchemaUtils {
       case SQLConstant.MAX_TIME:
       case SQLConstant.COUNT:
         return TSDataType.INT64;
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
-        return null;
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
-        return TSDataType.DOUBLE;
       default:
-        throw new MetadataException(
-            "aggregate does not support " + aggregation + " function.");
+        return null;
     }
   }
 
@@ -240,7 +237,8 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(String
-          .format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
+          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()),
+          true);
     }
   }
 }

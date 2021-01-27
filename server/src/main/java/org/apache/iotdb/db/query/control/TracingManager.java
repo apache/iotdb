@@ -124,14 +124,14 @@ public class TracingManager {
 
   // print startTime and endTime of each device, format e.g.: device1[1, 10000]
   private void printTsFileStatistics(StringBuilder builder, TsFileResource tsFileResource) {
-    Iterator<String> deviceIter = tsFileResource.getDeviceToIndexMap().keySet().iterator();
+    Iterator<String> deviceIter = tsFileResource.getDevices().iterator();
     while (deviceIter.hasNext()) {
       String device = deviceIter.next();
       builder.append(" ").append(device)
           .append("[").append(tsFileResource.getStartTime(device))
           .append(", ").append(tsFileResource.getEndTime(device)).append("]");
       if (deviceIter.hasNext()) {
-        builder.append(", ");
+        builder.append(",");
       }
     }
   }

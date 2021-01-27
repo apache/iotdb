@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -31,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
 /**
@@ -84,7 +87,7 @@ public class Cli extends AbstractCli {
         Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
-        setTimeFormat("long");
+        timeFormat = RpcUtils.setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
@@ -142,7 +145,7 @@ public class Cli extends AbstractCli {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+      timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
       displayLogo(properties.getVersion());

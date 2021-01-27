@@ -30,10 +30,10 @@ fi
 IOTDB_CONF=${IOTDB_HOME}/conf
 # IOTDB_LOGS=${IOTDB_HOME}/logs
 
-if [ -f "$IOTDB_CONF/cluster-env.sh" ]; then
-    . "$IOTDB_CONF/cluster-env.sh"
+if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
+    . "$IOTDB_CONF/iotdb-env.sh"
 else
-    echo "can't find $IOTDB_CONF/cluster-env.sh"
+    echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi
 
 if [ -n "$JAVA_HOME" ]; then
@@ -66,7 +66,7 @@ launch_service()
 	iotdb_parms="$iotdb_parms -DTSFILE_HOME=${IOTDB_HOME}"
 	iotdb_parms="$iotdb_parms -DIOTDB_CONF=${IOTDB_CONF}"
 	iotdb_parms="$iotdb_parms -Dname=iotdb\.IoTDB"
-	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS $iotdb_parms -cp "$CLASSPATH"  "$class" -a
+	exec "$JAVA" $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" -a
 	return $?
 }
 

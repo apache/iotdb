@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,10 +92,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
-        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, versionInfo, true);
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
         minPlanIndex = reader.getMinPlanIndex();
         maxPlanIndex = reader.getMaxPlanIndex();
-        totalChunkNum = reader.getTotalChunkNum();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
           canWrite = false;
@@ -175,7 +173,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
           chunkMetadataList.add(chunkMetaData);
-          VersionUtils.applyVersion(chunkMetadataList, versionInfo);
         }
       }
     }
@@ -196,8 +193,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (!newlyFlushedMetadataList.isEmpty()) {
       for (ChunkGroupMetadata chunkGroupMetadata : newlyFlushedMetadataList) {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
-
-        VersionUtils.applyVersion(rowMetaDataList, versionInfo);
 
         String device = chunkGroupMetadata.getDevice();
         for (ChunkMetadata chunkMetaData : rowMetaDataList) {

@@ -66,8 +66,8 @@ public class ClusterUtils {
   public static final int DATA_HEARTBEAT_PORT_OFFSET = 1;
 
   /**
-   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()}
-   * ()}, which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
+   * the meta group member's heartbeat offset relative to the {@link ClusterConfig#getInternalMetaPort()},
+   * which means the metaHeartbeatPort = getInternalMetaPort() + META_HEARTBEAT_OFFSET.
    */
   public static final int META_HEARTBEAT_PORT_OFFSET = 1;
 
@@ -221,12 +221,13 @@ public class ClusterUtils {
     if (consistentNum == totalSeedNum) {
       // break the loop and establish the cluster
       return true;
-    } else if (inconsistentNum == 0) {
-      // can't connect other nodes, try in next turn
-      return false;
-    } else {
+    } else if (inconsistentNum > 0) {
       // find config InConsistence, stop building cluster
       throw new ConfigInconsistentException();
+    } else {
+      // The status of some nodes was not obtained, possibly because those node did not start successfully,
+      // this node can't connect to those nodes, try in next turn
+      return false;
     }
   }
 

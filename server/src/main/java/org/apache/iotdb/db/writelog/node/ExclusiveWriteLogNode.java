@@ -20,6 +20,7 @@ package org.apache.iotdb.db.writelog.node;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
@@ -58,11 +59,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBufferWorking = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-  private ByteBuffer logBufferIdle = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+  private ByteBuffer logBufferWorking;
+  private ByteBuffer logBufferIdle;
   private ByteBuffer logBufferFlushing;
+
+  // used for the convenience of deletion
+  private ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
   private ReentrantLock lock = new ReentrantLock();
@@ -87,8 +89,14 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
-      logger.info("create the WAL folder {}", logDirectory);
+      logger.info("create the WAL folder {}.", logDirectory);
     }
+  }
+
+  public void initBuffer(ByteBuffer[] byteBuffers) {
+    this.logBufferWorking = byteBuffers[0];
+    this.logBufferIdle = byteBuffers[1];
+    this.bufferArray = byteBuffers;
   }
 
   @Override
@@ -163,7 +171,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
 
   @Override
-  public void notifyStartFlush() {
+  public void notifyStartFlush() throws FileNotFoundException {
     lock.lock();
     try {
       close();
@@ -196,12 +204,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void delete() throws IOException {
+  public ByteBuffer[] delete() throws IOException {
     lock.lock();
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
       deleted = true;
+      return this.bufferArray;
     } finally {
       lock.unlock();
     }
@@ -259,6 +268,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for available buffer interrupted");
+    } catch (FileNotFoundException e) {
+      logger.warn("can not found file {}", identifier, e);
     } finally {
       lock.unlock();
     }
@@ -317,21 +328,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
-  private ILogWriter getCurrentFileWriter() {
+  private ILogWriter getCurrentFileWriter() throws FileNotFoundException {
     if (currentFileWriter == null) {
       nextFileWriter();
     }
     return currentFileWriter;
   }
 
-  private void nextFileWriter() {
+  private void nextFileWriter() throws FileNotFoundException {
     fileId++;
     File newFile = SystemFileFactory.INSTANCE.getFile(logDirectory, WAL_FILE_NAME + fileId);
     if (newFile.getParentFile().mkdirs()) {
       logger.info("create WAL parent folder {}.", newFile.getParent());
     }
     logger.debug("WAL file {} is opened", newFile);
-    currentFileWriter = new LogWriter(newFile);
+    currentFileWriter = new LogWriter(newFile, config.getForceWalPeriodInMs() == 0);
   }
 
   @Override

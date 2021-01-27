@@ -21,13 +21,21 @@ package org.apache.iotdb.jdbc;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.when;
+
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -89,5 +97,11 @@ public class IoTDBConnectionTest {
           supportedAggregationTime.get(i));
     }
     assertEquals(connection.getServerProperties().getTimestampPrecision(), timestampPrecision);
+  }
+
+  @Test
+  public void setTimeoutTest() throws SQLException {
+    connection.setQueryTimeout(60);
+    Assert.assertEquals(60, connection.getQueryTimeout());
   }
 }

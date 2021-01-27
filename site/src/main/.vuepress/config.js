@@ -522,7 +522,7 @@ var config = {
 							['Concept/Data Model and Terminology','Data Model and Terminology'],
 							['Concept/Data Type','Data Type'],
 							['Concept/Encoding','Encoding'],
-							['Concept/Compression','Compression']
+							['Concept/Compression','Compression'],
 							['Concept/SDT','SDT']
 						]
 					},
@@ -553,6 +553,8 @@ var config = {
 						children: [
 							['Operation Manual/DDL Data Definition Language','DDL (Data Definition Language)'],
 							['Operation Manual/DML Data Manipulation Language','DML (Data Manipulation Language)'],
+							['Operation Manual/UDF User Defined Function','UDF (User Defined Function)'],
+							['Operation Manual/Kill Query','Kill Query'],
 							['Operation Manual/Administration','Administration'],
 							['Operation Manual/SQL Reference','SQL Reference']
 						]
@@ -566,7 +568,10 @@ var config = {
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
 							['System Tools/Load External Tsfile','Load External Tsfile'],
-							['System Tools/Performance Tracing Tool','Performance Tracing Tool']
+							['System Tools/Performance Tracing Tool','Performance Tracing Tool'],
+							['System Tools/MLogParser Tool','MLogParser Tool'],
+							['System Tools/NodeTool','Node Tool'],
+							['System Tools/CSV Tool','CSV Tool']
 						]
 					},
 					{
@@ -576,7 +581,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
 						]
 					},
 					{
@@ -653,7 +659,7 @@ var config = {
 							['DataQuery/LastQuery','LastQuery'],
 							['DataQuery/AlignByDeviceQuery','AlignByDeviceQuery'],
 							['DataQuery/FillFunction','FillFunction'],
-	                        ['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
+							['DataQuery/GroupByFillQuery', 'GroupByFillQuery']
 						]
 					},
 					{
@@ -1137,7 +1143,7 @@ var config = {
 							['Concept/Data Model and Terminology','数据模型与技术'],
 							['Concept/Data Type','数据类型'],
 							['Concept/Encoding','编码方式'],
-							['Concept/Compression','压缩方式']
+							['Concept/Compression','压缩方式'],
 							['Concept/SDT','旋转门压缩']
 						]
 					},
@@ -1148,7 +1154,8 @@ var config = {
 							['Server/Single Node Setup','单节点安装'],
 							['Server/Cluster Setup','集群设置'],
 							['Server/Config Manual','配置手册'],
-							['Server/Docker Image','Docker镜像']
+							['Server/Docker Image','Docker镜像'],
+							['Server/ServerFileList','服务端文件列表']
 						]
 					},
 					{
@@ -1168,6 +1175,8 @@ var config = {
 						children: [
 							['Operation Manual/DDL Data Definition Language','DDL (数据定义语言)'],
 							['Operation Manual/DML Data Manipulation Language','DML (数据操作语言)'],
+							['Operation Manual/UDF User Defined Function','UDF（用户自定义函数）'],
+							['Operation Manual/Kill Query','中止查询'],
 							['Operation Manual/Administration','权限管理语句'],
 							['Operation Manual/SQL Reference','SQL 参考文档']
 						]
@@ -1181,7 +1190,10 @@ var config = {
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
 							['System Tools/Load External Tsfile','加载外部tsfile文件'],
-							['System Tools/Performance Tracing Tool','性能追踪工具']
+							['System Tools/Performance Tracing Tool','性能追踪工具'],
+							['System Tools/MLogParser Tool','MLog解析工具'],
+							['System Tools/NodeTool','集群状态工具'],
+							['System Tools/CSV Tool','CSV工具']
 						]
 					},
 					{
@@ -1191,7 +1203,8 @@ var config = {
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
-							['Ecosystem Integration/Hive TsFile','Hive TsFile']
+							['Ecosystem Integration/Hive TsFile','Hive TsFile'],
+							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB']
 						]
 					},
 					{
@@ -1249,6 +1262,7 @@ var config = {
 							['StorageEngine/DataPartition','数据分区'],
 							['StorageEngine/DataManipulation','数据增删改'],
 							['StorageEngine/Recover','重启恢复'],
+							['StorageEngine/Compaction','文件合并']
 						]
 					},
 					{
@@ -1263,7 +1277,7 @@ var config = {
 							['DataQuery/LastQuery','最近时间戳 Last 查询'],
 							['DataQuery/AlignByDeviceQuery','按设备对齐查询'],
 							['DataQuery/FillFunction','空值填充'],
-		                                        ['DataQuery/GroupByFillQuery', '降采样补空值查询'],
+							['DataQuery/GroupByFillQuery', '降采样补空值查询'],
 							['DataQuery/OrderByTimeQuery', '按时间倒序查询']
 						]
 					},

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -34,12 +34,13 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.server.Timer;
-import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -63,7 +64,7 @@ public class AsyncDataLogApplier implements LogApplier {
 
   public AsyncDataLogApplier(LogApplier embeddedApplier, String name) {
     this.embeddedApplier = embeddedApplier;
-    consumerMap = new ConcurrentHashMap<>();
+    consumerMap = new HashMap<>();
     consumerPool = new ThreadPoolExecutor(CONCURRENT_CONSUMER_NUM,
         Integer.MAX_VALUE, 0, TimeUnit.SECONDS, new SynchronousQueue<>());
     this.name = name;
@@ -129,9 +130,19 @@ public class AsyncDataLogApplier implements LogApplier {
     return getPlanSG(plan);
   }
 
+  /**
+   * We can sure that the storage group of all InsertTabletPlans in InsertMultiTabletPlan are the same. this is
+   * done in {@link org.apache.iotdb.cluster.query.ClusterPlanRouter#splitAndRoutePlan(InsertMultiTabletPlan)}
+   *
+   * @return the sg that the plan belongs to
+   * @throws StorageGroupNotSetException if no sg found
+   */
   private PartialPath getPlanSG(PhysicalPlan plan) throws StorageGroupNotSetException {
     PartialPath sgPath = null;
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertMultiTabletPlan) {
+      PartialPath deviceId = ((InsertMultiTabletPlan) plan).getFirstDeviceId();
+      sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
+    } else if (plan instanceof InsertPlan) {
       PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
       sgPath = IoTDB.metaManager.getStorageGroupPath(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {

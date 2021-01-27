@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.integration;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -34,7 +40,6 @@ import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
-
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -768,6 +773,101 @@ public class IOTDBGroupByIT {
               .getString(avg("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupByNaturalMonth1() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      //10/31/2019:19:57:18
+      long startTime = 1572523038000L;
+      //04/01/2020:19:57:18
+      long endTime = 1585742238000L;
+
+      String[] retArray1 = {"10/31/2019:19:57:18", "30.0", "11/30/2019:19:57:18", "31.0",
+          "12/31/2019:19:57:18", "31.0", "01/31/2020:19:57:18", "29.0", "02/29/2020:19:57:18", "31.0",
+          "03/31/2020:19:57:18", "1.0"};
+      List<String> start = new ArrayList<>();
+
+      for (long i = startTime; i <= endTime; i += 86400_000L) {
+        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      }
+
+      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+      boolean hasResultSet = statement.execute(
+          "select sum(temperature) from "
+              + "root.sg1.d1 "
+              + "GROUP BY ([1572523038000, 1585742238000), 1mo, 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet
+              .getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+      System.out.println(start.toString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupByNaturalMonth2() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      //10/31/2019:19:57:18
+      long startTime = 1572523038000L;
+      //04/01/2020:19:57:18
+      long endTime = 1585742238000L;
+
+      String[] retArray1 = {"10/31/2019:19:57:18", "10.0", "11/30/2019:19:57:18", "10.0",
+          "12/31/2019:19:57:18", "9.0", "01/31/2020:19:57:18", "8.0", "02/29/2020:19:57:18",
+          "9.0", "03/31/2020:19:57:18", "1.0"};
+      List<String> start = new ArrayList<>();
+
+      for (long i = startTime; i <= endTime; i += 86400_000L) {
+        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      }
+
+      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+      boolean hasResultSet = statement.execute(
+          "select sum(temperature) from "
+              + "root.sg1.d1 "
+              + "GROUP BY ([1572523038000, 1585742238000), 10d, 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet
+              .getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
         }
         Assert.assertEquals(retArray1.length, cnt);
       }

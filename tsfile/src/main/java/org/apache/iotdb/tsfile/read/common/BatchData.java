@@ -50,7 +50,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
  */
 public class BatchData {
 
-  public static final int CAPACITY_THRESHOLD = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
+  protected static final int CAPACITY_THRESHOLD = TSFileConfig.ARRAY_CAPACITY_THRESHOLD;
   protected int capacity = 16;
 
   protected TSDataType dataType;

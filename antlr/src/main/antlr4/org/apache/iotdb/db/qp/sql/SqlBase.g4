@@ -77,8 +77,10 @@ statement
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
-    | SHOW DEVICES prefixPath? #showDevices
+    | SHOW DEVICES prefixPath? limitClause? #showDevices
     | SHOW MERGE #showMergeStatus
+    | SHOW QUERY PROCESSLIST #showQueryProcesslist
+    | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
@@ -91,6 +93,9 @@ statement
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
+    | CREATE TEMPORARY? FUNCTION udfName=ID AS className=stringLiteral #createFunction
+    | DROP FUNCTION udfName=ID #dropFunction
+    | SHOW TEMPORARY? FUNCTIONS #showFunctions
     | SELECT topClause? selectElements
     fromClause
     whereClause?
@@ -98,19 +103,37 @@ statement
     ;
 
 selectElements
-    : functionCall (COMMA functionCall)* #functionElement
-    | suffixPathOrConstant (COMMA suffixPathOrConstant)* #selectElement
+    : aggregationCall (COMMA aggregationCall)* #aggregationElement
+    | tableCall (COMMA tableCall)* #tableElement
     | lastClause #lastElement
     | asClause (COMMA asClause)* #asElement
     | functionAsClause (COMMA functionAsClause)* #functionAsElement
     ;
 
-suffixPathOrConstant
+aggregationCall
+    : builtInFunctionCall
+    | udfCall
+    ;
+
+tableCall
     : suffixPath
+    | udfCall
     | SINGLE_QUOTE_STRING_LITERAL
     ;
 
-functionCall
+udfCall
+    : udfName=ID LR_BRACKET udfSuffixPaths udfAttribute* RR_BRACKET
+    ;
+
+udfSuffixPaths
+    : suffixPath (COMMA suffixPath)*
+    ;
+
+udfAttribute
+    : COMMA udfAttributeKey=stringLiteral OPERATOR_EQ udfAttributeValue=stringLiteral
+    ;
+
+builtInFunctionCall
     : functionName LR_BRACKET suffixPath RR_BRACKET
     ;
 
@@ -127,7 +150,7 @@ functionName
     ;
 
 functionAsClause
-    : functionCall (AS ID)?
+    : builtInFunctionCall (AS ID)?
     ;
 
 lastClause
@@ -167,11 +190,8 @@ attributeClauses
 compressor
     : UNCOMPRESSED
     | SNAPPY
-    | GZIP
-    | LZO
-    | PAA
-    | PLA
     | LZ4
+    | GZIP
     ;
 
 attributeClause
@@ -239,7 +259,6 @@ orderByTimeClause
     : ORDER BY TIME (DESC | ASC)?
     ;
 
-
 limitClause
     : LIMIT INT offsetClause?
     | offsetClause? LIMIT INT
@@ -303,9 +322,9 @@ groupByLevelClause
     ;
 
 typeClause
-    : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET previousClause RS_BRACKET
-    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
+    : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -400,16 +419,14 @@ suffixPath
     ;
 
 nodeName
-    : ID
+    : ID STAR?
     | STAR
     | DOUBLE_QUOTE_STRING_LITERAL
-    | ID STAR
     | DURATION
     | encoding
     | dataType
     | dateExpression
-    | MINUS? EXPONENT
-    | MINUS? INT
+    | MINUS? (EXPONENT | INT)
     | booleanClause
     | CREATE
     | INSERT
@@ -505,7 +522,7 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -520,8 +537,7 @@ nodeNameWithoutStar
     | encoding
     | dataType
     | dateExpression
-    | MINUS? EXPONENT
-    | MINUS? INT
+    | MINUS? ( EXPONENT | INT)
     | booleanClause
     | CREATE
     | INSERT
@@ -617,7 +633,7 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -626,7 +642,7 @@ nodeNameWithoutStar
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
     ;
 
 dateFormat
@@ -697,6 +713,19 @@ SELECT
 SHOW
     : S H O W
     ;
+
+QUERY
+    : Q U E R Y
+    ;
+
+KILL
+    : K I L L
+    ;
+
+PROCESSLIST
+    : P R O C E S S L I S T
+    ;
+
 
 GRANT
     : G R A N T
@@ -1082,10 +1111,6 @@ COMPRESSION
     : C O M P R E S S I O N
     ;
 
-AS
-    : A S
-    ;
-
 TIME
     : T I M E
     ;
@@ -1173,6 +1198,22 @@ FOR
 
 SCHEMA
     : S C H E M A
+    ;
+
+TEMPORARY
+    : T E M P O R A R Y
+    ;
+
+FUNCTION
+    : F U N C T I O N
+    ;
+
+FUNCTIONS
+    : F U N C T I O N S
+    ;
+
+AS
+    : A S
     ;
 
 DESC

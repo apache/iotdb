@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -56,7 +57,6 @@ import org.junit.Before;
  */
 public abstract class IoTDBTest {
 
-  private static IoTDB daemon = IoTDB.getInstance();
   private PlanExecutor planExecutor;
   private boolean prevEnableAutoSchema;
   private boolean prevUseAsyncServer;
@@ -68,7 +68,6 @@ public abstract class IoTDBTest {
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     EnvironmentUtils.closeStatMonitor();
-    daemon.active();
     EnvironmentUtils.envSetUp();
     planExecutor = new PlanExecutor();
     prepareSchema();
@@ -77,7 +76,6 @@ public abstract class IoTDBTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
@@ -147,7 +145,7 @@ public abstract class IoTDBTest {
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, InterruptedException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true
         , 1024, -1));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();

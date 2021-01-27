@@ -52,10 +52,10 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
   IoTDBNonAlignJDBCResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
+      String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset, long timeout)
       throws SQLException {
     super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql,
-        queryId, sessionId);
+        queryId, sessionId, timeout);
 
     times = new byte[columnNameList.size()][Long.BYTES];
 
@@ -111,6 +111,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     TSFetchResultsReq req = new TSFetchResultsReq(ioTDBRpcDataSet.sessionId,
         ioTDBRpcDataSet.sql, ioTDBRpcDataSet.fetchSize, ioTDBRpcDataSet.queryId,
         false);
+    req.setTimeout(ioTDBRpcDataSet.timeout);
     try {
       TSFetchResultsResp resp = ioTDBRpcDataSet.client.fetchResults(req);
 

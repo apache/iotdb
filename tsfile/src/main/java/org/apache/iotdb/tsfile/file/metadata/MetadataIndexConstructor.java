@@ -26,14 +26,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.TreeMap;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 public class MetadataIndexConstructor {
 
-  private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
-      .getMaxDegreeOfIndexNode();
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   private MetadataIndexConstructor() {
     throw new IllegalStateException("Utility class");
@@ -62,7 +62,7 @@ public class MetadataIndexConstructor {
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
         // when constructing from leaf node, every "degree number of nodes" are related to an entry
-        if (i % MAX_DEGREE_OF_INDEX_NODE == 0) {
+        if (i % config.getMaxDegreeOfIndexNode() == 0) {
           if (currentIndexNode.isFull()) {
             addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
             currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
@@ -78,9 +78,9 @@ public class MetadataIndexConstructor {
     }
 
     // if not exceed the max child nodes num, ignore the device index and directly point to the measurement
-    if (deviceMetadataIndexMap.size() <= MAX_DEGREE_OF_INDEX_NODE) {
+    if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
       MetadataIndexNode metadataIndexNode = new MetadataIndexNode(
-          MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+          MetadataIndexNodeType.LEAF_DEVICE);
       for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
         metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
         entry.getValue().serializeTo(out.wrapAsStream());

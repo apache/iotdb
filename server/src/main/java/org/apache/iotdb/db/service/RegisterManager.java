@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ public class RegisterManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RegisterManager.class);
   private List<IService> iServices;
+  private static long deregisterTimeOut = 10_000L;
 
   public RegisterManager() {
     iServices = new ArrayList<>();
@@ -41,7 +43,7 @@ public class RegisterManager {
   public void register(IService service) throws StartupException {
     for (IService s : iServices) {
       if (s.getID() == service.getID()) {
-        logger.info("{} has already been registered. skip", service.getID().getName());
+        logger.debug("{} has already been registered. skip", service.getID().getName());
         return;
       }
     }
@@ -57,8 +59,8 @@ public class RegisterManager {
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        service.waitAndStop(10000);
-        logger.info("{} deregistered", service.getID());
+        service.waitAndStop(deregisterTimeOut);
+        logger.debug("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }
@@ -66,7 +68,7 @@ public class RegisterManager {
     iServices.clear();
     logger.info("deregister all service.");
   }
-  
+
   /**
    * stop all service and clear iService list.
    */
@@ -74,9 +76,14 @@ public class RegisterManager {
     //we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
-      service.shutdown(10000);
+      service.shutdown(deregisterTimeOut);
     }
     iServices.clear();
     logger.info("deregister all service.");
+  }
+
+  @TestOnly
+  public static void setDeregisterTimeOut(long deregisterTimeOut) {
+    RegisterManager.deregisterTimeOut = deregisterTimeOut;
   }
 }

@@ -45,11 +45,22 @@ public class QueryUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
       List<Modification> modifications) {
-    int modIndex = 0;
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
       for (Modification modification : modifications) {
-        if (modification.getVersionNum() > metaData.getVersion()) {
+        // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset() 
+        // is gerVersionNum actually. In this case, we compare the versions of modification and
+        // mataData to determine whether need to do modify.
+        if (metaData.isFromOldTsFile()) {
+          if (modification.getFileOffset() > metaData.getVersion()) {
+            doModifyChunkMetaData(modification, metaData);
+          }
+          continue;
+        }
+        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+        // is not supposed to exist as getFileOffset() is offset containing full chunk,
+        // while getOffsetOfChunkHeader() returns the chunk header offset
+        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
           doModifyChunkMetaData(modification, metaData);
         }
       }

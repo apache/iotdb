@@ -125,7 +125,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
+  public RowRecord nextWithoutConstraint() throws IOException {
     if (!hasCachedTimeInterval) {
       throw new IOException("need to call hasNext() before calling next()"
           + " in GroupByWithoutValueFilterDataSet.");
@@ -187,7 +187,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   @Override
   @SuppressWarnings("squid:S3776")
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
+  public Pair<Long, Object> peekNextNotNullValue(Path path, int i)
+      throws IOException {
     if ((!timestampGenerator.hasNext() && cachedTimestamps.isEmpty())
         || allDataReaderList.get(i).readerIsEmpty()) {
       return null;

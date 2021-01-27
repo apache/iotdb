@@ -217,7 +217,7 @@ public class MergeUtils {
 
   public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetadata metaData) {
     return timeValuePair != null
-        && timeValuePair.getTimestamp() < metaData.getEndTime();
+        && timeValuePair.getTimestamp() <= metaData.getEndTime();
   }
 
   public static boolean isChunkTooSmall(int ptWritten, ChunkMetadata chunkMetaData,

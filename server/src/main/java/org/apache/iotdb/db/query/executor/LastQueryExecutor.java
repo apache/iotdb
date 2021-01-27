@@ -80,6 +80,7 @@ public class LastQueryExecutor {
    *
    * @param context query context
    */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
@@ -91,7 +92,7 @@ public class LastQueryExecutor {
             selectedSeries, dataTypes, context, expression, lastQueryPlan);
 
     for (int i = 0; i < lastPairList.size(); i++) {
-      if (lastPairList.get(i).right != null) {
+      if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -162,10 +163,12 @@ public class LastQueryExecutor {
     int index = 0;
     for (int i = 0; i < resultContainer.size(); i++) {
       if (Boolean.FALSE.equals(resultContainer.get(i).left)) {
-        resultContainer.get(i).left = true;
         resultContainer.get(i).right = readerList.get(index++).readLastPoint();
-        if (CACHE_ENABLED) {
-          cacheAccessors.get(i).write(resultContainer.get(i).right);
+        if (resultContainer.get(i).right.getValue() != null) {
+          resultContainer.get(i).left = true;
+          if (CACHE_ENABLED) {
+            cacheAccessors.get(i).write(resultContainer.get(i).right);
+          }
         }
       }
     }

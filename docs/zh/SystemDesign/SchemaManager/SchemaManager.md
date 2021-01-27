@@ -176,10 +176,10 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 ### 创建条件
 
-为了加快 IoTDB 重启速度，我们为 MTree 设置了检查点，这样避免了在重启时按行读取并复现 `mlog.txt` 中的信息。创建 MTree 的快照有两种方式：
+为了加快 IoTDB 重启速度，我们为 MTree 设置了检查点，这样避免了在重启时按行读取并复现 `mlog.bin` 中的信息。创建 MTree 的快照有两种方式：
 1. 后台线程检查自动创建：每隔10分钟，后台线程检查 MTree 的最后修改时间，需要同时满足
-  * 用户超过1小时（可配置）没修改 MTree，即`mlog.txt` 文件超过1小时没有修改
-  * `mlog.txt` 中积累了100000行日志（可配置）
+  * 用户超过1小时（可配置）没修改 MTree，即`mlog.bin` 文件超过1小时没有修改
+  * `mlog.bin` 中积累了100000行日志（可配置）
   
 2. 手动创建：使用`create snapshot for schema`命令手动触发创建 MTree 快照
 
@@ -194,10 +194,10 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
   * 传感器节点：2,名字,别名,数据类型,编码,压缩方式,属性,偏移量,子节点个数
   
 3. 序列化结束后，将临时文件重命名为正式文件（`mtree.snapshot`），防止在序列化过程中出现服务器人为或意外关闭，导致序列化失败的情况。
-4. 调用`MLogWriter.clear()`方法，清空 `mlog.txt`：
-  * 关闭 BufferedWriter，删除`mlog.txt`文件；
+4. 调用`MLogWriter.clear()`方法，清空 `mlog.bin`：
+  * 关闭 BufferedWriter，删除`mlog.bin`文件；
   * 新建一个 BufferedWriter；
-  * 将 `lineNumber` 置为0，`lineNumber` 记录`mlog.txt`的行数，用于在后台检查时判断其是否超过用户配置的阈值而触发自动创建快照。
+  * 将 `logNumber` 置为0，`logNumber` 记录`mlog.bin`的日志行数，用于在后台检查时判断其是否超过用户配置的阈值而触发自动创建快照。
 
 5. 释放 MTree 读锁
 
@@ -207,13 +207,13 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 1. 检查临时文件`mtree.snapshot.tmp`是否存在，如果存在证明在创建快照的序列化过程中出现服务器人为或意外关闭，导致序列化失败，删除临时文件；
 2. 检查快照文件`mtree.snapshot`是否存在。如果不存在，则使用新的 MTree；否则启动反序列化过程，得到 MTree
-3. 对于`mlog.txt`中的内容，逐行读取并操作，完成 MTree 的恢复。读取过程中更新 `lineNumber`，并返回，用于后面`mlog.txt`行数的记录。
+3. 对于`mlog.bin`中的内容，逐行读取并操作，完成 MTree 的恢复。读取过程中更新 `logNumber`，并返回，用于后面`mlog.bin`行数的记录。
 
 ## 元数据日志管理
 
-* org.apache.iotdb.db.metadata.MLogWriter
+* org.apache.iotdb.db.metadata.logfile.MLogWriter
 
-所有元数据的操作均会记录到元数据日志文件中，此文件默认为 data/system/schema/mlog.txt。
+所有元数据的操作均会记录到元数据日志文件中，此文件默认为 data/system/schema/mlog.bin。
 
 系统重启时会重做 mlog 中的日志，重做之前需要标记不需要记录日志。当重启结束后，标记需要记录日志。
 
@@ -268,7 +268,7 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 * org.apache.iotdb.db.metadata.TagLogFile
 
 
-所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/mlog.txt。
+所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/mlog.bin。
 
 * 每条时间序列的 tags 和 attributes 持久化总字节数为 L，在 iotdb-engine.properties 中配置。
 

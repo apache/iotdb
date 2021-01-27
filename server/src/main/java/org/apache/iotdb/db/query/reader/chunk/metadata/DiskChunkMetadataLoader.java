@@ -62,6 +62,13 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
         .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
         || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+    // For chunkMetadata from old TsFile, do not set version
+    for (ChunkMetadata metadata : chunkMetadataList) {
+      if (!metadata.isFromOldTsFile()) {
+        metadata.setVersion(resource.getVersion());
+      }
+    }
     return chunkMetadataList;
   }
 

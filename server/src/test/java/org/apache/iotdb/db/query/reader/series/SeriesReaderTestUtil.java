@@ -93,6 +93,7 @@ public class SeriesReaderTestUtil {
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i);
       tsFileResource.setMaxPlanIndex(i);
+      tsFileResource.setVersion(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0, measurementSchemas, deviceIds);
     }
@@ -106,6 +107,7 @@ public class SeriesReaderTestUtil {
       tsFileResource.setClosed(true);
       tsFileResource.setMinPlanIndex(i + seqFileNum);
       tsFileResource.setMaxPlanIndex(i + seqFileNum);
+      tsFileResource.setVersion(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000,
           measurementSchemas, deviceIds);
@@ -119,6 +121,7 @@ public class SeriesReaderTestUtil {
     tsFileResource.setClosed(true);
     tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
     tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
+    tsFileResource.setVersion(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * 2, 20000, measurementSchemas,
         deviceIds);
@@ -149,7 +152,6 @@ public class SeriesReaderTestUtil {
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
-        fileWriter.writeVersion(tsFileResource.getMaxPlanIndex());
       }
     }
     fileWriter.close();
