@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel;
+package org.apache.iotdb.db.engine.measurementorderoptimizer;
 
 import com.csvreader.CsvReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -24,8 +24,9 @@ public class SeekCostModel {
    * Read the empirical data from local file
    */
   public static boolean readEmpiricalData() {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    EMPIRICAL_SEEK_FILE = new File(dataDirs[0] + File.separator + "approximation" + File.separator + "empirical_seek.csv");
+    // String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    // EMPIRICAL_SEEK_FILE = new File(dataDirs[0] + File.separator + "approximation" + File.separator + "empirical_seek_data.csv");
+    EMPIRICAL_SEEK_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\src\\my branch\\data\\data\\approximation\\empirical_seek_data.csv");
     logger.info("Loading seek empirical data from " + EMPIRICAL_SEEK_FILE.getAbsolutePath());
     try{
       if (!EMPIRICAL_SEEK_FILE.exists()) {
@@ -80,16 +81,17 @@ public class SeekCostModel {
 
     for(QueryRecord query: queries) {
       List<String> queryMeasurements = query.getSensors();
-      List<String> sortedQueryMeasurements = sortInSameOrder(queryMeasurements, measurements);
+      List<String> sortedAndDeduplicatedQueryMeasurements = sortInSameOrderAndDeduplicate(queryMeasurements, measurements);
 
       int k = 0;
-      for(int i = 0; i < sortedQueryMeasurements.size(); ++i) {
+      for(int i = 0; i < sortedAndDeduplicatedQueryMeasurements.size(); ++i) {
         long curSeekDistance = 0;
         while (true) {
-          if (!sortedQueryMeasurements.get(i).equals(measurements.get(k))) {
+          if (!sortedAndDeduplicatedQueryMeasurements.get(i).equals(measurements.get(k))) {
             curSeekDistance += chunkSize.get(k++);
           } else {
             totalCost += getSeekCost(curSeekDistance);
+            k++;
             curSeekDistance = 0;
             break;
           }
@@ -103,7 +105,7 @@ public class SeekCostModel {
   /**
    * Sort the order of query measurements so that the order of them are the same as the physical order of measurements.
    */
-  private static List<String> sortInSameOrder(List<String> queryMeasurements, List<String> measurements) {
+  private static List<String> sortInSameOrderAndDeduplicate(List<String> queryMeasurements, List<String> measurements) {
     List<String> sortedQueryMeasurements = new ArrayList<>();
     Set<String> measurementSet = new HashSet<>();
     for(int i = 0; i < queryMeasurements.size(); ++i) {

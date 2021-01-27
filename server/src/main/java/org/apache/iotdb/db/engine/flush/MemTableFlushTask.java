@@ -19,6 +19,10 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -88,7 +92,17 @@ public class MemTableFlushTask {
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
-      for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+      // Sort the measurement id by the lexicographic order
+      String[] measurements = new String[memTable.getMemTableMap().get(deviceId).keySet().size()];
+      int k = 0;
+      for(String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+        measurements[k++] = measurementId;
+      }
+      Arrays.sort(measurements);
+      // write the chunk in lexicographic order
+      for (String measurementId : measurements) {
+        // print log to show the order of measurements
+        logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
@@ -219,6 +233,9 @@ public class MemTableFlushTask {
   private Runnable ioTask = () -> {
     long ioTime = 0;
     logger.debug("Storage group {} memtable {}, start io.", storageGroup, memTable.getVersion());
+    // record the total chunk size for the chunk group
+    long totalChunkSize = 0;
+    long chunkCount = 0;
     while (true) {
       Object ioMessage = null;
       try {
@@ -237,6 +254,8 @@ public class MemTableFlushTask {
         }
         else if (ioMessage instanceof IChunkWriter) {
           ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
+          totalChunkSize += chunkWriter.getCurrentChunkSize();
+          chunkCount += 1;
           chunkWriter.writeToFileWriter(this.writer);
         } else {
           this.writer.endChunkGroup();
@@ -250,6 +269,8 @@ public class MemTableFlushTask {
     }
     logger.debug("flushing a memtable {} in storage group {}, io cost {}ms", memTable.getVersion(),
         storageGroup, ioTime);
+    logger.info("flushing a memtable {} in storage group {}, with {} chunk, {} bytes in total, {} bytes average",
+            memTable.getVersion(), storageGroup, chunkCount, totalChunkSize, totalChunkSize / chunkCount);
   };
   
   static class TaskEnd {

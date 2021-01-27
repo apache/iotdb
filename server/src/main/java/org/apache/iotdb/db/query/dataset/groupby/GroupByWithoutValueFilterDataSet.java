@@ -20,14 +20,11 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOrderOptimizer;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -155,12 +152,45 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     AggregateResult[] fields = new AggregateResult[paths.size()];
 
     try {
+      // Reorder the order of queries to be consistent with the physical order of the files
+      // deviceId -> Set<Measurement to be query>
+      HashMap<String, Set<String>> deviceMeasurementMap = new HashMap<>();
+      // deviceId -> measurement -> partial path
+      HashMap<String, Map<String, PartialPath>> partialPathMap = new HashMap<>();
       for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathToExecutorEntry.getValue();
-        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
-          fields[resultIndex] = aggregations.get(i);
+        if (!deviceMeasurementMap.containsKey(pathToExecutorEntry.getKey().getDevice())) {
+          deviceMeasurementMap.put(pathToExecutorEntry.getKey().getDevice(), new HashSet<>());
+          partialPathMap.put(pathToExecutorEntry.getKey().getDevice(), new HashMap<>());
+        }
+        deviceMeasurementMap.get(pathToExecutorEntry.getKey().getDevice()).
+                add(pathToExecutorEntry.getKey().getMeasurement());
+        partialPathMap.get(pathToExecutorEntry.getKey().getDevice()).
+                put(pathToExecutorEntry.getKey().getMeasurement(), pathToExecutorEntry.getKey());
+      }
+
+      Map<String, List<PartialPath>> measurementQueryOrder = new HashMap<>();
+      for(Entry<String,Set<String>> measurementToBeQueried : deviceMeasurementMap.entrySet()) {
+        String deviceId = measurementToBeQueried.getKey();
+        List<String> physicalMeasurementOrder = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
+        Set<String> measurements = deviceMeasurementMap.get(deviceId);
+        measurementQueryOrder.put(deviceId, new LinkedList<>());
+        for(String measurement : physicalMeasurementOrder) {
+          if (measurements.contains(measurement)) {
+            measurementQueryOrder.get(deviceId).add(partialPathMap.get(deviceId).get(measurement));
+          }
+        }
+      }
+
+      // query in the physical order
+      for(String device : measurementQueryOrder.keySet()) {
+        List<PartialPath> measurementPaths = measurementQueryOrder.get(device);
+        for(PartialPath path : measurementPaths) {
+          GroupByExecutor executor = pathExecutors.get(path);
+          List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+          for (int i = 0; i < aggregations.size(); i++) {
+            int resultIndex = resultIndexes.get(path).get(i);
+            fields[resultIndex] = aggregations.get(i);
+          }
         }
       }
     } catch (QueryProcessException e) {

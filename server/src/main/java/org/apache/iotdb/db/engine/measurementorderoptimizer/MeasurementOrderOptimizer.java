@@ -1,16 +1,22 @@
 package org.apache.iotdb.db.engine.measurementorderoptimizer;
 
-import org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel.CostModel;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 
 import java.util.*;
 
 public class MeasurementOrderOptimizer {
+  // DeviceId -> List<Measurement>
   Map<String, List<String>> measurementsMap = new HashMap<>();
+  // Set<Measurement Full Path>
+  Set<String> measurementSet = new HashSet<>();
+  // DeviceId -> Measurement -> ChunkSize
   Map<String, Map<String, Long>> chunkMap = new HashMap<>();
   List<QueryRecord> queryRecords = new ArrayList<>();
   public static final int SA_MAX_ITERATION = 200;
-  public static final float SA_INIT_TEMPERATURE = 100.0f;
+  public static final float SA_INIT_TEMPERATURE = 2.0f;
   public static final float SA_COOLING_RATE = 0.02f;
 
   private MeasurementOrderOptimizer() {}
@@ -24,15 +30,52 @@ public class MeasurementOrderOptimizer {
   }
 
   /**
+   * Get the metadata from the MManager
+   */
+  private void updateMetadata() {
+    MManager manager = MManager.getInstance();
+    List<PartialPath> storagePaths = manager.getAllStorageGroupPaths();
+    for(PartialPath storagePath : storagePaths) {
+      try {
+        List<PartialPath> measurementPaths = manager.getAllTimeseriesPath(storagePath);
+        for(PartialPath measurementPath : measurementPaths) {
+          if (!measurementSet.contains(measurementPath.getFullPath())) {
+            // Add the measurement to optimizer
+            measurementSet.add(measurementPath.getFullPath());
+            if (!measurementsMap.containsKey(measurementPath.getDevice())) {
+              measurementsMap.put(measurementPath.getDevice(), new ArrayList<>());
+            }
+            measurementsMap.get(measurementPath.getDevice()).add(measurementPath.getMeasurement());
+          }
+        }
+      } catch (MetadataException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  /**
    * Get the measurement order for a specific device, remember to call optimize before
    * this function to get a optimized order, otherwise the order may not be optimized.
    */
   public List<String> getMeasurementsOrder(String deviceId) {
-    return measurementsMap.getOrDefault(deviceId, null);
+    if (measurementsMap.containsKey(deviceId)) {
+      return measurementsMap.get(deviceId);
+    } else {
+      // Get the measurements from MManager
+      updateMetadata();
+      return measurementsMap.getOrDefault(deviceId, null);
+    }
   }
 
   public synchronized void addMeasurements(String deviceId, List<String> measurements) {
-    measurementsMap.put(deviceId, measurements);
+    if (!measurementsMap.containsKey(deviceId)) {
+      measurementsMap.put(deviceId, new ArrayList<>());
+    }
+    measurementsMap.get(deviceId).addAll(measurements);
+    for(String measurement : measurements) {
+      measurementSet.add(deviceId + "." + measurement);
+    }
   }
 
   public synchronized void addQueryRecord(QueryRecord record) {
@@ -72,6 +115,13 @@ public class MeasurementOrderOptimizer {
         break;
       }
     }
+  }
+
+  public synchronized void setChunkSize(String deviceId, String measurementId, long chunkSize) {
+    if (!chunkMap.containsKey(deviceId)) {
+      chunkMap.put(deviceId, new HashMap<>());
+    }
+    chunkMap.get(deviceId).put(measurementId, chunkSize);
   }
 
   /**
@@ -137,15 +187,26 @@ public class MeasurementOrderOptimizer {
       temperature = updateTemperature(temperature);
 
       // Generate a neighbor state
-      int swapPosFirst = r.nextInt() % curMeasurementOrder.size();
-      int swapPosSecond = r.nextInt() % curMeasurementOrder.size();
+      int swapPosFirst = 0;
+      int swapPosSecond = 0;
+      while (swapPosSecond == swapPosFirst) {
+        swapPosFirst = r.nextInt();
+        swapPosFirst = swapPosFirst < 0 ? -swapPosFirst : swapPosFirst;
+        swapPosFirst %= curMeasurementOrder.size();
+        swapPosSecond = r.nextInt();
+        swapPosSecond = swapPosSecond < 0 ? -swapPosSecond : swapPosSecond;
+        swapPosSecond %= curMeasurementOrder.size();
+      }
       swap(curMeasurementOrder, swapPosFirst, swapPosSecond);
       swap(chunkSize, swapPosFirst, swapPosSecond);
 
       float newCost = CostModel.approximateAggregationQueryCostWithoutTimeRange(queryRecordsForCurDevice,
               curMeasurementOrder, chunkSize);
+      float probability = r.nextFloat();
+      probability = probability < 0 ? -probability : probability;
+      probability %= 1.0;
       if (newCost < curCost ||
-              Math.exp((curCost - newCost) / temperature) > (r.nextFloat() % 1.0)) {
+              Math.exp((curCost - newCost) / temperature) > probability) {
         // Accept the new status
         curCost = newCost;
       } else {
@@ -177,5 +238,15 @@ public class MeasurementOrderOptimizer {
   // TODO: implement the GA algorithm
   private void optimizeByGA(String deviceID) {
 
+  }
+
+  public List<Long> getChunkSize(String deviceId) {
+    List<String> measurementOrder = measurementsMap.get(deviceId);
+    Map<String, Long> chunkSizeForCurDevice = chunkMap.get(deviceId);
+    List<Long> chunkSize = new ArrayList<>();
+    for(int i = 0; i < measurementOrder.size(); ++i) {
+      chunkSize.add(chunkSizeForCurDevice.get(measurementOrder.get(i)));
+    }
+    return chunkSize;
   }
 }

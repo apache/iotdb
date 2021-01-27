@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel;
+package org.apache.iotdb.db.engine.measurementorderoptimizer;
 
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 
