@@ -54,7 +54,7 @@ public class SyncFileManager implements ISyncFileManager {
   /**
    * Key is storage group, value is all sealed tsfiles in the storage group. Inner key is time range
    * id, inner value is the set of current sealed tsfiles.
-   * logicalSg -> virtualSg ->  <timeRangeId, files>
+   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> currentSealedLocalFilesMap;
 
@@ -62,18 +62,21 @@ public class SyncFileManager implements ISyncFileManager {
    * Key is storage group, value is all last local tsfiles in the storage group, which doesn't
    * contains those tsfiles which are not synced successfully. Inner key is time range id, inner
    * value is the set of last local tsfiles.
+   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap;
 
   /**
    * Key is storage group, value is all deleted tsfiles which need to be synced to receiver end in
    * the storage group. Inner key is time range id, inner value is the valid set of sealed tsfiles.
+   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> deletedFilesMap;
 
   /**
    * Key is storage group, value is all new tsfiles which need to be synced to receiver end in the
    * storage group. Inner key is time range id, inner value is the valid set of new tsfiles.
+   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
    */
   private Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap;
 

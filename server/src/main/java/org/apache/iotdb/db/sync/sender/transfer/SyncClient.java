@@ -105,12 +105,16 @@ public class SyncClient implements ISyncClient {
 
   private SyncService.Client serviceClient;
 
+  //logicalSg -> <virtualSg, timeRangeId>
   private Map<String, Map<Long, Set<Long>>> allSG;
 
+  //logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
   private Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap;
 
+  // logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
   private Map<String, Map<Long, Map<Long, Set<File>>>> deletedFilesMap;
 
+  // logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
   private Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap;
 
   /**
