@@ -46,6 +46,8 @@ import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -87,6 +89,26 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
     clear();
+  }
+
+  private void renameLevelFilesMods(Collection<TsFileResource> mergeTsFiles,
+      TsFileResource targetTsFile) throws IOException {
+    logger.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      modifications.addAll(
+          new ModificationFile(mergeTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX)
+              .getModifications());
+      deleteLevelFile(mergeTsFile);
+    }
+    if (!modifications.isEmpty()) {
+      ModificationFile modificationFile = new ModificationFile(
+          targetTsFile.getTsFilePath() + ModificationFile.FILE_SUFFIX);
+      for (Modification modification : modifications) {
+        modificationFile.write(modification);
+      }
+      modificationFile.close();
+    }
   }
 
   private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
@@ -423,6 +445,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               writeUnlock();
             }
             deleteLevelFilesInDisk(sourceTsFileResources);
+            renameLevelFilesMods(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {
             writer.close();
@@ -579,6 +602,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               writeUnlock();
             }
             deleteLevelFilesInDisk(toMergeTsFiles);
+            renameLevelFilesMods(toMergeTsFiles, newResource);
             compactionLogger.close();
             File logFile = FSFactoryProducer.getFSFactory()
                 .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
