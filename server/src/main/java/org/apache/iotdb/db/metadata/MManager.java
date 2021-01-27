@@ -985,32 +985,35 @@ public class MManager {
 
   }
 
-  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement,
-      TSDataType dataType, CompressionType compressionType) throws MetadataException {
+  protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement, TSDataType dataType)
+      throws MetadataException {
     MNode child = deviceMNode.getChild(measurement);
-
     if (child == null) {
       return null;
     }
 
-    if (child instanceof MeasurementMNode) {
-      return (MeasurementMNode) child;
-    } else {
-      MeasurementMNode measurementMNode = new MeasurementMNode(deviceMNode, child.getName(), null,
-          dataType, getDefaultEncoding(dataType),
-          compressionType, null);
-      deviceMNode.replaceChild(child.getName(), measurementMNode);
+    return changeMNodeToMeasurementMNode(child, dataType);
+  }
 
-      // persist to meta log
-      try {
-        logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
-            dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
-      } catch (IOException e) {
-        throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
-      }
-
-      return measurementMNode;
+  protected MeasurementMNode changeMNodeToMeasurementMNode(MNode node, TSDataType dataType) throws MetadataException {
+    if (node instanceof MeasurementMNode) {
+      return (MeasurementMNode) node;
     }
+
+    MNode parent = node.getParent();
+    MeasurementMNode measurementMNode = new MeasurementMNode(parent, node.getName(), null,
+        dataType, getDefaultEncoding(dataType),
+        TSFileDescriptor.getInstance().getConfig().getCompressor(), null);
+    parent.replaceChild(node.getName(), measurementMNode);
+
+    // persist to meta log
+    try {
+      logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
+          dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+    } catch (IOException e) {
+      throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
+    }
+    return measurementMNode;
   }
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -1805,7 +1808,7 @@ public class MManager {
           // could not create it
           if (!config.isAutoCreateSchemaEnabled()) {
             // but measurement not in MTree and cannot auto-create, try the cache
-            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType, TSFileDescriptor.getInstance().getConfig().getCompressor());
+            measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType);
             if (measurementMNode == null) {
               throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
             }
@@ -1815,7 +1818,10 @@ public class MManager {
             measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurementList[i]);
           }
         } else {
-          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType, TSFileDescriptor.getInstance().getConfig().getCompressor());
+          measurementMNode = getMeasurementMNode(deviceMNode, measurementList[i], dataType);
+          if (measurementMNode == null) {
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+          }
         }
 
         // check type is match
