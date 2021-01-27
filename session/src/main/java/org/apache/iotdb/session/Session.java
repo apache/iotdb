@@ -66,6 +66,12 @@ public class Session {
   protected String username;
   protected String password;
   protected int fetchSize;
+
+  /**
+   * Timeout of query can be set by users.
+   * If not set, default value 0 will be used, which will use server configuration.
+   */
+  private long timeout = 0;
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
   protected ZoneId zoneId;
@@ -106,6 +112,14 @@ public class Session {
     this(host, rpcPort, username, password, fetchSize, null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
         Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      long timeoutInMs) {
+    this(host, rpcPort, username, password, fetchSize, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+    this.timeout = timeoutInMs;
   }
 
 
@@ -313,7 +327,19 @@ public class Session {
 
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.checkTimeseriesExists(path);
+    return defaultSessionConnection.checkTimeseriesExists(path, timeout);
+  }
+
+
+  public void setTimeout(long timeoutInMs) throws StatementExecutionException {
+    if (timeoutInMs < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
+    }
+    this.timeout = timeoutInMs;
+  }
+
+  public long getTimeout() {
+    return timeout;
   }
 
   /**
@@ -324,7 +350,7 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return defaultSessionConnection.executeQueryStatement(sql);
+    return defaultSessionConnection.executeQueryStatement(sql, timeout);
   }
 
   /**
@@ -1093,7 +1119,7 @@ public class Session {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
-      res += Short.BYTES;
+      res += Byte.BYTES;
       switch (types.get(i)) {
         case BOOLEAN:
           res += 1;

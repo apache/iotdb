@@ -343,12 +343,16 @@ public class TestUtils {
     }
   }
 
+
+  /**
+   * The TsFileResource's path should be consist with the {@link org.apache.iotdb.db.utils.FilePathUtils#splitTsFilePath(TsFileResource)}
+   */
   public static List<TsFileResource> prepareTsFileResources(int sgNum, int fileNum, int seriesNum,
       int ptNum, boolean asHardLink) throws IOException, WriteProcessException {
     List<TsFileResource> ret = new ArrayList<>();
     for (int i = 0; i < fileNum; i++) {
       String fileName = "target" + File.separator + "data" + File.separator + String
-          .format(TestUtils.getTestSg(sgNum) + File.separator + 0 +
+          .format(TestUtils.getTestSg(sgNum) + File.separator + 0 + File.separator + 0 +
               File.separator + "0-%d-0" + TsFileConstant.TSFILE_SUFFIX, i);
       if (asHardLink) {
         fileName = fileName + ".0_0";

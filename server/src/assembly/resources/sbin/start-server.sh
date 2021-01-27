@@ -18,8 +18,6 @@
 # under the License.
 #
 
-# Set max number of open files
-ulimit -n 65535
 
 echo ---------------------
 echo Starting IoTDB
