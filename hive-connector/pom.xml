@@ -24,11 +24,11 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.11.0-SNAPSHOT</version>
+        <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>hive-connector</artifactId>
-    <version>0.11.0-SNAPSHOT</version>
+    <version>0.12.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>hadoop-tsfile</artifactId>
-            <version>0.11.0-SNAPSHOT</version>
+            <version>0.12.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.hive</groupId>
@@ -54,7 +54,22 @@
                     <groupId>org.apache.hive</groupId>
                     <artifactId>hive-storage-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.apache.zookeeper</groupId>
+                    <artifactId>zookeeper</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <!-- many of hadoop dependencies use guava11, but org.apache.curator from hadoop-common uses
+        guava16 -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>[${guava.version},)</version>
         </dependency>
         <!-- force upgrade the dependency of hive-serde-->
         <dependency>
@@ -76,6 +91,10 @@
                 <exclusion>
                     <groupId>org.antlr</groupId>
                     <artifactId>antlr-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -175,11 +194,15 @@
     </build>
     <!-- org.pentaho:pentaho-aggdesigner-algorithm is in repo.spring.io and we have to claim
     to use https-->
+    <!-- Please note the notice in https://spring.io/blog/2020/10/29/notice-of-permissions-changes-to-repo-spring-io-fall-and-winter-2020
+    Anonymous access using /libs-snapshot or /libs-milestone in the pom.xml, or with
+    these configured in a remote repository, should replace them with /snapshot and /milestone, 
+    respectively.-->
     <repositories>
         <repository>
             <id>for_pentaho</id>
             <name>spring.io</name>
-            <url>https://repo.spring.io/libs-milestone</url>
+            <url>https://repo.spring.io/milestone</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>

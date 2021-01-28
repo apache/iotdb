@@ -37,18 +37,6 @@ public interface IWritableMemChunk {
 
   void putBoolean(long t, boolean v);
 
-  void putLongs(long[] t, long[] v);
-
-  void putInts(long[] t, int[] v);
-
-  void putFloats(long[] t, float[] v);
-
-  void putDoubles(long[] t, double[] v);
-
-  void putBinaries(long[] t, Binary[] v);
-
-  void putBooleans(long[] t, boolean[] v);
-
   void putLongs(long[] t, long[] v, int start, int end);
 
   void putInts(long[] t, int[] v, int start, int end);
@@ -75,12 +63,28 @@ public interface IWritableMemChunk {
 
   /**
    * served for query requests.
+   * <p>
+   * if tv list has been sorted, just return reference of it
+   * <p>
+   * if tv list hasn't been sorted and has no reference, sort and return reference of it
+   * <p>
+   * if tv list hasn't been sorted and has reference we should copy and sort it, then return ths
+   * list
+   * <p>
+   * the mechanism is just like copy on write
    *
-   * @return
+   * @return sorted tv list
    */
-  default TVList getSortedTVList() {
-    return null;
-  }
+  TVList getSortedTVListForQuery();
+
+
+  /**
+   * served for flush requests.
+   * The logic is just same as getSortedTVListForQuery, but without add reference count
+   *
+   * @return sorted tv list
+   */
+  TVList getSortedTVListForFlush();
 
   default TVList getTVList() {
     return null;
@@ -94,4 +98,5 @@ public interface IWritableMemChunk {
    * @return how many points are deleted
    */
   int delete(long lowerBound, long upperBound);
+
 }

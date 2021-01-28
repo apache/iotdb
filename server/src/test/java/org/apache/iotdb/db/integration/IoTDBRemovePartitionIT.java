@@ -29,9 +29,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -147,6 +145,109 @@ public class IoTDBRemovePartitionIT {
           count++;
         }
         assertEquals(10, count);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testRemoveOnePartitionAndInsertData() {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("set storage group to root.test");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("DELETE PARTITION root.test 0");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
+      }
+      statement.execute("flush");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testRemovePartitionAndInsertUnSeqDataAndMerge() {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("set storage group to root.test");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("DELETE PARTITION root.test 0");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
+      }
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(3,true)");
+      statement.execute("merge");
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        while (resultSet.next()) {
+          count ++;
+        }
+        assertEquals(2, count);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testRemovePartitionAndInsertUnSeqDataAndUnSeqDataMerge() {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("set storage group to root.test");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("DELETE PARTITION root.test 0");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
+      }
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
+      statement.execute("merge");
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        while (resultSet.next()) {
+          count ++;
+        }
+        assertEquals(2, count);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testFlushAndRemoveOnePartitionAndInsertData() {
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("set storage group to root.test");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      statement.execute("flush");
+      statement.execute("DELETE PARTITION root.test 0");
+      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
+      }
+      statement.execute("flush");
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        assertEquals(true, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();

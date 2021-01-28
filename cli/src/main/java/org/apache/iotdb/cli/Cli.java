@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -31,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
 /**
@@ -53,9 +56,6 @@ public class Cli extends AbstractCli {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     commandLine = null;
 
-    String[] newArgs;
-    String[] newArgs2;
-
     if (args == null || args.length == 0) {
       println(
           "Require more params input, eg. ./start-cli.sh(start-cli.bat if Windows) "
@@ -65,8 +65,8 @@ public class Cli extends AbstractCli {
       return;
     }
     init();
-    newArgs = removePasswordArgs(args);
-    newArgs2 = processExecuteArgs(newArgs);
+    String[] newArgs = removePasswordArgs(args);
+    String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;
@@ -87,7 +87,7 @@ public class Cli extends AbstractCli {
         Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
-        setTimeFormat("long");
+        timeFormat = RpcUtils.setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         setMaxDisplayNumber(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
@@ -101,7 +101,7 @@ public class Cli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number and greater than 0");
       return false;
     }
     return true;
@@ -145,7 +145,7 @@ public class Cli extends AbstractCli {
       String s;
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+      timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
       displayLogo(properties.getVersion());
@@ -159,9 +159,7 @@ public class Cli extends AbstractCli {
       }
     } catch (SQLException e) {
       println(String
-          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
-              port));
+          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
     }
   }
-
 }

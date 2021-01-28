@@ -19,6 +19,7 @@
 package org.apache.iotdb.session;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
@@ -53,30 +54,37 @@ public class IoTDBSessionIteratorIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  /**
+   * Test getBoolean(), getInt(), getLong(), getFloat(), getDouble(), getString() by columnIndex
+   */
   @Test
-  public void test1() {
+  public void testGetValueByColumnIndex() {
     String[] retArray = new String[]{
-        "0,1,2.0,null",
-        "1,1,2.0,null",
-        "2,1,2.0,null",
-        "3,1,2.0,null",
-        "4,1,2.0,null",
-        "5,1,2.0,4.0",
-        "6,1,2.0,4.0",
-        "7,1,2.0,4.0",
-        "8,1,2.0,4.0",
-        "9,1,2.0,4.0",
+        "0,true,0,0,0.0,0.0,time0",
+        "1,false,1,10,1.5,2.5,time1",
+        "2,true,2,20,3.0,5.0,time2",
+        "3,false,3,30,4.5,7.5,time3",
+        "4,true,4,40,6.0,10.0,time4",
+        "5,false,5,50,7.5,12.5,time5",
+        "6,true,6,60,9.0,15.0,time6",
+        "7,false,7,70,10.5,17.5,time7",
+        "8,true,8,80,12.0,20.0,time8",
+        "9,false,9,90,13.5,22.5,time9",
     };
 
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1");
+      SessionDataSet sessionDataSet = session
+          .executeQueryStatement("select s1,s2,s3,s4,s5,s6 from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
-        String ans = String.format("%s,%s,%s,%s", iterator.getLong(1), iterator.getInt("root.sg1.d1.s1"),
-            iterator.getFloat(3), iterator.getString("root.sg1.d2.s1"));
-        assertEquals(retArray[count], ans);
+        StringBuilder ans = new StringBuilder();
+        ans.append(iterator.getLong(1)).append(",").append(iterator.getBoolean(2)).append(",")
+            .append(iterator.getInt(3)).append(",").append(iterator.getLong(4)).append(",")
+            .append(iterator.getFloat(5)).append(",").append(iterator.getDouble(6)).append(",")
+            .append(iterator.getString(7));
+        assertEquals(retArray[count], ans.toString());
         count++;
       }
       assertEquals(retArray.length, count);
@@ -87,16 +95,110 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
+  /**
+   * Test getBoolean(), getInt(), getLong(), getFloat(), getDouble(), getString() by columnName
+   */
   @Test
-  public void test2() {
+  public void testGetValueByColumnName() {
     String[] retArray = new String[]{
-        "9,root.sg1.d1.s1,1",
-        "9,root.sg1.d1.s2,2.0",
-        "9,root.sg1.d2.s1,4.0"
+        "0,true,0,0,0.0,0.0,time0",
+        "1,false,1,10,1.5,2.5,time1",
+        "2,true,2,20,3.0,5.0,time2",
+        "3,false,3,30,4.5,7.5,time3",
+        "4,true,4,40,6.0,10.0,time4",
+        "5,false,5,50,7.5,12.5,time5",
+        "6,true,6,60,9.0,15.0,time6",
+        "7,false,7,70,10.5,17.5,time7",
+        "8,true,8,80,12.0,20.0,time8",
+        "9,false,9,90,13.5,22.5,time9",
     };
 
     try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("select last * from root.sg1");
+      SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        StringBuilder ans = new StringBuilder();
+        ans.append(iterator.getLong("Time")).append(",")
+            .append(iterator.getBoolean("root.sg1.d1.s1")).append(",")
+            .append(iterator.getInt("root.sg1.d1.s2")).append(",")
+            .append(iterator.getLong("root.sg1.d1.s3")).append(",")
+            .append(iterator.getFloat("root.sg1.d1.s4")).append(",")
+            .append(iterator.getDouble("root.sg1.d1.s5")).append(",")
+            .append(iterator.getString("root.sg1.d1.s6"));
+        assertEquals(retArray[count], ans.toString());
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  /**
+   * Test getObject() by columnIndex.
+   */
+  @Test
+  public void testGetObjectByColumnName() {
+    String[] retArray = new String[]{
+        "0,true,0,0,0.0,0.0,time0",
+        "1,false,1,10,1.5,2.5,time1",
+        "2,true,2,20,3.0,5.0,time2",
+        "3,false,3,30,4.5,7.5,time3",
+        "4,true,4,40,6.0,10.0,time4",
+        "5,false,5,50,7.5,12.5,time5",
+        "6,true,6,60,9.0,15.0,time6",
+        "7,false,7,70,10.5,17.5,time7",
+        "8,true,8,80,12.0,20.0,time8",
+        "9,false,9,90,13.5,22.5,time9",
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session
+          .executeQueryStatement("select s1,s2,s3,s4,s5,s6 from root.sg1.d1");
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        StringBuilder ans = new StringBuilder();
+        long time = (long) iterator.getObject(1);
+        boolean s1 = (boolean) iterator.getObject(2);
+        int s2 = (int) iterator.getObject(3);
+        long s3 = (long) iterator.getObject(4);
+        float s4 = (float) iterator.getObject(5);
+        double s5 = (double) iterator.getObject(6);
+        String s6 = (String) iterator.getObject(7);
+        ans.append(time).append(",").append(s1).append(",").append(s2).append(",").append(s3)
+            .append(",").append(s4).append(",").append(s5).append(",").append(s6);
+        assertEquals(retArray[count], ans.toString());
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+
+  @Test
+  public void testLastQuery() {
+    String[] retArray = new String[]{
+        "9,root.sg1.d1.s1,false",
+        "9,root.sg1.d1.s2,9",
+        "9,root.sg1.d1.s3,90",
+        "9,root.sg1.d1.s4,13.5",
+        "9,root.sg1.d1.s5,22.5",
+        "9,root.sg1.d1.s6,time9",
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session
+          .executeQueryStatement("select last s1,s2,s3,s4,s5,s6 from root.sg1.d1");
       sessionDataSet.setFetchSize(1024);
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
@@ -115,7 +217,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
-  public void test3() {
+  public void testShowDevices() {
     String[] retArray = new String[]{
         "root.sg1.d1",
         "root.sg1.d2"
@@ -140,29 +242,70 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
+  /**
+   * Test executeQueryStatement with timeout, and the result is not timeout here.
+   */
+  @Test
+  public void queryWithTimeoutTest() {
+    String[] retArray = new String[]{
+        "9,root.sg1.d1.s1,false"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session
+          .executeQueryStatement("select last s1 from root.sg1.d1", 2000);
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = String.format("%s,%s,%s", iterator.getLong(1), iterator.getString(2),
+            iterator.getString(3));
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
     session.setStorageGroup("root.sg1");
-    session.createTimeseries("root.sg1.d1.s1", TSDataType.INT32, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.s2", TSDataType.FLOAT, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d2.s1", TSDataType.DOUBLE, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.PLAIN,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s4", TSDataType.FLOAT, TSEncoding.PLAIN,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s5", TSDataType.DOUBLE, TSEncoding.PLAIN,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.s6", TSDataType.TEXT, TSEncoding.PLAIN,
+        CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d2.s1", TSDataType.BOOLEAN, TSEncoding.PLAIN,
         CompressionType.SNAPPY);
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-    types.add(TSDataType.INT32);
-    types.add(TSDataType.FLOAT);
+    for (int i = 1; i <= 6; i++) {
+      measurements.add("s" + i);
+      types.add(TSDataType.deserialize((byte) (i - 1)));
+    }
 
     for (long time = 0; time < 10; time++) {
       List<Object> values = new ArrayList<>();
-      values.add(1);
-      values.add(2f);
+      values.add((time % 2) == 0);
+      values.add((int) time);
+      values.add(time * 10);
+      values.add(time * 1.5f);
+      values.add(time * 2.5);
+      values.add("time" + time);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
@@ -170,11 +313,11 @@ public class IoTDBSessionIteratorIT {
     measurements = new ArrayList<>();
     types = new ArrayList<>();
     measurements.add("s1");
-    types.add(TSDataType.DOUBLE);
+    types.add(TSDataType.BOOLEAN);
 
     for (long time = 5; time < 10; time++) {
       List<Object> values = new ArrayList<>();
-      values.add(4d);
+      values.add((time % 2) == 0);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
   }

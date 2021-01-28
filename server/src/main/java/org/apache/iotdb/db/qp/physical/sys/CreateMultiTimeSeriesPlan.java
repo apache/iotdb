@@ -22,22 +22,26 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * create multiple timeSeries, could be split to several sub Plans to execute in different DataGroup
+ * create multiple timeSeries, could be split to several sub Plans to execute in different
+ * DataGroup
  */
 public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
+
   private List<PartialPath> paths;
   private List<TSDataType> dataTypes;
   private List<TSEncoding> encodings;
@@ -47,10 +51,10 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
   private List<Map<String, String>> tags = null;
   private List<Map<String, String>> attributes = null;
 
-  /*
-   ** record the result of creation of time series
+  /**
+   * record the result of creation of time series
    */
-  private Map<Integer, Exception> results = new HashMap<>();
+  private Map<Integer, TSStatus> results = new TreeMap<>();
   private List<Integer> indexes;
 
   public CreateMultiTimeSeriesPlan() {
@@ -62,6 +66,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     return paths;
   }
 
+  @Override
   public void setPaths(List<PartialPath> paths) {
     this.paths = paths;
   }
@@ -130,17 +135,17 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     this.indexes = indexes;
   }
 
-  public Map<Integer, Exception> getResults() {
+  public Map<Integer, TSStatus> getResults() {
     return results;
   }
 
-  public void setResults(Map<Integer, Exception> results) {
+  public void setResults(Map<Integer, TSStatus> results) {
     this.results = results;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    int type = PhysicalPlanType.MULTI_CREATE_TIMESERIES.ordinal();
+    int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     stream.write(type);
     stream.writeInt(paths.size());
 
@@ -160,48 +165,44 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
       stream.write(compressor.ordinal());
     }
 
+    serializeOptional(stream);
+
+    stream.writeLong(index);
+  }
+
+  private void serializeOptional(DataOutputStream stream) throws IOException {
     if (alias != null) {
       stream.write(1);
-      for (String name : alias) {
-        putString(stream, name);
-      }
+      putStrings(stream, alias);
     } else {
       stream.write(0);
     }
 
     if (props != null) {
       stream.write(1);
-      for (Map<String, String> prop : props) {
-        ReadWriteIOUtils.write(prop, stream);
-      }
+      ReadWriteIOUtils.write(props, stream);
     } else {
       stream.write(0);
     }
 
     if (tags != null) {
       stream.write(1);
-      for (Map<String, String> tag : tags) {
-        ReadWriteIOUtils.write(tag, stream);
-      }
+      ReadWriteIOUtils.write(tags, stream);
     } else {
       stream.write(0);
     }
 
     if (attributes != null) {
       stream.write(1);
-      for (Map<String, String> attribute : attributes) {
-        ReadWriteIOUtils.write(attribute, stream);
-      }
+      ReadWriteIOUtils.write(attributes, stream);
     } else {
       stream.write(0);
     }
-
-    stream.writeLong(index);
   }
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    int type = PhysicalPlanType.MULTI_CREATE_TIMESERIES.ordinal();
+    int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());
 
@@ -221,43 +222,39 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
       buffer.put((byte) compressor.ordinal());
     }
 
+    serializeOptional(buffer);
+
+    buffer.putLong(index);
+  }
+
+  private void serializeOptional(ByteBuffer buffer) {
     if (alias != null) {
       buffer.put((byte) 1);
-      for (String name : alias) {
-        putString(buffer, name);
-      }
+      putStrings(buffer, alias);
     } else {
       buffer.put((byte) 0);
     }
 
     if (props != null) {
       buffer.put((byte) 1);
-      for (Map<String, String> prop : props) {
-        ReadWriteIOUtils.write(prop, buffer);
-      }
+      ReadWriteIOUtils.write(props, buffer);
     } else {
       buffer.put((byte) 0);
     }
 
     if (tags != null) {
       buffer.put((byte) 1);
-      for (Map<String, String> tag : tags) {
-        ReadWriteIOUtils.write(tag, buffer);
-      }
+      ReadWriteIOUtils.write(tags, buffer);
     } else {
       buffer.put((byte) 0);
     }
 
     if (attributes != null) {
       buffer.put((byte) 1);
-      for (Map<String, String> attribute : attributes) {
-        ReadWriteIOUtils.write(attribute, buffer);
-      }
+      ReadWriteIOUtils.write(attributes, buffer);
     } else {
       buffer.put((byte) 0);
     }
-
-    buffer.putLong(index);
   }
 
   @Override
@@ -275,35 +272,49 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan {
     for (int i = 0; i < totalSize; i++) {
       encodings.add(TSEncoding.values()[buffer.get()]);
     }
-
-    if (buffer.get() == 1) {
-      alias = new ArrayList<>(totalSize);
-      for (int i = 0; i < totalSize; i++) {
-        alias.add(readString(buffer));
-      }
+    compressors = new ArrayList<>(totalSize);
+    for (int i = 0; i < totalSize; i++) {
+      compressors.add(CompressionType.values()[buffer.get()]);
     }
 
-    if (buffer.get() == 1) {
-      props = new ArrayList<>(totalSize);
-      for (int i = 0; i < totalSize; i++) {
-        props.add(ReadWriteIOUtils.readMap(buffer));
-      }
-    }
-
-    if (buffer.get() == 1) {
-      tags = new ArrayList<>(totalSize);
-      for (int i = 0; i < totalSize; i++) {
-        tags.add(ReadWriteIOUtils.readMap(buffer));
-      }
-    }
-
-    if (buffer.get() == 1) {
-      attributes = new ArrayList<>(totalSize);
-      for (int i = 0; i < totalSize; i++) {
-        attributes.add(ReadWriteIOUtils.readMap(buffer));
-      }
-    }
+    deserializeOptional(buffer, totalSize);
 
     this.index = buffer.getLong();
+  }
+
+  private void deserializeOptional(ByteBuffer buffer, int totalSize) {
+    if (buffer.get() == 1) {
+      alias = readStrings(buffer, totalSize);
+    }
+
+    if (buffer.get() == 1) {
+      props = ReadWriteIOUtils.readMaps(buffer, totalSize);
+    }
+
+    if (buffer.get() == 1) {
+      tags = ReadWriteIOUtils.readMaps(buffer, totalSize);
+    }
+
+    if (buffer.get() == 1) {
+      attributes = ReadWriteIOUtils.readMaps(buffer, totalSize);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateMultiTimeSeriesPlan that = (CreateMultiTimeSeriesPlan) o;
+    return Objects.equals(paths, that.paths) && Objects.equals(dataTypes, that.dataTypes) && Objects
+        .equals(encodings, that.encodings) && Objects.equals(compressors, that.compressors);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(paths, dataTypes, encodings, compressors);
   }
 }

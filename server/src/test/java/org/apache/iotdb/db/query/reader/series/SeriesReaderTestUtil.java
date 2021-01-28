@@ -19,12 +19,23 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -37,15 +48,6 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class SeriesReaderTestUtil {
 
@@ -60,7 +62,7 @@ public class SeriesReaderTestUtil {
 
   public static void setUp(List<MeasurementSchema> measurementSchemas, List<String> deviceIds,
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources)
-      throws MetadataException, IOException, WriteProcessException {
+      throws MetadataException, PathException, IOException, WriteProcessException {
     IoTDB.metaManager.init();
     prepareSeries(measurementSchemas, deviceIds);
     prepareFiles(seqResources, unseqResources, measurementSchemas, deviceIds);
@@ -71,7 +73,9 @@ public class SeriesReaderTestUtil {
     removeFiles(seqResources, unseqResources);
     seqResources.clear();
     unseqResources.clear();
+    ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();
@@ -87,7 +91,9 @@ public class SeriesReaderTestUtil {
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) i));
+      tsFileResource.setMinPlanIndex(i);
+      tsFileResource.setMaxPlanIndex(i);
+      tsFileResource.setVersion(i);
       seqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum, 0, measurementSchemas, deviceIds);
     }
@@ -99,7 +105,9 @@ public class SeriesReaderTestUtil {
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
-      tsFileResource.setHistoricalVersions(Collections.singleton((long) (i + seqFileNum)));
+      tsFileResource.setMinPlanIndex(i + seqFileNum);
+      tsFileResource.setMaxPlanIndex(i + seqFileNum);
+      tsFileResource.setVersion(i + seqFileNum);
       unseqResources.add(tsFileResource);
       prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000,
           measurementSchemas, deviceIds);
@@ -111,7 +119,9 @@ public class SeriesReaderTestUtil {
             + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
-    tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));
+    tsFileResource.setMinPlanIndex(seqFileNum + unseqFileNum);
+    tsFileResource.setMaxPlanIndex(seqFileNum + unseqFileNum);
+    tsFileResource.setVersion(seqFileNum + unseqFileNum);
     unseqResources.add(tsFileResource);
     prepareFile(tsFileResource, 0, ptNum * 2, 20000, measurementSchemas,
         deviceIds);
@@ -142,7 +152,6 @@ public class SeriesReaderTestUtil {
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
-        fileWriter.writeVersion(tsFileResource.getHistoricalVersions().iterator().next());
       }
     }
     fileWriter.close();
@@ -150,7 +159,7 @@ public class SeriesReaderTestUtil {
 
 
   private static void prepareSeries(List<MeasurementSchema> measurementSchemas,
-      List<String> deviceIds) throws MetadataException {
+      List<String> deviceIds) throws MetadataException, PathException {
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas.add(new MeasurementSchema("sensor" + i, TSDataType.INT32,
           encoding, CompressionType.UNCOMPRESSED));

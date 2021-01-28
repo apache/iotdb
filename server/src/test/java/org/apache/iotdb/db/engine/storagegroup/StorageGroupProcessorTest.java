@@ -24,14 +24,13 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.tsfilemanagement.TsFileManagementStrategy;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -64,13 +63,13 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.NORMAL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     processor = new DummySGP(systemDir, storageGroup);
     MergeManager.getINSTANCE().start();
   }
@@ -83,7 +82,7 @@ public class StorageGroupProcessorTest {
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig()
-        .setTsFileManagementStrategy(TsFileManagementStrategy.LEVEL_STRATEGY);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -106,7 +105,7 @@ public class StorageGroupProcessorTest {
       processor.insert(new InsertRowPlan(record));
     }
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -119,7 +118,7 @@ public class StorageGroupProcessorTest {
     processor.delete(new PartialPath(deviceId, measurementId), 0, 15L, -1);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
               new QueryContext(), tsfileResourcesForQuery);
@@ -164,9 +163,35 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
+  public void testInsertDataAndRemovePartitionAndInsert()
+          throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    processor.removePartitions((storageGroupName, timePartitionId) -> true);
+
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource = processor
+            .query(new PartialPath(deviceId), measurementId, context,
+                    null, null);
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+  }
+
+  @Test
   public void testIoTDBTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException {
-
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -235,7 +260,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
-
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -290,7 +314,7 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -373,7 +397,7 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -456,7 +480,7 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -539,7 +563,7 @@ public class StorageGroupProcessorTest {
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 
-    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
+    for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.syncFlush();
     }
 
@@ -568,6 +592,7 @@ public class StorageGroupProcessorTest {
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
+
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -598,7 +623,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
 
   }

@@ -28,8 +28,6 @@ import java.util.List;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class ModificationFileTest {

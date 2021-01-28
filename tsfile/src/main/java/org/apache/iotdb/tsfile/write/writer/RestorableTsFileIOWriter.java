@@ -36,7 +36,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +61,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private int lastFlushedChunkGroupIndex = 0;
 
   private boolean crashed;
+
+  private long minPlanIndex = Long.MAX_VALUE;
+  private long maxPlanIndex = Long.MIN_VALUE;
 
   /**
    * all chunk group metadata which have been serialized on disk.
@@ -90,8 +92,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (file.exists()) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
 
-        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, versionInfo, true);
-        totalChunkNum = reader.getTotalChunkNum();
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        minPlanIndex = reader.getMinPlanIndex();
+        maxPlanIndex = reader.getMaxPlanIndex();
         if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
           crashed = false;
           canWrite = false;
@@ -170,7 +173,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
           chunkMetadataList.add(chunkMetaData);
-          VersionUtils.applyVersion(chunkMetadataList, versionInfo);
         }
       }
     }
@@ -191,8 +193,6 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
     if (!newlyFlushedMetadataList.isEmpty()) {
       for (ChunkGroupMetadata chunkGroupMetadata : newlyFlushedMetadataList) {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
-
-        VersionUtils.applyVersion(rowMetaDataList, versionInfo);
 
         String device = chunkGroupMetadata.getDevice();
         for (ChunkMetadata chunkMetaData : rowMetaDataList) {
@@ -231,5 +231,15 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
   public void addSchema(Path path, MeasurementSchema schema) {
     knownSchemas.put(path, schema);
+  }
+
+  @Override
+  public long getMinPlanIndex() {
+    return minPlanIndex;
+  }
+
+  @Override
+  public long getMaxPlanIndex() {
+    return maxPlanIndex;
   }
 }

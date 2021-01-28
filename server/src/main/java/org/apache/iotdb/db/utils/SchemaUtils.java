@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,8 +33,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -46,30 +48,35 @@ import org.slf4j.LoggerFactory;
 public class SchemaUtils {
 
   private SchemaUtils() {
-
   }
 
-  private static Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(TSDataType.class);
+  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker = new EnumMap<>(
+      TSDataType.class);
 
   static {
     Set<TSEncoding> booleanSet = new HashSet<>();
     booleanSet.add(TSEncoding.PLAIN);
     booleanSet.add(TSEncoding.RLE);
     schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
-    Set<TSEncoding> int32Set = new HashSet<>();
-    int32Set.add(TSEncoding.PLAIN);
-    int32Set.add(TSEncoding.RLE);
-    int32Set.add(TSEncoding.TS_2DIFF);
-    int32Set.add(TSEncoding.REGULAR);
-    schemaChecker.put(TSDataType.INT32, int32Set);
-    schemaChecker.put(TSDataType.INT64, int32Set);
+
+    Set<TSEncoding> intSet = new HashSet<>();
+    intSet.add(TSEncoding.PLAIN);
+    intSet.add(TSEncoding.RLE);
+    intSet.add(TSEncoding.TS_2DIFF);
+    intSet.add(TSEncoding.REGULAR);
+    intSet.add(TSEncoding.GORILLA);
+    schemaChecker.put(TSDataType.INT32, intSet);
+    schemaChecker.put(TSDataType.INT64, intSet);
+
     Set<TSEncoding> floatSet = new HashSet<>();
     floatSet.add(TSEncoding.PLAIN);
     floatSet.add(TSEncoding.RLE);
     floatSet.add(TSEncoding.TS_2DIFF);
+    floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
+
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
     schemaChecker.put(TSDataType.TEXT, textSet);
@@ -89,8 +96,10 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
-          e);
+      if (!(e.getCause() instanceof ClosedByInterruptException) &&
+          !(e.getCause() instanceof ClosedChannelException)) {
+        logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(), e);
+      }
     }
   }
 
@@ -105,16 +114,19 @@ public class SchemaUtils {
     TSDataType dataType = schema.getType();
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
-    IoTDB.metaManager.cacheMeta(path,
-        new MeasurementMeta(new MeasurementSchema(path.getMeasurement(),
-        dataType, encoding, compressionType)));
+    MeasurementSchema measurementSchema = new MeasurementSchema(path.getMeasurement(),
+        dataType, encoding, compressionType);
+
+    MeasurementMNode measurementMNode = new MeasurementMNode(null, path.getMeasurement(),
+        measurementSchema, null);
+    IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -132,7 +144,7 @@ public class SchemaUtils {
     }
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
     }
     return dataTypes;
   }
@@ -155,7 +167,7 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }
 
@@ -163,12 +175,13 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      String aggrStr = aggregations != null ? aggregations.get(i) : null;
       TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
-        tsDataTypes.add(IoTDB.metaManager.getSeriesType(paths.get(i)));
+        PartialPath path = paths.get(i);
+        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
       }
     }
     return tsDataTypes;
@@ -178,7 +191,7 @@ public class SchemaUtils {
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
-  public static TSDataType getAggregationType(String aggregation) throws MetadataException {
+  public static TSDataType getAggregationType(String aggregation) {
     if (aggregation == null) {
       return null;
     }
@@ -187,17 +200,15 @@ public class SchemaUtils {
       case SQLConstant.MAX_TIME:
       case SQLConstant.COUNT:
         return TSDataType.INT64;
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return TSDataType.DOUBLE;
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
-        return null;
-      case SQLConstant.AVG:
-      case SQLConstant.SUM:
-        return TSDataType.DOUBLE;
       default:
-        throw new MetadataException(
-            "aggregate does not support " + aggregation + " function.");
+        return null;
     }
   }
 
@@ -226,7 +237,8 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(String
-          .format("encoding %s does not support %s", dataType.toString(), encoding.toString()));
+          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()),
+          true);
     }
   }
 }

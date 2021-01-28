@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public abstract class Statistics<T> {
   /**
    * number of time-value points
    */
-  private long count = 0;
+  private int count = 0;
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
@@ -80,10 +81,30 @@ public abstract class Statistics<T> {
     }
   }
 
+  public static int getSizeByType(TSDataType type) {
+    switch (type) {
+      case INT32:
+        return IntegerStatistics.INTEGER_STATISTICS_FIXED_RAM_SIZE;
+      case INT64:
+        return LongStatistics.LONG_STATISTICS_FIXED_RAM_SIZE;
+      case TEXT:
+        return BinaryStatistics.BINARY_STATISTICS_FIXED_RAM_SIZE;
+      case BOOLEAN:
+        return BooleanStatistics.BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
+      case DOUBLE:
+        return DoubleStatistics.DOUBLE_STATISTICS_FIXED_RAM_SIZE;
+      case FLOAT:
+        return FloatStatistics.FLOAT_STATISTICS_FIXED_RAM_SIZE;
+      default:
+        throw new UnknownColumnTypeException(type.toString());
+    }
+  }
+
   public abstract TSDataType getType();
 
   public int getSerializedSize() {
-    return 24 // count, startTime, endTime
+    return ReadWriteForEncodingUtils.uVarIntSize(count) // count
+        + 16 // startTime, endTime
         + getStatsSize();
   }
 
@@ -91,7 +112,7 @@ public abstract class Statistics<T> {
 
   public int serialize(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(count, outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(count, outputStream);
     byteLen += ReadWriteIOUtils.write(startTime, outputStream);
     byteLen += ReadWriteIOUtils.write(endTime, outputStream);
     // value statistics of different data type
@@ -104,9 +125,9 @@ public abstract class Statistics<T> {
   /**
    * read data from the inputStream.
    */
-  abstract void deserialize(InputStream inputStream) throws IOException;
+  public abstract void deserialize(InputStream inputStream) throws IOException;
 
-  abstract void deserialize(ByteBuffer byteBuffer);
+  public abstract void deserialize(ByteBuffer byteBuffer);
 
   public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
@@ -118,7 +139,9 @@ public abstract class Statistics<T> {
 
   public abstract T getLastValue();
 
-  public abstract double getSumValue();
+  public abstract double getSumDoubleValue();
+
+  public abstract long getSumLongValue();
 
   public abstract byte[] getMinValueBytes();
 
@@ -370,7 +393,7 @@ public abstract class Statistics<T> {
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics statistics = getStatsByType(dataType);
-    statistics.setCount(ReadWriteIOUtils.readLong(inputStream));
+    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream));
     statistics.setStartTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.setEndTime(ReadWriteIOUtils.readLong(inputStream));
     statistics.deserialize(inputStream);
@@ -380,7 +403,7 @@ public abstract class Statistics<T> {
 
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
     Statistics statistics = getStatsByType(dataType);
-    statistics.setCount(ReadWriteIOUtils.readLong(buffer));
+    statistics.setCount(ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
     statistics.setStartTime(ReadWriteIOUtils.readLong(buffer));
     statistics.setEndTime(ReadWriteIOUtils.readLong(buffer));
     statistics.deserialize(buffer);
@@ -408,7 +431,7 @@ public abstract class Statistics<T> {
     this.endTime = endTime;
   }
 
-  public void setCount(long count) {
+  public void setCount(int count) {
     this.count = count;
   }
 

@@ -642,9 +642,7 @@ public class BytesUtils {
       return null;
     }
     byte[] result = new byte[length];
-    for (int i = 0; i < length; i++) {
-      result[i] = src[start + i];
-    }
+    System.arraycopy(src, start, result, 0, length);
     return result;
   }
 
@@ -857,11 +855,10 @@ public class BytesUtils {
    * @return short number
    */
   public static short bytesToShort(byte[] b) {
-    short s = 0;
     short s0 = (short) (b[1] & 0xff);
     short s1 = (short) (b[0] & 0xff);
     s1 <<= 8;
-    s = (short) (s0 | s1);
+    short s = (short) (s0 | s1);
     return s;
   }
 

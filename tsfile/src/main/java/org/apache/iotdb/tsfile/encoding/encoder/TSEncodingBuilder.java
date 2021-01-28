@@ -20,17 +20,14 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.JsonFormatConstant;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Each subclass of TSEncodingBuilder responds a enumerate value in {@linkplain TSEncoding
@@ -57,15 +54,17 @@ public abstract class TSEncodingBuilder {
   public static TSEncodingBuilder getEncodingBuilder(TSEncoding type) {
     switch (type) {
       case PLAIN:
-        return new PLAIN();
+        return new Plain();
       case RLE:
-        return new RLE();
+        return new Rle();
       case TS_2DIFF:
-        return new TS_2DIFF();
-      case GORILLA:
-        return new GORILLA();
+        return new Ts2Diff();
+      case GORILLA_V1:
+        return new GorillaV1();
       case REGULAR:
-        return new REGULAR();
+        return new Regular();
+      case GORILLA:
+        return new GorillaV2();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -97,13 +96,13 @@ public abstract class TSEncodingBuilder {
   /**
    * for all TSDataType.
    */
-  public static class PLAIN extends TSEncodingBuilder {
+  public static class Plain extends TSEncodingBuilder {
 
     private int maxStringLength = TSFileDescriptor.getInstance().getConfig().getMaxStringLength();
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      return new PlainEncoder(EndianType.BIG_ENDIAN, type, maxStringLength);
+      return new PlainEncoder(type, maxStringLength);
     }
 
     @Override
@@ -126,7 +125,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for ENUMS, INT32, BOOLEAN, INT64, FLOAT, DOUBLE.
    */
-  public static class RLE extends TSEncodingBuilder {
+  public static class Rle extends TSEncodingBuilder {
 
     private int maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
 
@@ -135,9 +134,9 @@ public abstract class TSEncodingBuilder {
       switch (type) {
         case INT32:
         case BOOLEAN:
-          return new IntRleEncoder(EndianType.BIG_ENDIAN);
+          return new IntRleEncoder();
         case INT64:
-          return new LongRleEncoder(EndianType.BIG_ENDIAN);
+          return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
           return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
@@ -156,7 +155,12 @@ public abstract class TSEncodingBuilder {
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+        try {
+          this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        } catch (NumberFormatException e) {
+          logger.warn("The format of max point number {} is not correct."
+              + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+        }
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger
@@ -175,7 +179,7 @@ public abstract class TSEncodingBuilder {
   /**
    * for INT32, INT64, FLOAT, DOUBLE.
    */
-  public static class TS_2DIFF extends TSEncodingBuilder {
+  public static class Ts2Diff extends TSEncodingBuilder {
 
     private int maxPointNumber = 0;
 
@@ -204,7 +208,12 @@ public abstract class TSEncodingBuilder {
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
-        maxPointNumber = Integer.valueOf(props.get(Encoder.MAX_POINT_NUMBER));
+        try {
+          this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
+        } catch (NumberFormatException e) {
+          logger.warn("The format of max point number {} is not correct."
+              + " Using default float precision.", props.get(Encoder.MAX_POINT_NUMBER));
+        }
         if (maxPointNumber < 0) {
           maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
           logger
@@ -218,23 +227,22 @@ public abstract class TSEncodingBuilder {
     public String toString() {
       return JsonFormatConstant.MAX_POINT_NUMBER + ":" + maxPointNumber;
     }
-
   }
 
   /**
-   * for ENUMS.
+   * for FLOAT, DOUBLE.
    */
-  public static class GORILLA extends TSEncodingBuilder {
+  public static class GorillaV1 extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case FLOAT:
-          return new SinglePrecisionEncoder();
+          return new SinglePrecisionEncoderV1();
         case DOUBLE:
-          return new DoublePrecisionEncoder();
+          return new DoublePrecisionEncoderV1();
         default:
-          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("GORILLA_V1 doesn't support data type: " + type);
       }
     }
 
@@ -242,13 +250,12 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
     }
-
   }
 
   /**
    * for INT32, INT64
    */
-  public static class REGULAR extends TSEncodingBuilder {
+  public static class Regular extends TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -259,6 +266,33 @@ public abstract class TSEncodingBuilder {
           return new RegularDataEncoder.LongRegularEncoder();
         default:
           throw new UnSupportedDataTypeException("REGULAR doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // allowed do nothing
+    }
+  }
+
+  /**
+   * for FLOAT, DOUBLE, INT, LONG.
+   */
+  public static class GorillaV2 extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case FLOAT:
+          return new SinglePrecisionEncoderV2();
+        case DOUBLE:
+          return new DoublePrecisionEncoderV2();
+        case INT32:
+          return new IntGorillaEncoder();
+        case INT64:
+          return new LongGorillaEncoder();
+        default:
+          throw new UnSupportedDataTypeException("GORILLA doesn't support data type: " + type);
       }
     }
 

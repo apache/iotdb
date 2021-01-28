@@ -29,12 +29,12 @@ public abstract class Modification {
 
   protected Type type;
   protected PartialPath path;
-  protected long versionNum;
+  protected long fileOffset;
 
-  Modification(Type type, PartialPath path, long versionNum) {
+  Modification(Type type, PartialPath path, long fileOffset) {
     this.type = type;
     this.path = path;
-    this.versionNum = versionNum;
+    this.fileOffset = fileOffset;
   }
 
   public String getPathString() {
@@ -57,12 +57,12 @@ public abstract class Modification {
     this.path = path;
   }
 
-  public long getVersionNum() {
-    return versionNum;
+  public long getFileOffset() {
+    return fileOffset;
   }
 
-  public void setVersionNum(long versionNum) {
-    this.versionNum = versionNum;
+  public void setFileOffset(long fileOffset) {
+    this.fileOffset = fileOffset;
   }
 
   public Type getType() {
@@ -87,11 +87,11 @@ public abstract class Modification {
     }
     Modification mod = (Modification) obj;
     return mod.type.equals(this.type) && mod.path.equals(this.path)
-            && mod.versionNum == this.versionNum;
+            && mod.fileOffset == this.fileOffset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, path, versionNum);
+    return Objects.hash(type, path, fileOffset);
   }
 }

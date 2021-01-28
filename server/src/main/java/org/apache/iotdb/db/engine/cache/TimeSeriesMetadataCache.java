@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -47,6 +51,7 @@ import org.slf4j.LoggerFactory;
 public class TimeSeriesMetadataCache {
 
   private static final Logger logger = LoggerFactory.getLogger(TimeSeriesMetadataCache.class);
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE = config
       .getAllocateMemoryForTimeSeriesMetaDataCache();
@@ -59,6 +64,9 @@ public class TimeSeriesMetadataCache {
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+  private final Map<String, WeakReference<String>> devices = Collections
+      .synchronizedMap(new WeakHashMap<>());
+  private static final String SEPARATOR = "$";
 
   private TimeSeriesMetadataCache() {
     if (CACHE_ENABLE) {
@@ -125,8 +133,14 @@ public class TimeSeriesMetadataCache {
       cacheHitNum.incrementAndGet();
       printCacheLog(true);
     } else {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER
+            .info("Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
+        DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
+      }
       // allow for the parallelism of different devices
-      synchronized (key.device.intern()) {
+      synchronized (devices
+          .computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
         // double check
         lock.readLock().lock();
         try {
@@ -138,22 +152,29 @@ public class TimeSeriesMetadataCache {
           cacheHitNum.incrementAndGet();
           printCacheLog(true);
         } else {
-          printCacheLog(false);
+          Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           BloomFilter bloomFilter = reader.readBloomFilter();
-          if (bloomFilter != null && !bloomFilter
-              .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+          if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
+            if (config.isDebugOn()) {
+              DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
+            }
             return null;
           }
+          printCacheLog(false);
           List<TimeseriesMetadata> timeSeriesMetadataList = reader
-              .readTimeseriesMetadata(key.device, allSensors);
+              .readTimeseriesMetadata(path, allSensors);
           // put TimeSeriesMetadata of all sensors used in this query into cache
           lock.writeLock().lock();
           try {
-            timeSeriesMetadataList.forEach(metadata ->
-                lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
-                    metadata.getMeasurementId()), metadata));
+            timeSeriesMetadataList.forEach(metadata -> {
+              TimeSeriesMetadataCacheKey k = new TimeSeriesMetadataCacheKey(key.filePath,
+                  key.device, metadata.getMeasurementId());
+              if (!lruCache.containsKey(k)) {
+                lruCache.put(k, metadata);
+              }
+            });
             timeseriesMetadata = lruCache.get(key);
           } finally {
             lock.writeLock().unlock();
@@ -162,8 +183,16 @@ public class TimeSeriesMetadataCache {
       }
     }
     if (timeseriesMetadata == null) {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
+      }
       return null;
     } else {
+      if (config.isDebugOn()) {
+        DEBUG_LOGGER.info(
+            "Get timeseries: {}.{}  metadata in file: {}  from cache: {}.", key.device,
+            key.measurement, key.filePath, timeseriesMetadata);
+      }
       return new TimeseriesMetadata(timeseriesMetadata);
     }
   }

@@ -202,6 +202,34 @@ All inserted values are in their primitive forms with type info, so that the ser
   void asyncInsertTablets(Map<String, Tablet> tablet, boolean sorted, long timeout, Consumer<Exception> callback)
   ```
 
+* Insert multiple Records that belong to the same device. 
+  With type info the server has no need to do type inference, which leads a better performance
+  
+  ```
+  void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
+  
+* Raw data query. Time interval include startTime and exclude endTime
+
+  ```
+  SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  ```
+
+* Execute query statement
+
+  ```
+  SessionDataSet executeQueryStatement(String sql)
+  ```
+  
+* Execute non query statement
+
+  ```
+  void executeNonQueryStatement(String sql)
+>>>>>>> upstream/master
+  ```
+
 ## Native APIs for profiling network cost
 
 * Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
@@ -216,6 +244,16 @@ All inserted values are in their primitive forms with type info, so that the ser
         List<List<String>> measurementsList, List<List<TSDataType>> typesList,
         List<List<Object>> valuesList)
   ```
+
+* Test the network and client cost of insertRecordsOfOneDevice. 
+This method NOT insert data into database and server just return after accept the request, 
+this method should be used to test other time cost in client
+
+  ```
+  void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```  
 
 * Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
@@ -243,10 +281,10 @@ The sample code of using these interfaces is in example/session/src/main/java/or
 
 ## Session Pool for Native API
 
-We provided a connection pool (`SessionPool) for Native API.
+We provide a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.
 
-If you can not get a session connection in 60 secondes, there is a warning log but the program will hang.
+If you can not get a session connection in 60 seconds, there is a warning log but the program will hang.
 
 If a session has finished an operation, it will be put back to the pool automatically.
 If a session connection is broken, the session will be removed automatically and the pool will try 
@@ -268,8 +306,8 @@ Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
 ## 0.9-0.10 Session Interface Updates
 
-Great changes have taken place in IoTDB session of version 0.10 compared to version 0.9.
-We added a large numbers of new interfaces, and some old interfaces had new names or parameters.
+Significant changes are made in IoTDB session of version 0.10 compared to version 0.9.
+A number of new interfaces are added, and some old interfaces have new names or parameters.
 Besides, all exceptions thrown by session interfaces are changed from *IoTDBSessionExeception* to *IoTDBConnectionException* or *StatementExecutionExeception*.
 The detailed modifications are listed as follows.
 
@@ -440,4 +478,12 @@ Create multiple timeseries with a single method. Users can provide props, tags, 
 ```
 boolean checkTimeseriesExists(String path)
 ```
-Added a method to check whether the specific timeseries exists.
+
+Add a method to check whether the specific timeseries exists.
+
+```
+public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader)
+```
+
+Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.

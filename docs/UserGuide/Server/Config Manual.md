@@ -227,6 +227,25 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 6667 |
 |Effective|After restart system|
 
+* rpc\_thrift\_compression\_enable
+
+|Name| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+* rpc\_advanced\_compression\_enable
+
+|Name| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's advanced compression.|
+|Type|Boolean|
+|Default| false |
+|Effective|After restart system|
+
+
 * time\_zone
 
 |Name| time\_zone |
@@ -272,11 +291,11 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
-* enable\_parameter\_adapter
+* enable\_mem\_control
 
-|Name| enable\_parameter\_adapter |
+|Name| enable\_mem\_control |
 |:---:|:---|
-|Description| enable dynamically adjusting system to avoid OOM|
+|Description| enable memory control to avoid OOM|
 |Type|Bool|
 |Default| true |
 |Effective|After restart system|
@@ -288,7 +307,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max memtable size|
 |Type|Long|
 |Default| 1073741824 |
-|Effective| when enable\_parameter\_adapter is false & After restart system|
+|Effective| when enable\_mem\_control is false & After restart system|
 
 * avg\_series\_point\_number\_threshold
 
@@ -306,7 +325,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| max tsfile size|
 |Type|Long|
 |Default| 536870912 |
-|Effective| when enable\_parameter\_adapter is false & After restart system|
+|Effective| After restart system|
 
 * enable\_partition
 
@@ -426,15 +445,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| false |
 |Effective|After restart system|
 
-* back\_loop\_period_in_second
-
-|Name| back\_loop\_period\_in\_second |
-|:---:|:---|
-|Description| The frequency at which the system statistic module triggers(in seconds). |
-|Type|Int32|
-|Default| 5 |
-|Effective|After restart system|
-
 * concurrent\_flush\_thread
 
 |Name| concurrent\_flush\_thread |
@@ -442,24 +452,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The thread number used to perform the operation when IoTDB writes data in memory to disk. If the value is less than or equal to 0, then the number of CPU cores installed on the machine is used. The default is 0.|
 |Type| Int32 |
 |Default| 0 |
-|Effective|After restart system|
-
-* stat\_monitor\_detect\_freq\_in\_second
-
-|Name| stat\_monitor\_detect\_freq\_in\_second |
-|:---:|:---|
-|Description| The time interval which the system check whether the current record statistic time range exceeds stat_monitor_retain_interval every time (in seconds) and perform regular cleaning|
-|Type| Int32 |
-|Default|600 |
-|Effective|After restart system|
-
-* stat\_monitor\_retain\_interval\_in\_second
-
-|Name| stat\_monitor\_retain\_interval\_in\_second |
-|:---:|:---|
-|Description| The retention time of system statistics data(in seconds). Statistics data over the retention time range will be cleaned regularly.|
-|Type| Int32 |
-|Default|600 |
 |Effective|After restart system|
 
 * tsfile\_storage\_fs
@@ -591,6 +583,16 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
+* thrift\_max\_frame\_size
+
+|Name| thrift\_max\_frame\_size |
+|:---:|:---|
+|Description| the max bytes in a RPC request/response|
+|Type| long |
+|Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Effective|After restart system|
+
+
 ## Automatic Schema Creation and Type Inference
 
 * enable\_auto\_create\_schema
@@ -645,6 +647,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| To which type a floating number string like "6.7" in a query should be resolved|
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
+|Effective|After restart system|
+
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| whether enable data partition. If disabled, all data belongs to partition 0|
+|Type| BOOLEAN |
+|Default|false |
+|Effective|After restart system|
+
+* partition\_interval
+
+|Name| partition\_interval |
+|:---:|:---|
+|Description| time range for partitioning data inside each storage group, the unit is second|
+|Type| LONG |
+|Default| 604800 |
 |Effective|After restart system|
 
 ## Enable GC log

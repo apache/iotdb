@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +51,7 @@ public class RawDataQueryPlan extends QueryPlan {
     return expression;
   }
 
-  public void setExpression(IExpression expression) {
+  public void setExpression(IExpression expression) throws QueryProcessException {
     this.expression = expression;
   }
 
@@ -98,4 +99,7 @@ public class RawDataQueryPlan extends QueryPlan {
         .add(path.getMeasurement());
   }
 
+  public Map<String, Set<String>> getDeviceToMeasurements() {
+    return deviceToMeasurements;
+  }
 }

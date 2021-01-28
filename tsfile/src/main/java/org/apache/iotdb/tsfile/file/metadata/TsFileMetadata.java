@@ -22,13 +22,11 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -36,21 +34,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  */
 public class TsFileMetadata {
 
-  // fields below are IoTDB extensions and they does not affect TsFile's
-  // stand-alone functionality
-  private int totalChunkNum;
-  // invalid means a chunk has been rewritten by merge and the chunk's data is in
-  // another new chunk
-  private int invalidChunkNum;
-
   // bloom filter
   private BloomFilter bloomFilter;
 
   // List of <name, offset, childMetadataIndexType>
   private MetadataIndexNode metadataIndex;
-
-  // offset -> version
-  private List<Pair<Long, Long>> versionInfo;
 
   // offset of MetaMarker.SEPARATOR
   private long metaOffset;
@@ -66,18 +54,6 @@ public class TsFileMetadata {
 
     // metadataIndex
     fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
-    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
-
-    // versionInfo
-    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
-    int versionSize = ReadWriteIOUtils.readInt(buffer);
-    for (int i = 0; i < versionSize; i++) {
-      long versionPos = ReadWriteIOUtils.readLong(buffer);
-      long version = ReadWriteIOUtils.readLong(buffer);
-      versionInfo.add(new Pair<>(versionPos, version));
-    }
-    fileMetaData.setVersionInfo(versionInfo);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
@@ -85,9 +61,9 @@ public class TsFileMetadata {
 
     // read bloom filter
     if (buffer.hasRemaining()) {
-      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
-      int filterSize = ReadWriteIOUtils.readInt(buffer);
-      int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
+      int filterSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+      int hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
       fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
     }
 
@@ -96,6 +72,10 @@ public class TsFileMetadata {
 
   public BloomFilter getBloomFilter() {
     return bloomFilter;
+  }
+
+  public void setBloomFilter(BloomFilter bloomFilter) {
+    this.bloomFilter = bloomFilter;
   }
 
   /**
@@ -114,16 +94,6 @@ public class TsFileMetadata {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
 
-    // totalChunkNum, invalidChunkNum
-    byteLen += ReadWriteIOUtils.write(totalChunkNum, outputStream);
-    byteLen += ReadWriteIOUtils.write(invalidChunkNum, outputStream);
-
-    // versionInfo
-    byteLen += ReadWriteIOUtils.write(versionInfo.size(), outputStream);
-    for (Pair<Long, Long> versionPair : versionInfo) {
-      byteLen += ReadWriteIOUtils.write(versionPair.left, outputStream);
-      byteLen += ReadWriteIOUtils.write(versionPair.right, outputStream);
-    }
 
     // metaOffset
     byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
@@ -143,11 +113,12 @@ public class TsFileMetadata {
     BloomFilter filter = buildBloomFilter(paths);
 
     byte[] bytes = filter.serialize();
-    byteLen += ReadWriteIOUtils.write(bytes.length, outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(bytes.length, outputStream);
     outputStream.write(bytes);
     byteLen += bytes.length;
-    byteLen += ReadWriteIOUtils.write(filter.getSize(), outputStream);
-    byteLen += ReadWriteIOUtils.write(filter.getHashFunctionSize(), outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(filter.getSize(), outputStream);
+    byteLen += ReadWriteForEncodingUtils
+        .writeUnsignedVarInt(filter.getHashFunctionSize(), outputStream);
     return byteLen;
   }
 
@@ -166,21 +137,6 @@ public class TsFileMetadata {
     return filter;
   }
 
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
-  public void setTotalChunkNum(int totalChunkNum) {
-    this.totalChunkNum = totalChunkNum;
-  }
-
-  public int getInvalidChunkNum() {
-    return invalidChunkNum;
-  }
-
-  public void setInvalidChunkNum(int invalidChunkNum) {
-    this.invalidChunkNum = invalidChunkNum;
-  }
 
   public long getMetaOffset() {
     return metaOffset;
@@ -196,13 +152,5 @@ public class TsFileMetadata {
 
   public void setMetadataIndex(MetadataIndexNode metadataIndex) {
     this.metadataIndex = metadataIndex;
-  }
-
-  public void setVersionInfo(List<Pair<Long, Long>> versionInfo) {
-    this.versionInfo = versionInfo;
-  }
-
-  public List<Pair<Long, Long>> getVersionInfo() {
-    return versionInfo;
   }
 }

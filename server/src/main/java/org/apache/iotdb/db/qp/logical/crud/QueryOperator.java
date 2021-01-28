@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import java.util.Map;
+import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -35,6 +36,8 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  private boolean isIntervalByMonth = false;
+  private boolean isSlidingStepByMonth = false;
   // if it is left close and right open interval
   private boolean leftCRightO;
 
@@ -56,9 +59,29 @@ public class QueryOperator extends SFWOperator {
 
   private boolean ascending = true;
 
+  private Map<String, Object> props;
+
+  private IndexType indexType;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
+  }
+
+  public Map<String, Object> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, Object> props) {
+    this.props = props;
+  }
+
+  public IndexType getIndexType() {
+    return indexType;
+  }
+
+  public void setIndexType(IndexType indexType) {
+    this.indexType = indexType;
   }
 
   public boolean isFill() {
@@ -195,6 +218,22 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupByTime(boolean groupByTime) {
     isGroupByTime = groupByTime;
+  }
+
+  public boolean isSlidingStepByMonth() {
+    return isSlidingStepByMonth;
+  }
+
+  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+  }
+
+  public boolean isIntervalByMonth() {
+    return isIntervalByMonth;
+  }
+
+  public void setIntervalByMonth(boolean isIntervalByMonth) {
+    this.isIntervalByMonth = isIntervalByMonth;
   }
 
   public String getColumn() {

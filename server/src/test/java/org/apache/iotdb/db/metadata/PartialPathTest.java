@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -48,14 +49,14 @@ public class PartialPathTest {
     arr2[1] = "s1";
     PartialPath b = new PartialPath(arr2);
     Assert.assertEquals("[root, sg1, d1, s1]", Arrays.toString(a.concatPath(b).getNodes()));
+    Assert.assertEquals("s1", b.getTailNode());
+    Assert.assertEquals("root.sg1.d1", a.concatPath(b).getDevicePath().getFullPath());
+    Assert.assertEquals("root.sg1", a.toString());
   }
 
   @Test
-  public void testConcatArray() {
-    String[] arr1 = new String[2];
-    arr1[0] = "root";
-    arr1[1] = "sg1";
-    PartialPath a = new PartialPath(arr1);
+  public void testConcatArray() throws IllegalPathException {
+    PartialPath a = new PartialPath("root", "sg1");
     String[] arr2 = new String[2];
     arr2[0] = "d1";
     arr2[1] = "s1";
@@ -69,11 +70,11 @@ public class PartialPathTest {
     arr1[0] = "root";
     arr1[1] = "sg1";
     PartialPath a = new PartialPath(arr1);
-    String[] arr2 = new String[1];
-    arr2[0] = "d1";
-    a.concatPath(arr2);
-    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(a.getNodes()));
-    Assert.assertEquals("root.sg1.d1", a.getFullPath());
+    PartialPath b =  a.concatNode("d1");
+    Assert.assertEquals("[root, sg1, d1]", Arrays.toString(b.getNodes()));
+    Assert.assertEquals("root.sg1.d1", b.getFullPath());
+    Assert.assertTrue(b.startsWith(arr1));
+    Assert.assertEquals("root", b.getFirstNode());
   }
 
   @Test
@@ -95,5 +96,18 @@ public class PartialPathTest {
     Assert.assertFalse(p1.matchFullPath(new PartialPath("root.sg2.d1.*")));
     Assert.assertFalse(p1.matchFullPath(new PartialPath("")));
   }
+
+  @Test
+  public void testPartialPathAndStringList() {
+    List<PartialPath> paths = PartialPath.fromStringList(Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s2"));
+    Assert.assertEquals("root.sg1.d1.s1", paths.get(0).getFullPath());
+    Assert.assertEquals("root.sg1.d1.s2", paths.get(1).getFullPath());
+
+    List<String> stringPaths = PartialPath.toStringList(paths);
+    Assert.assertEquals("root.sg1.d1.s1", stringPaths.get(0));
+    Assert.assertEquals("root.sg1.d1.s2", stringPaths.get(1));
+  }
+
+
 
 }

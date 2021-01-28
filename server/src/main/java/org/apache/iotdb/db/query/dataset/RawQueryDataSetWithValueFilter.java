@@ -28,13 +28,15 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
-public class RawQueryDataSetWithValueFilter extends QueryDataSet {
+public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
 
-  private TimeGenerator timeGenerator;
-  private List<IReaderByTimestamp> seriesReaderByTimestampList;
-  private boolean hasCachedRowRecord;
+  private final TimeGenerator timeGenerator;
+  private final List<IReaderByTimestamp> seriesReaderByTimestampList;
+  private final List<Boolean> cached;
+
+  private boolean hasCachedRow;
   private RowRecord cachedRowRecord;
-  private List<Boolean> cached;
+  private Object[] cachedRowInObjects;
 
   /**
    * constructor of EngineDataSetWithValueFilter.
@@ -56,19 +58,19 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
-    if (hasCachedRowRecord) {
+  public boolean hasNextWithoutConstraint() throws IOException {
+    if (hasCachedRow) {
       return true;
     }
     return cacheRowRecord();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() throws IOException {
-    if (!hasCachedRowRecord && !cacheRowRecord()) {
+  public RowRecord nextWithoutConstraint() throws IOException {
+    if (!hasCachedRow && !cacheRowRecord()) {
       return null;
     }
-    hasCachedRowRecord = false;
+    hasCachedRow = false;
     return cachedRowRecord;
   }
 
@@ -101,11 +103,57 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet {
         }
       }
       if (hasField) {
-        hasCachedRowRecord = true;
+        hasCachedRow = true;
         cachedRowRecord = rowRecord;
         break;
       }
     }
-    return hasCachedRowRecord;
+    return hasCachedRow;
+  }
+
+  @Override
+  public boolean hasNextRowInObjects() throws IOException {
+    if (hasCachedRow) {
+      return true;
+    }
+    return cacheRowInObjects();
+  }
+
+  @Override
+  public Object[] nextRowInObjects() throws IOException {
+    if (!hasCachedRow && !cacheRowInObjects()) {
+      // values + timestamp
+      return new Object[seriesReaderByTimestampList.size() + 1];
+    }
+    hasCachedRow = false;
+    return cachedRowInObjects;
+  }
+
+  private boolean cacheRowInObjects() throws IOException {
+    int seriesNumber = seriesReaderByTimestampList.size();
+    while (timeGenerator.hasNext()) {
+      boolean hasField = false;
+
+      Object[] rowInObjects = new Object[seriesNumber + 1];
+      long timestamp = timeGenerator.next();
+      rowInObjects[seriesNumber] = timestamp;
+
+      for (int i = 0; i < seriesNumber; i++) {
+        Object value = cached.get(i)
+            ? timeGenerator.getValue(paths.get(i), timestamp)
+            : seriesReaderByTimestampList.get(i).getValueInTimestamp(timestamp);
+        if (value != null) {
+          hasField = true;
+          rowInObjects[i] = value;
+        }
+      }
+
+      if (hasField) {
+        hasCachedRow = true;
+        cachedRowInObjects = rowInObjects;
+        break;
+      }
+    }
+    return hasCachedRow;
   }
 }

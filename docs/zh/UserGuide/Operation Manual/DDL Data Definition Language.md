@@ -32,12 +32,15 @@ IoTDB > set storage group to root.sgcc
 
 根据以上两条SQL语句，我们可以创建出两个存储组。
 
-需要注意的是，当系统中已经存在某个存储组或存储组的父亲节点或者孩子节点被设置为存储组的情况下，用户不可创建存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
+需要注意的是，存储组的父子节点都不能再设置存储组。例如在已经有`root.ln`和`root.sgcc`这两个存储组的情况下，创建`root.ln.wf01`存储组是不可行的。系统将给出相应的错误提示，如下所示：
 
 ```
 IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
+存储组节点名只支持中英文字符、数字和下划线的组合。
+
+还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
 ## 查看存储组
 
@@ -49,15 +52,27 @@ IoTDB> show storage group root.ln
 ```
 
 执行结果为：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/67779101/92545299-6c029400-f282-11ea-80ea-b672a57f4b13.png"></center>
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+|      root.ln|
++-------------+
+Total line number = 2
+It costs 0.060s
+```
 
 ## 删除存储组
 
-用户使用[DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md)语句可以删除指定的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
+// 删除所有数据，时间序列以及存储组
+IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 ## 创建时间序列
@@ -80,6 +95,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
+
 
 ### 标签点管理
 
@@ -107,7 +123,7 @@ ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
 ```
 * 重新设置标签或属性的值
 ```
-ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
 ```
 * 删除已经存在的标签或属性
 ```
@@ -152,20 +168,63 @@ IoTDB> show timeseries root.ln
 
 执行结果分别为：
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+Total line number = 7
+It costs 0.016s
+
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|   root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|null|      null|
+|     root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 4
+It costs 0.004s
+```
 
 * SHOW TIMESERIES (<`PrefixPath`>)? WhereClause 
   
   返回给定路径的下的所有满足条件的时间序列信息，SQL语句如下所示：
 
 ```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
 show timeseries root.ln where unit=c
 show timeseries root.ln where description contains 'test1'
 ```
 
 执行结果分别为：
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/79682385-61544d80-8254-11ea-8c23-9e93e7152fda.png"></center>
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
 
 > 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然where子句中涉及的必须是标签值，而不能是属性值。
 
@@ -226,7 +285,21 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 
 例如有如下时间序列（可以使用`show timeseries`展示所有时间序列）：
 
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                               {"unit":"c"}|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                    {"description":"test1"}|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+Total line number = 7
+It costs 0.004s
+```
 
 那么Metadata Tree如下所示：
 
@@ -256,7 +329,32 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 ```
 
 对于上面提到的例子和Metadata Tree，你可以获得如下结果：
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
+
+```
++-----+
+|count|
++-----+
+|    4|
++-----+
+Total line number = 1
+It costs 0.003s
+
++-----+
+|count|
++-----+
+|    2|
++-----+
+Total line number = 1
+It costs 0.002s
+
++-----+
+|count|
++-----+
+|    1|
++-----+
+Total line number = 1
+It costs 0.002s
+```
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
@@ -272,6 +370,8 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## 查看设备
 
+* SHOW DEVICES prefixPath? limitClause?
+
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
 * `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。
@@ -280,6 +380,29 @@ SQL语句如下所示：
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln
+```
+
+你可以获得如下数据：
+```
++-------------------+
+|            devices|
++-------------------+
+|  root.ln.wf01.wt01|
+|  root.ln.wf02.wt02|
+|root.sgcc.wf03.wt01|
+|    root.turbine.d1|
++-------------------+
+Total line number = 4
+It costs 0.002s
+
++-----------------+
+|          devices|
++-----------------+
+|root.ln.wf01.wt01|
+|root.ln.wf02.wt02|
++-----------------+
+Total line number = 2
+It costs 0.001s
 ```
 
 # TTL

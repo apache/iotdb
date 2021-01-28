@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
 /**
  * this class contains several constants used in SQL.
@@ -69,6 +72,9 @@ public class SQLConstant {
   public static final String SUM = "sum";
 
   public static final String ALL = "all";
+
+  private static final Set<String> NATIVE_FUNCTION_NAMES = new HashSet<>(Arrays.asList(
+      MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, FIRST_VALUE, LAST_VALUE, COUNT, SUM, AVG));
 
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
@@ -126,8 +132,6 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION = 66;
 
   public static final int TOK_FLUSH_TASK_INFO = 67;
-  public static final int TOK_DYNAMIC_PARAMETER = 68;
-
   public static final int TOK_LOAD_FILES = 69;
   public static final int TOK_REMOVE_FILE = 70;
   public static final int TOK_MOVE_FILE = 71;
@@ -157,8 +161,14 @@ public class SQLConstant {
   public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 89;
   public static final int TOK_TRACING = 91;
 
-  public static final int TOK_COUNT_DEVICES = 92;
-  public static final int TOK_COUNT_STORAGE_GROUP = 93;
+  public static final int TOK_FUNCTION_CREATE = 92;
+  public static final int TOK_FUNCTION_DROP = 93;
+  public static final int TOK_SHOW_FUNCTIONS = 94;
+
+  public static final int TOK_COUNT_DEVICES = 95;
+  public static final int TOK_COUNT_STORAGE_GROUP = 96;
+  public static final int TOK_QUERY_PROCESSLIST = 97;
+  public static final int TOK_KILL_QUERY = 98;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -230,7 +240,6 @@ public class SQLConstant {
 
     tokenNames.put(TOK_LOAD_CONFIGURATION, "TOK_LOAD_CONFIGURATION");
     tokenNames.put(TOK_FLUSH_TASK_INFO, "TOK_FLUSH_TASK_INFO");
-    tokenNames.put(TOK_DYNAMIC_PARAMETER, "TOK_DYNAMIC_PARAMETER");
 
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
@@ -240,6 +249,14 @@ public class SQLConstant {
     tokenNames.put(TOK_DELETE_PARTITION, "TOK_DELETE_PARTITION");
 
     tokenNames.put(TOK_TRACING, "TOK_TRACING");
+
+    tokenNames.put(TOK_FUNCTION_CREATE, "TOK_FUNCTION_CREATE");
+    tokenNames.put(TOK_FUNCTION_DROP, "TOK_FUNCTION_DROP");
+    tokenNames.put(TOK_SHOW_FUNCTIONS, "TOK_SHOW_FUNCTIONS");
+
+    tokenNames.put(TOK_CREATE_INDEX, "TOK_CREATE_INDEX");
+    tokenNames.put(TOK_DROP_INDEX, "TOK_DROP_INDEX");
+    tokenNames.put(TOK_QUERY_INDEX, "TOK_QUERY_INDEX");
   }
 
   static {
@@ -257,4 +274,7 @@ public class SQLConstant {
     return pathStr.equals(TIME_PATH);
   }
 
+  public static Set<String> getNativeFunctionNames() {
+    return NATIVE_FUNCTION_NAMES;
+  }
 }

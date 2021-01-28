@@ -26,8 +26,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -56,13 +59,14 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+@SuppressWarnings("java:S1135") // ignore todos
 public class AggregationExecutor {
 
   private List<PartialPath> selectedSeries;
   protected List<TSDataType> dataTypes;
   protected List<String> aggregations;
   protected IExpression expression;
-  protected final boolean ascending;
+  protected boolean ascending;
 
   /**
    * aggregation batch calculation size.
@@ -97,10 +101,16 @@ public class AggregationExecutor {
         selectedSeries);
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     // TODO-Cluster: group the paths by storage group to reduce communications
-    for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
-      aggregateOneSeries(entry, aggregateResultList,
-          aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
-          context);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance()
+        .mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+    try {
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
+        aggregateOneSeries(entry, aggregateResultList,
+            aggregationPlan.getAllMeasurementsInDevice(entry.getKey().getDevice()), timeFilter,
+            context);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -283,14 +293,30 @@ public class AggregationExecutor {
    */
   public QueryDataSet executeWithValueFilter(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
-
+    int index = 0;
+    for (; index < aggregations.size(); index++) {
+      String aggregationFunc = aggregations.get(index);
+      if (!aggregationFunc.equals(IoTDBConstant.MAX_TIME) && !aggregationFunc
+          .equals(IoTDBConstant.LAST_VALUE)) {
+        break;
+      }
+    }
+    if (index >= aggregations.size()) {
+      queryPlan.setAscending(false);
+      this.ascending = false;
+    }
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath path = selectedSeries.get(i);
-      IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
-          dataTypes.get(i), context);
-      readersOfSelectedSeries.add(seriesReaderByTimestamp);
+    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    try {
+      for (int i = 0; i < selectedSeries.size(); i++) {
+        PartialPath path = selectedSeries.get(i);
+        IReaderByTimestamp seriesReaderByTimestamp = getReaderByTime(path, queryPlan,
+            dataTypes.get(i), context);
+        readersOfSelectedSeries.add(seriesReaderByTimestamp);
+      }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
 
     List<AggregateResult> aggregateResults = new ArrayList<>();
@@ -359,20 +385,24 @@ public class AggregationExecutor {
       record.addField(resultData.getResult(), dataType);
     }
 
-    SingleDataSet dataSet = null;
+    SingleDataSet dataSet;
     if (((AggregationPlan) plan).getLevel() >= 0) {
-      // current only support count operation
       Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, Long> finalPaths = FilePathUtils
-          .getPathByLevel(plan.getDeduplicatedPaths(), ((AggregationPlan) plan).getLevel(),
-              pathIndex);
+      Map<String, AggregateResult> finalPaths = FilePathUtils.getPathByLevel(
+          (AggregationPlan) plan, pathIndex);
 
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
+      List<AggregateResult> mergedAggResults = FilePathUtils.mergeRecordByPath(
+          aggregateResultList, finalPaths, pathIndex);
 
       List<PartialPath> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
-      for (int i = 0; i < finalPaths.size(); i++) {
-        dataTypes.add(TSDataType.INT64);
+      for (int i = 0; i < mergedAggResults.size(); i++) {
+        dataTypes.add(mergedAggResults.get(i).getResultDataType());
+      }
+      RowRecord curRecord = new RowRecord(0);
+      for (AggregateResult resultData : mergedAggResults) {
+        TSDataType dataType = resultData.getResultDataType();
+        curRecord.addField(resultData.getResult(), dataType);
       }
 
       dataSet = new SingleDataSet(paths, dataTypes);

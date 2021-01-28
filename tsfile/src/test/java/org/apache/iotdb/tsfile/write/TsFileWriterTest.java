@@ -238,7 +238,6 @@ public class TsFileWriterTest {
   public void flushForTestWithVersion() throws IOException {
     //The interface is just for test
     writer.flushAllChunkGroups();
-    writer.writeVersion(10L);
     closeFile();
     readNothing();
   }

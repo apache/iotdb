@@ -23,6 +23,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -123,37 +124,67 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
 
   private static String encodeDeletion(Deletion del) {
     return del.getType().toString() + SEPARATOR + del.getPathString()
-        + SEPARATOR + del.getVersionNum() + SEPARATOR
+        + SEPARATOR + del.getFileOffset() + SEPARATOR
         + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 
+  /**
+   * Decode a range deletion record. E.g. "DELETION,root.ln.wf01.wt01.temperature,111,100,300"
+   * the index of field endTimestamp is length - 1, startTimestamp is length - 2,
+   * TsFile offset is length - 3. Fields in index range [1, length -3) all belong
+   * to a timeseries path in case when the path contains comma.
+   */
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 5 && fields.length != 4) {
+    if (fields.length < 4) {
       throw new IOException("Incorrect deletion fields number: " + fields.length);
     }
 
-    String path = fields[1];
-    long versionNum;
-    long startTimestamp = Long.MIN_VALUE;
+    String path = "";
+    long startTimestamp;
     long endTimestamp;
+    long tsFileOffset;
     try {
-      versionNum = Long.parseLong(fields[2]);
+      tsFileOffset = Long.parseLong(fields[fields.length - 3]);
     } catch (NumberFormatException e) {
-      throw new IOException("Invalid version number: " + fields[2]);
+      return decodePointDeletion(fields);
     }
 
     try {
-      if (fields.length == 4) {
-        endTimestamp = Long.parseLong(fields[3]);
-
-      } else {
-        startTimestamp = Long.parseLong(fields[3]);
-        endTimestamp = Long.parseLong(fields[4]);
-      }
-      return new Deletion(new PartialPath(path), versionNum, startTimestamp, endTimestamp);
-    } catch (NumberFormatException | IllegalPathException e) {
+      endTimestamp = Long.parseLong(fields[fields.length - 1]);
+      startTimestamp = Long.parseLong(fields[fields.length - 2]);
+    } catch (NumberFormatException e) {
       throw new IOException("Invalid timestamp: " + e.getMessage());
     }
+    try {
+      String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 3);
+      path = String.join(SEPARATOR, pathArray);
+      return new Deletion(new PartialPath(path), tsFileOffset, startTimestamp, endTimestamp);
+    } catch (IllegalPathException e) {
+      throw new IOException("Invalid series path: " + path);
+    }
+  }
 
+  /**
+   * Decode a point deletion record. E.g. "DELETION,root.ln.wf01.wt01.temperature,111,300"
+   * the index of field endTimestamp is length - 1, versionNum is length - 2.
+   * Fields in index range [1, length - 2) compose timeseries path.
+   */
+  private static Deletion decodePointDeletion(String[] fields) throws IOException {
+    String path = "";
+    long versionNum;
+    long endTimestamp;
+    try {
+      endTimestamp = Long.parseLong(fields[fields.length - 1]);
+      versionNum = Long.parseLong(fields[fields.length - 2]);
+    } catch (NumberFormatException e) {
+      throw new IOException("Invalid timestamp: " + e.getMessage());
+    }
+    try {
+      String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 2);
+      path = String.join(SEPARATOR, pathArray);
+      return new Deletion(new PartialPath(path), versionNum, endTimestamp);
+    } catch (IllegalPathException e) {
+      throw new IOException("Invalid series path: " + path);
+    }
   }
 }

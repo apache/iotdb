@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include "IOTDBSession.h"
+#include "Session.h"
 
 using namespace std;
 
@@ -255,6 +255,17 @@ void deleteTimeseries() {
     session->deleteTimeseries(paths);
 }
 
+void queryLast() {
+    SessionDataSet *dataSet = session->executeQueryStatement("select last s1,s2,s3 from root.sg1.d1");
+    for (string name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+}
+
 int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
@@ -275,6 +286,8 @@ int main() {
     createMultiTimeseries();
 
     insertRecord();
+
+    queryLast();
 
     insertTablet();
 

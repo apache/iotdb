@@ -81,11 +81,13 @@ public class TTLTest {
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
-
+  private int prevUnseqLevelNum;
 
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
+    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
@@ -97,6 +99,7 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   private void insertToStorageGroupProcessor(InsertRowPlan insertPlan)
@@ -109,7 +112,7 @@ public class TTLTest {
     IoTDB.metaManager.setStorageGroup(new PartialPath(sg1));
     IoTDB.metaManager.setStorageGroup(new PartialPath(sg2));
     storageGroupProcessor = new StorageGroupProcessor(IoTDBDescriptor.getInstance().getConfig()
-        .getSystemDir(), sg1, new DirectFlushPolicy());
+        .getSystemDir(), sg1, new DirectFlushPolicy(), sg1);
     IoTDB.metaManager.createTimeseries(new PartialPath(g1s1), TSDataType.INT64, TSEncoding.PLAIN,
         CompressionType.UNCOMPRESSED, Collections.emptyMap());
   }
@@ -264,8 +267,12 @@ public class TTLTest {
     for (File directory : seqDir.listFiles()) {
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-            seqFiles.add(file);
+          if(file.isDirectory()){
+            for(File tsfile : file.listFiles()){
+              if (tsfile.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                seqFiles.add(file);
+              }
+            }
           }
         }
       }
@@ -275,8 +282,12 @@ public class TTLTest {
     for (File directory : unseqDir.listFiles()) {
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-            unseqFiles.add(file);
+          if(file.isDirectory()){
+            for(File tsfile : file.listFiles()){
+              if (tsfile.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                unseqFiles.add(file);
+              }
+            }
           }
         }
       }
@@ -298,8 +309,12 @@ public class TTLTest {
     for (File directory : seqDir.listFiles()) {
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-            seqFiles.add(file);
+          if(file.isDirectory()){
+            for(File tsfile : file.listFiles()){
+              if (tsfile.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                seqFiles.add(file);
+              }
+            }
           }
         }
       }
@@ -309,8 +324,12 @@ public class TTLTest {
     for (File directory : unseqDir.listFiles()) {
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-            unseqFiles.add(file);
+          if(file.isDirectory()){
+            for(File tsfile : file.listFiles()){
+              if (tsfile.getPath().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                unseqFiles.add(file);
+              }
+            }
           }
         }
       }
@@ -352,7 +371,7 @@ public class TTLTest {
   @Test
   public void testShowTTL()
       throws IOException, QueryProcessException, QueryFilterOptimizationException,
-      StorageEngineException, MetadataException {
+      StorageEngineException, MetadataException, InterruptedException {
     IoTDB.metaManager.setTTL(new PartialPath(sg1), ttl);
 
     ShowTTLPlan plan = new ShowTTLPlan(Collections.emptyList());

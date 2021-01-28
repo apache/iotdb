@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -39,29 +40,29 @@ public class PageReader implements IPageReader {
 
   private PageHeader pageHeader;
 
-  private TSDataType dataType;
+  protected TSDataType dataType;
 
   /**
    * decoder for value column
    */
-  private Decoder valueDecoder;
+  protected Decoder valueDecoder;
 
   /**
    * decoder for time column
    */
-  private Decoder timeDecoder;
+  protected Decoder timeDecoder;
 
   /**
    * time column in memory
    */
-  private ByteBuffer timeBuffer;
+  protected ByteBuffer timeBuffer;
 
   /**
    * value column in memory
    */
-  private ByteBuffer valueBuffer;
+  protected ByteBuffer valueBuffer;
 
-  private Filter filter;
+  protected Filter filter;
 
   /**
    * A list of deleted intervals.
@@ -107,7 +108,7 @@ public class PageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
 
-    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending);
+    BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
@@ -162,7 +163,11 @@ public class PageReader implements IPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    this.filter = filter;
+    if (this.filter == null) {
+      this.filter = filter;
+    } else {
+      this.filter = new AndFilter(this.filter, filter);
+    }
   }
 
   public void setDeleteIntervalList(List<TimeRange> list) {
@@ -178,7 +183,7 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
-  private boolean isDeleted(long timestamp) {
+  protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
         return true;

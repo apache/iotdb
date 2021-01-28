@@ -107,7 +107,7 @@ public class IoTDBRecoverUnclosedIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet();) {
+      try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," +
@@ -236,31 +236,31 @@ public class IoTDBRecoverUnclosedIT {
       // prepare BufferWrite file
       for (int i = 5000; i < 7000; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       for (int i = 7500; i < 8500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
       // prepare Unseq-File
       for (int i = 500; i < 1500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       for (int i = 3000; i < 6500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
 
       // prepare BufferWrite cache
       for (int i = 9000; i < 10000; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "true"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "true"));
       }
       // prepare Overflow cache
       for (int i = 2000; i < 2500; i++) {
         statement.execute(String
-            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "'" + i + "'", "false"));
       }
 
     } catch (Exception e) {

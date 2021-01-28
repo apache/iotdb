@@ -100,7 +100,7 @@ public class HDFSTSRecord implements Writable {
     out.write(deviceId.getBytes(StandardCharsets.UTF_8));
     out.writeInt(dataPointList.size());
     for (DataPoint dataPoint : dataPointList) {
-      out.writeShort(dataPoint.getType().serialize());
+      out.write(dataPoint.getType().serialize());
       out.writeInt(dataPoint.getMeasurementId().getBytes(StandardCharsets.UTF_8).length);
       out.write(dataPoint.getMeasurementId().getBytes(StandardCharsets.UTF_8));
       switch (dataPoint.getType()) {
@@ -139,7 +139,7 @@ public class HDFSTSRecord implements Writable {
     List<DataPoint> dataPoints = new ArrayList<>(len);
 
     for (int i = 0; i < len; i++) {
-      TSDataType dataType = TSDataType.deserialize(in.readShort());
+      TSDataType dataType = TSDataType.deserialize(in.readByte());
       int lenOfMeasurementId = in.readInt();
       byte[] c = new byte[lenOfMeasurementId];
       in.readFully(c);

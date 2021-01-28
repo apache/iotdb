@@ -113,7 +113,6 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[cnt], ans);
-          System.out.println(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -131,7 +130,6 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[cnt], ans);
-          System.out.println(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -149,7 +147,6 @@ public class IoTDBGroupByFillWithRangeIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
               .getString(last_value("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray2[retArray2.length - cnt - 1], ans);
-          System.out.println(ans);
           cnt++;
         }
         assertEquals(retArray2.length, cnt);
@@ -165,7 +162,7 @@ public class IoTDBGroupByFillWithRangeIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
-        Statement statement = connection.createStatement();) {
+        Statement statement = connection.createStatement()) {
 
       for (String sql : dataSet1) {
         statement.execute(sql);

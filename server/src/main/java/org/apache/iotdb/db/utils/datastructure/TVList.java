@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -34,31 +37,67 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class TVList {
 
-  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-
   protected static final int SMALL_ARRAY_LENGTH = 32;
-
+  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   protected List<long[]> timestamps;
   protected int size;
 
   protected long[][] sortedTimestamps;
   protected boolean sorted = true;
-
-  /**
-   * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-   */
-  private List<TimeRange> deletionList;
-  private long version;
-
+  // record reference count of this tv list
+  // currently this reference will only be increase because we can't know when to decrease it
+  protected AtomicInteger referenceCount;
   protected long pivotTime;
-
   protected long minTime;
 
+  private long version;
 
   public TVList() {
     timestamps = new ArrayList<>();
     size = 0;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
+    referenceCount = new AtomicInteger();
+  }
+
+  public static TVList newList(TSDataType dataType) {
+    switch (dataType) {
+      case TEXT:
+        return new BinaryTVList();
+      case FLOAT:
+        return new FloatTVList();
+      case INT32:
+        return new IntTVList();
+      case INT64:
+        return new LongTVList();
+      case DOUBLE:
+        return new DoubleTVList();
+      case BOOLEAN:
+        return new BooleanTVList();
+      default:
+        break;
+    }
+    return null;
+  }
+
+  public static long tvListArrayMemSize(TSDataType type) {
+    long size = 0;
+    // time size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // value size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    return size;
+  }
+
+  public boolean isSorted() {
+    return sorted;
+  }
+
+  public void increaseReferenceCount() {
+    referenceCount.incrementAndGet();
+  }
+
+  public int getReferenceCount() {
+    return referenceCount.get();
   }
 
   public int size() {
@@ -95,30 +134,6 @@ public abstract class TVList {
   }
 
   public void putBoolean(long time, boolean value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putLongs(long[] time, long[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putInts(long[] time, int[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putFloats(long[] time, float[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putDoubles(long[] time, double[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putBinaries(long[] time, Binary[] value) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  public void putBooleans(long[] time, boolean[] value) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
@@ -200,7 +215,7 @@ public abstract class TVList {
   protected abstract void releaseLastValueArray();
 
   protected void releaseLastTimeArray() {
-    PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
+    PrimitiveArrayManager.release(timestamps.remove(timestamps.size() - 1));
   }
 
   public int delete(long lowerBound, long upperBound) {
@@ -210,7 +225,7 @@ public abstract class TVList {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
-        minTime = time < minTime ? time : minTime;
+        minTime = Math.min(time, minTime);
       }
     }
     int deletedNumber = size - newSize;
@@ -239,21 +254,18 @@ public abstract class TVList {
   public void clear() {
     size = 0;
     sorted = true;
-    minTime = Long.MIN_VALUE;
+    minTime = Long.MAX_VALUE;
     clearTime();
     clearSortedTime();
 
     clearValue();
     clearSortedValue();
-    if (deletionList != null) {
-      deletionList.clear();
-    }
   }
 
   protected void clearTime() {
     if (timestamps != null) {
       for (long[] dataArray : timestamps) {
-        PrimitiveArrayPool.getInstance().release(dataArray);
+        PrimitiveArrayManager.release(dataArray);
       }
       timestamps.clear();
     }
@@ -261,23 +273,27 @@ public abstract class TVList {
 
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
-      for (long[] dataArray : sortedTimestamps) {
-        PrimitiveArrayPool.getInstance().release(dataArray);
-      }
       sortedTimestamps = null;
     }
   }
 
   abstract void clearValue();
 
+  /**
+   * The arrays for sorting are not including in write memory now,
+   * the memory usage is considered as temporary memory.
+   */
   abstract void clearSortedValue();
 
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add(
-          (long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+      timestamps.add((long[]) getPrimitiveArraysByType(TSDataType.INT64));
     }
+  }
+
+  protected Object getPrimitiveArraysByType(TSDataType dataType) {
+    return PrimitiveArrayManager.getPrimitiveArraysByType(dataType);
   }
 
   protected long[] cloneTime(long[] array) {
@@ -290,6 +306,7 @@ public abstract class TVList {
     if (sorted) {
       return;
     }
+
     if (lo == hi) {
       return;
     }
@@ -324,31 +341,6 @@ public abstract class TVList {
     }
 
     return runHi - lo;
-  }
-
-  public static TVList newList(TSDataType dataType) {
-    switch (dataType) {
-      case TEXT:
-        return new BinaryTVList();
-      case FLOAT:
-        return new FloatTVList();
-      case INT32:
-        return new IntTVList();
-      case INT64:
-        return new LongTVList();
-      case DOUBLE:
-        return new DoubleTVList();
-      case BOOLEAN:
-        return new BooleanTVList();
-    }
-    return null;
-  }
-
-  /**
-   * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-   */
-  public void setDeletionList(List<TimeRange> list) {
-    this.deletionList = list;
   }
 
   protected int compare(int idx1, int idx2) {
@@ -469,12 +461,12 @@ public abstract class TVList {
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
     for (int i = start; i < end; i++) {
-      inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
+      inPutMinTime = Math.min(inPutMinTime, time[i]);
       if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
-    minTime = inPutMinTime < minTime ? inPutMinTime : minTime;
+    minTime = Math.min(inPutMinTime, minTime);
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
 
@@ -486,12 +478,14 @@ public abstract class TVList {
   protected abstract TimeValuePair getTimeValuePair(int index, long time,
       Integer floatPrecision, TSEncoding encoding);
 
+  @TestOnly
   public IPointReader getIterator() {
     return new Ite();
   }
 
-  public IPointReader getIterator(int floatPrecision, TSEncoding encoding) {
-    return new Ite(floatPrecision, encoding);
+  public IPointReader getIterator(int floatPrecision, TSEncoding encoding, int size,
+      List<TimeRange> deletionList) {
+    return new Ite(floatPrecision, encoding, size, deletionList);
   }
 
   private class Ite implements IPointReader {
@@ -502,13 +496,24 @@ public abstract class TVList {
     private Integer floatPrecision;
     private TSEncoding encoding;
     private int deleteCursor = 0;
+    /**
+     * because TV list may be share with different query, each iterator has to record it's own size
+     */
+    private int iteSize = 0;
+    /**
+     * this field is effective only in the Tvlist in a RealOnlyMemChunk.
+     */
+    private List<TimeRange> deletionList;
 
     public Ite() {
+      this.iteSize = TVList.this.size;
     }
 
-    public Ite(int floatPrecision, TSEncoding encoding) {
+    public Ite(int floatPrecision, TSEncoding encoding, int size, List<TimeRange> deletionList) {
       this.floatPrecision = floatPrecision;
       this.encoding = encoding;
+      this.iteSize = size;
+      this.deletionList = deletionList;
     }
 
     @Override
@@ -517,7 +522,7 @@ public abstract class TVList {
         return true;
       }
 
-      while (cur < size) {
+      while (cur < iteSize) {
         long time = getTime(cur);
         if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
           cur++;
@@ -528,7 +533,8 @@ public abstract class TVList {
         cur++;
         return true;
       }
-      return hasCachedPair;
+
+      return false;
     }
 
     private boolean isPointDeleted(long timestamp) {
@@ -565,5 +571,10 @@ public abstract class TVList {
     }
   }
 
+  public abstract TSDataType getDataType();
+
+  public long getLastTime() {
+    return getTime(size - 1);
+  }
 
 }

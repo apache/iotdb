@@ -92,7 +92,6 @@ public class WritableMemChunk implements IWritableMemChunk {
     }
   }
 
-
   @Override
   public void putLong(long t, long v) {
     list.putLong(t, v);
@@ -121,36 +120,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void putBoolean(long t, boolean v) {
     list.putBoolean(t, v);
-  }
-
-  @Override
-  public void putLongs(long[] t, long[] v) {
-    list.putLongs(t, v);
-  }
-
-  @Override
-  public void putInts(long[] t, int[] v) {
-    list.putInts(t, v);
-  }
-
-  @Override
-  public void putFloats(long[] t, float[] v) {
-    list.putFloats(t, v);
-  }
-
-  @Override
-  public void putDoubles(long[] t, double[] v) {
-    list.putDoubles(t, v);
-  }
-
-  @Override
-  public void putBinaries(long[] t, Binary[] v) {
-    list.putBinaries(t, v);
-  }
-
-  @Override
-  public void putBooleans(long[] t, boolean[] v) {
-    list.putBooleans(t, v);
   }
 
   @Override
@@ -184,8 +153,27 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTVList() {
-    list.sort();
+  public synchronized TVList getSortedTVListForQuery() {
+    sortTVList();
+    // increase reference count
+    list.increaseReferenceCount();
+    return list;
+  }
+
+  private void sortTVList() {
+    // check reference count
+    if ((list.getReferenceCount() > 0 && !list.isSorted())) {
+      list = list.clone();
+    }
+
+    if (!list.isSorted()) {
+      list.sort();
+    }
+  }
+
+  @Override
+  public synchronized TVList getSortedTVListForFlush() {
+    sortTVList();
     return list;
   }
 
@@ -216,15 +204,14 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public String toString() {
-    int size = getSortedTVList().size();
+    int size = getSortedTVListForQuery().size();
     StringBuilder out = new StringBuilder("MemChunk Size: " + size + System.lineSeparator());
     if (size != 0) {
       out.append("Data type:").append(schema.getType()).append(System.lineSeparator());
-      out.append("First point:").append(getSortedTVList().getTimeValuePair(0))
+      out.append("First point:").append(getSortedTVListForQuery().getTimeValuePair(0))
           .append(System.lineSeparator());
-      out.append("Last point:").append(getSortedTVList().getTimeValuePair(size - 1))
+      out.append("Last point:").append(getSortedTVListForQuery().getTimeValuePair(size - 1))
           .append(System.lineSeparator());
-      ;
     }
     return out.toString();
   }

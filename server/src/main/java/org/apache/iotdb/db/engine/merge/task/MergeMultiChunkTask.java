@@ -62,7 +62,7 @@ public class MergeMultiChunkTask {
 
   private static final Logger logger = LoggerFactory.getLogger(MergeMultiChunkTask.class);
   private static int minChunkPointNum = IoTDBDescriptor.getInstance().getConfig()
-      .getChunkMergePointThreshold();
+      .getMergeChunkPointNumberThreshold();
 
   private MergeLogger mergeLogger;
   private List<PartialPath> unmergedSeries;
@@ -133,7 +133,7 @@ public class MergeMultiChunkTask {
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
       double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
-      if (newProgress - progress >= 1.0) {
+      if (newProgress - progress >= 10.0) {
         progress = newProgress;
         logger.info("{} has merged {}% series", taskName, progress);
       }
@@ -146,8 +146,7 @@ public class MergeMultiChunkTask {
 
   private void mergePaths() throws IOException {
     mergeLogger.logTSStart(currMergingPaths);
-    IPointReader[] unseqReaders;
-    unseqReaders = resource.getUnseqReaders(currMergingPaths);
+    IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
       if (unseqReaders[i].hasNextTimeValuePair()) {
@@ -218,10 +217,9 @@ public class MergeMultiChunkTask {
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
         mergeFileWriter, currTsFile);
     if (dataWritten) {
-      mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.putStartTime(deviceId, currDeviceMinTime);
+      currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }
 
@@ -288,6 +286,7 @@ public class MergeMultiChunkTask {
       try {
         futures.get(i).get();
       } catch (InterruptedException e) {
+        logger.error("MergeChunkHeapTask interrupted", e);
         Thread.currentThread().interrupt();
         return false;
       } catch (ExecutionException e) {
@@ -303,7 +302,6 @@ public class MergeMultiChunkTask {
 
     return mergedChunkNum.get() > 0;
   }
-
 
 
   /**

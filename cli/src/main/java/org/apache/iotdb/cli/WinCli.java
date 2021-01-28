@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.cli;
 
+import static org.apache.iotdb.cli.utils.IoTPrinter.print;
+import static org.apache.iotdb.cli.utils.IoTPrinter.println;
+
 import java.io.Console;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -31,6 +34,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.thrift.TException;
 
 /**
@@ -52,9 +56,6 @@ public class WinCli extends AbstractCli {
     hf.setWidth(MAX_HELP_CONSOLE_WIDTH);
     commandLine = null;
 
-    String[] newArgs;
-    String[] newArgs2;
-
     if (args == null || args.length == 0) {
       println("Require more params input, please check the following hint.");
       hf.printHelp(IOTDB_CLI_PREFIX, options, true);
@@ -62,8 +63,8 @@ public class WinCli extends AbstractCli {
     }
 
     init();
-    newArgs = removePasswordArgs(args);
-    newArgs2 = processExecuteArgs(newArgs);
+    String[] newArgs = removePasswordArgs(args);
+    String[] newArgs2 = processExecuteArgs(newArgs);
     boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;
@@ -95,12 +96,14 @@ public class WinCli extends AbstractCli {
         Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
-        setTimeFormat("long");
+        timeFormat = RpcUtils.setTimeFormat("long");
       }
       if (commandLine.hasOption(MAX_PRINT_ROW_COUNT_ARGS)) {
         maxPrintRowCount = Integer.parseInt(commandLine.getOptionValue(MAX_PRINT_ROW_COUNT_ARGS));
-        if (maxPrintRowCount < 0) {
-          maxPrintRowCount = Integer.MAX_VALUE;
+        if (maxPrintRowCount <= 0) {
+          println(
+              IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number greater than 0");
+          return false;
         }
       }
     } catch (ParseException e) {
@@ -109,7 +112,7 @@ public class WinCli extends AbstractCli {
       return false;
     } catch (NumberFormatException e) {
       println(
-          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be number");
+          IOTDB_CLI_PREFIX + "> error format of max print row count, it should be a number");
       return false;
     }
     return true;
@@ -149,7 +152,7 @@ public class WinCli extends AbstractCli {
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       properties = connection.getServerProperties();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      TIMESTAMP_PRECISION = properties.getTimestampPrecision();
+      timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting();
       displayLogo(properties.getVersion());
@@ -164,8 +167,7 @@ public class WinCli extends AbstractCli {
       }
     } catch (SQLException e) {
       println(String
-          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host,
-              port));
+          .format("%s> %s Host is %s, port is %s.", IOTDB_CLI_PREFIX, e.getMessage(), host, port));
     }
   }
 }

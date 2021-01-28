@@ -77,15 +77,18 @@ public class FileLoaderUtils {
             .updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
+    tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
+    tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   /**
-   * @param resource TsFile
+   * @param resource   TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
-   * @param filter any filter, only used to check time range
+   * @param filter     any filter, only used to check time range
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, PartialPath seriesPath,
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource,
+      PartialPath seriesPath,
       QueryContext context, Filter filter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
@@ -138,7 +141,7 @@ public class FileLoaderUtils {
    * load all page readers in one chunk that satisfying the timeFilter
    *
    * @param chunkMetaData the corresponding chunk metadata
-   * @param timeFilter it should be a TimeFilter instead of a ValueFilter
+   * @param timeFilter    it should be a TimeFilter instead of a ValueFilter
    */
   public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
       throws IOException {
@@ -152,7 +155,8 @@ public class FileLoaderUtils {
       chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
     } else {
       Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
-      chunkReader = new ChunkReader(chunk, timeFilter, chunkMetaData.isFromOldTsFile());
+      chunk.setFromOldFile(chunkMetaData.isFromOldTsFile());
+      chunkReader = new ChunkReader(chunk, timeFilter);
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader.loadPageReaderList();

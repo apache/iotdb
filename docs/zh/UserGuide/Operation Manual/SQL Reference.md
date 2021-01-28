@@ -31,7 +31,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.11.0-SNAPSHOT|
+|0.12.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -52,7 +52,8 @@ Note: FullPath can not include `*`
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
 Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Note: FullPath can not include `*`
+Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 * 创建时间序列语句
@@ -78,11 +79,19 @@ tagClause
 DataTypeValue: BOOLEAN | DOUBLE | FLOAT | INT32 | INT64 | TEXT
 EncodingValue: GORILLA | PLAIN | RLE | TS_2DIFF | REGULAR
 CompressorValue: UNCOMPRESSED | SNAPPY
+propertyValue: SDT | COMPDEV | COMPMINTIME | COMPMAXTIME
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, COMPRESSOR=SNAPPY, MAX_POINT_NUMBER=3
 Eg: create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=3
+Eg: CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE, LOSS=SDT, COMPDEV=0.01, COMPMINTIME=2, COMPMAXTIME=15
 Note: Datatype and encoding type must be corresponding. Please check Chapter 3 Encoding Section for details.
+Note: When propertyValue is SDT, it is required to set compression deviation COMPDEV, which is the maximum absolute difference between values.
+Note: For SDT, values withtin COMPDEV will be discarded.
+Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is the minimum time difference between stored values for purpose of noise reduction.
+Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
 * 删除时间序列语句
@@ -236,15 +245,15 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * 显示所有设备语句
 
 ```
-SHOW DEVICES
-Eg: IoTDB > SHOW DEVICES
+SHOW DEVICES limitClause?
+Eg: IoTDB > SHOW DEVICES 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * 显示特定设备语句
 
 ```
-SHOW DEVICES <PrefixPath>
+SHOW DEVICES <PrefixPath> limitClause?
 Eg: IoTDB > SHOW DEVICES root
 Eg: IoTDB > SHOW DEVICES root.ln
 Eg: IoTDB > SHOW DEVICES root.*.wf01
@@ -352,18 +361,23 @@ SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
 GroupByTimeClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPAREN
 TimeInterval: LSBRACKET <TimeValue> COMMA <TimeValue> RRBRACKET | LRBRACKET <TimeValue> COMMA <TimeValue> RSBRACKET
 TimeUnit : Integer <DurationUnit>
-DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
+DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w" | "mo"
 Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY([1509465720000, 1509466380000), 5m)
 Eg: SELECT COUNT(status), COUNT(temperature) FROM root.ln.wf01.wt01 where temperature < 24 GROUP BY((1509465720000, 1509466380000], 5m)
 Eg. SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000), 5m, 10m)
 Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ([1509466140000, 1509466380000), 3m, 5ms)
 Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ((1509466140000, 1509466380000], 3m, 5ms)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ((1509466140000, 1509466380000], 1mo)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ((1509466140000, 1509466380000], 1mo, 1mo)
+Eg. SELECT MIN_TIME(status), MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE temperature < 25 GROUP BY ((1509466140000, 1509466380000], 1mo, 2mo)
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: <TimeValue>(TimeInterval) needs to be greater than 0
 Note: First <TimeValue>(TimeInterval) in needs to be smaller than second <TimeValue>(TimeInterval)
 Note: <TimeUnit> needs to be greater than 0
 Note: Third <TimeUnit> if set shouldn't be smaller than second <TimeUnit>
+Note: If the second <DurationUnit> is "mo", the third <DurationUnit> need to be in month
+Note: If the third <DurationUnit> is "mo", the second <DurationUnit> can be in any unit
 ```
 
 * Fill 语句
@@ -586,18 +600,22 @@ root.sg1.d0.s0 is INT32 while root.sg2.d3.s0 is FLOAT.
 Last 语句返回所要查询时间序列的最近时间戳的一条数据
 
 ```
-SELECT LAST <SelectClause> FROM <FromClause>
+SELECT LAST <SelectClause> FROM <FromClause> WHERE <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : <TimeExpr> [(AND | OR) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 
 Eg. SELECT LAST s1 FROM root.sg.d1
 Eg. SELECT LAST s1, s2 FROM root.sg.d1
 Eg. SELECT LAST s1 FROM root.sg.d1, root.sg.d2
+Eg. SELECT LAST s1 FROM root.sg.d1 where time > 100
+Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 规则:
 1. 需要满足PrefixPath.Path 为一条完整的时间序列，即 <PrefixPath> + <Path> = <Timeseries>
 
-2. SELECT LAST 语句不支持过滤条件.
+2. 当前SELECT LAST 语句只支持包含'>'或'>='的时间过滤条件
 
 3. 结果集以三列的表格的固定形式返回。
 例如 "select last s1, s2 from root.sg.d1, root.sg.d2", 结果集返回如下：
@@ -965,20 +983,22 @@ TRACING ON    //打开性能追踪
 TRACING OFF   //关闭性能追踪
 ```
 
+## 中止查询
+
+- 显示正在执行的查询列表
+
+```
+SHOW QUERY PROCESSLIST
+```
+
+- 中止查询
+```
+KILL QUERY INT?
+E.g. KILL QUERY
+E.g. KILL QUERY 2
+```
+
 # 参考
-
-## 关键字
-
-```
-Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, USER, USING, VALUE, VALUES, WHERE, WITH
-
-Keywords with special meanings (case insensitive):
-* Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 
-* Encoding Methods: BITMAP, DFT, GORILLA, PLAIN, RLE, TS_2DIFF
-* Compression Methods: UNCOMPRESSED, SNAPPY
-* Logical symbol: AND, &, &&, OR, | , ||, NOT, !, TRUE, FALSE
-```
 
 ## 标识符
 

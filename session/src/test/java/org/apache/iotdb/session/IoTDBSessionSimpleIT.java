@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +44,10 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -97,6 +102,49 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
+  public void testInsertPartialTablet()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
+
+    Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 15; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue("s1", rowIndex, 1L);
+      tablet.addValue("s2", rowIndex, 1D);
+      tablet.addValue("s3", rowIndex, new Binary("1"));
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("select count(*) from root");
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(2).getLongV());
+    }
+    session.close();
+  }
+
+  @Test
   public void testInsertByStrAndInferType()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -129,6 +177,36 @@ public class IoTDBSessionSimpleIT {
     }
 
     Assert.assertEquals(expected, actual);
+
+    session.close();
+  }
+
+  @Test
+  public void testInsertWrongPathByStrAndInferType()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1..d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    try {
+      session.insertRecord(deviceId, 1L, measurements, values);
+    } catch (Exception e) {
+      logger.error("" ,e);
+    }
+    
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    Assert.assertFalse(dataSet.hasNext());
 
     session.close();
   }
@@ -178,7 +256,7 @@ public class IoTDBSessionSimpleIT {
 
   @Test
   public void testCreateMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException, MetadataException {
+      throws IoTDBConnectionException, StatementExecutionException, MetadataException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -239,9 +317,9 @@ public class IoTDBSessionSimpleIT {
     for (String path : devices) {
       for (int i = 0; i < 10; i++) {
         String[] ss = path.split("\\.");
-        String deviceId = storageGroup;
+        StringBuilder deviceId = new StringBuilder(storageGroup);
         for (int j = 0; j < ss.length - 1; j++) {
-          deviceId += (TsFileConstant.PATH_SEPARATOR + ss[j]);
+          deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
@@ -251,7 +329,7 @@ public class IoTDBSessionSimpleIT {
         measurements.add(sensorId);
         types.add(TSDataType.INT64);
         values.add(100L);
-        session.insertRecord(deviceId, i, measurements, types, values);
+        session.insertRecord(deviceId.toString(), i, measurements, types, values);
       }
     }
 
@@ -285,4 +363,161 @@ public class IoTDBSessionSimpleIT {
     session.deleteStorageGroup(storageGroup);
     session.close();
   }
+
+  @Test
+  public void createWrongTimeSeries() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    try {
+      session.createTimeseries("root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("",e);
+    }
+
+    final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
+    assertFalse(dataSet.hasNext());
+
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
+  @Test
+  public void testInsertOneDeviceRecords()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
+    checkResult(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertOneDeviceRecordsWithOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
+    checkResult(session);
+    session.close();
+  }
+
+  @Test(expected = BatchExecutionException.class)
+  public void testInsertOneDeviceRecordsWithIncorrectOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(times, measurements, datatypes, values, 2L, "s2", "s3", TSDataType.INT32,
+        TSDataType.INT64, 3, 4L);
+    addLine(times, measurements, datatypes, values, 3L, "s1", "s2", TSDataType.INT32,
+        TSDataType.INT32, 1, 2);
+    addLine(times, measurements, datatypes, values, 1L, "s4", "s5", TSDataType.FLOAT,
+        TSDataType.BOOLEAN, 5.0f, Boolean.TRUE);
+
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
+    checkResult(session);
+    session.close();
+  }
+
+  private void checkResult(Session session)
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
+    dataSet.getColumnNames();
+    Assert.assertArrayEquals(dataSet.getColumnNames().toArray(new String[0]), new String[] {"Time",
+        "root.sg.d1.s3", "root.sg.d1.s4", "root.sg.d1.s5", "root.sg.d1.s1", "root.sg.d1.s2"});
+    Assert.assertArrayEquals(dataSet.getColumnTypes().toArray(new TSDataType[0]), new TSDataType[] { TSDataType.INT64,
+        TSDataType.INT64, TSDataType.FLOAT, TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT32
+    });
+    long time = 1L;
+    //
+    Assert.assertTrue (dataSet.hasNext());
+    RowRecord record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {0, 3, 4});
+    Assert.assertEquals(5.0f,  record.getFields().get(1).getFloatV(), 0.01);
+    Assert.assertEquals(Boolean.TRUE,  record.getFields().get(2).getBoolV());
+
+
+    Assert.assertTrue (dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {1, 2, 3});
+    Assert.assertEquals(4L,  record.getFields().get(0).getLongV());
+    Assert.assertEquals(3,  record.getFields().get(4).getIntV());
+
+    Assert.assertTrue (dataSet.hasNext());
+    record = dataSet.next();
+    Assert.assertEquals(time, record.getTimestamp());
+    time ++;
+    assertNulls(record, new int[] {0, 1, 2});
+    Assert.assertEquals(1,  record.getFields().get(3).getIntV());
+    Assert.assertEquals(2,  record.getFields().get(4).getIntV());
+
+    Assert.assertFalse (dataSet.hasNext());
+    dataSet.closeOperationHandle();
+
+  }
+
+  private void addLine(List<Long> times, List<List<String>> measurements, List<List<TSDataType>> datatypes,
+      List<List<Object>> values, long time, String s1, String s2, TSDataType s1type, TSDataType s2type,
+      Object value1, Object value2) {
+    List<String>  tmpMeasurements = new ArrayList<>();
+    List<TSDataType> tmpDataTypes = new ArrayList<>();
+    List<Object> tmpValues = new ArrayList<>();
+    tmpMeasurements.add(s1);
+    tmpMeasurements.add(s2);
+    tmpDataTypes.add(s1type);
+    tmpDataTypes.add(s2type);
+    tmpValues.add(value1);
+    tmpValues.add(value2);
+    times.add(time);
+    measurements.add(tmpMeasurements);
+    datatypes.add(tmpDataTypes);
+    values.add(tmpValues);
+  }
+
+  private void assertNulls(RowRecord record, int[] index) {
+    for (int i : index) {
+      Assert.assertNull(record.getFields().get(i).getDataType());
+    }
+  }
+
 }

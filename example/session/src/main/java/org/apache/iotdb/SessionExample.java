@@ -45,6 +45,7 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S2 = "root.sg1.d1.s2";
   private static final String ROOT_SG1_D1_S3 = "root.sg1.d1.s3";
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
+  private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
 
 
@@ -53,11 +54,15 @@ public class SessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
+    //set session fetchSize
+    session.setFetchSize(10000);
+
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         throw e;
+      }
     }
 
     createTimeseries();
@@ -72,10 +77,12 @@ public class SessionExample {
     asyncInsertTablets();
     nonQuery();
     query();
+    queryWithTimeout();
     rawDataQuery();
     queryByIterator();
     deleteData();
     deleteTimeseries();
+    setTimeout();
     session.close();
   }
 
@@ -103,6 +110,19 @@ public class SessionExample {
       tags.put("description", "v1");
       session.createTimeseries(ROOT_SG1_D1_S4, TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY, null, tags, attributes, "temperature");
+    }
+
+    // create timeseries with SDT property, SDT will take place when flushing
+    if (!session.checkTimeseriesExists(ROOT_SG1_D1_S5)) {
+      // COMPDEV is required
+      // COMPMAXTIME and COMPMINTIME are optional and their unit is ms
+      Map<String, String> props = new HashMap<>();
+      props.put("LOSS", "sdt");
+      props.put("COMPDEV", "0.01");
+      props.put("COMPMINTIME", "2");
+      props.put("COMPMAXTIME", "10");
+      session.createTimeseries(ROOT_SG1_D1_S5, TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY, props, null, null, null);
     }
   }
 
@@ -194,8 +214,8 @@ public class SessionExample {
         measurements.size() + " measurements, time " + time + ":" + e.getMessage());
   }
 
-  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException,
-      ExecutionException, InterruptedException {
+  private static void insertStrRecord()
+      throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -557,8 +577,19 @@ public class SessionExample {
   }
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet;
-    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
+    dataSet.setFetchSize(1024); // default is 10000
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void queryWithTimeout()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1", 2000);
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
     while (dataSet.hasNext()) {
@@ -576,8 +607,7 @@ public class SessionExample {
     long startTime = 10L;
     long endTime = 200L;
 
-    SessionDataSet dataSet;
-    dataSet = session.executeRawDataQuery(paths, startTime, endTime);
+    SessionDataSet dataSet = session.executeRawDataQuery(paths, startTime, endTime);
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024);
     while (dataSet.hasNext()) {
@@ -588,8 +618,7 @@ public class SessionExample {
 
   private static void queryByIterator()
       throws IoTDBConnectionException, StatementExecutionException {
-    SessionDataSet dataSet;
-    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     DataIterator iterator = dataSet.iterator();
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
@@ -632,6 +661,11 @@ public class SessionExample {
   }
 
   private static void nonQuery() throws IoTDBConnectionException, StatementExecutionException {
-    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
+    session.executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1)");
+  }
+
+  private static void setTimeout() throws StatementExecutionException {
+    Session tempSession = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
+    tempSession.setTimeout(60000);
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -34,6 +33,7 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -48,19 +48,15 @@ import org.junit.Test;
 public class MManagerBasicTest {
 
   private CompressionType compressionType;
-  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
 
   @Before
   public void setUp() throws Exception {
-    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(canAdjust);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -338,31 +334,8 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException {
-    MManager manager = IoTDB.metaManager;
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.laptop"));
-    assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    manager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.setStorageGroup(new PartialPath("root.vehicle"));
-    manager.createTimeseries(new PartialPath("root.vehicle.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
-        CompressionType.GZIP, null);
-    assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
-
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s1"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
-    assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-  }
-
-  @Test
   public void testGetStorageGroupNameByAutoLevel() {
     int level = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
-    boolean caughtException;
 
     try {
       assertEquals("root.laptop",
@@ -372,7 +345,7 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
 
-    caughtException = false;
+    boolean caughtException = false;
     try {
       MetaUtils.getStorageGroupPathByLevel(new PartialPath("root1.laptop.d1.s1"), level);
     } catch (MetadataException e) {
@@ -431,7 +404,8 @@ public class MManagerBasicTest {
         "[root.laptop.b1.d1, root.laptop.b1.d2, root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3]",
         "[root.laptop.b1.d1, root.laptop.b1.d2]",
         "[root.vehicle.b1.d0, root.vehicle.b1.d2, root.vehicle.b1.d3, root.vehicle.b2.d0]",
-        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]"
+        "[root.laptop.b1.d1.s0, root.laptop.b1.d1.s1, root.laptop.b1.d2.s0, root.laptop.b2.d1.s1, root.laptop.b2.d1.s3, root.laptop.b2.d2.s2]",
+        "[]"
     };
 
     try {
@@ -467,6 +441,7 @@ public class MManagerBasicTest {
       assertEquals(res[5], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b1")).toString());
       assertEquals(res[6], manager.getChildNodePathInNextLevel(new PartialPath("root.v*.*")).toString());
       assertEquals(res[7], manager.getChildNodePathInNextLevel(new PartialPath("root.l*.b*.*")).toString());
+      assertEquals(res[8], manager.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

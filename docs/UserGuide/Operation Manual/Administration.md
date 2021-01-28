@@ -33,7 +33,7 @@ The user is the legal user of the database. A user corresponds to a unique usern
 
 ### Privilege
 
-The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges can be divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
+The database provides a variety of operations, and not all users can perform all operations. If a user can perform an operation, the user is said to have the privilege to perform the operation. privileges are divided into data management privilege (such as adding, deleting and modifying data) and authority management privilege (such as creation and deletion of users and roles, granting and revoking of privileges, etc.). Data management privilege often needs a path to limit its effective range, which is a subtree rooted at the path's corresponding node.
 
 ### Role
 
@@ -45,7 +45,7 @@ There is a default user in IoTDB after the initial installation: root, and the d
 
 ## Privilege Management Operation Examples
 
-According to the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the sample data of IoTDB may belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
+According to the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the sample data of IoTDB might belong to different power generation groups such as ln, sgcc, etc. Different power generation groups do not want others to obtain their own database data, so we need to have data privilege isolated at the group layer.
 
 ### Create User
 
@@ -62,7 +62,17 @@ LIST USER
 ```
 As can be seen from the result shown below, the two users have been created:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578263-e2a91d00-1ef7-11e9-94e8-28819b6fea87.jpg"></center>
+```
++---------------+
+|           user|
++---------------+
+|  ln_write_user|
+|           root|
+|sgcc_write_user|
++---------------+
+Total line number = 3
+It costs 0.004s
+```
 
 ### Grant User Privilege
 
@@ -73,7 +83,9 @@ INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 ```
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51597609-9af5b600-1f36-11e9-9460-8ab185eb4735.png"></center>
+```
+Msg: 602: No permissions for this operation INSERT
+```
 
 Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again. The SQL statement is:
 
@@ -83,7 +95,15 @@ GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 The execution result is as follows:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51578942-33ba1080-1efa-11e9-891c-09d69791aff1.jpg"></center>
+
+```
+IoTDB> GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
+Msg: The statement is executed successfully.
+IoTDB> GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+Msg: The statement is executed successfully.
+IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
+Msg: The statement is executed successfully.
+```
 
 ## Other Instructions
 
@@ -100,6 +120,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 ### List of Privileges Included in the System
 
 <center>**List of privileges Included in the System**
+
 
 |privilege Name|Interpretation|
 |:---|:---|
@@ -120,6 +141,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|
 |GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
+|CREATE_FUNCTION|register UDFs; path independent|
+|DROP_FUNCTION|deregister UDFs; path independent|
 </center>
 
 ### Username Restrictions
@@ -127,7 +150,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 IoTDB specifies that the character length of a username should not be less than 4, and the username cannot contain spaces.
 ### Password Restrictions
 
-IoTDB specifies that the character length of a password should not be less than 4, and the password cannot contain spaces. The password is encrypted with MD5.
+IoTDB specifies that the character length of a password should have no less than 4 character length, and no spaces. The password is encrypted with MD5.
 ### Role Name Restrictions
 
-IoTDB specifies that the character length of a role name should not be less than 4, and the role name cannot contain spaces.
+IoTDB specifies that the character length of a role name should have no less than 4 character length, and no spaces.

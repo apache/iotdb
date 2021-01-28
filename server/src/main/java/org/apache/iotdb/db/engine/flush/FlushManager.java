@@ -20,10 +20,15 @@ package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -32,7 +37,8 @@ import org.slf4j.LoggerFactory;
 
 public class FlushManager implements FlushManagerMBean, IService {
 
-  private static final Logger logger = LoggerFactory.getLogger(FlushManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlushManager.class);
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ConcurrentLinkedDeque<TsFileProcessor> tsFileProcessorQueue = new ConcurrentLinkedDeque<>();
 
@@ -86,13 +92,25 @@ public class FlushManager implements FlushManagerMBean, IService {
     @Override
     public void runMayThrow() {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
+      if (null == tsFileProcessor) {
+        return;
+      }
+
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Flush Thread re-register TSProcessor {} to the queue.",
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Flush Thread re-register TSProcessor {} to the queue.",
             tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
       }
       registerTsFileProcessor(tsFileProcessor);
+      // update stat monitor cache to system during each flush()
+      if (config.isEnableStatMonitor() && config.isEnableMonitorSeriesWrite()) {
+        try {
+          StatMonitor.getInstance().saveStatValue(tsFileProcessor.getStorageGroupName());
+        } catch (StorageEngineException | MetadataException e) {
+          LOGGER.error("Inserting monitor series data error.", e);
+        }
+      }
     }
   }
 
@@ -105,24 +123,26 @@ public class FlushManager implements FlushManagerMBean, IService {
       if (!tsFileProcessor.isManagedByFlushManager()
           && tsFileProcessor.getFlushingMemTableSize() > 0) {
         tsFileProcessorQueue.add(tsFileProcessor);
-        if (logger.isDebugEnabled()) {
-          logger.debug(
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
               "{} begin to submit a flush thread, flushing memtable size: {}, queue size: {}",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessor.getFlushingMemTableSize(), tsFileProcessorQueue.size());
         }
         tsFileProcessor.setManagedByFlushManager(true);
         flushPool.submit(new FlushThread());
-      } else if (logger.isDebugEnabled()) {
+      }
+
+      if (LOGGER.isDebugEnabled()) {
         if (tsFileProcessor.isManagedByFlushManager()) {
-          logger.debug(
+          LOGGER.debug(
               "{} is already in the flushPool, the first one: {}, the given processor flushMemtable number = {}",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
               tsFileProcessorQueue.isEmpty() ? "empty now"
                   : tsFileProcessorQueue.getFirst().getStorageGroupName(),
               tsFileProcessor.getFlushingMemTableSize());
         } else {
-          logger.debug("No flushing memetable to do, register TsProcessor {} failed.",
+          LOGGER.debug("No flushing memetable to do, register TsProcessor {} failed.",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
         }
       }

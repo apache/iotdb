@@ -32,16 +32,19 @@ IoTDB > set storage group to root.sgcc
 
 We can thus create two storage groups using the above two SQL statements.
 
-It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when there exist two storage groups `root.ln` and `root.sgcc`. The system will give the corresponding error prompt as shown below:
+It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
+The LayerName of storage group can only be characters, numbers and underscores. 
+ 
+Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 ## Show Storage Group
 
-After the storage group is created, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statements are as follows:
+After creating the storage group, we can use the [SHOW STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Operation%20Manual/SQL%20Reference.md) to view the storage groups. The SQL statements are as follows:
 
 ```
 IoTDB> show storage group
@@ -49,15 +52,27 @@ IoTDB> show storage group root.ln
 ```
 
 The result is as follows:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/67779101/92545299-6c029400-f282-11ea-80ea-b672a57f4b13.png"></center>
+
+```
++-------------+
+|storage group|
++-------------+
+|    root.sgcc|
+|      root.ln|
++-------------+
+Total line number = 2
+It costs 0.060s
+```
 
 ## Delete Storage Group
 
-User can delete a specified storage group by using [DELETE STORAGE GROUP](../Operation%20Manual/SQL%20Reference.md). Please note the data in the storage group will also be deleted. 
+User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
+// delete all data, all timeseries and all storage groups
+IoTDB > DELETE STORAGE GROUP root.*
 ```
 
 ## Create Timeseries
@@ -73,7 +88,7 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-It is worth noting that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system will give the corresponding error prompt as shown below:
+Notice that when in the CRATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -109,7 +124,7 @@ ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
 ```
 * reset the tag/attribute value
 ```
-ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
 ```
 * delete the existing tag/attribute
 ```
@@ -133,7 +148,7 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  There are four optional clauses could be added in SHOW TIMESERIES, return information of time series 
+  There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
@@ -154,20 +169,63 @@ IoTDB> show timeseries root.ln
 
 The results are shown below respectively:
 
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+Total line number = 7
+It costs 0.016s
+
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|   root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|null|      null|
+|     root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 4
+It costs 0.004s
+```
 
 * SHOW TIMESERIES (<`PrefixPath`>)? WhereClause
  
   returns all the timeseries information that satisfy the where condition and start with the prefixPath SQL statements are as follows:
 
 ```
+ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
+ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
 show timeseries root.ln where unit=c
 show timeseries root.ln where description contains 'test1'
 ```
 
 The results are shown below respectly:
-<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/79682385-61544d80-8254-11ea-8c23-9e93e7152fda.png"></center>
+
+```
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|                timeseries|alias|storage group|dataType|encoding|compression|        tags|attributes|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+|root.ln.wf02.wt02.hardware| null|      root.ln|    TEXT|   PLAIN|     SNAPPY|{"unit":"c"}|      null|
++--------------------------+-----+-------------+--------+--------+-----------+------------+----------+
+Total line number = 1
+It costs 0.005s
+
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|                   tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+|root.ln.wf02.wt02.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|{"description":"test1"}|      null|
++------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
+Total line number = 1
+It costs 0.004s
+```
 
 > Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
 
@@ -200,18 +258,11 @@ Example：
 |root.ln.wf01|
 |root.ln.wf02|
 +------------+
+Total line number = 2
+It costs 0.002s
 ```
 
-* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
-
-```
-+---------------+
-|    child paths|
-+---------------+
-|root.ln.wf01.s1|
-|root.ln.wf02.s2|
-+---------------+
-```
+> get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
 
 ## Count Timeseries
 
@@ -226,10 +277,26 @@ IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 
 Besides, `LEVEL` could be defined to show count the number of timeseries of each node at the given level in current Metadata Tree. This could be used to query the number of sensors under each device. The grammar is: `COUNT TIMESERIES <Path> GROUP BY LEVEL=<INTEGER>`.
 
-For example, if there are several timeseires (use `show timeseries` to show all timeseries):
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792072-cdc8a480-1200-11ea-8cec-321fef618a12.png"></center>
+For example, if there are several timeseries (use `show timeseries` to show all timeseries):
+
+```
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|                     timeseries|   alias|storage group|dataType|encoding|compression|                                       tags|                                              attributes|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+|root.sgcc.wf03.wt01.temperature|    null|    root.sgcc|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|     root.sgcc.wf03.wt01.status|    null|    root.sgcc| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
+|             root.turbine.d1.s1|newAlias| root.turbine|   FLOAT|     RLE|     SNAPPY|{"newTag1":"newV1","tag4":"v4","tag3":"v3"}|{"attr2":"v2","attr1":"newV1","attr4":"v4","attr3":"v3"}|
+|     root.ln.wf02.wt02.hardware|    null|      root.ln|    TEXT|   PLAIN|     SNAPPY|                               {"unit":"c"}|                                                    null|
+|       root.ln.wf02.wt02.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                    {"description":"test1"}|                                                    null|
+|  root.ln.wf01.wt01.temperature|    null|      root.ln|   FLOAT|     RLE|     SNAPPY|                                       null|                                                    null|
+|       root.ln.wf01.wt01.status|    null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|                                       null|                                                    null|
++-------------------------------+--------+-------------+--------+--------+-----------+-------------------------------------------+--------------------------------------------------------+
+Total line number = 7
+It costs 0.004s
+```
 
 Then the Metadata Tree will be as below:
+
 <center><img style="width:100%; max-width:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792176-1718f400-1201-11ea-861a-1a83c07ca144.jpg"></center>
 
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
@@ -242,7 +309,34 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 
 You will get following results:
 
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792071-cb664a80-1200-11ea-8386-02dd12046c4b.png"></center>
+```
++------------+-----+
+|      column|count|
++------------+-----+
+|   root.sgcc|    2|
+|root.turbine|    1|
+|     root.ln|    4|
++------------+-----+
+Total line number = 3
+It costs 0.002s
+
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf02|    2|
+|root.ln.wf01|    2|
++------------+-----+
+Total line number = 2
+It costs 0.002s
+
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf01|    2|
++------------+-----+
+Total line number = 1
+It costs 0.002s
+```
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
@@ -258,7 +352,31 @@ IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
 
 As for the above mentioned example and Metadata tree, you can get following results:
 
-<center><img style="width:100%; max-width:800px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/69792060-c73a2d00-1200-11ea-8ec4-be7145fd6c8c.png"></center>
+```
++-----+
+|count|
++-----+
+|    4|
++-----+
+Total line number = 1
+It costs 0.003s
+
++-----+
+|count|
++-----+
+|    2|
++-----+
+Total line number = 1
+It costs 0.002s
+
++-----+
+|count|
++-----+
+|    1|
++-----+
+Total line number = 1
+It costs 0.002s
+```
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 `PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
@@ -277,6 +395,8 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ## Show Devices
 
+* SHOW DEVICES prefixPath? limitClause?
+
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
 * `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
@@ -287,6 +407,30 @@ SQL statement is as follows:
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln
+```
+
+You can get results below:
+
+```
++-------------------+
+|            devices|
++-------------------+
+|  root.ln.wf01.wt01|
+|  root.ln.wf02.wt02|
+|root.sgcc.wf03.wt01|
+|    root.turbine.d1|
++-------------------+
+Total line number = 4
+It costs 0.002s
+
++-----------------+
+|          devices|
++-----------------+
+|root.ln.wf01.wt01|
+|root.ln.wf02.wt02|
++-----------------+
+Total line number = 2
+It costs 0.001s
 ```
 
 # TTL
@@ -315,7 +459,7 @@ After unset TTL, all data will be accepted in `root.ln`
 
 ## Show TTL
 
-To Show TTL, we can use follwing SQL statement:
+To Show TTL, we can use following SQL statement:
 
 ```
 IoTDB> SHOW ALL TTL
@@ -358,7 +502,7 @@ IoTDB> CLEAR CACHE
 
 ## CREATE SNAPSHOT FOR SCHEMA
 
-To speed up restarting of IoTDB, users could create snapshot of schema and avoid recovering schema from mlog file.
+To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
 ```
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```

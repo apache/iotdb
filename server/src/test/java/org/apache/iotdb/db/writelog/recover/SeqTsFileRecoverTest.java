@@ -21,17 +21,18 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -74,7 +76,6 @@ public class SeqTsFileRecoverTest {
   private WriteLogNode node;
 
   private String logNodePrefix = TestConstant.BASE_OUTPUT_PATH.concat("testRecover");
-  private String storageGroup = "target";
   private TsFileResource resource;
   private VersionController versionController = new VersionController() {
     private int i;
@@ -100,7 +101,8 @@ public class SeqTsFileRecoverTest {
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         IoTDB.metaManager
-            .createTimeseries(new PartialPath("root.sg.device" + i + ".sensor" + j), TSDataType.INT64,
+            .createTimeseries(new PartialPath("root.sg.device" + i + ".sensor" + j),
+                TSDataType.INT64,
                 TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                 Collections.emptyMap());
       }
@@ -137,9 +139,17 @@ public class SeqTsFileRecoverTest {
       }
     }
     writer.flushAllChunkGroups();
+    writer.getIOWriter().writePlanIndices();
     writer.getIOWriter().close();
 
-    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName());
+    node = MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsF.getName(), () -> {
+      ByteBuffer[] buffers = new ByteBuffer[2];
+      buffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      buffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return buffers;
+    });
     for (int i = 10; i < 20; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
@@ -150,7 +160,8 @@ public class SeqTsFileRecoverTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k);
         }
-        InsertRowPlan insertPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i, measurements, types,
+        InsertRowPlan insertPlan = new InsertRowPlan(new PartialPath("root.sg.device" + j), i,
+            measurements, types,
             values);
         node.write(insertPlan);
       }
@@ -165,15 +176,28 @@ public class SeqTsFileRecoverTest {
     EnvironmentUtils.cleanEnv();
     FileUtils.deleteDirectory(tsF.getParentFile());
     resource.close();
-    node.delete();
+    ByteBuffer[] buffers = node.delete();
+    for (ByteBuffer byteBuffer : buffers) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
   }
 
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, false);
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true, () -> {
+      ByteBuffer[] buffers = new ByteBuffer[2];
+      buffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      buffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return buffers;
+    }, (ByteBuffer[] array) -> {
+      for (ByteBuffer byteBuffer : array) {
+        MmapUtil.clean((MappedByteBuffer) byteBuffer);
+      }
+    });
     assertFalse(writer.canWrite());
     writer.close();
 
@@ -220,16 +244,23 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
-    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix, versionController,
+    TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         resource, false, true);
-    ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-    RestorableTsFileIOWriter writer = performer.recover();
+    RestorableTsFileIOWriter writer = performer.recover(true, () -> {
+      ByteBuffer[] buffers = new ByteBuffer[2];
+      buffers[0] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      buffers[1] = ByteBuffer
+          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+      return buffers;
+    }, (ByteBuffer[] array) -> {
+      for (ByteBuffer byteBuffer : array) {
+        MmapUtil.clean((MappedByteBuffer) byteBuffer);
+      }
+    });
 
     writer.makeMetadataVisible();
     assertEquals(11, writer.getMetadatasForQuery().size());
-
-    assertTrue(writer.canWrite());
-    writer.endFile();
 
     assertEquals(2, resource.getStartTime("root.sg.device99"));
     assertEquals(100, resource.getEndTime("root.sg.device99"));
