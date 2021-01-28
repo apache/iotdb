@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+
+import org.junit.Test;
 
 public class IntegerStatisticsTest {
 
@@ -35,7 +35,7 @@ public class IntegerStatisticsTest {
     assertEquals(2, (int) intStats.getMaxValue());
     assertEquals(1, (int) intStats.getMinValue());
     assertEquals(1, (int) intStats.getFirstValue());
-    assertEquals(3, (int) intStats.getSumValue());
+    assertEquals(3, (int) intStats.getSumLongValue());
     assertEquals(2, (int) intStats.getLastValue());
   }
 
@@ -59,14 +59,14 @@ public class IntegerStatisticsTest {
     assertEquals(100, (int) intStats3.getMaxValue());
     assertEquals(1, (int) intStats3.getMinValue());
     assertEquals(1, (int) intStats3.getFirstValue());
-    assertEquals(1 + 100, (int) intStats3.getSumValue());
+    assertEquals(1 + 100, (int) intStats3.getSumLongValue());
     assertEquals(100, (int) intStats3.getLastValue());
 
     intStats3.mergeStatistics(intStats2);
     assertEquals(200, (int) intStats3.getMaxValue());
     assertEquals(1, (int) intStats3.getMinValue());
     assertEquals(1, (int) intStats3.getFirstValue());
-    assertEquals(101 + 200, (int) intStats3.getSumValue());
+    assertEquals(101 + 200, (int) intStats3.getSumLongValue());
     assertEquals(200, (int) intStats3.getLastValue());
 
     // Unseq merge

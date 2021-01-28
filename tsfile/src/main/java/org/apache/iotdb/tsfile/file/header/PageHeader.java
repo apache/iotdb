@@ -23,10 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 public class PageHeader {
 
@@ -41,23 +40,38 @@ public class PageHeader {
     this.statistics = statistics;
   }
 
-  public static int calculatePageHeaderSizeWithoutStatistics() {
-    return 2 * Integer.BYTES; // uncompressedSize, compressedSize
+  /**
+   * max page header size without statistics
+   */
+  public static int estimateMaxPageHeaderSizeWithoutStatistics() {
+    // uncompressedSize, compressedSize
+    // because we use unsigned varInt to encode these two integer,
+    //each unsigned arInt will cost at most 5 bytes
+    return 2 * (Integer.BYTES + 1);
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
-      throws IOException {
-    int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
-    int compressedSize = ReadWriteIOUtils.readInt(inputStream);
-    Statistics statistics = Statistics.deserialize(inputStream, dataType);
+  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
+      boolean hasStatistic) throws IOException {
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(inputStream);
+    Statistics statistics = null;
+    if (hasStatistic) {
+      statistics = Statistics.deserialize(inputStream, dataType);
+    }
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
-    int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
-    int compressedSize = ReadWriteIOUtils.readInt(buffer);
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     Statistics statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
+  }
+
+  public static PageHeader deserializeFrom(ByteBuffer buffer, Statistics chunkStatistic) {
+    int uncompressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    int compressedSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    return new PageHeader(uncompressedSize, compressedSize, chunkStatistic);
   }
 
   public int getUncompressedSize() {
@@ -93,8 +107,8 @@ public class PageHeader {
   }
 
   public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(uncompressedSize, outputStream);
-    ReadWriteIOUtils.write(compressedSize, outputStream);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, outputStream);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, outputStream);
     statistics.serialize(outputStream);
   }
 
@@ -110,5 +124,15 @@ public class PageHeader {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  /**
+   * max page header size without statistics
+   */
+  public int getSerializedPageSize() {
+    return ReadWriteForEncodingUtils.uVarIntSize(uncompressedSize)
+        + ReadWriteForEncodingUtils.uVarIntSize(compressedSize)
+        + (statistics == null ? 0 : statistics.getSerializedSize()) // page header
+        + compressedSize; // page data
   }
 }

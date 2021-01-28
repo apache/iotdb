@@ -87,7 +87,7 @@ public class ChunkCache {
     if (!CACHE_ENABLE) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(),
-          chunk.getDeleteIntervalList());
+          chunk.getDeleteIntervalList(), chunkMetaData.getStatistics());
     }
 
     cacheRequestNum.incrementAndGet();
@@ -121,7 +121,8 @@ public class ChunkCache {
     if (config.isDebugOn()) {
       DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
     }
-    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
+    return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList(),
+        chunkMetaData.getStatistics());
   }
 
   private void printCacheLog(boolean isHit) {
