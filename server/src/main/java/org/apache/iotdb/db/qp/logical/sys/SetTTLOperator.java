@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class SetTTLOperator extends RootOperator {
 
@@ -39,7 +40,8 @@ public class SetTTLOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     switch (getTokenIntType()) {
       case SQLConstant.TOK_SET:
         return new SetTTLPlan(getStorageGroup(), getDataTTL());

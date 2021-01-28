@@ -23,7 +23,9 @@ import java.util.Map;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -33,7 +35,8 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
 
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException {
     GroupByTimeFillPlan plan = new GroupByTimeFillPlan();
     super.setPlanValues(plan);
     plan.setFillType(getFillTypes());
@@ -42,8 +45,9 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
         throw new QueryProcessException("Group By Fill only support last_value function");
       }
     }
-    return plan;
+    return doOptimization(plan, generator, fetchSize);
   }
+
 
   public Map<TSDataType, IFill> getFillTypes() {
     return fillTypes;

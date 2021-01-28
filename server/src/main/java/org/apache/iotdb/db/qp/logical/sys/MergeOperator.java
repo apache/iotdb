@@ -23,6 +23,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class MergeOperator extends RootOperator {
 
@@ -32,7 +33,8 @@ public class MergeOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     if (getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
       return new MergePlan(OperatorType.FULL_MERGE);
     } else {

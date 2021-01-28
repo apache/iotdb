@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -45,7 +46,8 @@ public class CreateTimeSeriesOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     if (getTags() != null && !getTags().isEmpty()
         && getAttributes() != null && !getAttributes()
         .isEmpty()) {

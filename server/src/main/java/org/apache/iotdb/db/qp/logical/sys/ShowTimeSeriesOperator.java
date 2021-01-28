@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowTimeSeriesOperator extends ShowOperator {
 
@@ -90,7 +91,8 @@ public class ShowTimeSeriesOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(getPath(), getLimit(),
         getOffset(), fetchSize);
     showTimeSeriesPlan.setIsContains(isContains());

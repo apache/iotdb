@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class extends {@code RootOperator} and process delete statement.
@@ -37,7 +38,8 @@ public class DeleteDataOperator extends SFWOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new DeletePlan(getStartTime(), getEndTime(), getSelectedPaths());
   }
 

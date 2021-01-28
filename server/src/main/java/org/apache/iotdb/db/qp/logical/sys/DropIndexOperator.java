@@ -23,6 +23,7 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this operator is to drop a certain index on some time series.
@@ -37,7 +38,8 @@ public class DropIndexOperator extends SFWOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new DropIndexPlan(getSelectedPaths(), getIndexType());
   }
 

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -50,7 +51,8 @@ public class LoadDataOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new LoadDataPlan(getInputFilePath(), getMeasureType());
   }
 }

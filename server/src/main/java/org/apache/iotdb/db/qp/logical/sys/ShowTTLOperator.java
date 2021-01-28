@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowTTLOperator extends ShowOperator {
 
@@ -41,7 +42,8 @@ public class ShowTTLOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new ShowTTLPlan(getStorageGroups());
   }
 }

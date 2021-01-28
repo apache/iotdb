@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -115,7 +116,8 @@ public class AuthorOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     try {
       return new AuthorPlan(getAuthorType(), getUserName(), getRoleName(),
           getPassWord(), getNewPassword(), getPrivilegeList(),

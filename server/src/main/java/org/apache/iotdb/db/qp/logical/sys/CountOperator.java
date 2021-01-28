@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * CountOperator is used to count time-series and count nodes.
@@ -53,7 +54,8 @@ public class CountOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     ShowContentType contentType = ShowContentType.getFromOperatorType(tokenIntType);
     if (contentType == null) {
       throw new LogicalOperatorException(String.format(

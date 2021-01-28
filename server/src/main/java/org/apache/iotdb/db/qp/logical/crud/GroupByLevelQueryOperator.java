@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class GroupByLevelQueryOperator extends GroupByQueryOperator {
@@ -43,8 +44,10 @@ public class GroupByLevelQueryOperator extends GroupByQueryOperator {
 
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     AggregationPlan plan;
+
     if (getUnit() > 0) {
       plan = new GroupByTimePlan();
       super.setPlanValues((GroupByTimePlan) plan);
@@ -53,26 +56,30 @@ public class GroupByLevelQueryOperator extends GroupByQueryOperator {
       super.setPlanValues(plan);
     }
     plan.setLevel(getLevel());
+
     try {
-      if (!verifyAllAggregationDataTypesEqual(this)) {
+      if (!verifyAllAggregationDataTypesEqual(generator, this)) {
         throw new QueryProcessException("Aggregate among unmatched data types");
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    return plan;
+    if (isAlignByDevice() && getLevel() >= 0) {
+      throw new QueryProcessException("group by level does not support align by device now.");
+    }
+    return doOptimization(plan, generator, fetchSize);
   }
 
 
-  private boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
-      throws MetadataException {
+  private boolean verifyAllAggregationDataTypesEqual(PhysicalGenerator generator,
+      QueryOperator queryOperator) throws MetadataException {
     List<String> aggregations = queryOperator.getSelectOperator().getAggregations();
     if (aggregations.isEmpty()) {
       return true;
     }
 
     List<PartialPath> paths = queryOperator.getSelectedPaths();
-    List<TSDataType> dataTypes = getSeriesTypes(paths);
+    List<TSDataType> dataTypes = generator.getSeriesTypes(paths);
     String aggType = aggregations.get(0);
     switch (aggType) {
       case SQLConstant.MIN_VALUE:

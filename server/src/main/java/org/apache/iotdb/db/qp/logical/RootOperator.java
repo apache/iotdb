@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.logical;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * RootOperator indicates the operator that could be executed as a entire command. RootOperator
@@ -32,5 +33,6 @@ public abstract class RootOperator extends Operator {
   }
 
 
-  public abstract PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException;
+  public abstract PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException;
 }

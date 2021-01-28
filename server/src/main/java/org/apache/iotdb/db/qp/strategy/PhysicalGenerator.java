@@ -37,14 +37,11 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
@@ -72,15 +69,12 @@ public class PhysicalGenerator {
       throw new LogicalOperatorException(operator.getType().toString(), "");
     }
     switch (operator.getType()) {
-      case QUERY:
-        QueryOperator query = (QueryOperator) operator;
-        return transformQuery(query, fetchSize);
       case LOAD_CONFIGURATION:
         LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
             .getLoadConfigurationOperatorType();
         return generateLoadConfigurationPlan(type);
       default:
-        return ((RootOperator) operator).transform2PhysicalPlan(fetchSize);
+        return ((RootOperator) operator).transform2PhysicalPlan(fetchSize, this);
     }
   }
 
@@ -103,7 +97,7 @@ public class PhysicalGenerator {
    * @return pair.left is the type of column in result set, pair.right is the real type of the
    * measurement
    */
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
       String aggregation) throws MetadataException {
     List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, (String) null);
     // if the aggregation function is null, the type of column in result set
@@ -118,240 +112,14 @@ public class PhysicalGenerator {
     }
   }
 
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths);
-  }
-
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
-      throws QueryProcessException {
-    QueryPlan queryPlan = (QueryPlan) queryOperator.transform2PhysicalPlan(fetchSize);
-
-    if (queryOperator.isAlignByDevice()) {
-      // below is the core realization of ALIGN_BY_DEVICE sql logic
-      AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
-      alignByDevicePlan.setPhysicPlan((RawDataQueryPlan) queryPlan);
-      if (queryPlan instanceof AggregationPlan) {
-        if (((AggregationPlan) queryPlan).getLevel() >= 0) {
-          throw new QueryProcessException("group by level does not support align by device now.");
-        }
-      }
-
-      List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
-      // remove stars in fromPaths and get deviceId with deduplication
-      List<PartialPath> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-      List<PartialPath> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
-      List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
-
-      // to record result measurement columns
-      List<String> measurements = new ArrayList<>();
-      Map<String, String> measurementAliasMap = new HashMap<>();
-      // to check the same measurement of different devices having the same datatype
-      // record the data type of each column of result set
-      Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
-      Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
-
-      // to record the real type of the corresponding measurement
-      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
-      List<PartialPath> paths = new ArrayList<>();
-
-      for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
-        PartialPath suffixPath = suffixPaths.get(i);
-
-        // to record measurements in the loop of a suffix path
-        Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
-
-        // if const measurement
-        if (suffixPath.getMeasurement().startsWith("'")) {
-          measurements.add(suffixPath.getMeasurement());
-          measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
-          continue;
-        }
-
-        for (PartialPath device : devices) { // per device in FROM after deduplication
-
-          PartialPath fullPath = device.concatPath(suffixPath);
-          try {
-            // remove stars in SELECT to get actual paths
-            List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-            if (suffixPath.isTsAliasExists()) {
-              if (actualPaths.size() == 1) {
-                String columnName = actualPaths.get(0).getMeasurement();
-                if (originAggregations != null && !originAggregations.isEmpty()) {
-                  measurementAliasMap.put(originAggregations.get(i) + "(" + columnName + ")",
-                      suffixPath.getTsAlias());
-                } else {
-                  measurementAliasMap.put(columnName, suffixPath.getTsAlias());
-                }
-              } else if (actualPaths.size() >= 2) {
-                throw new QueryProcessException(
-                    "alias '" + suffixPath.getTsAlias()
-                        + "' can only be matched with one time series");
-              }
-            }
-
-            // for actual non exist path
-            if (originAggregations != null && actualPaths.isEmpty() && originAggregations
-                .isEmpty()) {
-              String nonExistMeasurement = fullPath.getMeasurement();
-              if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
-                  && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
-                measurementTypeMap
-                    .put(fullPath.getMeasurement(), MeasurementType.NonExist);
-              }
-            }
-
-            // Get data types with and without aggregate functions (actual time series) respectively
-            // Data type with aggregation function `columnDataTypes` is used for:
-            //  1. Data type consistency check 2. Header calculation, output result set
-            // The actual data type of the time series `measurementDataTypes` is used for
-            //  the actual query in the AlignByDeviceDataSet
-            String aggregation =
-                originAggregations != null && !originAggregations.isEmpty()
-                    ? originAggregations.get(i) : null;
-
-            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
-                aggregation);
-            List<TSDataType> columnDataTypes = pair.left;
-            List<TSDataType> measurementDataTypes = pair.right;
-            for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
-              PartialPath path = new PartialPath(actualPaths.get(pathIdx).getNodes());
-
-              // check datatype consistency
-              // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by device,
-              // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
-              String measurementChecked;
-              if (originAggregations != null && !originAggregations.isEmpty()) {
-                measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
-              } else {
-                measurementChecked = path.getMeasurement();
-              }
-              TSDataType columnDataType = columnDataTypes.get(pathIdx);
-              if (columnDataTypeMap.containsKey(measurementChecked)) {
-                if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
-                  throw new QueryProcessException(
-                      "The data types of the same measurement column should be the same across "
-                          + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
-                          + "SQL document.");
-                }
-              } else {
-                columnDataTypeMap.put(measurementChecked, columnDataType);
-                measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
-              }
-
-              // This step indicates that the measurement exists under the device and is correct,
-              // First, update measurementSetOfGivenSuffix which is distinct
-              // Then if this measurement is recognized as NonExist before，update it to Exist
-              if (measurementSetOfGivenSuffix.add(measurementChecked)
-                  || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
-                measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
-              }
-
-              // update paths
-              paths.add(path);
-            }
-
-          } catch (MetadataException e) {
-            throw new LogicalOptimizeException(
-                String.format(
-                    "Error when getting all paths of a full path: %s", fullPath.getFullPath())
-                    + e.getMessage());
-          }
-        }
-
-        // update measurements
-        // Note that in the loop of a suffix path, set is used.
-        // And across the loops of suffix paths, list is used.
-        // e.g. select *,s1 from root.sg.d0, root.sg.d1
-        // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
-        // for suffix s1, measurementSetOfGivenSuffix = {s1}
-        // therefore the final measurements is [s1,s2,s3,s1].
-        measurements.addAll(measurementSetOfGivenSuffix);
-      }
-
-      // slimit trim on the measurementColumnList
-      if (queryOperator.hasSlimit()) {
-        int seriesSlimit = queryOperator.getSeriesLimit();
-        int seriesOffset = queryOperator.getSeriesOffset();
-        measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
-      }
-
-      int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-          .getMaxDeduplicatedPathNum(fetchSize);
-
-      if (measurements.size() > maxDeduplicatedPathNum) {
-        throw new PathNumOverLimitException(maxDeduplicatedPathNum, measurements.size());
-      }
-
-      // assigns to alignByDevicePlan
-      alignByDevicePlan.setMeasurements(measurements);
-      alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
-      alignByDevicePlan.setDevices(devices);
-      alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
-      alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
-      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
-      alignByDevicePlan.setPaths(paths);
-
-      // get deviceToFilterMap
-      FilterOperator filterOperator = queryOperator.getFilterOperator();
-      if (filterOperator != null) {
-        alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
-      }
-
-      queryPlan = alignByDevicePlan;
-    } else {
-      queryPlan.setPaths(queryOperator.getSelectedPaths());
-      // Last query result set will not be affected by alignment
-      if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
-        throw new QueryProcessException("Disable align cannot be applied to LAST query.");
-      }
-      queryPlan.setAlignByTime(queryOperator.isAlignByTime());
-
-      // transform filter operator to expression
-      FilterOperator filterOperator = queryOperator.getFilterOperator();
-
-      if (filterOperator != null) {
-        List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
-        try {
-          List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
-          HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-          for (int i = 0; i < filterPaths.size(); i++) {
-            ((RawDataQueryPlan) queryPlan).addFilterPathInDeviceToMeasurements(filterPaths.get(i));
-            pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
-          }
-          IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-          ((RawDataQueryPlan) queryPlan).setExpression(expression);
-        } catch (MetadataException e) {
-          throw new LogicalOptimizeException(e.getMessage());
-        }
-      }
-    }
-
-    if (queryOperator.getIndexType() != null) {
-      if (queryPlan instanceof QueryIndexPlan) {
-        ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
-        ((QueryIndexPlan) queryPlan).setProps(queryOperator.getProps());
-      }
-      return queryPlan;
-    }
-    try {
-      deduplicate(queryPlan, fetchSize);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-
-    queryPlan.setRowLimit(queryOperator.getRowLimit());
-    queryPlan.setRowOffset(queryOperator.getRowOffset());
-    queryPlan.setAscending(queryOperator.isAscending());
-
-    return queryPlan;
   }
 
   // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
   // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
   //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
-  private Map<String, IExpression> concatFilterByDevice(
+  public Map<String, IExpression> concatFilterByDevice(
       List<PartialPath> devices, FilterOperator operator) throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     Set<PartialPath> filterPaths = new HashSet<>();
@@ -377,7 +145,7 @@ public class PhysicalGenerator {
     return deviceToFilterMap;
   }
 
-  private List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)
+  public List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)
       throws LogicalOptimizeException {
     List<PartialPath> retDevices;
     Set<PartialPath> deviceSet = new LinkedHashSet<>();
@@ -417,7 +185,7 @@ public class PhysicalGenerator {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void deduplicate(QueryPlan queryPlan, int fetchSize)
+  public void deduplicate(QueryPlan queryPlan, int fetchSize)
       throws MetadataException, PathNumOverLimitException {
     // generate dataType first
     List<PartialPath> paths = queryPlan.getPaths();
@@ -537,7 +305,7 @@ public class PhysicalGenerator {
     }
   }
 
-  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit,
+  public List<String> slimitTrimColumn(List<String> columnList, int seriesLimit,
       int seriesOffset) throws QueryProcessException {
     int size = columnList.size();
 
@@ -556,7 +324,7 @@ public class PhysicalGenerator {
     return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
   }
 
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
+  public List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 

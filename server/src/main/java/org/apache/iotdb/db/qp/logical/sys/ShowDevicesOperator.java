@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowDevicesOperator extends ShowOperator {
 
@@ -56,7 +57,8 @@ public class ShowDevicesOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new ShowDevicesPlan(getPath(), getLimit(), getOffset(), fetchSize);
   }
 }

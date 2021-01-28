@@ -53,18 +53,18 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<PartialPath> paths,
       String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 
   @Override
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, null).left;
   }
 
   @Override
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
+  public List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
     return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
   }
 

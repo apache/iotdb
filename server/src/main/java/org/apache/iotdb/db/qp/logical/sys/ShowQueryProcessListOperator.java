@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowQueryProcessListOperator extends ShowOperator {
 
@@ -33,7 +34,8 @@ public class ShowQueryProcessListOperator extends ShowOperator {
 
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new ShowQueryProcesslistPlan(ShowContentType.QUERY_PROCESSLIST);
   }
 }

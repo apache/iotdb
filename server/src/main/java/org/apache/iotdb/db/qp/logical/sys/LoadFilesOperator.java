@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class LoadFilesOperator extends RootOperator {
 
@@ -53,7 +54,8 @@ public class LoadFilesOperator extends RootOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new OperateFilePlan(getFile(), OperatorType.LOAD_FILES, autoCreateSchema, getSgLevel());
   }
 }

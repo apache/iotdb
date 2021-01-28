@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowChildPathsOperator extends ShowOperator {
 
@@ -39,7 +40,8 @@ public class ShowChildPathsOperator extends ShowOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize,
+      PhysicalGenerator generator) throws QueryProcessException {
     return new ShowChildPathsPlan(ShowContentType.CHILD_PATH, getPath());
   }
 }

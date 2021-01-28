@@ -38,8 +38,6 @@ public abstract class SFWOperator extends RootOperator {
   private boolean hasUdf = false;
   private boolean lastQuery = false;
 
-  private boolean isClusterModel = false;
-
   public SFWOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.SFW;
@@ -100,12 +98,5 @@ public abstract class SFWOperator extends RootOperator {
 
   public boolean isLastQuery() {
     return lastQuery;
-  }
-
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    if (!isClusterModel) {
-      return SchemaUtils.getSeriesTypesByPaths(paths);
-    }
-    return null;
   }
 }

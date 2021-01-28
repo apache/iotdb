@@ -22,7 +22,9 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class GroupByQueryOperator extends QueryOperator {
 
@@ -39,10 +41,13 @@ public class GroupByQueryOperator extends QueryOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize) throws QueryProcessException {
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException {
+
     GroupByTimePlan plan = new GroupByTimePlan();
     setPlanValues(plan);
-    return plan;
+
+    return doOptimization(plan, generator, fetchSize);
   }
 
   protected void setPlanValues(GroupByTimePlan plan) {
