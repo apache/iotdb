@@ -152,3 +152,13 @@ When building client-cpp project, use -Dcmake.generator="" option to specify a C
 E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
 on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
+
+
+### FAQ
+
+#### on Mac
+
+if you occur some errors when compiling thrift source code, try to downgrade your xcode-commandline from 12 to 11.5
+
+see https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-tapi-tbd-in-yaml-file/65518087#65518087
+
