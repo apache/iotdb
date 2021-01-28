@@ -1500,6 +1500,19 @@ public class StorageGroupProcessor {
         .MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
+    // for upgrade files and old files must be closed
+    for (TsFileResource tsFileResource : upgradeTsFileResources) {
+      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        tsfileResourcesForQuery.add(tsFileResource);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
         continue;
@@ -1516,18 +1529,6 @@ public class StorageGroupProcessor {
         }
       } catch (IOException e) {
         throw new MetadataException(e);
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-    // for upgrade files and old files must be closed
-    for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId.getFullPath(), timeFilter, isSeq, dataTTL)) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        tsfileResourcesForQuery.add(tsFileResource);
       } finally {
         closeQueryLock.readLock().unlock();
       }
