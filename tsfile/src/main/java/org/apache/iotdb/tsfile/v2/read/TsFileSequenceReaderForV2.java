@@ -177,7 +177,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     while (buffer.hasRemaining()) {
-      timeseriesMetadataList.add(TimeseriesMetadataV2.deserializeFrom(buffer));
+      TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
+      ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+      timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
+      timeseriesMetadataList.add(timeseriesMetadata);
     }
     // return null if path does not exist in the TsFile
     int searchResult = binarySearchInTimeseriesMetadataList(timeseriesMetadataList,
@@ -215,6 +218,8 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     while (buffer.hasRemaining()) {
       TimeseriesMetadata timeseriesMetadata;
       timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
+      ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+      timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
       if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
         timeseriesMetadataList.add(timeseriesMetadata);
       }
@@ -255,7 +260,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       buffer = readData(measurementMetadataIndexPair.left.getOffset(),
           measurementMetadataIndexPair.right);
       while (buffer.hasRemaining()) {
-        timeseriesMetadataList.add(TimeseriesMetadataV2.deserializeFrom(buffer));
+        TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
+        ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+        timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
+        timeseriesMetadataList.add(timeseriesMetadata);
       }
       for (int j = i; j < measurementList.size(); j++) {
         String current = measurementList.get(j);
@@ -380,7 +388,10 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       case LEAF_MEASUREMENT:
         List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
         while (buffer.hasRemaining()) {
-          timeseriesMetadataList.add(TimeseriesMetadataV2.deserializeFrom(buffer));
+          TimeseriesMetadata timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
+          ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
+          timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
+          timeseriesMetadataList.add(timeseriesMetadata);
         }
         timeseriesMetadataMap.computeIfAbsent(deviceId, k -> new ArrayList<>())
             .addAll(timeseriesMetadataList);
@@ -545,7 +556,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    *
    * @return List of ChunkMetaData
    */
-  public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
+  public ArrayList<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     readFileMetadata();
     ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();

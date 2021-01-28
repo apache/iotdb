@@ -223,4 +223,9 @@ public class TimeseriesMetadata implements Accountable {
   public void setChunkMetadataListBuffer(PublicBAOS chunkMetadataListBuffer) {
     this.chunkMetadataListBuffer = chunkMetadataListBuffer;
   }
+
+  // For reading version-2 only
+  public void setChunkMetadataList(ArrayList<ChunkMetadata> chunkMetadataList) {
+    this.chunkMetadataList = chunkMetadataList;
+  }
 }
