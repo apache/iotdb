@@ -35,6 +35,13 @@ To compile on Windows, please install Boost first and add following Maven settin
 -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
 ```
 
+e.g.,
+```
+mvn integration-test -P client-cpp -pl client-cpp,server,example/client-cpp-example -am 
+-D"iotdb.test.skip"=true -D"tsfile.test.skip"=true -D"jdbc.test.skip"=true 
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+```
+
 ## 
 
 If the compilation finishes successfully, the packaged zip file will be placed under
