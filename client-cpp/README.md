@@ -30,6 +30,11 @@ For more information, please refer to "compile-tools/README.md".
 
 `mvn integration-test -P client-cpp -pl client-cpp,server -am -Diotdb.test.skip=true -Dtsfile.test.skip=true -Djdbc.test.skip=true`
 
+To compile on Windows, please install Boost first and add following Maven settings:
+```
+-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
+```
+
 ## 
 
 If the compilation finishes successfully, the packaged zip file will be placed under
