@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.RowIdLifetime;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.*;
+
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -63,47 +61,47 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean allProceduresAreCallable() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean allTablesAreSelectable() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean autoCommitFailureClosesAllResultSets() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean dataDefinitionCausesTransactionCommit() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean dataDefinitionIgnoredInTransactions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean deletesAreDetected(int arg0) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean doesMaxRowSizeIncludeBlobs() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;//The return value is tentatively FALSE and may be adjusted later
   }
 
   @Override
   public boolean generatedKeyAlwaysReturned() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public long getMaxLogicalLobSize() {
-    return 0;
+    return Long.MAX_VALUE;
   }
 
   @Override
@@ -113,25 +111,72 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getAttributes(String arg0, String arg1, String arg2, String arg3)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[21];
+    fields[0] = new Field("", "TYPE_CAT", "TEXT");
+    fields[1] = new Field("", "TYPE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TYPE_NAME", "TEXT");
+    fields[3] = new Field("", "ATTR_NAME", "TEXT");
+    fields[4] = new Field("", "DATA_TYPE", "INT32");
+    fields[5] = new Field("", "ATTR_TYPE_NAME", "TEXT");
+    fields[6] = new Field("", "ATTR_SIZE", "INT32");
+    fields[7] = new Field("", "DECIMAL_DIGITS","INT32");
+    fields[8] = new Field("", "NUM_PREC_RADIX", "INT32");
+    fields[9] = new Field("", "NULLABLE ", "INT32");
+    fields[10] = new Field("", "REMARKS", "TEXT");
+    fields[11] = new Field("", "ATTR_DEF", "TEXT");
+    fields[12] = new Field("", "SQL_DATA_TYPE", "INT32");
+    fields[13] = new Field("", "SQL_DATETIME_SUB", "INT32");
+    fields[14] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
+    fields[15] = new Field("", "ORDINAL_POSITION", "INT32");
+    fields[16] = new Field("", "IS_NULLABLE", "TEXT");
+    fields[17] = new Field("", "SCOPE_CATALOG", "TEXT");
+    fields[18] = new Field("", "SCOPE_SCHEMA", "TEXT");
+    fields[19] = new Field("", "SCOPE_TABLE", "TEXT");
+    fields[20] = new Field("", "SOURCE_DATA_TYPE", "INT32");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
-
   @Override
   public ResultSet getBestRowIdentifier(String arg0, String arg1, String arg2, int arg3,
-      boolean arg4)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+                                        boolean arg4)
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", "SCOPE", "TEXT");
+    fields[1] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[2] = new Field("", "DATA_TYPE", "TEXT");
+    fields[3] = new Field("", "TYPE_NAME", "TEXT");
+    fields[4] = new Field("", "COLUMN_SIZE", "INT32");
+    fields[5] = new Field("", "BUFFER_LENGTH", "TEXT");
+    fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
+    fields[7] = new Field("", "PSEUDO_COLUMN","TEXT");
+
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public String getCatalogSeparator() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return ".";
   }
 
   @Override
   public String getCatalogTerm() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "storage group";
   }
 
   @Override
@@ -156,20 +201,58 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public ResultSet getCrossReference(String arg0, String arg1, String arg2, String arg3,
-      String arg4, String arg5)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  public ResultSet getCrossReference(String arg0, String arg1, String arg2, String arg3, String arg4, String arg5)
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[14];
+    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+    fields[1] = new Field("", "PKTABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+    fields[7] = new Field("", "FKCOLUMN_NAME","TEXT");
+    fields[8] = new Field("", "KEY_SEQ", "TEXT");
+    fields[9] = new Field("", "UPDATE_RULE ", "TEXT");
+    fields[10] = new Field("", "DELETE_RULE", "TEXT");
+    fields[11] = new Field("", "FK_NAME", "TEXT");
+    fields[12] = new Field("", "PK_NAME", "TEXT");
+    fields[13] = new Field("", "DEFERRABILITY", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public int getDatabaseMajorVersion() {
-    return 0;
+    int major_version=0;
+    try {
+      String version=client.getProperties().getVersion();
+      String[] versions=version.split(".");
+      major_version=Integer.valueOf(versions[0]);
+    } catch (TException e) {
+      e.printStackTrace();
+    }
+    return major_version;
   }
 
   @Override
   public int getDatabaseMinorVersion() {
-    return 0;
+    int minor_version=0;
+    try {
+      String version=client.getProperties().getVersion();
+      String[] versions=version.split(".");
+      minor_version=Integer.valueOf(versions[1]);
+    } catch (TException e) {
+      e.printStackTrace();
+    }
+    return minor_version;
   }
 
   @Override
@@ -189,12 +272,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getDriverMajorVersion() {
-    return 1;
+    return 4;
   }
 
   @Override
   public int getDriverMinorVersion() {
-    return 0;
+    return 3;
   }
 
   @Override
@@ -209,12 +292,36 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getExportedKeys(String arg0, String arg1, String arg2) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[14];
+    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+    fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
+    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
+    fields[8] = new Field("", "KEY_SEQ", "INT32");
+    fields[9] = new Field("", "UPDATE_RULE", "INT32");
+    fields[10] = new Field("", "DELETE_RULE", "INT32");
+    fields[11] = new Field("", "FK_NAME", "TEXT");
+    fields[12] = new Field("", "PK_NAME", "TEXT");
+    fields[13] = new Field("", "DEFERRABILITY", "INT32");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
+
   }
 
   @Override
   public String getExtraNameCharacters() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "";
   }
 
   @Override
@@ -230,53 +337,104 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getIdentifierQuoteString() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "\' or \"";
+
   }
 
   @Override
   public ResultSet getImportedKeys(String arg0, String arg1, String arg2) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[14];
+    fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
+    fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
+    fields[2] = new Field("", "PKTABLE_NAME", "TEXT");
+    fields[3] = new Field("", "PKCOLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "FKTABLE_CAT", "TEXT");
+    fields[5] = new Field("", "FKTABLE_SCHEM", "TEXT");
+    fields[6] = new Field("", "FKTABLE_NAME", "TEXT");
+    fields[7] = new Field("", "FKCOLUMN_NAME", "TEXT");
+    fields[8] = new Field("", "KEY_SEQ", "INT32");
+    fields[9] = new Field("", "UPDATE_RULE", "INT32");
+    fields[10] = new Field("", "DELETE_RULE", "INT32");
+    fields[11] = new Field("", "FK_NAME", "TEXT");
+    fields[12] = new Field("", "PK_NAME", "TEXT");
+    fields[13] = new Field("", "DEFERRABILITY", "INT32");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public ResultSet getIndexInfo(String arg0, String arg1, String arg2, boolean arg3, boolean arg4)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[14];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "NON_UNIQUE", "TEXT");
+    fields[4] = new Field("", "INDEX_QUALIFIER", "TEXT");
+    fields[5] = new Field("", "INDEX_NAME", "TEXT");
+    fields[6] = new Field("", "TYPE", "TEXT");
+    fields[7] = new Field("", "ORDINAL_POSITION", "TEXT");
+    fields[8] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[9] = new Field("", "ASC_OR_DESC", "TEXT");
+    fields[10] = new Field("", "CARDINALITY", "TEXT");
+    fields[11] = new Field("", "PAGES", "TEXT");
+    fields[12] = new Field("", "PK_NAME", "TEXT");
+    fields[13] = new Field("", "FILTER_CONDITION", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public int getJDBCMajorVersion() {
-    return 0;
+    return 4;
   }
 
   @Override
   public int getJDBCMinorVersion() {
-    return 0;
+    return 3;
   }
 
   @Override
   public int getMaxBinaryLiteralLength() {
-    return 0;
+    return Integer.MAX_VALUE;
   }
-
+  /**
+   * Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxCatalogNameLength() {
-    return 0;
+    return 1024;
   }
 
   @Override
   public int getMaxCharLiteralLength() {
-    return 0;
+    return Integer.MAX_VALUE;
   }
-
+  /**
+   * Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxColumnNameLength() {
-    return 0;
+    return 1024;
   }
 
   @Override
   public int getMaxColumnsInGroupBy() {
-    return 0;
+    return 1;
   }
 
   @Override
@@ -286,7 +444,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getMaxColumnsInOrderBy() {
-    return 0;
+    return 1;
   }
 
   @Override
@@ -296,7 +454,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getMaxColumnsInTable() {
-    return 0;
+    return Integer.MAX_VALUE;
   }
 
   @Override
@@ -311,22 +469,26 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getMaxIndexLength() {
-    return 0;
+    return Integer.MAX_VALUE;
   }
 
   @Override
   public int getMaxProcedureNameLength() {
     return 0;
   }
-
+  /**
+   * maxrowsize unlimited
+   */
   @Override
   public int getMaxRowSize() {
-    return 0;
+    return 2147483639;
   }
-
+  /**
+   *  Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxSchemaNameLength() {
-    return 0;
+    return 1024;
   }
 
   @Override
@@ -338,25 +500,45 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public int getMaxStatements() {
     return 0;
   }
-
+  /**
+   *  Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxTableNameLength() {
-    return 0;
+    return 1024;
   }
-
+  /**
+   *  Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxTablesInSelect() {
-    return 0;
+    return 1024;
   }
-
+  /**
+   *  Although there is no limit, it is not recommended
+   */
   @Override
   public int getMaxUserNameLength() {
-    return 0;
+    return 1024;
   }
 
   @Override
   public String getNumericFunctions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    Statement statement =connection.createStatement();
+    StringBuilder str=new StringBuilder("");
+    ResultSet resultSet = statement.executeQuery("show functions");
+    List<String> listfunction= Arrays.asList("MAX_TIME","MIN_TIME","TIME_DIFFERENCE","NOW");
+    while (resultSet.next()){
+      if(listfunction.contains(resultSet.getString(1))){
+        continue;
+      }
+      str.append(resultSet.getString(1)).append(",");
+    }
+    String result=str.toString();
+    if(result.length()>0){
+      result=result.substring(0,result.length()-1);
+    }
+    return result;
   }
 
   @Override
@@ -366,18 +548,62 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getProcedureColumns(String arg0, String arg1, String arg2, String arg3)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[20];
+    fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
+    fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
+    fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
+    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "COLUMN_TYPE", "TEXT");
+    fields[5] = new Field("", "DATA_TYPE", "TEXT");
+    fields[6] = new Field("", "TYPE_NAME", "TEXT");
+    fields[7] = new Field("", "PRECISION", "TEXT");
+    fields[8] = new Field("", "LENGTH", "TEXT");
+    fields[9] = new Field("", "SCALE", "TEXT");
+    fields[10] = new Field("", "RADIX", "TEXT");
+    fields[11] = new Field("", "NULLABLE", "TEXT");
+    fields[12] = new Field("", "REMARKS", "TEXT");
+    fields[13] = new Field("", "COLUMN_DEF", "TEXT");
+    fields[14] = new Field("", "SQL_DATA_TYPE", "TEXT");
+    fields[15] = new Field("", "SQL_DATETIME_SUB", "TEXT");
+    fields[16] = new Field("", "CHAR_OCTET_LENGTH", "TEXT");
+    fields[17] = new Field("", "ORDINAL_POSITION", "TEXT");
+    fields[18] = new Field("", "IS_NULLABLE", "TEXT");
+    fields[19] = new Field("", "SPECIFIC_NAME", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public String getProcedureTerm() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "";
   }
 
   @Override
   public ResultSet getProcedures(String arg0, String arg1, String arg2) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[6];
+    fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
+    fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
+    fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
+    fields[3] = new Field("", "REMARKS", "TEXT");
+    fields[4] = new Field("", "PROCEDURE_TYPE", "TEXT");
+    fields[5] = new Field("", "SPECIFIC_NAME", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
@@ -388,12 +614,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getResultSetHoldability() {
-    return 0;
+    return ResultSet.HOLD_CURSORS_OVER_COMMIT;
   }
 
   @Override
   public RowIdLifetime getRowIdLifetime() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return RowIdLifetime.ROWID_UNSUPPORTED;
   }
 
   @Override
@@ -408,7 +634,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getSchemaTerm() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "stroge group";
   }
 
   @Override
@@ -423,29 +649,67 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getSearchStringEscape() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "\\";
   }
 
   @Override
   public String getStringFunctions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return getSystemFunctions();
   }
 
   @Override
   public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[4];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "SUPERTABLE_NAME", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[6];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "SUPERTYPE_CAT", "TEXT");
+    fields[4] = new Field("", "SUPERTYPE_SCHEM", "TEXT");
+    fields[5] = new Field("", "SUPERTYPE_NAME", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public String getSystemFunctions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    Statement statement =connection.createStatement();
+    StringBuilder str=new StringBuilder("");
+    ResultSet resultSet = statement.executeQuery("show functions");
+    while (resultSet.next()){
+      str.append(resultSet.getString(1)).append(",");
+    }
+    String result=str.toString();
+    if(result.length()>0){
+      result=result.substring(0,result.length()-1);
+    }
+    return result;
   }
 
   @Override
@@ -474,7 +738,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getTimeDateFunctions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return "MAX_TIME,MIN_TIME,TIME_DIFFERENCE,NOW";
   }
 
   @Override
@@ -484,36 +748,70 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern,
-      int[] types)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+                           int[] types)
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[7];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "CLASS_NAME", "TEXT");
+    fields[4] = new Field("", "DATA_TYPE", "TEXT");
+    fields[5] = new Field("", "REMARKS", "TEXT");
+    fields[6] = new Field("", "BASE_TYPE", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public String getURL() {
     // TODO: Return the URL for this DBMS or null if it cannot be generated
-    return null;
+    return this.connection.getUrl();
+
   }
 
   @Override
   public String getUserName() throws SQLException {
-    return client.toString();
+    return connection.getUserName();
   }
 
   @Override
   public ResultSet getVersionColumns(String catalog, String schema, String table)
-      throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+          throws SQLException {
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", "SCOPE", "TEXT");
+    fields[1] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[2] = new Field("", "DATA_TYPE", "TEXT");
+    fields[3] = new Field("", "TYPE_NAME", "TEXT");
+    fields[4] = new Field("", "COLUMN_SIZE", "TEXT");
+    fields[5] = new Field("", "BUFFER_LENGTH", "TEXT");
+    fields[6] = new Field("", "DECIMAL_DIGITS", "TEXT");
+    fields[7] = new Field("", "PSEUDO_COLUMN", "TEXT");
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    return new IoTDBJDBCResultSet(null, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, null, (long)60 * 1000);
   }
 
   @Override
   public boolean insertsAreDetected(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean isCatalogAtStart() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
@@ -523,442 +821,448 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean locatorsUpdateCopy() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean nullPlusNonNullIsNull() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean nullsAreSortedAtEnd() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean nullsAreSortedAtStart() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean nullsAreSortedHigh() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean nullsAreSortedLow() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean othersDeletesAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean othersInsertsAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean othersUpdatesAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean ownDeletesAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean ownInsertsAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean ownUpdatesAreVisible(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean storesLowerCaseIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean storesLowerCaseQuotedIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean storesMixedCaseIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean storesMixedCaseQuotedIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean storesUpperCaseIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean storesUpperCaseQuotedIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsANSI92EntryLevelSQL() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsANSI92FullSQL() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsANSI92IntermediateSQL() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsAlterTableWithAddColumn() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsAlterTableWithDropColumn() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsBatchUpdates() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsCatalogsInDataManipulation() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsCatalogsInIndexDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsCatalogsInPrivilegeDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsCatalogsInProcedureCalls() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsCatalogsInTableDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsColumnAliasing() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsConvert() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsConvert(int fromType, int toType) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsCoreSQLGrammar() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsCorrelatedSubqueries() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsDataDefinitionAndDataManipulationTransactions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsDataManipulationTransactionsOnly() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsDifferentTableCorrelationNames() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsExpressionsInOrderBy() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsExtendedSQLGrammar() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsFullOuterJoins() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsGetGeneratedKeys() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsGroupBy() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsGroupByBeyondSelect() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsGroupByUnrelated() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsIntegrityEnhancementFacility() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsLikeEscapeClause() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsLimitedOuterJoins() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsMinimumSQLGrammar() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsMixedCaseIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsMixedCaseQuotedIdentifiers() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsMultipleOpenResults() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsMultipleResultSets() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsMultipleTransactions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsNamedParameters() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsNonNullableColumns() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsOpenCursorsAcrossCommit() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsOpenCursorsAcrossRollback() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsOpenStatementsAcrossCommit() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsOpenStatementsAcrossRollback() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsOrderByUnrelated() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsOuterJoins() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return true;
   }
 
   @Override
   public boolean supportsPositionedDelete() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsPositionedUpdate() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsResultSetConcurrency(int type, int concurrency) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsResultSetHoldability(int holdability) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    if(ResultSet.HOLD_CURSORS_OVER_COMMIT==holdability){
+      return true;
+    }
+    return false;
   }
 
   @Override
   public boolean supportsResultSetType(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    if(ResultSet.FETCH_FORWARD==type||ResultSet.TYPE_FORWARD_ONLY==type){
+      return true;
+    }
+    return false;
   }
 
   @Override
   public boolean supportsSavepoints() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSchemasInDataManipulation() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSchemasInIndexDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSchemasInPrivilegeDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSchemasInProcedureCalls() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSchemasInTableDefinitions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSelectForUpdate() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsStatementPooling() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsStoredFunctionsUsingCallSyntax() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsStoredProcedures() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSubqueriesInComparisons() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSubqueriesInExists() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSubqueriesInIns() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsSubqueriesInQuantifieds() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsTableCorrelationNames() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsTransactionIsolationLevel(int level) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsTransactions() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsUnion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean supportsUnionAll() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean updatesAreDetected(int type) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean usesLocalFilePerTable() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   @Override
   public boolean usesLocalFiles() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return false;
   }
 
   /**
