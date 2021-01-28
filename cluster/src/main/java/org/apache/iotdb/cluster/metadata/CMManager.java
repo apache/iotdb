@@ -1283,6 +1283,7 @@ public class CMManager extends MManager {
     }
   }
 
+  @Override
   protected MeasurementMNode getMeasurementMNode(MNode deviceMNode, String measurement, TSDataType dataType)
       throws MetadataException {
     MNode child = deviceMNode.getChild(measurement);
