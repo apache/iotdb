@@ -101,6 +101,21 @@ Here in the Quick Start, we give a brief introduction of using source code to in
 
 ## Build from source
 
+Skip this paragraph if you are using Windows. As we use Thrift for our RPC module (communication and
+protocol definition), we involve Thrift during the compilation, so Thrift compiler 0.13.0 (or
+higher) is required to generate Thrift Java code. Thrift officially provides binary compiler for
+Windows, but unfortunately, they do not provide that for Unix OSs. However, we compiled a Unix
+compiler ourselves and put it onto GitHub, and with the help of a maven plugin, it will be
+downloaded automatically during compilation. This compiler works fine with gcc8 or later, Ubuntu
+MacOS, and CentOS, but previous versions and other OSs are not guaranteed. Should you find your gcc
+version or OS does not support the precompiled compiler, please upgrade your gcc version or follow the
+Thrift official instructions to compile the compiler yourself and rename it into `{project_root}\thrift\target\tools\thrift_0.12.0_0.13.0_linux.exe`.
+If you have already installed a compatible Thrift compiler, you may add the following parameter
+when running Maven: `-Dthrift.download-url=http://apache.org/licenses/LICENSE-2.0.txt -Dthrift.exec.absolute.path=<YOUR LOCAL THRIFT BINARY FILE>`.
+If you want to download the Thrift compiler from another position, you may add the following
+parameter: `-Dthrift.download-url=<THE REMOTE URL FOR DOWNLOADING> -Dthrift.exec.absolute.path=<THE DOWNLOADED BINARY FILE NAME>`. Or you may directly modify our root pom if you are skilled enough.
+Here is the Thrift official site: https://thrift.apache.org/
+
 You can download the source code from:
 
 ```

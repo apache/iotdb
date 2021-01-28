@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -32,21 +36,11 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-
 import org.apache.iotdb.tsfile.utils.FileGenerator;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class ReadTest {
 
@@ -152,7 +146,6 @@ public class ReadTest {
       }
 
       cnt++;
-      // System.out.println(record.toString());
     }
   }
 
@@ -180,7 +173,6 @@ public class ReadTest {
       } else if (cnt == 3) {
         assertEquals(1480562618973L, r.getTimestamp());
       }
-      // System.out.println(r);
       cnt++;
     }
     assertEquals(7, cnt);
@@ -216,7 +208,6 @@ public class ReadTest {
       } else if (cnt == 4) {
         assertEquals(1480562618974L, r.getTimestamp());
       }
-      // System.out.println(r);
       cnt++;
     }
     assertEquals(5, cnt);
@@ -289,7 +280,6 @@ public class ReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.toString());
       }
-      System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(1, cnt);

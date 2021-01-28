@@ -41,6 +41,6 @@ public class StorageEngineException extends IoTDBException {
   }
 
   public StorageEngineException(IoTDBException e) {
-    super(e, e.getErrorCode());
+    super(e, e.getErrorCode(), e.isUserException());
   }
 }

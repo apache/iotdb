@@ -98,8 +98,9 @@ public class CommittedEntryManager {
    *
    * @return entries's size
    */
-  long getTotalSize() {
-    return getLastIndex() - getFirstIndex() + 1;
+  int getTotalSize() {
+    // the first one is a sentry
+    return entries.size() - 1;
   }
 
   /**

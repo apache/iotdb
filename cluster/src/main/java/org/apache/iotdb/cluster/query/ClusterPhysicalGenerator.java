@@ -73,7 +73,6 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
   }
 
-
   @Override
   protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
@@ -81,19 +80,23 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
       Properties[] properties = new Properties[2];
       properties[0] = new Properties();
       URL iotdbEnginePropertiesUrl = IoTDBDescriptor.getInstance().getPropsUrl();
-      try (InputStream inputStream = new FileInputStream(new File(iotdbEnginePropertiesUrl.toString()))) {
+      if (iotdbEnginePropertiesUrl == null) {
+        logger.error("Fail to find the engine config file");
+        throw new QueryProcessException("Fail to find config file");
+      }
+      try (InputStream inputStream = iotdbEnginePropertiesUrl.openStream()) {
         properties[0].load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file {}", iotdbEnginePropertiesUrl, e);
-        throw new QueryProcessException("Fail to find iotdb-engine config file.");
+        logger.error("Fail to read iotdb-engine config file {}", iotdbEnginePropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-engine config file.");
       }
       String clusterPropertiesUrl = ClusterDescriptor.getInstance().getPropsUrl();
       properties[1] = new Properties();
       try (InputStream inputStream = new FileInputStream(new File(clusterPropertiesUrl))) {
         properties[1].load(inputStream);
       } catch (IOException e) {
-        logger.warn("Fail to find config file {}", clusterPropertiesUrl, e);
-        throw new QueryProcessException("Fail to find cluster config file.");
+        logger.error("Fail to read iotdb-cluster config file {}", clusterPropertiesUrl, e);
+        throw new QueryProcessException("Fail to read iotdb-cluster config file.");
       }
 
       return new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL, properties);

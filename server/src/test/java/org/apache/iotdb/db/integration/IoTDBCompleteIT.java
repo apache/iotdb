@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -36,6 +38,8 @@ public class IoTDBCompleteIT {
 
   @Before
   public void setUp() throws Exception {
+    // test different partition
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(16);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
   }
@@ -43,6 +47,7 @@ public class IoTDBCompleteIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+    HashVirtualPartitioner.getInstance().setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
   }
 
   @Test

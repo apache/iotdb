@@ -33,8 +33,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 public class MetadataIndexConstructor {
 
-  private static final TSFileConfig config =
-      TSFileDescriptor.getInstance().getConfig();
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   private MetadataIndexConstructor() {
     throw new IllegalStateException("Utility class");
@@ -81,7 +80,7 @@ public class MetadataIndexConstructor {
     // if not exceed the max child nodes num, ignore the device index and directly point to the measurement
     if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
       MetadataIndexNode metadataIndexNode = new MetadataIndexNode(
-          MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+          MetadataIndexNodeType.LEAF_DEVICE);
       for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
         metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
         entry.getValue().serializeTo(out.wrapAsStream());

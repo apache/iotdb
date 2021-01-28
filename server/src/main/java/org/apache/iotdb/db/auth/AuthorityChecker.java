@@ -117,6 +117,8 @@ public class AuthorityChecker {
       case CREATE_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
+      case DELETE:
+      case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case QUERY:
       case SELECT:
@@ -131,15 +133,10 @@ public class AuthorityChecker {
       case UDTF:
       case LAST:
         return PrivilegeType.READ_TIMESERIES.ordinal();
-      case DELETE:
-      case DROP_INDEX:
-        return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case INSERT:
       case LOADDATA:
       case CREATE_INDEX:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
-      case UPDATE:
-        return PrivilegeType.UPDATE_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
       case LIST_ROLE_PRIVILEGE:

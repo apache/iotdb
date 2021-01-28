@@ -51,7 +51,7 @@ public class IoTDBMergeTest {
         .getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
     IoTDBDescriptor.getInstance().getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -62,6 +62,52 @@ public class IoTDBMergeTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig()
         .setCompactionStrategy(prevTsFileManagementStrategy);
+  }
+
+  @Test
+  public void testOverlap() throws SQLException {
+    logger.info("test...");
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      try {
+        statement.execute("CREATE TIMESERIES root.mergeTest.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+      } catch (SQLException e) {
+        // ignore
+      }
+
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 1, 1));
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 2, 2));
+      statement.execute("FLUSH");
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 5, 5));
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 6, 6));
+      statement.execute("FLUSH");
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 2, 3));
+      statement.execute(String
+          .format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 3, 3));
+      statement.execute("FLUSH");
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s1 = resultSet.getLong("root.mergeTest.s1");
+          if (time == 2) {
+            assertEquals(3, s1);
+          } else {
+            assertEquals(time, s1);
+          }
+          cnt++;
+        }
+        assertEquals(5, cnt);
+      }
+    }
   }
 
   @Test
@@ -94,7 +140,11 @@ public class IoTDBMergeTest {
                   + "%d,%d)", j, j + 10, j + 20, j + 30));
         }
         statement.execute("FLUSH");
-        statement.execute("MERGE");
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
 
         int cnt;
         try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {

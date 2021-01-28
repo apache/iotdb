@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.exception;
 
-public class UDFRegistrationException extends StorageEngineException {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+
+public class UDFRegistrationException extends QueryProcessException {
 
   public UDFRegistrationException(String message, Throwable cause) {
-    super(message, cause);
+    super(message);
+    this.initCause(cause);
   }
 
   public UDFRegistrationException(String message) {

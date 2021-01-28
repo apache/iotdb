@@ -28,6 +28,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class HDFSInput implements TsFileInput {
 
@@ -125,5 +126,15 @@ public class HDFSInput implements TsFileInput {
   @Override
   public int readInt() throws IOException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public synchronized String readVarIntString(long position) throws IOException {
+    long srcPosition = fsDataInputStream.getPos();
+
+    fsDataInputStream.seek(position);
+    String res = ReadWriteIOUtils.readVarIntString(fsDataInputStream);
+    fsDataInputStream.seek(srcPosition);
+    return res;
   }
 }

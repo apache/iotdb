@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -116,6 +118,7 @@ public class CMManager extends MManager {
   private RemoteMetaCache mRemoteMetaCache;
   private MetaPuller metaPuller;
   private MetaGroupMember metaGroupMember;
+  private Coordinator coordinator;
 
   private CMManager() {
     super();
@@ -400,7 +403,7 @@ public class CMManager extends MManager {
     // try to set storage group
     List<PartialPath> deviceIds;
     // only handle InsertPlan, CreateTimeSeriesPlan and CreateMultiTimeSeriesPlan currently
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertPlan && !(plan instanceof InsertMultiTabletPlan)) {
       deviceIds = Collections.singletonList(((InsertPlan) plan).getDeviceId());
     } else if (plan instanceof CreateTimeSeriesPlan) {
       deviceIds = Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath());
@@ -486,6 +489,25 @@ public class CMManager extends MManager {
   }
 
   /**
+   * @param insertMultiTabletPlan the InsertMultiTabletPlan
+   * @return true if all InsertTabletPlan in InsertMultiTabletPlan create timeseries success,
+   * otherwise false
+   */
+  public boolean createTimeseries(InsertMultiTabletPlan insertMultiTabletPlan)
+      throws CheckConsistencyException, IllegalPathException {
+    boolean allSuccess = true;
+    for (InsertTabletPlan insertTabletPlan : insertMultiTabletPlan.getInsertTabletPlanList()) {
+      boolean success = createTimeseries(insertTabletPlan);
+      allSuccess = allSuccess && success;
+      if (!success) {
+        logger.error("create timeseries for device={} failed", insertTabletPlan.getDeviceId());
+      }
+    }
+    return allSuccess;
+  }
+
+
+  /**
    * Create timeseries automatically for an InsertPlan.
    *
    * @param insertPlan some of the timeseries in it are not created yet
@@ -493,6 +515,10 @@ public class CMManager extends MManager {
    */
   public boolean createTimeseries(InsertPlan insertPlan)
       throws IllegalPathException, CheckConsistencyException {
+    if (insertPlan instanceof InsertMultiTabletPlan) {
+      return createTimeseries((InsertMultiTabletPlan) insertPlan);
+    }
+
     List<String> seriesList = new ArrayList<>();
     PartialPath deviceId = insertPlan.getDeviceId();
     PartialPath storageGroupName;
@@ -542,7 +568,7 @@ public class CMManager extends MManager {
       // TODO-Cluster: add executeNonQueryBatch() to create the series in batch
       TSStatus result;
       try {
-        result = metaGroupMember.processPartitionedPlan(createTimeSeriesPlan);
+        result = coordinator.processPartitionedPlan(createTimeSeriesPlan);
       } catch (UnsupportedPlanException e) {
         logger.error("Failed to create timeseries {} automatically. Unsupported plan exception {} ",
             seriesPath, e.getMessage());
@@ -561,6 +587,10 @@ public class CMManager extends MManager {
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+  }
+
+  public void setCoordinator(Coordinator coordinator) {
+    this.coordinator = coordinator;
   }
 
   /**
@@ -824,7 +854,7 @@ public class CMManager extends MManager {
   private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(
       List<PartialPath> paths,
       List<String> aggregations) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
     // if the aggregation function is null, the type of column in result set
     // is equal to the real type of the measurement
     if (aggregations == null) {
@@ -1302,7 +1332,7 @@ public class CMManager extends MManager {
       }));
     }
 
-    waitForThreadPool(futureList, pool);
+    waitForThreadPool(futureList, pool, "showTimeseries()");
     List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
         limit, offset);
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());

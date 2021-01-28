@@ -26,9 +26,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -50,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -80,17 +84,6 @@ public class LogReplayerTest {
     File tsFile = SystemFileFactory.INSTANCE.getFile("temp", "1-1-1.tsfile");
     File modF = SystemFileFactory.INSTANCE.getFile("test.mod");
     ModificationFile modFile = new ModificationFile(modF.getPath());
-    VersionController versionController = new VersionController() {
-      @Override
-      public long nextVersion() {
-        return 5;
-      }
-
-      @Override
-      public long currVersion() {
-        return 5;
-      }
-    };
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
@@ -106,10 +99,15 @@ public class LogReplayerTest {
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, memTable, false);
+          tsFileResource, memTable, false);
 
       WriteLogNode node =
-          MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
+          MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName(), () -> {
+            ByteBuffer[] byteBuffers = new ByteBuffer[2];
+            byteBuffers[0] = ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+            byteBuffers[1] = ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+            return byteBuffers;
+          });
       node.write(
           new InsertRowPlan(new PartialPath("root.sg.device0"), 100, "sensor0", TSDataType.INT64,
               String.valueOf(0)));
@@ -124,12 +122,17 @@ public class LogReplayerTest {
       node.write(deletePlan);
       node.close();
 
-      replayer.replayLogs();
+      replayer.replayLogs(() -> {
+        ByteBuffer[] byteBuffers = new ByteBuffer[2];
+        byteBuffers[0] = ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        byteBuffers[1] = ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+        return byteBuffers;
+      });
 
       for (int i = 0; i < 5; i++) {
         ReadOnlyMemChunk memChunk = memTable
             .query("root.sg.device" + i, "sensor" + i, TSDataType.INT64,
-                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
+                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE, null);
         IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
@@ -145,7 +148,7 @@ public class LogReplayerTest {
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
       assertEquals("root.sg.device0.sensor0", mods[0].getPathString());
-      assertEquals(5, mods[0].getVersionNum());
+      assertEquals(0, mods[0].getFileOffset());
       assertEquals(200, ((Deletion) mods[0]).getEndTime());
 
       assertEquals(2, tsFileResource.getStartTime("root.sg.device0"));
@@ -159,7 +162,7 @@ public class LogReplayerTest {
       for (int i = 0; i < 2 ; i++) {
         ReadOnlyMemChunk memChunk = memTable
             .query("root.sg.device5", "sensor" + i, TSDataType.INT64,
-                TSEncoding.PLAIN, Collections.emptyMap(), Long.MIN_VALUE);
+                TSEncoding.PLAIN, Collections.emptyMap(), Long.MIN_VALUE, null);
         //s0 has datatype boolean, but required INT64, will return null
         if (i == 0) {
           assertNull(memChunk);
@@ -175,7 +178,11 @@ public class LogReplayerTest {
       }
     } finally {
       modFile.close();
-      MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + tsFile.getName());
+      MultiFileLogNodeManager.getInstance().deleteNode(logNodePrefix + tsFile.getName(), (ByteBuffer[] byteBuffers) -> {
+        for (ByteBuffer byteBuffer : byteBuffers) {
+          MmapUtil.clean((MappedByteBuffer) byteBuffer);
+        }
+      });
       modF.delete();
       tsFile.delete();
       tsFile.getParentFile().delete();

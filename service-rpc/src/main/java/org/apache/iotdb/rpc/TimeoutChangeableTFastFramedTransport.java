@@ -33,22 +33,33 @@ public class TimeoutChangeableTFastFramedTransport extends TElasticFramedTranspo
     this.underlyingSocket = underlying;
   }
 
+  @Override
   public void setTimeout(int timeout) {
     underlyingSocket.setTimeout(timeout);
   }
 
+  @Override
   public int getTimeOut() throws SocketException {
     return underlyingSocket.getSocket().getSoTimeout();
   }
 
   public static class Factory extends TTransportFactory {
 
+    private final int initialBufferCapacity;
+
+    private final int maxLength;
+
+    public Factory(int initialBufferCapacity, int maxLength) {
+      this.initialBufferCapacity = initialBufferCapacity;
+      this.maxLength = maxLength;
+    }
+
     @Override
     public TTransport getTransport(TTransport trans) {
       if (trans instanceof TSocket) {
         return new TimeoutChangeableTFastFramedTransport((TSocket) trans);
       } else {
-        return new TElasticFramedTransport(trans);
+        return new TElasticFramedTransport(trans, initialBufferCapacity, maxLength);
       }
     }
   }

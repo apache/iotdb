@@ -72,6 +72,9 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String QUERY_ID = "queryId";
+  public static final String START_TIME = "startTime";
+  public static final String STATEMENT = "statement";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -86,11 +89,25 @@ public class IoTDBConstant {
   public static final String COLUMN_CANCELLED = "cancelled";
   public static final String COLUMN_DONE = "done";
 
-  public static final String COLUMN_FUNCTION_NAME = "UDF name";
-  public static final String COLUMN_FUNCTION_CLASS = "class name";
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
+  public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDAF = "external UDAF";
+  public static final String FUNCTION_TYPE_EXTERNAL_UDTF = "external UDTF";
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
+
+  //sdt parameters
+  public static final String LOSS = "loss";
+  public static final String SDT = "sdt";
+  public static final String SDT_COMP_DEV = "compdev";
+  public static final String SDT_COMP_MIN_TIME = "compmintime";
+  public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
@@ -105,6 +122,8 @@ public class IoTDBConstant {
   public static final String QUERY_FOLDER_NAME = "query";
   public static final String TRACING_FOLDER_NAME = "tracing";
   public static final String TRACING_LOG = "tracing.txt";
+  public static final String EXT_FOLDER_NAME = "ext";
+  public static final String UDF_FOLDER_NAME = "udf";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";

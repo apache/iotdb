@@ -61,7 +61,7 @@ import java.util.Map;
 public class MLogWriter implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
-  private File logFile;
+  private final File logFile;
   private LogWriter logWriter;
   private int logNum;
   private static final String DELETE_FAILED_FORMAT = "Deleting %s failed with exception %s";
@@ -104,125 +104,76 @@ public class MLogWriter implements AutoCloseable {
     mlogBuffer.clear();
   }
 
-  private void putLog(PhysicalPlan plan) {
+  private synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();
       logNum ++;
     } catch (BufferOverflowException e) {
-      logger.warn("MLog {} BufferOverflow !", plan.getOperatorType(), e);
+      throw new IOException(
+          LOG_TOO_LARGE_INFO, e);
     }
   }
 
   public void createTimeseries(CreateTimeSeriesPlan createTimeSeriesPlan) throws IOException {
-    try {
-      putLog(createTimeSeriesPlan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    putLog(createTimeSeriesPlan);
   }
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
-    try {
-      putLog(deleteTimeSeriesPlan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    putLog(deleteTimeSeriesPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
-    try {
-      SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(storageGroup);
+    putLog(plan);
   }
 
   public void deleteStorageGroup(PartialPath storageGroup) throws IOException {
-    try {
-      DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    DeleteStorageGroupPlan plan = new DeleteStorageGroupPlan(Collections.singletonList(storageGroup));
+    putLog(plan);
   }
 
   public void setTTL(PartialPath storageGroup, long ttl) throws IOException {
-    try {
-      SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    SetTTLPlan plan = new SetTTLPlan(storageGroup, ttl);
+    putLog(plan);
   }
 
   public void changeOffset(PartialPath path, long offset) throws IOException {
-    try {
-      ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    ChangeTagOffsetPlan plan = new ChangeTagOffsetPlan(path, offset);
+    putLog(plan);
   }
 
   public void changeAlias(PartialPath path, String alias) throws IOException {
-    try {
-      ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
-    }
+    ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
+    putLog(plan);
   }
 
   public void serializeMNode(MNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      MNodePlan plan = new MNodePlan(node.getName(), childSize);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    MNodePlan plan = new MNodePlan(node.getName(), childSize);
+    putLog(plan);
   }
 
   public void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
-        node.getOffset(), childSize, node.getSchema());
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    MeasurementMNodePlan plan = new MeasurementMNodePlan(node.getName(), node.getAlias(),
+      node.getOffset(), childSize, node.getSchema());
+    putLog(plan);
   }
 
   public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
-    try {
-      int childSize = 0;
-      if (node.getChildren() != null) {
-        childSize = node.getChildren().size();
-      }
-      StorageGroupMNodePlan plan = new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
-      putLog(plan);
-    } catch (BufferOverflowException e) {
-      throw new IOException(
-        LOG_TOO_LARGE_INFO, e);
+    int childSize = 0;
+    if (node.getChildren() != null) {
+      childSize = node.getChildren().size();
     }
+    StorageGroupMNodePlan plan = new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
+    putLog(plan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -299,7 +250,7 @@ public class MLogWriter implements AutoCloseable {
     upgradeTxtToBin(schemaDir, MetadataConstant.MTREE_TXT_SNAPSHOT, MetadataConstant.MTREE_SNAPSHOT, true);
   }
 
-  public void clear() throws IOException {
+  public synchronized void clear() throws IOException {
     sync();
     logWriter.close();
     mlogBuffer.clear();
@@ -326,13 +277,8 @@ public class MLogWriter implements AutoCloseable {
       operation(cmd);
     } else {
       PhysicalPlan plan = convertFromString(cmd);
-      try {
-        if (plan != null) {
-          putLog(plan);
-        }
-      } catch (BufferOverflowException e) {
-        throw new IOException(
-          LOG_TOO_LARGE_INFO, e);
+      if (plan != null) {
+        putLog(plan);
       }
     }
   }
@@ -384,9 +330,9 @@ public class MLogWriter implements AutoCloseable {
         }
 
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new PartialPath(args[1]),
-          TSDataType.deserialize(Short.parseShort(args[2])),
-          TSEncoding.deserialize(Short.parseShort(args[3])),
-          CompressionType.deserialize(Short.parseShort(args[4])), props, null, null, alias);
+          TSDataType.deserialize((byte) Short.parseShort(args[2])),
+          TSEncoding.deserialize((byte) Short.parseShort(args[3])),
+          CompressionType.deserialize((byte) Short.parseShort(args[4])), props, null, null, alias);
 
         plan.setTagOffset(offset);
         createTimeseries(plan);

@@ -32,8 +32,9 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   private boolean firstValue;
   private boolean lastValue;
+  private long sumValue;
 
-  static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 48;
+  static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 56;
 
 
   @Override
@@ -43,7 +44,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public int getStatsSize() {
-    return 2;
+    return 10;
   }
 
   /**
@@ -52,16 +53,18 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * @param firstValue first boolean value
    * @param lastValue  last boolean value
    */
-  public void initializeStats(boolean firstValue, boolean lastValue) {
+  public void initializeStats(boolean firstValue, boolean lastValue, long sum) {
     this.firstValue = firstValue;
     this.lastValue = lastValue;
+    this.sumValue = sum;
   }
 
-  private void updateStats(boolean firstValue, boolean lastValue) {
+  private void updateStats(boolean lastValue, long sum) {
     this.lastValue = lastValue;
+    this.sumValue += sum;
   }
 
-  private void updateStats(boolean firstValue, boolean lastValue, long startTime, long endTime) {
+  private void updateStats(boolean firstValue, boolean lastValue, long startTime, long endTime, long sum) {
     // only if endTime greater or equals to the current endTime need we update the last value
     // only if startTime less or equals to the current startTime need we update the first value
     // otherwise, just ignore
@@ -71,15 +74,16 @@ public class BooleanStatistics extends Statistics<Boolean> {
     if (endTime >= this.getEndTime()) {
       this.lastValue = lastValue;
     }
+    this.sumValue += sum;
   }
 
   @Override
   void updateStats(boolean value) {
     if (isEmpty) {
-      initializeStats(value, value);
+      initializeStats(value, value, value ? 1 : 0);
       isEmpty = false;
     } else {
-      updateStats(value, value);
+      updateStats(value, value ? 1 : 0);
     }
   }
 
@@ -120,8 +124,13 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public double getSumValue() {
-    throw new StatisticsClassException("Boolean statistics does not support: sum");
+  public double getSumDoubleValue() {
+    throw new StatisticsClassException("Boolean statistics does not support: double sum");
+  }
+
+  @Override
+  public long getSumLongValue() {
+    return sumValue;
   }
 
   @Override
@@ -146,17 +155,18 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public ByteBuffer getSumValueBuffer() {
-    throw new StatisticsClassException("Boolean statistics do not support: sum");
+    return ReadWriteIOUtils.getByteBuffer(sumValue);
   }
 
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (isEmpty) {
-      initializeStats(boolStats.getFirstValue(), boolStats.getLastValue());
+      initializeStats(boolStats.getFirstValue(), boolStats.getLastValue(), boolStats.sumValue);
       isEmpty = false;
     } else {
-      updateStats(boolStats.getFirstValue(), boolStats.getLastValue(), stats.getStartTime(), stats.getEndTime());
+      updateStats(boolStats.getFirstValue(), boolStats.getLastValue(), stats.getStartTime(),
+          stats.getEndTime(), boolStats.sumValue);
     }
   }
 
@@ -182,7 +192,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public byte[] getSumValueBytes() {
-    throw new StatisticsClassException("Boolean statistics does not support: sum");
+    return BytesUtils.longToBytes(sumValue);
   }
 
   @Override
@@ -190,23 +200,29 @@ public class BooleanStatistics extends Statistics<Boolean> {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
+    byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
 
   @Override
-  void deserialize(InputStream inputStream) throws IOException {
+  public void deserialize(InputStream inputStream) throws IOException {
     this.firstValue = ReadWriteIOUtils.readBool(inputStream);
     this.lastValue = ReadWriteIOUtils.readBool(inputStream);
+    this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
   @Override
-  void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
+    this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
   @Override
   public String toString() {
-    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return super.toString() + " [firstValue=" + firstValue +
+        ", lastValue=" + lastValue +
+        ", sumValue=" + sumValue +
+        ']';
   }
 }

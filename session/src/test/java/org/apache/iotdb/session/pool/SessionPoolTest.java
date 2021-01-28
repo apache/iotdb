@@ -23,7 +23,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -163,8 +165,37 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void executeRawDataQuery() throws InterruptedException {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    ExecutorService service = Executors.newFixedThreadPool(10);
+    write10Data(pool, true);
+    List<String> pathList = new ArrayList<>();
+    pathList.add("root.sg1.d1.s1");
+    for (int i = 0; i < 10; i++) {
+      final int no = i;
+      service.submit(() -> {
+        try {
+          SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1);
+          if (wrapper.hasNext()) {
+            Assert.assertEquals(no, wrapper.sessionDataSet.next().getTimestamp());
+          }
+          pool.closeResultSet(wrapper);
+        } catch (Exception e) {
+          e.printStackTrace();
+          fail();
+        }
+      });
+    }
+    service.shutdown();
+    assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+    assertTrue(pool.currentAvailableSize() <= 3);
+    assertEquals(0, pool.currentOccupiedSize());
+    pool.close();
+  }
+
+  @Test
   public void tryIfTheServerIsRestart() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null, false);
     write10Data(pool, true);
     SessionDataSetWrapper wrapper = null;
     try {
@@ -188,7 +219,7 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
     write10Data(pool, true);
     assertEquals(1, pool.currentAvailableSize());
     SessionDataSetWrapper wrapper = null;
@@ -211,7 +242,7 @@ public class SessionPoolTest {
 
   @Test
   public void restart() throws Exception {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
     write10Data(pool, true);
     //stop the server.
     EnvironmentUtils.stopDaemon();
@@ -240,10 +271,10 @@ public class SessionPoolTest {
 
   @Test
   public void testClose() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false, null, false);
     pool.close();
     try {
-      pool.insertRecord("root.sg1.d1", 1, Collections.singletonList("s1" ),
+      pool.insertRecord("root.sg1.d1", 1, Collections.singletonList("s1"),
           Collections.singletonList(TSDataType.INT64),
           Collections.singletonList(1L));
     } catch (IoTDBConnectionException e) {

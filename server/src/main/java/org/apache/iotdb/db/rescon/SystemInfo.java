@@ -41,12 +41,13 @@ public class SystemInfo {
   private long totalSgMemCost = 0L;
   private volatile boolean rejected = false;
 
+  private static long memorySizeForWrite = config.getAllocateMemoryForWrite();
   private Map<StorageGroupInfo, Long> reportedSgMemCostMap = new HashMap<>();
 
-  private static final double FLUSH_THERSHOLD =
-      config.getAllocateMemoryForWrite() * config.getFlushProportion();
-  private static final double REJECT_THERSHOLD = 
-      config.getAllocateMemoryForWrite() * config.getRejectProportion();
+  private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+  private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+
+  private boolean isEncodingFasterThanIo = true;
 
   /**
    * Report current mem cost of storage group to system. Called when the memory of
@@ -184,6 +185,14 @@ public class SystemInfo {
     return rejected;
   }
 
+  public void setEncodingFasterThanIo(boolean isEncodingFasterThanIo) {
+    this.isEncodingFasterThanIo = isEncodingFasterThanIo;
+  }
+
+  public boolean isEncodingFasterThanIo() {
+    return isEncodingFasterThanIo;
+  }
+
   public void close() {
     reportedSgMemCostMap.clear();
     totalSgMemCost = 0;
@@ -200,5 +209,17 @@ public class SystemInfo {
     }
 
     private static SystemInfo instance = new SystemInfo();
+  }
+
+  public synchronized void applyTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
+    memorySizeForWrite -= estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
+  }
+
+  public synchronized void releaseTemporaryMemoryForFlushing(long estimatedTemporaryMemSize) {
+    memorySizeForWrite += estimatedTemporaryMemSize;
+    FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
+    REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
   }
 }
