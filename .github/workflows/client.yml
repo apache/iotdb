@@ -2,6 +2,7 @@
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
 # CPP compiling is too slow, so let's do it in parallel with testing other modules.
+# As there is no Java client, we just use one JDK.
 name:  Clients_except_Java CI with Maven
 
 on:
@@ -26,7 +27,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [11.0.x]
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os}}
 
@@ -62,7 +63,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [11.0.x]
         os: [windows-latest]
     runs-on: ${{ matrix.os}}
 
