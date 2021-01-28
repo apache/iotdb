@@ -1066,7 +1066,6 @@ public class StorageGroupProcessor {
 
     TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
 
-    //Use double-check to shorten the lock range
     if (null == res) {
       // we have to remove oldest processor to control the num of the memtables
       // TODO: use a method to control the number of memtables
