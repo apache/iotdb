@@ -202,8 +202,8 @@ public class IoTDBRpcDataSet {
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     rowsIndex = 0;
-    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true,
-        timeout);
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 

@@ -191,6 +191,7 @@ compressor
     : UNCOMPRESSED
     | SNAPPY
     | LZ4
+    | GZIP
     ;
 
 attributeClause
