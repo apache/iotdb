@@ -21,7 +21,7 @@ on:
       - 'compile-tools/**'
 
 jobs:
-  build client on Unix:
+  build:
     strategy:
       fail-fast: false
       max-parallel: 20
@@ -57,7 +57,7 @@ jobs:
       - name: Test with Maven
         run:  mvn -B clean integration-test -Pclient-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
 
-  build client on Win:
+  build-win:
     strategy:
       fail-fast: false
       max-parallel: 20
