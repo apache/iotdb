@@ -66,8 +66,9 @@ public class RawDataQueryExecutor {
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
-      return new RawQueryDataSetWithoutValueFilter(queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries, queryPlan.isAscending());
+      return new RawQueryDataSetWithoutValueFilter(context.getQueryId(),
+          queryPlan.getDeduplicatedPaths(), queryPlan.getDeduplicatedDataTypes(),
+          readersOfSelectedSeries, queryPlan.isAscending());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
@@ -79,7 +80,7 @@ public class RawDataQueryExecutor {
   public final QueryDataSet executeNonAlign(QueryContext context)
       throws StorageEngineException, QueryProcessException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new NonAlignEngineDataSet(queryPlan.getDeduplicatedPaths(),
+    return new NonAlignEngineDataSet(context.getQueryId(), queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(), readersOfSelectedSeries);
   }
 

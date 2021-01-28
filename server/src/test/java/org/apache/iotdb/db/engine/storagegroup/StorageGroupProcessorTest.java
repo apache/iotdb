@@ -63,6 +63,7 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
@@ -93,7 +94,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testUnseqUnsealedDelete()
       throws WriteProcessException, IOException, MetadataException {
-    System.out.println("testUnseqUnsealedDelete");
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertRowPlan(record));
@@ -140,7 +140,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testSequenceSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
-    System.out.println("testSequenceSyncClose");
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -164,9 +163,35 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
+  public void testInsertDataAndRemovePartitionAndInsert()
+          throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    processor.removePartitions((storageGroupName, timePartitionId) -> true);
+
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource = processor
+            .query(new PartialPath(deviceId), measurementId, context,
+                    null, null);
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+  }
+
+  @Test
   public void testIoTDBTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException {
-    System.out.println("testIoTDBTabletWriteAndSyncClose");
     String[] measurements = new String[2];
     measurements[0] = "s0";
     measurements[1] = "s1";
@@ -235,7 +260,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testSeqAndUnSeqSyncClose()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
-    System.out.println("testSeqAndUnSeqSyncClose");
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -269,7 +293,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException {
-    System.out.println("testEnableDiscardOutOfOrderDataForInsertRowPlan");
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
@@ -313,7 +336,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException {
-    System.out.println("testEnableDiscardOutOfOrderDataForInsertTablet1");
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -397,7 +419,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException {
-    System.out.println("testEnableDiscardOutOfOrderDataForInsertTablet2");
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -481,7 +502,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException {
-    System.out.println("testEnableDiscardOutOfOrderDataForInsertTablet3");
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
@@ -565,7 +585,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
-    System.out.println("testMerge");
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -573,6 +592,7 @@ public class StorageGroupProcessorTest {
       processor.asyncCloseAllWorkingTsFileProcessors();
     }
     processor.syncCloseAllWorkingTsFileProcessors();
+
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -583,11 +603,9 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(true);
-    System.out.println("waiting for isUnseqMerging");
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }
-    System.out.println("isUnseqMerging is false");
 
     QueryDataSource queryDataSource = processor
         .query(new PartialPath(deviceId), measurementId, context,
@@ -605,7 +623,7 @@ public class StorageGroupProcessorTest {
   class DummySGP extends StorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
-      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
+      super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
     }
 
   }

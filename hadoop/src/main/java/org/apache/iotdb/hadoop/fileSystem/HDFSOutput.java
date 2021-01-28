@@ -62,6 +62,10 @@ public class HDFSOutput implements TsFileOutput {
   }
 
   @Override
+  public void write(byte b) throws IOException {
+    fsDataOutputStream.write(b);
+  }
+
   public void write(ByteBuffer b) throws IOException {
     throw new UnsupportedOperationException("Unsupported operation.");
   }

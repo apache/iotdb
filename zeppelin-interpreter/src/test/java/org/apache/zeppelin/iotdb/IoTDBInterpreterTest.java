@@ -24,6 +24,7 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_HOST;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_PORT;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_TIME_DISPLAY_TYPE;
+import static org.apache.zeppelin.iotdb.IoTDBInterpreter.DEFAULT_ZONE_ID;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_ENABLE_RPC_COMPRESSION;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_FETCH_SIZE;
 import static org.apache.zeppelin.iotdb.IoTDBInterpreter.IOTDB_HOST;
@@ -36,6 +37,7 @@ import static org.apache.zeppelin.iotdb.IoTDBInterpreter.SET_TIMESTAMP_DISPLAY;
 
 import java.io.IOException;
 import java.util.Properties;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.zeppelin.interpreter.InterpreterResult;
@@ -59,7 +61,7 @@ public class IoTDBInterpreterTest {
     properties.put(IOTDB_USERNAME, "root");
     properties.put(IOTDB_PASSWORD, "root");
     properties.put(IOTDB_FETCH_SIZE, DEFAULT_FETCH_SIZE);
-    properties.put(IOTDB_ZONE_ID, "UTC");
+    properties.put(IOTDB_ZONE_ID, DEFAULT_ZONE_ID);
     properties.put(IOTDB_ENABLE_RPC_COMPRESSION, DEFAULT_ENABLE_RPC_COMPRESSION);
     properties.put(IOTDB_TIME_DISPLAY_TYPE, DEFAULT_TIME_DISPLAY_TYPE);
     interpreter = new IoTDBInterpreter(properties);
@@ -68,6 +70,7 @@ public class IoTDBInterpreterTest {
   }
 
   private void initInsert() {
+    interpreter.internalInterpret("set storage group to root.test.wf01", null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (1, 1.1, false, 11)",
         null);
@@ -82,6 +85,14 @@ public class IoTDBInterpreterTest {
         null);
     interpreter.internalInterpret(
         "INSERT INTO root.test.wf01.wt01 (timestamp, temperature, status, hardware) VALUES (5, 5.5, false, 55)",
+        null);
+
+    interpreter.internalInterpret("set storage group to root.test.wf02", null);
+    interpreter.internalInterpret(
+        "INSERT INTO root.test.wf02.wt02 (timestamp, temperature, status, hardware) VALUES (44, 4.4, false, 44)",
+        null);
+    interpreter.internalInterpret(
+        "INSERT INTO root.test.wf02.wt02 (timestamp, temperature, status, hardware) VALUES (54, 5.5, false, 55)",
         null);
   }
 
@@ -193,7 +204,7 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:13 missing ROOT at '<EOF>'",
+        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:13 missing ROOT at '<EOF>'",
         actual.message().get(0).getData());
 
     wrongSql = "select * from a";
@@ -201,14 +212,15 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
+        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
         actual.message().get(0).getData());
 
     wrongSql = "select * from root a";
+    actual = interpreter.internalInterpret(wrongSql, null);
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "StatementExecutionException: 401: meet error while parsing SQL to physical plan: {}line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
+        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:19 extraneous input 'a' expecting <EOF>",
         actual.message().get(0).getData());
   }
 
@@ -269,5 +281,93 @@ public class IoTDBInterpreterTest {
         "SELECT * FROM root.test.wf01.wt01 WHERE time >= 1  AND time <= 6",
     };
     Assert.assertArrayEquals(gt, IoTDBInterpreter.parseMultiLinesSQL(query));
+  }
+
+  @Test
+  public void testShowVersion() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("SHOW VERSION", null);
+    String gt = "version\n" + IoTDBConstant.VERSION;
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowTimeseries() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("show timeseries", null);
+    String gt =
+        "timeseries\talias\tstorage group\tdataType\tencoding\tcompression\ttags\tattributes\n"
+            + "root.test.wf02.wt02.temperature\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
+            + "root.test.wf02.wt02.status\tnull\troot.test.wf02\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\n"
+            + "root.test.wf02.wt02.hardware\tnull\troot.test.wf02\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
+            + "root.test.wf01.wt01.temperature\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull\n"
+            + "root.test.wf01.wt01.status\tnull\troot.test.wf01\tBOOLEAN\tRLE\tSNAPPY\tnull\tnull\n"
+            + "root.test.wf01.wt01.hardware\tnull\troot.test.wf01\tFLOAT\tGORILLA\tSNAPPY\tnull\tnull";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowDevices() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("show devices", null);
+    String gt = "devices\n"
+        + "root.test.wf01.wt01\n"
+        + "root.test.wf02.wt02";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowAllTTL() {
+    interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
+    InterpreterResult actual = interpreter
+        .internalInterpret("SHOW ALL TTL", null);
+    String gt = "storage group\tttl\n"
+        + "root.test.wf02\tnull\n"
+        + "root.test.wf01\t12345";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowTTL() {
+    interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
+    InterpreterResult actual = interpreter
+        .internalInterpret("SHOW TTL ON root.test.wf01", null);
+    String gt = "storage group\tttl\n"
+        + "root.test.wf01\t12345";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testShowStorageGroup() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("SHOW STORAGE GROUP", null);
+    String gt = "storage group\n"
+        + "root.test.wf02\n"
+        + "root.test.wf01";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
+  public void testListUser() {
+    interpreter.internalInterpret("CREATE USER user1 'password1'", null);
+    InterpreterResult actual = interpreter.internalInterpret("LIST USER", null);
+    String gt = "user\n"
+        + "root\n"
+        + "user1";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
   }
 }

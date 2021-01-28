@@ -29,9 +29,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -276,6 +278,79 @@ public class IoTDBDeletionIT {
       cleanData();
     }
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+  }
+
+  @Test
+  public void testDelMultipleFlushingMemtable() throws SQLException {
+    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    // Adjust memstable threshold size to make it flush automatically
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1000000);
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+                    "root");
+         Statement statement = connection.createStatement()) {
+
+      for (int i = 1; i <= 100000; i++) {
+        statement.execute(
+                String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
+                        i % 2 == 0));
+      }
+
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
+      for (int i = 100001; i <= 200000; i++) {
+        statement.execute(
+                String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'",
+                        i % 2 == 0));
+      }
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");
+      statement.execute("flush");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(110000, cnt);
+      }
+      cleanData();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+  }
+
+  @Test
+  public void testDelSeriesWithSpecialSymbol() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.ln.d1.\"status,01\" WITH DATATYPE=BOOLEAN,"
+          + " ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") "
+          + "values(300,true)");
+      statement.execute("INSERT INTO root.ln.d1(timestamp,\"status,01\") VALUES(500, false)");
+
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\" WHERE time <= 400");
+
+      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      statement.execute("DELETE FROM root.ln.d1.\"status,01\"");
+
+      try (ResultSet resultSet = statement.executeQuery("select \"status,01\" from root.ln.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
   }
 
   private static void prepareSeries() {

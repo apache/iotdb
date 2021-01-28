@@ -108,7 +108,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       //test set sdt property
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-          + "LOSS=SDT,COMPDEV=2,COMPMIN=2,COMPMAX=10");
+          + "LOSS=SDT,COMPDEV=2,COMPMINTIME=2,COMPMAXTIME=10");
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -222,7 +222,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       //test set sdt property
       statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMIN=1.5");
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
 
       for (int time = 1; time < 8; time++) {
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
@@ -268,7 +268,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("SET STORAGE GROUP TO root.sg1");
       //test set sdt property
       statement
-          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAX=20");
+          .execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
 
       for (int time = 1; time < 50; time++) {
         String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
@@ -714,6 +714,58 @@ public class IoTDBSimpleQueryIT {
       try (ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1")) {
         while (resultSet.next()) {
           Assert.assertTrue(exps.contains(resultSet.getString(1)));
+          ++count;
+        }
+      }
+      Assert.assertEquals(2, count);
+    }
+  }
+
+  @Test
+  public void testShowDevicesWithLimitOffset() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      List<String> exps = Arrays
+          .asList("root.sg1.d1", "root.sg1.d2");
+
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
+          ++count;
+        }
+      }
+      Assert.assertEquals(2, count);
+    }
+  }
+
+  @Test
+  public void testShowDevicesWithLimit() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      List<String> exps = Arrays
+          .asList("root.sg1.d0", "root.sg1.d1");
+
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {
+        while (resultSet.next()) {
+          Assert.assertEquals(exps.get(count), resultSet.getString(1));
           ++count;
         }
       }

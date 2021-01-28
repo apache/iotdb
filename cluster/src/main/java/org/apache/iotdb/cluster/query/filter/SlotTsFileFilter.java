@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,16 +43,15 @@ public class SlotTsFileFilter implements TsFileFilter {
     return fileNotInSlots(resource, slots);
   }
 
-  private static boolean fileNotInSlots(TsFileResource res, List<Integer> nodeSlots) {
-    // <storageGroupName>/<partitionNum>/<fileName>
-    String[] pathSegments = FilePathUtils.splitTsFilePath(res);
-    String storageGroupName = pathSegments[pathSegments.length - 3];
-    int partitionNum = Integer.parseInt(pathSegments[pathSegments.length - 2]);
+  private static boolean fileNotInSlots(TsFileResource resource, List<Integer> nodeSlots) {
+    Pair<String, Long> sgNameAndPartitionIdPair = FilePathUtils
+        .getLogicalSgNameAndTimePartitionIdPair(resource);
     int slot = SlotPartitionTable.getSlotStrategy()
-        .calculateSlotByPartitionNum(storageGroupName, partitionNum,
-        ClusterConstant.SLOT_NUM);
+        .calculateSlotByPartitionNum(sgNameAndPartitionIdPair.left, sgNameAndPartitionIdPair.right,
+            ClusterConstant.SLOT_NUM);
     boolean contained = nodeSlots.contains(slot);
-    logger.debug("The slot of {} is {}, contained: {}", res.getTsFile().getPath(), slot, contained);
+    logger.debug("The slot of {} is {}, contained: {}", resource.getTsFile().getPath(), slot,
+        contained);
     return !contained;
   }
 }

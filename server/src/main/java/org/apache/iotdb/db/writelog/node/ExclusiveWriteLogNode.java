@@ -59,11 +59,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBufferWorking = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-  private ByteBuffer logBufferIdle = ByteBuffer
-      .allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+  private ByteBuffer logBufferWorking;
+  private ByteBuffer logBufferIdle;
   private ByteBuffer logBufferFlushing;
+
+  // used for the convenience of deletion
+  private ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
   private ReentrantLock lock = new ReentrantLock();
@@ -90,6 +91,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
+  }
+
+  public void initBuffer(ByteBuffer[] byteBuffers) {
+    this.logBufferWorking = byteBuffers[0];
+    this.logBufferIdle = byteBuffers[1];
+    this.bufferArray = byteBuffers;
   }
 
   @Override
@@ -197,12 +204,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
-  public void delete() throws IOException {
+  public ByteBuffer[] delete() throws IOException {
     lock.lock();
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
       deleted = true;
+      return this.bufferArray;
     } finally {
       lock.unlock();
     }

@@ -23,12 +23,11 @@ import static org.apache.iotdb.db.query.udf.datastructure.SerializableList.INITI
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.datastructure.Cache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class ElasticSerializableRowRecordList {
 
@@ -46,7 +45,7 @@ public class ElasticSerializableRowRecordList {
   protected int evictionUpperBound;
 
   protected boolean disableMemoryControl;
-  protected List<Integer> indexListOfTextFields;
+  protected int[] indexListOfTextFields;
   protected int byteArrayLengthForMemoryControl;
   protected long totalByteArrayLengthLimit;
   protected long totalByteArrayLength;
@@ -71,11 +70,19 @@ public class ElasticSerializableRowRecordList {
     size = 0;
     evictionUpperBound = 0;
 
-    disableMemoryControl = false;
-    indexListOfTextFields = new ArrayList<>();
+    disableMemoryControl = true;
+    int textFieldsCount = 0;
+    for (TSDataType dataType : dataTypes) {
+      if (dataType.equals(TSDataType.TEXT)) {
+        ++textFieldsCount;
+        disableMemoryControl = false;
+      }
+    }
+    indexListOfTextFields = new int[textFieldsCount];
+    int fieldIndex = 0;
     for (int i = 0; i < dataTypes.length; ++i) {
       if (dataTypes[i].equals(TSDataType.TEXT)) {
-        indexListOfTextFields.add(i);
+        indexListOfTextFields[fieldIndex++] = i;
       }
     }
     byteArrayLengthForMemoryControl = INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
@@ -108,21 +115,22 @@ public class ElasticSerializableRowRecordList {
         .getTime(index % internalRowRecordListCapacity);
   }
 
-  public RowRecord getRowRecord(int index) throws IOException {
+  public Object[] getRowRecord(int index) throws IOException {
     return cache.get(index / internalRowRecordListCapacity)
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
-  public void put(RowRecord rowRecord) throws IOException, QueryProcessException {
+  public void put(Object[] rowRecord) throws IOException, QueryProcessException {
     checkExpansion();
     cache.get(size / internalRowRecordListCapacity).put(rowRecord);
     ++size;
 
     if (!disableMemoryControl) {
-      totalByteArrayLengthLimit += indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
-      List<Field> fields = rowRecord.getFields();
-      for (Integer indexListOfTextField : indexListOfTextFields) {
-        totalByteArrayLength += fields.get(indexListOfTextField).getBinaryV().getLength();
+      totalByteArrayLengthLimit +=
+          (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+      for (int indexListOfTextField : indexListOfTextFields) {
+        Binary binary = (Binary) rowRecord[indexListOfTextField];
+        totalByteArrayLength += binary == null ? 0 : binary.getLength();
       }
       checkMemoryUsage();
     }
@@ -130,14 +138,13 @@ public class ElasticSerializableRowRecordList {
 
   private void checkExpansion() {
     if (size % internalRowRecordListCapacity == 0) {
-      rowRecordLists
-          .add(SerializableRowRecordList.newSerializableRowRecordList(dataTypes, queryId));
+      rowRecordLists.add(SerializableRowRecordList
+          .newSerializableRowRecordList(queryId, dataTypes, internalRowRecordListCapacity));
     }
   }
 
   protected void checkMemoryUsage() throws IOException, QueryProcessException {
-    if (size % MEMORY_CHECK_THRESHOLD != 0 || indexListOfTextFields.isEmpty()
-        || totalByteArrayLength <= totalByteArrayLengthLimit) {
+    if (size % MEMORY_CHECK_THRESHOLD != 0 || totalByteArrayLength <= totalByteArrayLengthLimit) {
       return;
     }
 
@@ -155,7 +162,7 @@ public class ElasticSerializableRowRecordList {
     }
 
     int delta = (int) ((totalByteArrayLength - totalByteArrayLengthLimit) / size
-        / indexListOfTextFields.size() / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
+        / indexListOfTextFields.length / INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL);
     newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl +
         2 * (delta + 1) * INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL;
     newInternalTVListCapacity = SerializableRowRecordList
@@ -195,30 +202,28 @@ public class ElasticSerializableRowRecordList {
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit =
-        (long) size * indexListOfTextFields.size() * byteArrayLengthForMemoryControl;
+        (long) size * indexListOfTextFields.length * byteArrayLengthForMemoryControl;
   }
 
+  /**
+   * @param evictionUpperBound the index of the first element that cannot be evicted. in other
+   *                           words, elements whose index are <b>less than</b> the
+   *                           evictionUpperBound can be evicted.
+   */
   public void setEvictionUpperBound(int evictionUpperBound) {
     this.evictionUpperBound = evictionUpperBound;
   }
 
-  /**
-   * <b>Note: It's not thread safe.</b>
-   */
-  private class LRUCache {
-
-    private final int capacity;
-    private final LinkedList<Integer> cache;
+  private class LRUCache extends Cache {
 
     LRUCache(int capacity) {
-      this.capacity = capacity;
-      cache = new LinkedList<>();
+      super(capacity);
     }
 
     SerializableRowRecordList get(int targetIndex) throws IOException {
-      if (!cache.removeFirstOccurrence(targetIndex)) {
-        if (capacity <= cache.size()) {
-          int lastIndex = cache.removeLast();
+      if (!removeFirstOccurrence(targetIndex)) {
+        if (cacheCapacity <= cacheSize) {
+          int lastIndex = removeLast();
           if (lastIndex < evictionUpperBound / internalRowRecordListCapacity) {
             rowRecordLists.set(lastIndex, null);
           } else {
@@ -227,7 +232,7 @@ public class ElasticSerializableRowRecordList {
         }
         rowRecordLists.get(targetIndex).deserialize();
       }
-      cache.addFirst(targetIndex);
+      addFirst(targetIndex);
       return rowRecordLists.get(targetIndex);
     }
   }

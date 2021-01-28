@@ -51,11 +51,6 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public List<TsFileResource> getStableTsFileList(boolean sequence) {
-    return getTsFileList(sequence);
-  }
-
-  @Override
   public List<TsFileResource> getTsFileList(boolean sequence) {
     if (sequence) {
       return new ArrayList<>(sequenceFileTreeSet);
@@ -94,6 +89,11 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
     } else {
       unSequenceFileList.add(tsFileResource);
     }
+  }
+
+  @Override
+  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+    logger.info("{} do not need to recover", storageGroupName);
   }
 
   @Override

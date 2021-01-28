@@ -44,7 +44,6 @@ public class MergeLogTest extends MergeTest {
 
   File tempSGDir;
 
-  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();

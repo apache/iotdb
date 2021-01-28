@@ -89,14 +89,24 @@ tablet_01 = Tablet("root.sg_test_01.d_01", measurements_, data_types_, values_, 
 tablet_02 = Tablet("root.sg_test_01.d_01", measurements_, data_types_, values_, [12, 13, 14, 15])
 session.insert_tablets([tablet_01, tablet_02])
 
+# insert records of one device
+time_list = [1, 2, 3]
+measurements_list = [["s_01", "s_02", "s_03"], ["s_01", "s_02", "s_03"], ["s_01", "s_02", "s_03"]]
+data_types_list = [[TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+                   [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64],
+                   [TSDataType.BOOLEAN, TSDataType.INT32, TSDataType.INT64]]
+values_list = [[False, 22, 33], [True, 1, 23], [False, 15, 26]]
+
+session.insert_records_of_one_device("root.sg_test_01.d_01", time_list, measurements_list, data_types_list, values_list)
+
 # execute non-query sql statement
-session.execute_non_query_statement("insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188);")
+session.execute_non_query_statement("insert into root.sg_test_01.d_01(timestamp, s_02) values(16, 188)")
 
 # execute sql query statement
 session_data_set = session.execute_query_statement("select * from root.sg_test_01.d_01")
 session_data_set.set_fetch_size(1024)
 while session_data_set.has_next():
-    print(session_data_set.next())
+  print(session_data_set.next())
 session_data_set.close_operation_handle()
 
 # close session connection.

@@ -60,6 +60,7 @@ public enum TSStatusCode {
   QUERY_PROCESS_ERROR(411),
   WRITE_PROCESS_ERROR(412),
   WRITE_PROCESS_REJECT(413),
+  QUERY_ID_NOT_EXIST(414),
 
   UNSUPPORTED_INDEX_FUNC_ERROR(421),
   UNSUPPORTED_INDEX_TYPE_ERROR(422),
@@ -79,7 +80,6 @@ public enum TSStatusCode {
   UNINITIALIZED_AUTH_ERROR(603),
 
   // cluster-related errors
-  // TODO-Cluster: update docs when ready to merge
   PARTITION_NOT_READY(700),
   TIME_OUT(701),
   NO_LEADER(702),

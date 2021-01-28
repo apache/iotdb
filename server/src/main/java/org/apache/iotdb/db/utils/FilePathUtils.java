@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,6 +39,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class FilePathUtils {
 
@@ -48,10 +51,11 @@ public class FilePathUtils {
 
   /**
    * Format file path to end with File.separator
+   *
    * @param filePath origin file path
    * @return Regularized Path
    */
-  public static String regularizePath(String filePath){
+  public static String regularizePath(String filePath) {
     if (filePath.length() > 0
         && filePath.charAt(filePath.length() - 1) != File.separatorChar) {
       filePath = filePath + File.separatorChar;
@@ -59,21 +63,72 @@ public class FilePathUtils {
     return filePath;
   }
 
+  /**
+   * IMPORTANT, when the path of TsFile changes, the following methods should be changed
+   * accordingly. The sequence TsFile is located at ${IOTDB_DATA_DIR}/data/sequence/. The unsequence
+   * TsFile is located at ${IOTDB_DATA_DIR}/data/unsequence/. Where different storage group's TsFile
+   * is located at <logicalStorageGroupName>/<virtualStorageGroupName>/<timePartitionId>/<fileName>.
+   * For example, one sequence TsFile may locate at /data/data/sequence/root.group_9/0/0/1611199237113-4-0.tsfile
+   *
+   * @param resource the tsFileResource
+   */
   public static String[] splitTsFilePath(TsFileResource resource) {
     return resource.getTsFile().getAbsolutePath().split(PATH_SPLIT_STRING);
   }
 
+  public static String getLogicalStorageGroupName(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    return pathSegments[pathSegments.length - 4];
+  }
+
+  public static String getVirtualStorageGroupId(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    return pathSegments[pathSegments.length - 3];
+  }
+
+  public static long getTimePartitionId(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    return Long.parseLong(pathSegments[pathSegments.length - 2]);
+  }
+
   /**
-   * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0
-   * level=1, return [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0],
-   * [1, root.sg1.*.s0]]
-   * @param plan the original Aggregation Plan
+   * @param resource the RemoteTsFileResource
+   * @return the file in the snapshot is a hardlink, remove the hardlink suffix
+   */
+  public static String getTsFileNameWithoutHardLink(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    return pathSegments[pathSegments.length - 1].substring(0,
+        pathSegments[pathSegments.length - 1].lastIndexOf(TsFileConstant.PATH_SEPARATOR));
+  }
+
+  public static String getTsFilePrefixPath(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    int pathLength = pathSegments.length;
+    return pathSegments[pathLength - 4] + File.separator + pathSegments[pathLength - 3]
+        + File.separator + pathSegments[pathLength - 2];
+  }
+
+  public static Pair<String, Long> getLogicalSgNameAndTimePartitionIdPair(TsFileResource resource) {
+    String[] pathSegments = splitTsFilePath(resource);
+    return new Pair<>(pathSegments[pathSegments.length - 4],
+        Long.parseLong(pathSegments[pathSegments.length - 2]));
+  }
+
+  public static String[] splitTsFilePath(String tsFileAbsolutePath) {
+    return tsFileAbsolutePath.split(PATH_SPLIT_STRING);
+  }
+
+  /**
+   * get paths from group by level, like root.sg1.d2.s0, root.sg1.d1.s0 level=1, return
+   * [root.sg1.*.s0, 0] and pathIndex turns to be [[0, root.sg1.*.s0], [1, root.sg1.*.s0]]
+   *
+   * @param plan      the original Aggregation Plan
    * @param pathIndex the mapping from index of aggregations to the result path name
    * @return
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static Map<String, AggregateResult> getPathByLevel(AggregationPlan plan,
-          Map<Integer, String> pathIndex) throws QueryProcessException {
+      Map<Integer, String> pathIndex) throws QueryProcessException {
     // pathGroupByLevel -> count
     Map<String, AggregateResult> finalPaths = new TreeMap<>();
 
@@ -104,7 +159,7 @@ public class FilePathUtils {
         key = path.toString();
       }
       AggregateResult aggRet = AggregateResultFactory
-              .getAggrResultByName(plan.getAggregations().get(i), dataTypes.get(i));
+          .getAggrResultByName(plan.getAggregations().get(i), dataTypes.get(i));
       finalPaths.putIfAbsent(key, aggRet);
       pathIndex.put(i, key);
     }
@@ -113,10 +168,8 @@ public class FilePathUtils {
   }
 
   /**
-   * merge the raw record by level, for example
-   * raw record [timestamp, root.sg1.d1.s0, root.sg1.d1.s1, root.sg1.d2.s2], level=1
-   * and newRecord data is [100, 1, 1, 1]
-   * return [100, 3]
+   * merge the raw record by level, for example raw record [timestamp, root.sg1.d1.s0,
+   * root.sg1.d1.s1, root.sg1.d2.s2], level=1 and newRecord data is [100, 1, 1, 1] return [100, 3]
    *
    * @param newRecord
    * @param finalPaths
@@ -124,8 +177,8 @@ public class FilePathUtils {
    * @return
    */
   public static List<AggregateResult> mergeRecordByPath(
-          AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths,
-          Map<Integer, String> pathIndex) {
+      AggregationPlan plan, RowRecord newRecord, Map<String, AggregateResult> finalPaths,
+      Map<Integer, String> pathIndex) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -167,8 +220,8 @@ public class FilePathUtils {
   }
 
   public static List<AggregateResult> mergeRecordByPath(
-          List<AggregateResult> aggResults, Map<String, AggregateResult> finalPaths,
-          Map<Integer, String> pathIndex) {
+      List<AggregateResult> aggResults, Map<String, AggregateResult> finalPaths,
+      Map<Integer, String> pathIndex) {
     if (aggResults.size() < finalPaths.size()) {
       return Collections.emptyList();
     }
@@ -195,4 +248,11 @@ public class FilePathUtils {
     return resultSet;
   }
 
+  public static long splitAndGetTsFileVersion(String tsFileName) {
+    String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
+    if (names.length != 3) {
+      return 0;
+    }
+    return Long.parseLong(names[1]);
+  }
 }

@@ -25,11 +25,12 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -44,6 +45,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
+import org.checkerframework.checker.units.qual.C;
 import org.junit.After;
 import org.junit.Before;
 
@@ -51,6 +53,7 @@ public abstract class DataSnapshotTest {
 
   DataGroupMember dataGroupMember;
   MetaGroupMember metaGroupMember;
+  Coordinator coordinator;
   final int failureFrequency = 10;
   int failureCnt;
   boolean addNetFailure = false;
@@ -58,6 +61,11 @@ public abstract class DataSnapshotTest {
   @Before
   public void setUp() throws MetadataException, StartupException {
     dataGroupMember = new TestDataGroupMember() {
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getAsyncClient(node);
+      }
+
       @Override
       public AsyncClient getAsyncClient(Node node) {
         return new AsyncDataClient(null, null, null) {
@@ -142,6 +150,8 @@ public abstract class DataSnapshotTest {
         // do nothing
       }
     };
+    coordinator = new Coordinator(metaGroupMember);
+    metaGroupMember.setCoordinator(coordinator);
     metaGroupMember.setPartitionTable(TestUtils.getPartitionTable(10));
     dataGroupMember.setMetaGroupMember(metaGroupMember);
     dataGroupMember.setLogManager(new TestLogManager(0));

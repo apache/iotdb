@@ -38,6 +38,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -65,62 +66,108 @@ public class Session {
   protected String username;
   protected String password;
   protected int fetchSize;
+
+  /**
+   * Timeout of query can be set by users.
+   * If not set, default value 0 will be used, which will use server configuration.
+   */
+  private long timeout = 0;
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
+  protected ZoneId zoneId;
 
-  private EndPoint defaultEndPoint;
-  private SessionConnection defaultSessionConnection;
-  protected boolean isClosed = true;
-  private ZoneId zoneId;
+  protected int initialBufferCapacity;
+  protected int maxFrameSize;
+
+  protected EndPoint defaultEndPoint;
+  protected SessionConnection defaultSessionConnection;
+  private boolean isClosed = true;
 
   // Cluster version cache
-  private SessionConnection metaSessionConnection;
-  private Map<String, EndPoint> deviceIdToEndpoint;
-  private Map<EndPoint, SessionConnection> endPointToSessionConnection;
+  protected boolean enableCacheLeader;
+  protected SessionConnection metaSessionConnection;
+  protected Map<String, EndPoint> deviceIdToEndpoint;
+  protected Map<EndPoint, SessionConnection> endPointToSessionConnection;
   private AtomicReference<IoTDBConnectionException> tmp = new AtomicReference<>();
 
   public Session(String host, int rpcPort) {
     this(host, rpcPort, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD, Config.DEFAULT_FETCH_SIZE,
-        null);
+        null, Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
-    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, Integer.parseInt(rpcPort), username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null);
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
-    this(host, rpcPort, username, password, fetchSize, null);
-  }
-
-  public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
-    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId);
+    this(host, rpcPort, username, password, fetchSize, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize,
-      ZoneId zoneId) {
+      long timeoutInMs) {
+    this(host, rpcPort, username, password, fetchSize, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+    this.timeout = timeoutInMs;
+  }
+
+
+  public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(String host, int rpcPort, String username, String password,
+      boolean enableCacheLeader) {
+    this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE, enableCacheLeader);
+  }
+
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      ZoneId zoneId, boolean enableCacheLeader) {
+    this(host, rpcPort, username, password, fetchSize, zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE, enableCacheLeader);
+  }
+
+  @SuppressWarnings("squid:S107")
+  public Session(String host, int rpcPort, String username, String password, int fetchSize,
+      ZoneId zoneId, int initialBufferCapacity, int maxFrameSize, boolean enableCacheLeader) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
     this.zoneId = zoneId;
+    this.initialBufferCapacity = initialBufferCapacity;
+    this.maxFrameSize = maxFrameSize;
+    this.enableCacheLeader = enableCacheLeader;
   }
 
-  public void setFetchSize(int fetchSize){
+  public void setFetchSize(int fetchSize) {
     this.fetchSize = fetchSize;
   }
 
-  public int getFetchSize(){ return this.fetchSize; }
+  public int getFetchSize() {
+    return this.fetchSize;
+  }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(false, Config.DEFAULT_TIMEOUT_MS);
+    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
-    open(enableRPCCompression, Config.DEFAULT_TIMEOUT_MS);
+    open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
   private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
@@ -131,10 +178,10 @@ public class Session {
 
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
-    defaultSessionConnection = new SessionConnection(this, defaultEndPoint, zoneId);
+    defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       deviceIdToEndpoint = new HashMap<>();
       endPointToSessionConnection = new HashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -146,7 +193,7 @@ public class Session {
       return;
     }
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE) {
+      if (enableCacheLeader) {
         for (SessionConnection sessionConnection : endPointToSessionConnection.values()) {
           sessionConnection.close();
         }
@@ -156,6 +203,13 @@ public class Session {
     } finally {
       isClosed = true;
     }
+  }
+
+
+  public SessionConnection constructSessionConnection(Session session, EndPoint endpoint,
+      ZoneId zoneId)
+      throws IoTDBConnectionException {
+    return new SessionConnection(session, endpoint, zoneId);
   }
 
   public synchronized String getTimeZone() {
@@ -273,18 +327,45 @@ public class Session {
 
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.checkTimeseriesExists(path);
+    return defaultSessionConnection.checkTimeseriesExists(path, timeout);
+  }
+
+
+  public void setTimeout(long timeoutInMs) throws StatementExecutionException {
+    if (timeoutInMs < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
+    }
+    this.timeout = timeoutInMs;
+  }
+
+  public long getTimeout() {
+    return timeout;
   }
 
   /**
-   * execure query sql
+   * execute query sql
    *
    * @param sql query statement
    * @return result set
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return defaultSessionConnection.executeQueryStatement(sql);
+    return defaultSessionConnection.executeQueryStatement(sql, timeout);
+  }
+
+  /**
+   * execute query sql with explicit timeout
+   *
+   * @param sql         query statement
+   * @param timeoutInMs the timeout of this query, in milliseconds
+   * @return result set
+   */
+  public SessionDataSet executeQueryStatement(String sql, long timeoutInMs)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (timeoutInMs < 0) {
+      throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
+    }
+    return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
   }
 
   /**
@@ -350,7 +431,7 @@ public class Session {
 
   private SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
-    if (Config.DEFAULT_CACHE_LEADER_MODE
+    if (enableCacheLeader
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
     } else {
@@ -360,12 +441,12 @@ public class Session {
 
   private void handleMetaRedirection(String storageGroup, RedirectException e)
       throws IoTDBConnectionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(e.getEndPoint(), k -> {
             try {
-              return new SessionConnection(this, e.getEndPoint(), zoneId);
+              return constructSessionConnection(this, e.getEndPoint(), zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
@@ -380,12 +461,12 @@ public class Session {
 
   private void handleRedirection(String deviceId, EndPoint endpoint)
       throws IoTDBConnectionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       deviceIdToEndpoint.put(deviceId, endpoint);
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(endpoint, k -> {
             try {
-              return new SessionConnection(this, endpoint, zoneId);
+              return constructSessionConnection(this, endpoint, zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
@@ -466,7 +547,7 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList);
     } else {
       TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
@@ -544,7 +625,7 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList);
     } else {
       TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList,
@@ -557,6 +638,112 @@ public class Session {
       }
     }
   }
+
+  /**
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
+   * your performance, please see insertTablet method
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+  }
+
+  /**
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
+   * your performance, please see insertTablet method
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @param haveSorted whether the times have been sorted
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertRecordsOfOneDeviceReq request = genTSInsertRecordsOfOneDeviceReq(deviceId, times,
+        measurementsList, typesList, valuesList, haveSorted);
+    try {
+      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(String deviceId,
+      List<Long> times, List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList, boolean haveSorted)
+      throws IoTDBConnectionException, BatchExecutionException {
+    // check params size
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+
+    if (haveSorted) {
+      if (!checkSorted(times)) {
+        throw new BatchExecutionException(
+            "Times in InsertOneDeviceRecords are not in ascending order");
+      }
+    } else {
+      //sort
+      Integer[] index = new Integer[times.size()];
+      for (int i = 0; i < times.size(); i++) {
+        index[i] = i;
+      }
+      Arrays.sort(index, Comparator.comparingLong(times::get));
+      times.sort(Long::compareTo);
+      //sort measurementList
+      measurementsList = sortList(measurementsList, index);
+      //sort typesList
+      typesList = sortList(typesList, index);
+      //sort values
+      valuesList = sortList(valuesList, index);
+    }
+
+    TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
+    request.setDeviceId(deviceId);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
+    request.setValuesList(buffersList);
+    return request;
+  }
+
+  @SuppressWarnings("squid:S3740")
+  private List sortList(List source, Integer[] index) {
+    Object[] result = new Object[source.size()];
+    for (int i = 0; i < index.length; i++) {
+      result[i] = source.get(index[i]);
+    }
+    return Arrays.asList(result);
+  }
+
+  private List<ByteBuffer> objectValuesListToByteBufferList(List<List<Object>> valuesList,
+      List<List<TSDataType>> typesList) throws IoTDBConnectionException {
+    List<ByteBuffer> buffersList = new ArrayList<>();
+    for (int i = 0; i < valuesList.size(); i++) {
+      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
+      putValues(typesList.get(i), valuesList.get(i), buffer);
+      buffersList.add(buffer);
+    }
+    return buffersList;
+  }
+
 
   private void insertRecordsWithLeaderCache(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
@@ -593,12 +780,7 @@ public class Session {
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    List<ByteBuffer> buffersList = new ArrayList<>();
-    for (int i = 0; i < measurementsList.size(); i++) {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
-      putValues(typesList.get(i), valuesList.get(i), buffer);
-      buffersList.add(buffer);
-    }
+    List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
     request.setValuesList(buffersList);
     return request;
   }
@@ -628,7 +810,7 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
+      if (enableCacheLeader
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -650,7 +832,7 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (Config.DEFAULT_CACHE_LEADER_MODE
+      if (enableCacheLeader
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -704,7 +886,7 @@ public class Session {
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (Config.DEFAULT_CACHE_LEADER_MODE) {
+    if (enableCacheLeader) {
       insertTabletsWithLeaderCache(tablets, sorted);
     } else {
       TSInsertTabletsReq request = genTSInsertTabletsReq(new ArrayList<>(tablets.values()), sorted);
@@ -937,7 +1119,7 @@ public class Session {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
-      res += Short.BYTES;
+      res += Byte.BYTES;
       switch (types.get(i)) {
         case BOOLEAN:
           res += 1;
@@ -1013,6 +1195,15 @@ public class Session {
   private boolean checkSorted(Tablet tablet) {
     for (int i = 1; i < tablet.rowSize; i++) {
       if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean checkSorted(List<Long> times) {
+    for (int i = 1; i < times.size(); i++) {
+      if (times.get(i) < times.get(i - 1)) {
         return false;
       }
     }

@@ -122,7 +122,7 @@ public class SchemaUtils {
     IoTDB.metaManager.cacheMeta(path, measurementMNode);
   }
 
-  public static List<TSDataType> getSeriesTypesByPath(Collection<PartialPath> paths)
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
@@ -167,7 +167,7 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPaths(PartialPath path) throws MetadataException {
+  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getSeriesType(path);
   }
 
@@ -175,7 +175,7 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      String aggrStr = aggregations != null ? aggregations.get(i) : null;
       TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
@@ -237,7 +237,8 @@ public class SchemaUtils {
       throws MetadataException {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(String
-          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()));
+          .format("encoding %s does not support %s", encoding.toString(), dataType.toString()),
+          true);
     }
   }
 }

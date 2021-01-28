@@ -23,7 +23,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -69,7 +68,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private ThreadLocal<File> currentFile = new ThreadLocal<>();
 
-  private ThreadLocal<FileChannel> currentFileWriter = new ThreadLocal<>();
+  private ThreadLocal<FileOutputStream> currentFileWriter = new ThreadLocal<>();
 
   private ThreadLocal<MessageDigest> messageDigest = new ThreadLocal<>();
 
@@ -107,7 +106,7 @@ public class SyncServiceImpl implements SyncService.Iface {
 
   private boolean checkRecovery() {
     try {
-      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+      if (currentFileWriter.get() != null) {
         currentFileWriter.get().close();
       }
       if (syncLog.get() != null) {
@@ -192,10 +191,10 @@ public class SyncServiceImpl implements SyncService.Iface {
       if (!file.getParentFile().exists()) {
         file.getParentFile().mkdirs();
       }
-      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+      if (currentFileWriter.get() != null) {
         currentFileWriter.get().close();
       }
-      currentFileWriter.set(new FileOutputStream(file).getChannel());
+      currentFileWriter.set(new FileOutputStream(file));
       syncLog.get().startSyncTsFiles();
       messageDigest.set(MessageDigest.getInstance(SyncConstant.MESSAGE_DIGIT_NAME));
     } catch (IOException | NoSuchAlgorithmException e) {
@@ -211,7 +210,7 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus syncData(ByteBuffer buff) {
     try {
       int pos = buff.position();
-      currentFileWriter.get().write(buff);
+      currentFileWriter.get().getChannel().write(buff);
       buff.position(pos);
       messageDigest.get().update(buff);
     } catch (IOException e) {
@@ -228,12 +227,12 @@ public class SyncServiceImpl implements SyncService.Iface {
   public SyncStatus checkDataDigest(String digestOfSender) throws TException {
     String digestOfReceiver = (new BigInteger(1, messageDigest.get().digest())).toString(16);
     try {
-      if (currentFileWriter.get() != null && currentFileWriter.get().isOpen()) {
+      if (currentFileWriter.get() != null) {
         currentFileWriter.get().close();
       }
       if (!digestOfSender.equals(digestOfReceiver)) {
         currentFile.get().delete();
-        currentFileWriter.set(new FileOutputStream(currentFile.get()).getChannel());
+        currentFileWriter.set(new FileOutputStream(currentFile.get()));
         return getErrorResult(String
                 .format("Digest of the sender is differ from digest of the receiver of the file %s.",
                         currentFile.get().getAbsolutePath()));
@@ -301,6 +300,9 @@ public class SyncServiceImpl implements SyncService.Iface {
       } else {
         return getErrorResult(
             String.format("File Loader of the storage group %s is null", currentSG.get()));
+      }
+      if (currentFileWriter.get() != null) {
+        currentFileWriter.get().close();
       }
       logger.info("Sync process with sender {} finished.", senderName.get());
     } catch (IOException e) {

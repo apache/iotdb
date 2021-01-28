@@ -38,6 +38,9 @@ IoTDB > set storage group to root.sgcc
 IoTDB> set storage group to root.ln.wf01
 Msg: org.apache.iotdb.exception.MetadataException: org.apache.iotdb.exception.MetadataException: The prefix of root.ln.wf01 has been set to the storage group.
 ```
+存储组节点名只支持中英文字符、数字和下划线的组合。
+
+还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
 ## 查看存储组
 
@@ -92,6 +95,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Concept/Encoding.md)。
+
 
 ### 标签点管理
 
@@ -365,6 +369,8 @@ IoTDB> delete timeseries root.ln.wf02.*
 ```
 
 ## 查看设备
+
+* SHOW DEVICES prefixPath? limitClause?
 
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 * `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。

@@ -19,13 +19,16 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.TestOnly;
 
 public class ClusterConstant {
 
-  // a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
-  // interval, or a stale node may frequently issue elections and thus makes the leader step down
-  public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
-  public static final long ELECTION_RANDOM_TIME_OUT_MS = 3 * 1000L;
+  /**
+   * We only change the two values in tests to reduce test time, so they are essentially constant.
+   */
+  private static long electionLeastTimeOutMs = 2 * 1000L;
+  private static long electionRandomTimeOutMs = 3 * 1000L;
+
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
@@ -39,4 +42,26 @@ public class ClusterConstant {
   }
 
   static final String CLUSTER_CONF = "CLUSTER_CONF";
+
+  /**
+   * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
+   * interval, or a stale node may frequently issue elections and thus makes the leader step down
+   */
+  public static long getElectionLeastTimeOutMs() {
+    return electionLeastTimeOutMs;
+  }
+
+  public static long getElectionRandomTimeOutMs() {
+    return electionRandomTimeOutMs;
+  }
+
+  @TestOnly
+  public static void setElectionLeastTimeOutMs(long electionLeastTimeOutMs) {
+    ClusterConstant.electionLeastTimeOutMs = electionLeastTimeOutMs;
+  }
+
+  @TestOnly
+  public static void setElectionRandomTimeOutMs(long electionRandomTimeOutMs) {
+    ClusterConstant.electionRandomTimeOutMs = electionRandomTimeOutMs;
+  }
 }

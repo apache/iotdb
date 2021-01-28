@@ -46,9 +46,4 @@ public class MonitorConstants {
       return measurement;
     }
   }
-
-  public enum OsStatConstants {
-    NETWORK_REC, NETWORK_SEND, CPU_USAGE, MEM_USAGE, IOTDB_MEM_SIZE, DISK_USAGE, DISK_READ_SPEED,
-    DISK_WRITE_SPEED, DISK_TPS
-  }
 }

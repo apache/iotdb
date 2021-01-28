@@ -63,6 +63,10 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
     chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
             .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+
+    for (ChunkMetadata metadata : chunkMetadataList) {
+      metadata.setVersion(resource.getVersion());
+    }
     return chunkMetadataList;
   }
 
