@@ -1696,6 +1696,45 @@ public class StorageGroupProcessor {
 
 
   /**
+   * <p>
+   *  update latest flush time for partition id
+   *  </>
+   * @param partitionId partition id
+   * @param latestFlushTime lastest flush time
+   * @return true if update latest flush time success
+   */
+  private boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
+    // update the largest timestamp in the last flushing memtable
+    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
+            .get(partitionId);
+
+    if (curPartitionDeviceLatestTime == null) {
+      logger.warn("Partition: {} does't have latest time for each device. "
+                      + "No valid record is written into memtable.  latest flush time is: {}",
+              partitionId, latestFlushTime);
+      return false;
+    }
+
+    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+      // set lastest flush time to latestTimeForEachDevice
+      entry.setValue(latestFlushTime);
+
+      partitionLatestFlushedTimeForEachDevice
+              .computeIfAbsent(partitionId, id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+      newlyFlushedPartitionLatestFlushedTimeForEachDevice
+              .computeIfAbsent(partitionId, id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+      if (globalLatestFlushedTimeForEachDevice
+              .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
+        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return true;
+  }
+
+
+  /**
    * used for upgrading
    */
   public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(long partitionId,
@@ -2480,6 +2519,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions",
             processor.getTsFileResource().getTsFilePath());
       }
@@ -2493,6 +2533,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }

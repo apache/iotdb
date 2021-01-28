@@ -288,6 +288,7 @@ public class MergeMultiChunkTask {
       try {
         futures.get(i).get();
       } catch (InterruptedException e) {
+        logger.error("MergeChunkHeapTask interrupted", e);
         Thread.currentThread().interrupt();
         return false;
       } catch (ExecutionException e) {
