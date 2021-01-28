@@ -213,9 +213,9 @@ public class IoTDBConfigCheck {
       moveTsFileV2();
       moveVersionFile();
       logger.info("checking files successful");
+      logger.info("Start upgrading files...");
       MLogWriter.upgradeMLog();
       logger.info("Mlog upgraded!");
-      logger.info("Start upgrading Version-2 TsFiles...");
       upgradePropertiesFile();
     }
     checkProperties();
@@ -329,8 +329,9 @@ public class IoTDBConfigCheck {
   private void checkUnClosedTsFileV2() {
     if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
       && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
-      logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-          + "on v0.10 or v0.11 IoTDB before upgrading to v0.12");
+      logger.error("WAL detected, please stop insertion, then run 'flush' "
+          + "on IoTDB {} before upgrading to {}",
+          properties.getProperty(IOTDB_VERSION_STRING), IoTDBConstant.VERSION);
       System.exit(-1);
     }
     checkUnClosedTsFileV2InFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -357,12 +358,15 @@ public class IoTDBConfigCheck {
               .listFilesBySuffix(partitionDir.toString(), TsFileResource.RESOURCE_SUFFIX);
           if (tsfiles.length != resources.length) {
             File[] zeroLevelTsFiles = fsFactory
-                .listFilesBySuffix(partitionDir.toString(), "0" + TsFileConstant.TSFILE_SUFFIX);
+                .listFilesBySuffix(partitionDir.toString(), 
+                    "0" + TsFileConstant.TSFILE_SUFFIX);
             File[] zeroLevelResources = fsFactory
-                .listFilesBySuffix(partitionDir.toString(), "0" + TsFileResource.RESOURCE_SUFFIX);
+                .listFilesBySuffix(partitionDir.toString(), 
+                    "0" + TsFileConstant.TSFILE_SUFFIX + TsFileResource.RESOURCE_SUFFIX);
             if (zeroLevelTsFiles.length != zeroLevelResources.length) {
               logger.error("Unclosed Version-2 TsFile detected, please stop insertion, then run 'flush' "
-                  + "on v0.11 IoTDB before upgrading to v0.12");
+                  + "on IoTDB {} before upgrading to {}",
+                  properties.getProperty(IOTDB_VERSION_STRING), IoTDBConstant.VERSION);
               System.exit(-1);
             }
           }
