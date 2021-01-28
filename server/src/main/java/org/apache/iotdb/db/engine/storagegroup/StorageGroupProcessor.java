@@ -1099,10 +1099,10 @@ public class StorageGroupProcessor {
     fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, virtualStorageGroupId)
         .mkdirs();
 
-    String filePath =
-        baseDir + File.separator + logicalStorageGroupName + File.separator + timePartitionId
-            + File.separator
-            + getNewTsFileName(timePartitionId);
+    String filePath = baseDir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId
+        + File.separator + timePartitionId
+        + File.separator
+        + getNewTsFileName(timePartitionId);
 
     return getTsFileProcessor(sequence, filePath, timePartitionId);
   }
