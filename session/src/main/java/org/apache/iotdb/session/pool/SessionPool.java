@@ -979,6 +979,7 @@ public class SessionPool {
    * @return result set Notice that you must get the result instance. Otherwise a data leakage will
    * happen
    */
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public SessionDataSetWrapper executeQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
@@ -1025,6 +1026,7 @@ public class SessionPool {
     }
   }
 
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
   public SessionDataSetWrapper executeRawDataQuery(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {

@@ -102,6 +102,13 @@ public class IoTDBConstant {
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
 
+  //sdt parameters
+  public static final String LOSS = "loss";
+  public static final String SDT = "sdt";
+  public static final String SDT_COMP_DEV = "compdev";
+  public static final String SDT_COMP_MIN_TIME = "compmintime";
+  public static final String SDT_COMP_MAX_TIME = "compmaxtime";
+
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";

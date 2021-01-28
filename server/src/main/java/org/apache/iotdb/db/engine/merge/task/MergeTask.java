@@ -111,6 +111,11 @@ public class MergeTask implements Callable<Void> {
   }
 
   private void doMerge() throws IOException, MetadataException {
+    if (resource.getSeqFiles().isEmpty()) {
+      logger.info("{} no sequence file to merge into, so will abort task.", taskName);
+      abort();
+      return;
+    }
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge {} seqFiles, {} unseqFiles", taskName,
           resource.getSeqFiles().size(), resource.getUnseqFiles().size());
