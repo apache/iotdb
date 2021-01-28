@@ -39,11 +39,13 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
 
   private ElasticSerializableRowRecordList rowRecordList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

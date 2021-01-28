@@ -49,6 +49,7 @@ public class MergeTaskTest extends MergeTest {
 
   private File tempSGDir;
 
+  @Override
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, MetadataException {
