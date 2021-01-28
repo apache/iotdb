@@ -34,24 +34,16 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Install CPP Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
-        shell: bash
-        run: sudo apt-get install libboost-all-dev
-      - name: Install CPP Dependencies (Mac)
-        if: matrix.os == 'macos-latest'
-        shell: bash
-        run: brew install boost && brew install bison && echo 'export PATH=/usr/local/opt/bison/bin:$PATH' >> ~/.bash_profile && source ~/.bash_profile && export LDFLAGS="-L/usr/local/opt/bison/lib"
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: mvn -B apache-rat:check
+        run: mvn -B apache-rat:check -P client-cpp
       - name: Test with Maven
-        run:  mvn -B clean integration-test -Pclient-cpp -Dtest.port.closed=true
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
 
   build-win:
     strategy:
@@ -73,21 +65,9 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
-      - name: Install Boost and Win_Flex_Bison
-        run: mkdir D:\a\cpp ; `
-          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
-          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
-          Invoke-WebRequest https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.zip -OutFile D:\a\cpp\boost_1_72_0.zip ; `
-          Expand-Archive D:\a\cpp\boost_1_72_0.zip -DestinationPath D:\a\cpp ; `
-          cd D:\a\cpp\boost_1_72_0 ; `
-          .\bootstrap.bat ; `
-          .\b2.exe
-      - name: Add Flex and Bison Path
-        shell: bash
-        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Download Hadoop Tools if Needed
         # Using Powershell ...
         # github action put codes to d:\a
@@ -129,4 +109,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Pclient-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
