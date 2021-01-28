@@ -1271,14 +1271,13 @@ public class PlanExecutor implements IPlanExecutor {
       try {
         StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
         IoTDB.metaManager.deleteTimeseries(path);
-        deleteTimeSeriesPlan.getResults().put(i, RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       } catch (StorageEngineException | MetadataException e) {
         deleteTimeSeriesPlan.getResults().put(i, RpcUtils
             .getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
     if (!deleteTimeSeriesPlan.getResults().isEmpty()) {
-      throw new BatchProcessException(deleteTimeSeriesPlan.getResults().values().toArray(new TSStatus[0]));
+      throw new BatchProcessException(deleteTimeSeriesPlan.getFailingStatus());
     }
     return true;
   }

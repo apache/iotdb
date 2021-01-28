@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.util.Arrays;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
@@ -97,5 +99,17 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   public Map<Integer, TSStatus> getResults() {
     return results;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    if (results.isEmpty()) {
+      return new TSStatus[0];
+    }
+    TSStatus[] failingStatus = new TSStatus[deletePathList.size()];
+    Arrays.fill(failingStatus, RpcUtils.SUCCESS_STATUS);
+    for (Map.Entry<Integer, TSStatus> status : results.entrySet()) {
+      failingStatus[status.getKey()] = status.getValue();
+    }
+    return failingStatus;
   }
 }
