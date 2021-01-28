@@ -155,20 +155,26 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, long value) {
-    if (!isSdtEncoding || isLastPoint) {
+    // store last point for sdtEncoding, it still needs to go through encoding process
+    // in case it exceeds compdev and needs to store second last point
+    if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getLongValue() : value);
+    }
+    if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
-    } else if (sdtEncoder.encodeLong(time, value)) {
-      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getLongValue());
     }
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, int value) {
-    if (!isSdtEncoding || isLastPoint) {
+    if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getIntValue() : value);
+    }
+    if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
-    } else if (sdtEncoder.encodeInt(time, value)) {
-      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getIntValue());
     }
     checkPageSizeAndMayOpenANewPage();
   }
@@ -181,20 +187,25 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, float value) {
-    if (!isSdtEncoding || isLastPoint) {
+    if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getFloatValue() : value);
+    }
+    //store last point for sdt encoding
+    if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
-    } else if (sdtEncoder.encodeFloat(time, value)) {
-      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getFloatValue());
     }
     checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, double value) {
-    if (!isSdtEncoding || isLastPoint) {
+    if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getDoubleValue() : value);
+    }
+    if (isSdtEncoding && isLastPoint) {
       pageWriter.write(time, value);
-    } else if (sdtEncoder.encodeDouble(time, value)) {
-      pageWriter.write(sdtEncoder.getTime(), sdtEncoder.getDoubleValue());
     }
     checkPageSizeAndMayOpenANewPage();
   }
