@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.LOAD_CONFIGURATION;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -67,14 +69,13 @@ public class PhysicalGenerator {
     if (!(operator instanceof RootOperator)) {
       throw new LogicalOperatorException(operator.getType().toString(), "");
     }
-    switch (operator.getType()) {
-      case LOAD_CONFIGURATION:
-        LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
-            .getLoadConfigurationOperatorType();
-        return generateLoadConfigurationPlan(type);
-      default:
-        return ((RootOperator) operator).transform2PhysicalPlan(fetchSize, this);
+    if (LOAD_CONFIGURATION == operator.getType()) {
+      LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
+          .getLoadConfigurationOperatorType();
+      return generateLoadConfigurationPlan(type);
     }
+
+    return ((RootOperator) operator).transform2PhysicalPlan(fetchSize, this);
   }
 
   protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
