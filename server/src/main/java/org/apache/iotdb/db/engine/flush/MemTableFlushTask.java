@@ -30,6 +30,7 @@ import java.util.concurrent.Future;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOrderOptimizer;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
@@ -90,17 +91,11 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    for (String deviceId : memTable.getMemTableMap().keySet()) {
+    for(String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
-      // Sort the measurement id by the lexicographic order
-      String[] measurements = new String[memTable.getMemTableMap().get(deviceId).keySet().size()];
-      int k = 0;
-      for(String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
-        measurements[k++] = measurementId;
-      }
-      Arrays.sort(measurements);
-      // write the chunk in lexicographic order
-      for (String measurementId : measurements) {
+      List<String> measurements = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
+      logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
+      for(String measurementId : measurements) {
         // print log to show the order of measurements
         logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
@@ -113,6 +108,7 @@ public class MemTableFlushTask {
       encodingTaskQueue.put(new EndChunkGroupIoTask());
     }
     encodingTaskQueue.put(new TaskEnd());
+
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
         storageGroup, memTable.getVersion(), sortTime);

@@ -3,6 +3,7 @@ package org.apache.iotdb.db.engine.measurementorderoptimizer;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 
 import java.util.*;
@@ -51,6 +52,37 @@ public class MeasurementOrderOptimizer {
       } catch (MetadataException e) {
         e.printStackTrace();
       }
+    }
+    sortByLexicographicOrder();
+    /*for(PartialPath storagePath : storagePaths) {
+      try {
+        Set<PartialPath> devices = manager.getDevices(storagePath);
+        for(PartialPath device : devices) {
+          MNode deviceNode = manager.getDeviceNode(device);
+          Map<String, MNode> measurements = deviceNode.getChildren();
+          for(String measurementId : measurements.keySet()) {
+            MNode measurementNode = measurements.get(measurementId);
+            if (!measurementSet.contains(measurementNode.getFullPath())) {
+              // Add the measurement to optimizer
+              measurementSet.add(measurementNode.getFullPath());
+              if (!measurementsMap.containsKey(deviceNode.))
+            }
+          }
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+      }
+    }*/
+  }
+
+  /**
+   * Sort the order of each measurement by lexicographic order
+   */
+  private void sortByLexicographicOrder() {
+    for (String device : measurementsMap.keySet()) {
+      List<String> measurements = measurementsMap.get(device);
+      Collections.sort(measurements);
+      measurementsMap.put(device, measurements);
     }
   }
 
@@ -248,5 +280,17 @@ public class MeasurementOrderOptimizer {
       chunkSize.add(chunkSizeForCurDevice.get(measurementOrder.get(i)));
     }
     return chunkSize;
+  }
+
+  public static void main(String[] args) {
+    List<String> a = new ArrayList<>();
+    a.add("Z");
+    a.add("e");
+    a.add("a");
+    a.add("s");
+    a.add("123");
+    a.add("A");
+    Collections.sort(a);
+    System.out.println(a.toString());
   }
 }

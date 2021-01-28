@@ -67,6 +67,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected int timeStampFetchSize;
 
   private long lastTimestamp;
+  /**
+   * Sort the query order according to the optimizer order
+   */
+  private boolean querySorted = false;
+
 
   /**
    * constructor.
@@ -158,6 +163,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     }
     hasCachedTimeInterval = false;
     List<AggregateResult> aggregateResultList = new ArrayList<>();
+    if (!sorted) {
+      // TODO: sort the query order according to the optimizer order
+    }
     for (int i = 0; i < paths.size(); i++) {
       aggregateResultList.add(AggregateResultFactory.getAggrResultByName(
           groupByTimePlan.getDeduplicatedAggregations().get(i),

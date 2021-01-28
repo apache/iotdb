@@ -27,12 +27,14 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 public abstract class QueryDataSet {
 
   protected List<Path> paths;
+  protected List<Path> sortedPaths;
   protected List<TSDataType> dataTypes;
 
   protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
   protected int rowOffset = 0;
   protected int alreadyReturnedRowNum = 0;
   protected boolean ascending;
+  protected boolean sorted = false; // sort the query order according to the optimizer order
 
   public QueryDataSet() {
   }
