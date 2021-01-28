@@ -2,7 +2,7 @@
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
 # CPP compiling is too slow, so let's do it in parallel with testing other modules.
-name:  Clients (except for Java) CI with Maven
+name:  Clients_except_Java CI with Maven
 
 on:
   push:
