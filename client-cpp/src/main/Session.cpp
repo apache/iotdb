@@ -417,6 +417,15 @@ void Session::sortIndexByTimestamp(int* index, int64_t* timestamps, int length) 
     }
 }
 
+/**
+ * Append value into buffer in Big Endian order to comply with IoTDB server
+ */
+void Session::appendValues(string &buffer, char* value, int size) {
+    for (int i = size - 1; i >= 0; i--) {
+        buffer.append(value + i, 1);
+    }
+}
+
 void Session::putValuesIntoBuffer(vector<TSDataType::TSDataType>& types, vector<char*>& values, string& buf) {
     for (int i = 0; i < values.size(); i++) {
         int8_t typeNum = getDataTypeNumber(types[i]);
@@ -426,22 +435,24 @@ void Session::putValuesIntoBuffer(vector<TSDataType::TSDataType>& types, vector<
                 buf.append(values[i], 1);
                 break;
             case TSDataType::INT32:
-                buf.append(values[i], sizeof(int32_t));
+                appendValues(buf, values[i], sizeof(int32_t));
                 break;
             case TSDataType::INT64:
-                buf.append(values[i], sizeof(int64_t));
+                appendValues(buf, values[i], sizeof(int64_t));
                 break;
             case TSDataType::FLOAT:
-                buf.append(values[i], sizeof(float));
+                appendValues(buf, values[i], sizeof(float));
                 break;
             case TSDataType::DOUBLE:
-                buf.append(values[i], sizeof(double));
+                appendValues(buf, values[i], sizeof(double));
                 break;
             case TSDataType::TEXT:
-                buf.append(values[i]);
+                string str(values[i]);
+                int len = str.length();
+                appendValues(buf, (char*)(&len), sizeof(int));
+                // no need to change the byte order of string value
+                buf.append(values[i], len);
                 break;
-            default:
-                throw IoTDBConnectionException("Unsupported data type:" + types[i]);
         }
     }
 }

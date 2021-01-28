@@ -591,6 +591,7 @@ class Session
         void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
+        void appendValues(std::string &buffer, char* value, int size);
         void putValuesIntoBuffer(std::vector<TSDataType::TSDataType>& types, std::vector<char*>& values, std::string& buf);
         int8_t getDataTypeNumber(TSDataType::TSDataType type);
     public:
