@@ -20,23 +20,43 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 INCLUDE( CTest )
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
-SET(TARGET_NAME tests)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall")
+SET(TARGET_NAME session_tests)
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 ENABLE_TESTING()
 
-IF(MSVC)
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
-ELSE()
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
+# Add Boost include path for MacOS
+INCLUDE_DIRECTORIES(/usr/local/include)
+# Add Session related include files
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
+# Add Thrift include directory
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
+
+find_package(Boost REQUIRED)
+IF (DEFINED BOOST_INCLUDEDIR)
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
 ENDIF()
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
+# Link directories are different for Windows and Linux/Mac
+IF(MSVC)
+    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/Release)
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
+ELSE()
+    LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main)
+ENDIF()
 
 ADD_EXECUTABLE(${TARGET_NAME} main.cpp cpp/sessionIT.cpp)
-TARGET_LINK_LIBRARIES(${TARGET_NAME} PUBLIC iotdb_session)
+
+# Link with shared library iotdb_session and pthread
+IF(MSVC)
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
+ELSE()
+    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
+ENDIF()
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
-ADD_TEST(NAME test1 COMMAND ${TARGET_NAME})
+# Add 'sessionIT' to the project to be run by ctest
+IF(MSVC)
+    ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
+ELSE()
+    ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
+ENDIF()
