@@ -121,8 +121,8 @@ public abstract class RegularDataDecoder extends Decoder {
      */
     protected int loadWithBitmap(ByteBuffer buffer) {
       if (bitmapIndex < 0) {
-        LOGGER.error("Failed to decode data, please check whether data and regular match.");
-        throw new TsFileDecodingException("Failed to decode data, please check whether data and regular match.");
+        LOGGER.error("Failed to decode data of int type and regular.");
+        throw new TsFileDecodingException("Failed to decode data of int type, please check whether data and regular match.");
       }
       while (!bitmap.get(bitmapIndex)) {
         bitmapIndex++;
@@ -240,8 +240,8 @@ public abstract class RegularDataDecoder extends Decoder {
      */
     protected long loadWithBitmap(ByteBuffer buffer) {
       if (bitmapIndex < 0) {
-        LOGGER.error("Failed to decode data, please check whether data and regular match.");
-        throw new TsFileDecodingException("Failed to decode data, please check whether data and regular match.");
+        LOGGER.error("Failed to decode data of long type and regular.");
+        throw new TsFileDecodingException("Failed to decode data of long type, please check whether data and regular match.");
       }
       while (!bitmap.get(bitmapIndex)) {
         bitmapIndex++;

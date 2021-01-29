@@ -198,8 +198,8 @@ public abstract class RegularDataEncoder extends Encoder {
       if (isMissingPoint) {
         newBlockSize = ((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1;
         if (newBlockSize < 0) {
-          LOGGER.error("Failed to encode data, please check whether data and regular match");
-          throw new TsFileEncodingException("Failed to encode data, please check whether data and regular match");
+          LOGGER.error("Failed to encode data of int type and regular.");
+          throw new TsFileEncodingException("Failed to encode data of int type, please check whether data and regular match");
         }
         writeIndex = newBlockSize;
       }
@@ -328,8 +328,8 @@ public abstract class RegularDataEncoder extends Encoder {
       if (isMissingPoint) {
         newBlockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
         if (newBlockSize < 0) {
-          LOGGER.error("Failed to encode data, please check whether data and regular match");
-          throw new TsFileEncodingException("Failed to encode data, please check whether data and regular match");
+          LOGGER.error("Failed to encode data of long type and regular.");
+          throw new TsFileEncodingException("Failed to encode data of long type, please check whether data and regular match.");
         }
         writeIndex = newBlockSize;
       }
