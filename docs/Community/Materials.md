@@ -42,11 +42,18 @@ All Chinese Slides and videos are on myslide.cn and bilibili.
   * (Chinese 中文) [Empathy: Needed ability for embracing the open source of collaboration in competition](#meetup2020-8). 同理心: 拥抱竞争中合作的开源必备之技. Reporter: Jiansheng Li.
   
 * 2020.11.14, Open Source Software Supply Chain Summit 2020. "开源软件供应链 2020 峰会"。
-* (Chinese 中文) [Apache IoTDB core technology](#osssummit2020). Apache IoTDB 核心技术剖析. Reporter: Jincheng Sun.
+  * (Chinese 中文) [Apache IoTDB core technology](#osssummit2020). Apache IoTDB 核心技术剖析. Reporter: Jincheng Sun.
 
 * 2020.10.25, COSCon’ 20 & Apache Roadshow (2020 中国开源年会暨阿帕奇中国路演), Beijing, China.
-  * (Chinese) [Apache IoTDB: From Chinese University to the World](#meetup2020-coscon1) Apache IoTDB: 从中国高校走向世界. Reporter: Jialin Qiao
-  * (Chinese) [Apache IoTDB: Managing Industrial IoT Data](#meetup2020-coscon2) Apache IoTDB: 工业物联网数据管理. Reporter: Xiangdong Huang
+  * (Chinese 中文) [Apache IoTDB: From Chinese University to the World](#meetup2020-coscon1) Apache IoTDB: 从中国高校走向世界. Reporter: Jialin Qiao
+  * (Chinese 中文) [Apache IoTDB: Managing Industrial IoT Data](#meetup2020-coscon2) Apache IoTDB: 工业物联网数据管理. Reporter: Xiangdong Huang
+
+* 2020.09.30 ApacheCon 2020, online
+  * (English) [Use Cases and Optimizations of IoTDB](#apachecon2020). Reporter: Jialin Qiao
+
+* 2020.09.26 Apache Hadoop Meetup. Shanghai, China. 
+  * (Chinese 中文) 从IoTDB到 Hadoop: 工业物联网边云协同开源生态 (略，类似[Apache IoTDB: Managing Industrial IoT Data](#meetup2020-coscon2)). Reporter: Xiangdong Huang
+
 
 * 2020.03.02, Building IoT 2020. Essen, Germany.
   * (German) [Industrial IoT mit Open Source](https://www.buildingiot.de/lecture.php?id=10856&source=).  Reporter: Julian Feinauer, Chirstofer Dutz.
