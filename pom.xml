@@ -1117,9 +1117,33 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- enable site-->
+        <!-- use `mvn package -P site -pl site` to compile the site module only -->
+        <profile>
+            <id>site</id>
+            <modules>
+                <module>site</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>client-cpp</id>
+            <!-- we set client-cpp as true to enable the client-cpp-example-->
+            <properties>
+                <client-cpp>true</client-cpp>
+            </properties>
+            <modules>
+                <module>compile-tools</module>
+                <module>client-cpp</module>
+            </modules>
+        </profile>
+
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
+            <modules>
+                <module>code-coverage</module>
+            </modules>
             <build>
                 <plugins>
                     <!-- Jacoco is a code coverage analysis plugin when tests run.
@@ -1165,7 +1189,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/jacoco-unit-tests.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</destFile>
                                     <propertyName>surefire.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1174,12 +1198,12 @@
                                 <id>ut-report</id>
                                 <phase>test</phase>
                                 <goals>
-                                    <goal>report-aggregate</goal>
+                                    <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/jacoco-unit-tests.exec</dataFile>
-                                    <outputDirectory>${project.build.directory}/jacoco-unit-reports</outputDirectory>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-unit-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/${project.build.finalName}-jacoco-unit-reports</outputDirectory>
                                 </configuration>
                             </execution>
                             <!-- For IT-->
@@ -1190,7 +1214,7 @@
                                     <goal>prepare-agent</goal>
                                 </goals>
                                 <configuration>
-                                    <destFile>${project.build.directory}/jacoco-integration-tests.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</destFile>
                                     <propertyName>failsafe.jacoco.args</propertyName>
                                 </configuration>
                             </execution>
@@ -1198,12 +1222,12 @@
                                 <id>after-integration-test-execution</id>
                                 <phase>integration-test</phase>
                                 <goals>
-                                    <goal>report-aggregate</goal>
+                                    <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/jacoco-integration-tests.exec</dataFile>
-                                    <outputDirectory>${project.build.directory}/jacoco-integration-reports</outputDirectory>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-jacoco-integration-tests.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/${project.build.finalName}-jacoco-integration-reports</outputDirectory>
                                 </configuration>
                             </execution>
                             <execution>
@@ -1221,18 +1245,19 @@
                                             </includes>
                                         </fileSet>
                                     </fileSets>
-                                    <destFile>${project.build.directory}/merged.exec</destFile>
+                                    <destFile>${project.build.directory}/${project.build.finalName}-merged.exec</destFile>
                                 </configuration>
                             </execution>
                             <execution>
                                 <id>create-merged-report</id>
                                 <phase>post-integration-test</phase>
                                 <goals>
-                                    <goal>report-aggregate</goal>
+                                    <goal>report</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
-                                    <dataFile>${project.build.directory}/merged.exec</dataFile>
+                                    <dataFile>${project.build.directory}/${project.build.finalName}-merged.exec</dataFile>
+                                    <outputDirectory>${project.build.directory}/${project.build.finalName}-jacoco-merged-reports</outputDirectory>
                                 </configuration>
                             </execution>
                         </executions>
@@ -1266,25 +1291,7 @@
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
-        <!-- enable site-->
-        <!-- use `mvn package -P site -pl site` to compile the site module only -->
-        <profile>
-            <id>site</id>
-            <modules>
-                <module>site</module>
-            </modules>
-        </profile>
-        <profile>
-            <id>client-cpp</id>
-            <!-- we set client-cpp as true to enable the client-cpp-example-->
-            <properties>
-                <client-cpp>true</client-cpp>
-            </properties>
-            <modules>
-                <module>compile-tools</module>
-                <module>client-cpp</module>
-            </modules>
-        </profile>
+
         <profile>
             <id>enforce</id>
             <properties>

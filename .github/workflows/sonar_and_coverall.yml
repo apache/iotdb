@@ -64,8 +64,10 @@ jobs:
           key: code-coverage-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Run Integration Test
-        run: mvn -B post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
-      - name: Code Coverage (Coveralls) Test
+        run: mvn -B post-integration-test -Pcode-coverage -pl '!distribution','!code-coverage' -am
+      - name: Generate reports
+        run: mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+      - name: Upload to Code Coverage (Coveralls)
         run: |
           mvn -B coveralls:report \
           --no-transfer-progress \
@@ -73,4 +75,4 @@ jobs:
           -D branch=$BRANCH_NAME \
           -D pullRequest=$PR_NUMBER \
           -D repoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
-          -pl tsfile,server,jdbc,cli,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
+          -Pcode-coverage -pl code-coverage

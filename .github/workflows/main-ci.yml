@@ -62,7 +62,7 @@ jobs:
         run:  mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
       - name: Test Other Modules with Maven
         if: ${{ matrix.it_task == 'others'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.skip.test=true -Dcluster.skip.test=true
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
 
   build-win:
     strategy:
@@ -141,4 +141,5 @@ jobs:
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.skip.test=true -Dcluster.skip.test=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+
