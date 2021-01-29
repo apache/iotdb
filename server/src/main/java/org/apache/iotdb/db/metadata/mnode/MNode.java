@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -32,6 +27,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.rescon.CachedStringPool;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -85,7 +84,8 @@ public class MNode implements Serializable {
 
   /**
    * add a child to current mnode
-   * @param name child's name
+   *
+   * @param name  child's name
    * @param child child's node
    */
   public void addChild(String name, MNode child) {
@@ -138,17 +138,20 @@ public class MNode implements Serializable {
   }
 
   /**
-   * get the count of all leaves whose ancestor is current node
+   * get the count of all MeasurementMNode whose ancestor is current node
    */
-  public int getLeafCount() {
+  public int getMeasurementMNodeCount() {
     if (children == null) {
-      return 0;
+      return 1;
     }
-    int leafCount = 0;
+    int measurementMNodeCount = 0;
+    if (this instanceof MeasurementMNode) {
+      measurementMNodeCount += 1; // current node itself may be MeasurementMNode
+    }
     for (MNode child : children.values()) {
-      leafCount += child.getLeafCount();
+      measurementMNodeCount += child.getMeasurementMNodeCount();
     }
-    return leafCount;
+    return measurementMNodeCount;
   }
 
   /**
