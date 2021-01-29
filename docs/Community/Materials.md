@@ -19,7 +19,34 @@
 
 -->
 
+<!-- just copy this file to cover zh/Community/Materials.md-->
+
+Tips: All English Slides and videos are on slideshare.net and Youtube; 
+All Chinese Slides and videos are on myslide.cn and bilibili.
+(所有的中文材料都在 myslide.cn 和 bilibili上.)
+
 ## Meetups and Talks
+
+* 2021.1.24. BDTC Big Data Technology Conference 2020. 2020中国大数据技术大会. Beijing, China.
+* 2020.12.30. The 10th China Cloud Computing Standards and Application Conference. Beijing, China.
+  * (Chinese 中文) [Apache IoTDB: Industrial Internet of Things Time Series Data Management System](#bdtc2020). Apache IoTDB: 工业物联网时序数据管理系统. Reporter: Jialin Qiao.
+  
+* 2020.11.29, Apache IoTDB Meetup, Beijing, China
+  * (Chinese 中文) [IoTDB Advanced use and introduction to the principle behind](#meetup2020-1). IoTDB 使用进阶与背后原理介绍. Reporter: Kaifeng Xue
+  * (Chinese 中文) [Mass Time series processing: Distributed meta management in IoTDB](#meetup2020-2). 海量序列处理: IoTDB 的分布式元数据管理技术. Reporter: Chao Wang.
+  * (Chinese 中文) [Talkweb Internet of Things Platform and Apache IoTDB  Application Practice Analysis](#meetup2020-3). 拓维物联网平台与 Apache IoTDB 的应用实践分析. Reporter: Bin Huang.
+  * (Chinese 中文) [X-DB: an IoTDB based real-time database](#meetup2020-4). 基于IoTDB的X-DB实时数据库的使用情况. Reporter: Wanhong Li.
+  * (English) [IoTDB for Digital Twin Platform in Germany](#meetup2020-5). Reporter: Julian Feinaeur.
+  * (Chinese 中文) [Apache IoTDB Community Development Profile](#meetup2020-6). Apache IoTDB 社区发展情况简介. Reporter: Xiangdong Huang.
+  * (Chinese 中文) [Apache Local community ALC Beijing Introduction](#meetup2020-7). Apache 本土社区 ALC Beijing 介绍. Reporter: Ning Jiang
+  * (Chinese 中文) [Empathy: Needed ability for embracing the open source of collaboration in competition](#meetup2020-8). 同理心: 拥抱竞争中合作的开源必备之技. Reporter: Jiansheng Li.
+  
+* 2020.11.14, Open Source Software Supply Chain Summit 2020. "开源软件供应链 2020 峰会"。
+* (Chinese 中文) [Apache IoTDB core technology](#osssummit2020). Apache IoTDB 核心技术剖析. Reporter: Jincheng Sun.
+
+* 2020.10.25, COSCon’ 20 & Apache Roadshow (2020 中国开源年会暨阿帕奇中国路演), Beijing, China.
+  * (Chinese) [Apache IoTDB: From Chinese University to the World](#meetup2020-coscon1) Apache IoTDB: 从中国高校走向世界. Reporter: Jialin Qiao
+  * (Chinese) [Apache IoTDB: Managing Industrial IoT Data](#meetup2020-coscon2) Apache IoTDB: 工业物联网数据管理. Reporter: Xiangdong Huang
 
 * 2020.03.02, Building IoT 2020. Essen, Germany.
   * (German) [Industrial IoT mit Open Source](https://www.buildingiot.de/lecture.php?id=10856&source=).  Reporter: Julian Feinauer, Chirstofer Dutz.
@@ -74,7 +101,7 @@
  
 <iframe width="640" height="480" src="https://www.youtube.com/embed/LLFc3yPyTFY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-### Chinese
+### Chinese 中文
 
 * <span id = "meetup2019-pulsar1"> 北京Meetup 2019. 基于Apache IoTDB的时序数据开源解决方案. </span>
 
