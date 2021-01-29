@@ -21,8 +21,8 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -85,7 +85,8 @@ public class MNode implements Serializable {
 
   /**
    * add a child to current mnode
-   * @param name child's name
+   *
+   * @param name  child's name
    * @param child child's node
    */
   public void addChild(String name, MNode child) {
@@ -138,17 +139,20 @@ public class MNode implements Serializable {
   }
 
   /**
-   * get the count of all leaves whose ancestor is current node
+   * get the count of all MeasurementMNode whose ancestor is current node
    */
-  public int getLeafCount() {
+  public int getMeasurementMNodeCount() {
     if (children == null) {
-      return 0;
+      return 1;
     }
-    int leafCount = 0;
+    int measurementMNodeCount = 0;
+    if (this instanceof MeasurementMNode) {
+      measurementMNodeCount += 1; // current node itself may be MeasurementMNode
+    }
     for (MNode child : children.values()) {
-      leafCount += child.getLeafCount();
+      measurementMNodeCount += child.getMeasurementMNodeCount();
     }
-    return leafCount;
+    return measurementMNodeCount;
   }
 
   /**
