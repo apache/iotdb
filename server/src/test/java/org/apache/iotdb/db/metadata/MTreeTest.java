@@ -545,7 +545,7 @@ public class MTreeTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
       assertEquals(2, sgNode.getMeasurementMNodeCount()); // b and c
       MNode cNode = sgNode.getChild("a").getChild("b").getChild("c");
-      assertEquals(1, cNode.getMeasurementMNodeCount()); // c and d
+      assertEquals(1, cNode.getMeasurementMNodeCount()); // c
 
       root.createTimeseries(new PartialPath("root.sg1.a.b.c.d"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
