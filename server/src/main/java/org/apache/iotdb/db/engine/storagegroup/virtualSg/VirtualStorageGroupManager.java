@@ -306,10 +306,10 @@ public class VirtualStorageGroupManager {
   /**
    * push mergeAll operation down to all virtual storage group processors
    */
-  public void mergeAll(boolean fullMerge) {
+  public void mergeAll() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.merge(fullMerge);
+        storageGroupProcessor.merge();
       }
     }
   }

@@ -332,10 +332,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
     if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
-      StorageEngine.getInstance().mergeAll(true);
+      StorageEngine.getInstance().mergeAll();
     } else {
       StorageEngine.getInstance()
-          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+          .mergeAll();
     }
   }
 

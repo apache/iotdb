@@ -586,7 +586,7 @@ public class StorageGroupProcessor {
         for (File partitionFolder : subFiles) {
           if (!partitionFolder.isDirectory()) {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
-          } 
+          }
           else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
             // some TsFileResource may be being persisted when the system crashed, try recovering such
             // resources
@@ -1766,17 +1766,20 @@ public class StorageGroupProcessor {
     }
     logger.info("signal closing storage group condition in {}", logicalStorageGroupName + "-" + virtualStorageGroupId);
 
+    executeCompaction(tsFileProcessor.getTimeRangeId());
+  }
+
+  private void executeCompaction(long timePartition){
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
         .isTerminated()) {
       compactionMergeWorking = true;
       logger.info("{} submit a compaction merge task", logicalStorageGroupName + "-" + virtualStorageGroupId);
       try {
         // fork and filter current tsfile, then commit then to compaction merge
-        tsFileManagement.forkCurrentFileList(tsFileProcessor.getTimeRangeId());
+        tsFileManagement.forkCurrentFileList(timePartition);
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
-                tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack,
-                    tsFileProcessor.getTimeRangeId()));
+                tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
         logger.error("{} compaction submit task failed", logicalStorageGroupName + "-" + virtualStorageGroupId);
@@ -1862,7 +1865,7 @@ public class StorageGroupProcessor {
     for (TsFileResource resource : resources) {
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
-        tsFileManagement.addAll(resource.getUpgradedResources(), isseq); 
+        tsFileManagement.addAll(resource.getUpgradedResources(), isseq);
         // delete old TsFile and resource
         resource.delete();
         Files.deleteIfExists(fsFactory
@@ -1886,13 +1889,9 @@ public class StorageGroupProcessor {
     resources.clear();
   }
 
-  public void merge(boolean fullMerge) {
-    writeLock();
-    try {
-      this.tsFileManagement.merge(fullMerge, tsFileManagement.getTsFileList(true),
-          tsFileManagement.getTsFileList(false), dataTTL);
-    } finally {
-      writeUnlock();
+  public void merge() {
+    for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+      executeCompaction(timePartitionId);
     }
   }
 

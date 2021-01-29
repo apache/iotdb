@@ -575,7 +575,7 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(true);
+    processor.merge();
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }
