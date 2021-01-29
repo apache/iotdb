@@ -19,8 +19,6 @@
 
 -->
 
-<!-- just copy this file to cover zh/Community/Materials.md-->
-
 Tips: All English Slides and videos are on slideshare.net and Youtube; 
 All Chinese Slides and videos are on myslide.cn and bilibili.
 (所有的中文材料都在 myslide.cn 和 bilibili上.)
