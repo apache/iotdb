@@ -41,7 +41,7 @@ public class MNodeTest{
 
   @Test
   public void testReplaceChild() throws InterruptedException {
-    // after replacing a with c, the timeseries root.a.b becomes root.c.d
+    // after replacing a with c, the timeseries root.a.b becomes root.c.b
     MNode rootNode = new MNode(null, "root");
 
     MNode aNode = new MNode(rootNode, "a");
@@ -50,7 +50,6 @@ public class MNodeTest{
     MNode bNode = new MNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
 
-    List<Thread> threadList = new ArrayList<>();
     for (int i = 0; i < 500; i++) {
       service.submit(new Thread(() -> rootNode.replaceChild(aNode.getName(), new MNode(null, "c"))));
     }
