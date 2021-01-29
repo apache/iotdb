@@ -1174,7 +1174,7 @@
                                 <id>ut-report</id>
                                 <phase>test</phase>
                                 <goals>
-                                    <goal>report</goal>
+                                    <goal>report-aggregate</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
@@ -1198,7 +1198,7 @@
                                 <id>after-integration-test-execution</id>
                                 <phase>integration-test</phase>
                                 <goals>
-                                    <goal>report</goal>
+                                    <goal>report-aggregate</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
@@ -1228,7 +1228,7 @@
                                 <id>create-merged-report</id>
                                 <phase>post-integration-test</phase>
                                 <goals>
-                                    <goal>report</goal>
+                                    <goal>report-aggregate</goal>
                                     <goal>check</goal>
                                 </goals>
                                 <configuration>
