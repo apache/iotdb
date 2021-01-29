@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.TimeZone;
 import java.util.stream.Stream;
 
+import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -123,6 +124,13 @@ public class RegularDataEncoderLongTest {
     long[] data = getMissingPointData(getBetweenDateWithOneSecond("1980-01-01T01:00:00", "1980-01-28T01:00:00"), 40000);
 
     shouldReadAndWrite(data, ROW_NUM);
+  }
+
+  @Test(expected = TsFileEncodingException.class)
+  public void testRegularWithMissingPointsThrowException() throws IOException {
+    long[] data = new long[] {1200, 1100, 1000, 2200};
+
+    shouldReadAndWrite(data, 4);
   }
 
   private long[] getMissingPointData(List<String> originalData, int missingPointInterval) {

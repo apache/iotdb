@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
+import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -191,11 +192,14 @@ public class MemTableFlushTask {
           long starTime = System.currentTimeMillis();
           Pair<TVList, MeasurementSchema> encodingMessage = (Pair<TVList, MeasurementSchema>) task;
           IChunkWriter seriesWriter = new ChunkWriterImpl(encodingMessage.right);
-          writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
-          seriesWriter.sealCurrentPage();
-          seriesWriter.clearPageWriter();
           try {
+            writeOneSeries(encodingMessage.left, seriesWriter, encodingMessage.right.getType());
+            seriesWriter.sealCurrentPage();
+            seriesWriter.clearPageWriter();
             ioTaskQueue.put(seriesWriter);
+          } catch (TsFileEncodingException e) {
+            logger.warn("Failed to encoding data for chunk, will clear dirty data, please check whether encoding and data"
+                    + "matching. measurement is {}", encodingMessage.right.toString(), e);
           } catch (InterruptedException e) {
             logger.error("Put task into ioTaskQueue Interrupted");
             Thread.currentThread().interrupt();

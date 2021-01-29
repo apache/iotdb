@@ -24,8 +24,11 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 
 import org.apache.iotdb.tsfile.encoding.encoder.RegularDataEncoder;
+import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is a decoder for decoding the byte array that encoded by {@code
@@ -36,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
  * @see RegularDataEncoder
  */
 public abstract class RegularDataDecoder extends Decoder {
-
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegularDataDecoder.class);
   /**
    * the first value in one pack.
    */
@@ -111,11 +114,16 @@ public abstract class RegularDataDecoder extends Decoder {
     /**
      * load the data with bitmap (when bitmap denote the element with false, load
      * next element)
+     * if decode failed, will throw TsFileDecodingException
      *
      * @param buffer
      * @return long value
      */
     protected int loadWithBitmap(ByteBuffer buffer) {
+      if (bitmapIndex < 0) {
+        LOGGER.error("Failed to decode data, please check whether data and regular match.");
+        throw new TsFileDecodingException("Failed to decode data, please check whether data and regular match.");
+      }
       while (!bitmap.get(bitmapIndex)) {
         bitmapIndex++;
       }
@@ -225,11 +233,16 @@ public abstract class RegularDataDecoder extends Decoder {
     /**
      * load the data with bitmap (when bitmap denote the element with false, load
      * next element)
+     * if decode failed, will throw TsFileDecodingException
      *
      * @param buffer
      * @return long value
      */
     protected long loadWithBitmap(ByteBuffer buffer) {
+      if (bitmapIndex < 0) {
+        LOGGER.error("Failed to decode data, please check whether data and regular match.");
+        throw new TsFileDecodingException("Failed to decode data, please check whether data and regular match.");
+      }
       while (!bitmap.get(bitmapIndex)) {
         bitmapIndex++;
       }

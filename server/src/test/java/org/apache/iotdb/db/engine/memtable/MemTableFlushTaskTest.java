@@ -28,7 +28,9 @@ import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
@@ -82,4 +84,47 @@ public class MemTableFlushTaskTest {
     assertEquals(MemTableTestUtils.dataType0, chunkMetaData.getDataType());
     assertEquals(endTime - startTime + 1, chunkMetaData.getNumOfPoints());
   }
+
+  @Test
+  public void testRegularDecodingAndDataNoConsistentANdFlushMemTable() throws ExecutionException, InterruptedException, IOException {
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 1, 1200);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 2, 1100);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 3, 1000);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 4, 2200);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    assertTrue(writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+                    MemTableTestUtils.dataType0).isEmpty());
+    memTableFlushTask.syncFlushMemTable();
+    writer.makeMetadataVisible();
+    assertEquals(0, writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+                    MemTableTestUtils.dataType0).size());
+  }
+
+  @Test
+  public void testRegularDecodingAndDataConsistentANdFlushMemTable() throws ExecutionException, InterruptedException, IOException {
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 1, 1100);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 2, 1200);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 3, 1300);
+    memTable.write(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0, new MeasurementSchema(MemTableTestUtils.measurementId0,
+            MemTableTestUtils.dataType0, TSEncoding.PLAIN), 4, 1400);
+    MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, storageGroup);
+    assertTrue(writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+                    MemTableTestUtils.dataType0).isEmpty());
+    memTableFlushTask.syncFlushMemTable();
+    writer.makeMetadataVisible();
+    assertEquals(1, writer
+            .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,
+                    MemTableTestUtils.dataType0).size());
+  }
+
 }

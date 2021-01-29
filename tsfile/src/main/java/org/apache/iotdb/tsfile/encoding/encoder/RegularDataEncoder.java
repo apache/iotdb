@@ -23,6 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.BitSet;
 
+import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +48,8 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
  * </p>
  */
 public abstract class RegularDataEncoder extends Encoder {
-
-  protected static final int BLOCK_DEFAULT_SIZE = 128;
   private static final Logger LOGGER = LoggerFactory.getLogger(RegularDataEncoder.class);
+  protected static final int BLOCK_DEFAULT_SIZE = 128;
   protected ByteArrayOutputStream out;
   protected int blockSize;
   protected boolean isMissingPoint;
@@ -197,6 +197,10 @@ public abstract class RegularDataEncoder extends Encoder {
       firstValue = data[0];
       if (isMissingPoint) {
         newBlockSize = ((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1;
+        if (newBlockSize < 0) {
+          LOGGER.error("Failed to encode data, please check whether data and regular match");
+          throw new TsFileEncodingException("Failed to encode data, please check whether data and regular match");
+        }
         writeIndex = newBlockSize;
       }
     }
@@ -323,6 +327,10 @@ public abstract class RegularDataEncoder extends Encoder {
       firstValue = data[0];
       if (isMissingPoint) {
         newBlockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
+        if (newBlockSize < 0) {
+          LOGGER.error("Failed to encode data, please check whether data and regular match");
+          throw new TsFileEncodingException("Failed to encode data, please check whether data and regular match");
+        }
         writeIndex = newBlockSize;
       }
     }

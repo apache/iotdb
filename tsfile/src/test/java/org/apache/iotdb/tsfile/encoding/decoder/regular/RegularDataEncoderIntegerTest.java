@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -96,6 +97,13 @@ public class RegularDataEncoderIntegerTest {
     int[] data = getMissingPointData(2000000, 40000);
 
     shouldReadAndWrite(data, ROW_NUM);
+  }
+
+  @Test(expected = TsFileEncodingException.class)
+  public void testRegularWithMissingPointsThrowException() throws IOException {
+    int[] data = new int[] {1200, 1100, 1000, 2200};
+
+    shouldReadAndWrite(data, 4);
   }
 
   private int[] getMissingPointData(int dataSize, int missingPointInterval) {
