@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Java CI with Maven
+name: Java CI
 
 on:
   push:
@@ -33,9 +33,10 @@ jobs:
         #   -pl server -am -DskipTests=true -Diotdb.test.only=true
         # the cluster module:
         #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
-        it_task: ['-Diotdb.skip.test=true -Dcluster.skip.test=true',
-                  '-pl server -am -DskipTests=true -Diotdb.test.only=true',
-                  '-pl cluster -am -DskipTests=true -Dcluster.test.only=true'
+        # but we just add labels here to make the action name more graceful
+        it_task: ['others',
+                  'server',
+                  'cluster'
                 ]
     runs-on: ${{ matrix.os}}
 
@@ -53,8 +54,15 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check -P client-cpp
-      - name: Test with Maven
-        run:  mvn -B clean integration-test -Dtest.port.closed=true ${{ matrix.it_task}}
+      - name: Test Server Module with Maven
+        if: ${{ matrix.it_task == 'server'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+      - name: Test Cluster Module with Maven
+        if: ${{ matrix.it_task == 'cluster'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+      - name: Test Other Modules with Maven
+        if: ${{ matrix.it_task == 'others'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.skip.test=true -Dcluster.skip.test=true
 
   build-win:
     strategy:
@@ -63,6 +71,10 @@ jobs:
       matrix:
         java: [8, 11.0.x]
         os: [windows-latest]
+        it_task: ['others',
+                  'server',
+                  'cluster'
+        ]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -118,6 +130,15 @@ jobs:
           path: D:\a\hadoop
           key: ${{ runner.os }}-hadoop-files${{ hashFiles('**/*.exe') }}
           restore-keys: ${{ runner.os }}-hadoop-files
-      - name: Test with Maven
+      - name: Test Server Module with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true ${{ matrix.it_task}}
+        if: ${{ matrix.it_task == 'server'}}
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+      - name: Test Cluster Module with Maven
+        shell: bash
+        if: ${{ matrix.it_task == 'cluster'}}
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+      - name: Test Other Modules with Maven
+        shell: bash
+        if: ${{ matrix.it_task == 'others'}}
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.skip.test=true -Dcluster.skip.test=true
