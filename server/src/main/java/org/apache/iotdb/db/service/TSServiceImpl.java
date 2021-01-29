@@ -672,8 +672,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private int getFetchSizeForGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
     int rows =  (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
         .getInterval());
-    // edge case for group by months when starttime is in February
-    // ie. time range = [2020-02-02, 2020-03-02), interval = 1mo, rows will get 0
+    // rows gets 0 is caused by: the end time - the start time < the time interval.
     if (rows == 0 && groupByTimePlan.isIntervalByMonth()) {
       Calendar calendar = Calendar.getInstance();
       calendar.setTimeInMillis(groupByTimePlan.getStartTime());

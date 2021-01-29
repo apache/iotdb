@@ -796,7 +796,6 @@ public class IOTDBGroupByIT {
       String[] retArray1 = {"10/31/2019:19:57:18", "30.0", "11/30/2019:19:57:18", "31.0",
           "12/31/2019:19:57:18", "31.0", "01/31/2020:19:57:18", "29.0", "02/29/2020:19:57:18", "31.0",
           "03/31/2020:19:57:18", "1.0"};
-      List<String> start = new ArrayList<>();
 
       for (long i = startTime; i <= endTime; i += 86400_000L) {
         statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
@@ -823,7 +822,6 @@ public class IOTDBGroupByIT {
         }
         Assert.assertEquals(retArray1.length, cnt);
       }
-      System.out.println(start.toString());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -871,6 +869,41 @@ public class IOTDBGroupByIT {
         }
         Assert.assertEquals(retArray1.length, cnt);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void groupByNaturalMonth3() {
+    //test when endtime - starttime = interval
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      //2/1/2021:15:20
+      long startTime = 1612164041000L;
+      //3/1/2021:15:20
+      long endTime = 1614583241000L;
+
+      for (long i = startTime; i <= endTime; i += 86400_000L) {
+        statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");
+      }
+
+      DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+      df.setTimeZone(TimeZone.getTimeZone("GMT+8:00"));
+
+      boolean hasResultSet = statement.execute(
+          "select sum(temperature) from root.sg1.d1 "
+              + "GROUP BY ([1612164041000, 1614583241000), 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt++;
+      }
+      Assert.assertEquals(1, cnt);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
