@@ -146,6 +146,8 @@
         <argLine/>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
+        <!-- disable enforcer by default-->
+        <enforcer.skip>true</enforcer.skip>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -1282,6 +1284,12 @@
                 <module>compile-tools</module>
                 <module>client-cpp</module>
             </modules>
+        </profile>
+        <profile>
+            <id>enforce</id>
+            <properties>
+                <enforcer.skip>false</enforcer.skip>
+            </properties>
         </profile>
     </profiles>
 </project>

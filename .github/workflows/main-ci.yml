@@ -26,6 +26,17 @@ jobs:
       matrix:
         java: [8, 11.0.x]
         os: [ubuntu-latest, macos-latest]
+        # to reduce the CI time cost; we split the whole CI to 3 parts:
+        # modules except the server and the cluster:
+        #   -Diotdb.skip.test=true -Dcluster.skip.test=true
+        # the server module:
+        #   -pl server -am -DskipTests=true -Diotdb.test.only=true
+        # the cluster module:
+        #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        it_task: ['-Diotdb.skip.test=true -Dcluster.skip.test=true',
+                  '-pl server -am -DskipTests=true -Diotdb.test.only=true',
+                  '-pl cluster -am -DskipTests=true -Dcluster.test.only=true'
+                ]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -43,7 +54,7 @@ jobs:
       - name: Check Apache Rat
         run: mvn -B apache-rat:check -P client-cpp
       - name: Test with Maven
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
+        run:  mvn -B clean integration-test -Dtest.port.closed=true ${{ matrix.it_task}}
 
   build-win:
     strategy:
@@ -109,4 +120,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true ${{ matrix.it_task}}
