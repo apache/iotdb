@@ -1117,7 +1117,6 @@
                 </plugins>
             </build>
         </profile>
-
         <!-- enable site-->
         <!-- use `mvn package -P site -pl site` to compile the site module only -->
         <profile>
@@ -1137,7 +1136,6 @@
                 <module>client-cpp</module>
             </modules>
         </profile>
-
         <!-- code coverage for ut and it, and then merge them together.-->
         <profile>
             <id>code-coverage</id>
@@ -1291,7 +1289,6 @@
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
-
         <profile>
             <id>enforce</id>
             <properties>
