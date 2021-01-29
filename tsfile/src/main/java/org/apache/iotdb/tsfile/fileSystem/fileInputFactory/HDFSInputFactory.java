@@ -43,6 +43,7 @@ public class HDFSInputFactory implements FileInputFactory {
     }
   }
 
+  @Override
   public TsFileInput getTsFileInput(String filePath) {
     try {
       return (TsFileInput) constructor.newInstance(filePath);

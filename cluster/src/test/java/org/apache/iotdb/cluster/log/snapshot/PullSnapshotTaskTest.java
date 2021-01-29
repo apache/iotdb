@@ -81,6 +81,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private CompactionStrategy defaultCompaction = IoTDBDescriptor.getInstance().getConfig()
       .getCompactionStrategy();
 
+  @Override
   @Before
   public void setUp() throws MetadataException, StartupException {
     IoTDBDescriptor.getInstance().getConfig()

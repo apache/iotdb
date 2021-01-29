@@ -353,6 +353,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
   }
   
+  @Override
   public void clearPageWriter() {
     pageWriter = null;
   }

@@ -175,6 +175,7 @@ public class TimeseriesMetadata implements Accountable {
     this.modified = modified;
   }
 
+  @Override
   public void setRamSize(long size) {
     this.ramSize = size;
   }
