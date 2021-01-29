@@ -111,7 +111,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true, new ArrayList<>());
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
@@ -170,7 +170,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true, new ArrayList<>());
     compactionLogger.close();
 
     BufferedReader logReader = new BufferedReader(
@@ -248,7 +248,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true, new ArrayList<>());
     compactionLogger.close();
 
     BufferedReader logReader = new BufferedReader(
@@ -331,7 +331,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), false);
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), false, new ArrayList<>());
     compactionLogger.close();
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
@@ -483,7 +483,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                 + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     CompactionUtils.merge(targetTsFileResource, new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true);
+        COMPACTION_TEST_SG, compactionLogger, new HashSet<>(), true, new ArrayList<>());
     levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
