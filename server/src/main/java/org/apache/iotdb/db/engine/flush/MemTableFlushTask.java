@@ -96,6 +96,9 @@ public class MemTableFlushTask {
       List<String> measurements = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
       logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
       for(String measurementId : measurements) {
+        if (!memTable.getMemTableMap().get(deviceId).containsKey(measurementId)) {
+          continue;
+        }
         // print log to show the order of measurements
         logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
