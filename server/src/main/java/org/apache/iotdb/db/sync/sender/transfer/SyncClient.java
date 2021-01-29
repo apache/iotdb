@@ -475,7 +475,7 @@ public class SyncClient implements ISyncClient {
           throw new SyncConnectionException("Unable to connect to receiver", e);
         }
         logger.info(
-            "Sync process starts to transfer data of storage group {}, it has {} virtual storage group.",
+            "Sync process starts to transfer data of storage group {}, it has {} virtual storage groups.",
             sgName, entry.getValue().size());
         try {
           for (Entry<Long, Set<Long>> vgEntry : entry.getValue().entrySet()) {
@@ -526,7 +526,7 @@ public class SyncClient implements ISyncClient {
     for (File file : deletedFilesName) {
       try {
         if (serviceClient.syncDeletedFileName(getFileNameWithSG(file)).code == SUCCESS_CODE) {
-          logger.info("Receiver has received deleted file name {} successfully.", file.getName());
+          logger.info("Receiver has received deleted file name {} successfully.", getFileNameWithSG(file));
           lastLocalFilesMap.get(sgName).get(vgId).get(timeRangeId).remove(file);
           syncLog.finishSyncDeletedFileName(file);
         }

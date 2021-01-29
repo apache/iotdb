@@ -110,22 +110,22 @@ public class SyncFileManager implements ISyncFileManager {
       allSGs.putIfAbsent(sgFolder.getName(), new HashMap<>());
       currentAllLocalFiles.putIfAbsent(sgFolder.getName(), new HashMap<>());
       for (File virtualSgFolder : sgFolder.listFiles()) {
-          try {
-            Long vgId = Long.parseLong(virtualSgFolder.getName());
-            allSGs.get(sgFolder.getName()).putIfAbsent(vgId, new HashSet<>());
-            currentAllLocalFiles.get(sgFolder.getName()).putIfAbsent(vgId, new HashMap<>());
+        try {
+          Long vgId = Long.parseLong(virtualSgFolder.getName());
+          allSGs.get(sgFolder.getName()).putIfAbsent(vgId, new HashSet<>());
+          currentAllLocalFiles.get(sgFolder.getName()).putIfAbsent(vgId, new HashMap<>());
 
-            for (File timeRangeFolder : virtualSgFolder.listFiles()) {
-              Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
-              currentAllLocalFiles.get(sgFolder.getName()).get(vgId).putIfAbsent(timeRangeId, new HashSet<>());
-              File[] files = timeRangeFolder.listFiles();
-              Arrays.stream(files)
-                .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(vgId).get(timeRangeId)
-                  .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
-            }
-          } catch (Exception e) {
-            LOGGER.error("Invalid virtual storage group folder: {}", virtualSgFolder.getAbsolutePath(), e);
+          for (File timeRangeFolder : virtualSgFolder.listFiles()) {
+            Long timeRangeId = Long.parseLong(timeRangeFolder.getName());
+            currentAllLocalFiles.get(sgFolder.getName()).get(vgId).putIfAbsent(timeRangeId, new HashSet<>());
+            File[] files = timeRangeFolder.listFiles();
+            Arrays.stream(files)
+              .forEach(file -> currentAllLocalFiles.get(sgFolder.getName()).get(vgId).get(timeRangeId)
+                .add(new File(timeRangeFolder.getAbsolutePath(), file.getName())));
           }
+        } catch (Exception e) {
+          LOGGER.error("Invalid virtual storage group folder: {}", virtualSgFolder.getAbsolutePath(), e);
+        }
       }
     }
 

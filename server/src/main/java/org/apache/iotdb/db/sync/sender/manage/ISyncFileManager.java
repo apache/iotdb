@@ -55,7 +55,10 @@ public interface ISyncFileManager {
    */
   void getValidFiles(String dataDir) throws IOException;
 
-
+  /*
+   * the following 4 maps share same map structure
+   * logicalSg -> <virtualSg, <timeRangeId, tsfiles>>
+   */
   Map<String, Map<Long, Map<Long, Set<File>>>> getCurrentSealedLocalFilesMap();
 
   Map<String, Map<Long, Map<Long, Set<File>>>> getLastLocalFilesMap();
@@ -64,5 +67,6 @@ public interface ISyncFileManager {
 
   Map<String, Map<Long, Map<Long, Set<File>>>> getToBeSyncedFilesMap();
 
+  // logicalSg -> <virtualSg, Set<timeRangeId>>
   Map<String, Map<Long, Set<Long>>> getAllSGs();
 }
