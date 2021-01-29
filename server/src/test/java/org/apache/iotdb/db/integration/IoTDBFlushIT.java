@@ -20,9 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -38,7 +35,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class IoTDBFlushIT {
 
@@ -50,6 +46,7 @@ public class IoTDBFlushIT {
     EnvironmentUtils.envSetUp();
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(partitionInterval);
+    insertData();
   }
 
   @After
@@ -131,7 +128,7 @@ public class IoTDBFlushIT {
       statement.execute("insert into root.db_0.tab0(time ,salary) values(2,1100)");
       statement.execute("insert into root.db_0.tab0(time ,salary) values(3,1000)");
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.db_0.tab0.salary")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.db_0.tab0")) {
         int count = 0;
         while (resultSet.next()) {
           count++;
@@ -143,4 +140,45 @@ public class IoTDBFlushIT {
     }
   }
 
+  private static void insertData() throws ClassNotFoundException {
+    List<String> sqls = new ArrayList<>(Arrays.asList(
+            "SET STORAGE GROUP TO root.test1",
+            "SET STORAGE GROUP TO root.test2",
+            "CREATE TIMESERIES root.test1.s0 WITH DATATYPE=INT64,ENCODING=PLAIN",
+            "CREATE TIMESERIES root.test2.s0 WITH DATATYPE=INT64,ENCODING=PLAIN"
+    ));
+    // 10 partitions, each one with one seq file and one unseq file
+    for (int i = 0; i < 10; i++) {
+      // seq files
+      for (int j = 1; j <= 2; j++) {
+        sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
+                i * partitionInterval + 50, i * partitionInterval + 50));
+      }
+      // last file is unclosed
+      if (i < 9) {
+        sqls.add("FLUSH");
+      }
+      // unseq files
+      for (int j = 1; j <= 2; j++) {
+        sqls.add(String.format("INSERT INTO root.test%d(timestamp, s0) VALUES (%d, %d)", j,
+                i * partitionInterval, i * partitionInterval));
+      }
+      sqls.add("MERGE");
+      // last file is unclosed
+      if (i < 9) {
+        sqls.add("FLUSH");
+      }
+    }
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
