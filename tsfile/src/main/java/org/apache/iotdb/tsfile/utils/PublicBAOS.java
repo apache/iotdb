@@ -60,6 +60,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
    * @param      out   the output stream to which to write the data.
    * @exception  IOException  if an I/O error occurs.
    */
+  @Override
   public void writeTo(OutputStream out) throws IOException {
     out.write(buf, 0, count);
   }
@@ -74,6 +75,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
    * output stream is discarded. The output stream can be used again,
    * reusing the already allocated buffer space.
    */
+  @Override
   public void reset() {
     count = 0;
   }
