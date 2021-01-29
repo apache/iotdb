@@ -55,16 +55,10 @@ TEST_CASE( "Delete timeseries success", "[deleteTimeseries]" ) {
 TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
   prepareTimeseries();
   string deviceId = "root.test.d1";
-  vector<string> measurements;
-  measurements.push_back("s1");
-  measurements.push_back("s2");
-  measurements.push_back("s3");
+  vector<string> measurements = { "s1", "s2", "s3" };
 
   for (long time = 0; time < 100; time++) {
-    vector<string> values;
-    values.push_back("1");
-    values.push_back("2");
-    values.push_back("3");
+    vector<string> values = { "1", "2", "3" };
     session->insertRecord(deviceId, time, measurements, values);
   }
 
@@ -87,20 +81,14 @@ TEST_CASE( "Test insertRecord by string", "[testInsertRecord]") {
 TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
   prepareTimeseries();
   string deviceId = "root.test.d1";
-  vector<string> measurements;
-  measurements.push_back("s1");
-  measurements.push_back("s2");
-  measurements.push_back("s3");
+  vector<string> measurements = { "s1", "s2", "s3" };
   vector<string> deviceIds;
   vector<vector<string>> measurementsList;
   vector<vector<string>> valuesList;
   vector<int64_t> timestamps;
 
   for (int64_t time = 0; time < 500; time++) {
-    vector<string> values;
-    values.push_back("1");
-    values.push_back("2");
-    values.push_back("3");
+    vector<string> values = { "1", "2", "3" };
 
     deviceIds.push_back(deviceId);
     measurementsList.push_back(measurements);
@@ -129,6 +117,119 @@ TEST_CASE( "Test insertRecords ", "[testInsertRecords]") {
     }
   }
   REQUIRE( count == 500 );
+}
+
+TEST_CASE( "Test insertRecord with types ", "[testTypedInsertRecord]") {
+  vector<string> timeseries = {"root.test.d1.s1","root.test.d1.s2","root.test.d1.s3"};
+  vector<TSDataType::TSDataType> types = { TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64 };
+
+  for (int i = 0; i < timeseries.size(); i++) {
+    if (session->checkTimeseriesExists(timeseries[i])) {
+      session->deleteTimeseries(timeseries[i]);
+    }
+    session->createTimeseries(timeseries[i], types[i], TSEncoding::RLE, CompressionType::SNAPPY);
+  }
+  string deviceId = "root.test.d1";
+  vector<string> measurements = { "s1", "s2", "s3" };
+  vector<int32_t> value1(100, 1);
+  vector<double> value2(100, 2.2);
+  vector<int64_t> value3(100, 3);
+
+  for (long time = 0; time < 100; time++) {
+    vector<char *> values = { (char *)(&value1[time]), (char *)(&value2[time]), (char *)(&value3[time]) };
+    session->insertRecord(deviceId, time, measurements, types, values);
+  }
+
+  SessionDataSet *sessionDataSet = session->executeQueryStatement("select s1,s2,s3 from root.test.d1");
+  sessionDataSet->setBatchSize(1024);
+  long count = 0;
+  while (sessionDataSet->hasNext()) {
+    sessionDataSet->next();
+    count++;
+  }
+  REQUIRE( count == 100 );
+}
+
+TEST_CASE( "Test insertRecords with types ", "[testTypedInsertRecords]") {
+  vector<string> timeseries = {"root.test.d1.s1","root.test.d1.s2","root.test.d1.s3"};
+  vector<TSDataType::TSDataType> types = { TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64 };
+
+  for (int i = 0; i < timeseries.size(); i++) {
+    if (session->checkTimeseriesExists(timeseries[i])) {
+      session->deleteTimeseries(timeseries[i]);
+    }
+    session->createTimeseries(timeseries[i], types[i], TSEncoding::RLE, CompressionType::SNAPPY);
+  }
+  string deviceId = "root.test.d1";
+  vector<string> measurements = { "s1", "s2", "s3" };
+  vector<string> deviceIds;
+  vector<vector<string>> measurementsList;
+  vector<vector<TSDataType::TSDataType>> typesList;
+  vector<vector<char*>> valuesList;
+  vector<int64_t> timestamps;
+  vector<int32_t> value1(100, 1);
+  vector<double> value2(100, 2.2);
+  vector<int64_t> value3(100, 3);
+
+  for (int64_t time = 0; time < 100; time++) {
+    vector<char *> values = { (char *)(&value1[time]), (char *)(&value2[time]), (char *)(&value3[time]) };
+    deviceIds.push_back(deviceId);
+    measurementsList.push_back(measurements);
+    typesList.push_back(types);
+    valuesList.push_back(values);
+    timestamps.push_back(time);
+  }
+
+  session->insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+
+  SessionDataSet *sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
+  sessionDataSet->setBatchSize(1024);
+  int count = 0;
+  while (sessionDataSet->hasNext()) {
+    sessionDataSet->next();
+    count++;
+  }
+  REQUIRE( count == 100 );
+}
+
+TEST_CASE( "Test insertRecordsOfOneDevice", "[testInsertRecordsOfOneDevice]") {
+  vector<string> timeseries = {"root.test.d1.s1","root.test.d1.s2","root.test.d1.s3"};
+  vector<TSDataType::TSDataType> types = { TSDataType::INT32, TSDataType::DOUBLE, TSDataType::INT64 };
+
+  for (int i = 0; i < timeseries.size(); i++) {
+    if (session->checkTimeseriesExists(timeseries[i])) {
+      session->deleteTimeseries(timeseries[i]);
+    }
+    session->createTimeseries(timeseries[i], types[i], TSEncoding::RLE, CompressionType::SNAPPY);
+  }
+  string deviceId = "root.test.d1";
+  vector<string> measurements = { "s1", "s2", "s3" };
+  vector<vector<string>> measurementsList;
+  vector<vector<TSDataType::TSDataType>> typesList;
+  vector<vector<char*>> valuesList;
+  vector<int64_t> timestamps;
+  vector<int32_t> value1(100, 1);
+  vector<double> value2(100, 2.2);
+  vector<int64_t> value3(100, 3);
+
+  for (int64_t time = 0; time < 100; time++) {
+    vector<char *> values = { (char *)(&value1[time]), (char *)(&value2[time]), (char *)(&value3[time]) };
+    measurementsList.push_back(measurements);
+    typesList.push_back(types);
+    valuesList.push_back(values);
+    timestamps.push_back(time);
+  }
+
+  session->insertRecordsOfOneDevice(deviceId, timestamps, measurementsList, typesList, valuesList);
+
+  SessionDataSet *sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
+  sessionDataSet->setBatchSize(1024);
+  int count = 0;
+  while (sessionDataSet->hasNext()) {
+    sessionDataSet->next();
+    count++;
+  }
+  REQUIRE( count == 100 );
 }
 
 TEST_CASE( "Test insertTablet ", "[testInsertTablet]") {
