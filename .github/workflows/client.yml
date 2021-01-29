@@ -13,6 +13,8 @@ on:
     paths:
       - 'client-*/**'
       - 'compile-tools/**'
+      - 'thrift/**'
+      - 'service-rpc/**'
   pull_request:
     branches:
       - master
@@ -20,6 +22,8 @@ on:
     paths:
       - 'client-*/**'
       - 'compile-tools/**'
+      - 'thrift/**'
+      - 'service-rpc/**'
 
 jobs:
   build:
