@@ -40,19 +40,19 @@
             <outputDirectory>include</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/../compile-tools/boost/target/lib/boost/include</directory>
-            <includes>
-                <include>**/*.h</include>
-                <include>**/*.hpp</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
             <directory>${project.build.directory}/build/main</directory>
             <includes>
                 <include>*.so</include>
                 <include>*.dylib</include>
                 <include>**/*.dll</include>
+                <include>**/*.lib</include>
+            </includes>
+            <outputDirectory>lib</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../compile-tools/thrift/target/build/lib/Release</directory>
+            <includes>
+                <include>**/*.lib</include>
             </includes>
             <outputDirectory>lib</outputDirectory>
         </fileSet>
