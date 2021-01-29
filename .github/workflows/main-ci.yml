@@ -5,19 +5,19 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - 'rel/*'
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: 
+    branches:
       - master
       - 'rel/*'
       - cluster_new
     paths-ignore:
       - 'docs/**'
-        
+
 jobs:
   build:
     strategy:
@@ -39,11 +39,11 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: mvn -B apache-rat:check
+        run: mvn -B apache-rat:check -P client-cpp
       - name: Test with Maven
-        run:  mvn -B clean integration-test -Dtest.port.closed=true
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
 
   build-win:
     strategy:
@@ -65,7 +65,7 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check
       - name: Download Hadoop Tools if Needed
@@ -109,4 +109,4 @@ jobs:
           restore-keys: ${{ runner.os }}-hadoop-files
       - name: Test with Maven
         shell: bash
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true
+        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Denforcer.skip=true
