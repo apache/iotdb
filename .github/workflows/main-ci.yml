@@ -56,13 +56,13 @@ jobs:
         run: mvn -B apache-rat:check -P client-cpp
       - name: Test Server Module with Maven
         if: ${{ matrix.it_task == 'server'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run:  mvn -T 4 -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Cluster Module with Maven
         if: ${{ matrix.it_task == 'cluster'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        run:  mvn -T 4 -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
       - name: Test Other Modules with Maven
         if: ${{ matrix.it_task == 'others'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+        run:  mvn -T 4 -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
 
   build-win:
     strategy:
@@ -133,13 +133,13 @@ jobs:
       - name: Test Server Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'server'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run:  source ~/.bash_profile && mvn -T 4 -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Cluster Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'cluster'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        run:  source ~/.bash_profile && mvn -T 4 -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+        run:  source ~/.bash_profile && mvn -T 4 -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
 
