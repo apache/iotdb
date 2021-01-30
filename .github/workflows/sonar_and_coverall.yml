@@ -70,9 +70,8 @@ jobs:
       - name: Upload to Code Coverage (Coveralls)
         run: |
           mvn -B coveralls:report \
-          --no-transfer-progress \
           -DserviceName=travis_ci \
           -Dbranch=$BRANCH_NAME \
           -DpullRequest=$PR_NUMBER \
           -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
-          -Pcode-coverage -pl code-coverage
+          -Pcode-coverage
