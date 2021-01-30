@@ -31,7 +31,6 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [11.0.x]
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os}}
 
@@ -40,7 +39,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
-          java-version: ${{ matrix.java }}
+          java-version: 11
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -67,7 +66,6 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [11.0.x]
         os: [windows-latest]
     runs-on: ${{ matrix.os}}
 
@@ -76,7 +74,7 @@ jobs:
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
-          java-version: ${{ matrix.java }}
+          java-version: 11
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:

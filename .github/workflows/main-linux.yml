@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [8, 11, 15]
     runs-on: ubuntu-latest
 
     steps:

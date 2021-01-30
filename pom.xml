@@ -135,7 +135,7 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
-        <felix.version>4.2.1</felix.version>
+        <felix.version>5.1.1</felix.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -611,7 +611,7 @@
                     </jacocoReports>
                     <sourceEncoding>UTF-8</sourceEncoding>
                     <sourceDirectories>
-                      <!-- put all source folders not in src/main/java here-->
+                        <!-- put all source folders not in src/main/java here-->
                         <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>

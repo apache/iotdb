@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11.0.x]
+        java: [8, 11]
           # to reduce the CI time cost; we split the whole CI to 3 parts:
           # modules except the server and the cluster:
           #   -Diotdb.skip.test=true -Dcluster.skip.test=true
