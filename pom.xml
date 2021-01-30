@@ -500,7 +500,6 @@
             <artifactId>mockito-all</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
     <build>
         <pluginManagement>
@@ -609,6 +608,14 @@
                     <jacocoReports>
                         <jacocoReport>code-coverage/target/jacoco-merged-reports/jacoco.xml</jacocoReport>
                     </jacocoReports>
+                    <sourceEncoding>UTF-8</sourceEncoding>
+                    <sourceDirectories>
+                      <!-- put all source folders not in src/main/java here-->
+                        <sourceDirectory>antlr/target/generated-sources/antlr4</sourceDirectory>
+                        <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>
+                        <sourceDirectory>spark-tsfile/src/main/scala</sourceDirectory>
+                    </sourceDirectories>
                 </configuration>
                 <!-- JDK11 removes the following libs. We have to add them-->
                 <dependencies>

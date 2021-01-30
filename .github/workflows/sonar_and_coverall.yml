@@ -36,7 +36,7 @@ jobs:
           key: code-coverage-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Run Integration Test
-        run: mvn -B -T 4 post-integration-test -Pcode-coverage -pl '!distribution','!code-coverage' -am
+        run: mvn -B  post-integration-test -Pcode-coverage -pl '!distribution','!code-coverage' -am
       - name: Generate reports
         run: mvn -B post-integration-test -Pcode-coverage -pl code-coverage
       - name: Upload to Code Coverage (Coveralls)
