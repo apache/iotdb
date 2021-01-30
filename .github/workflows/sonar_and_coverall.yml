@@ -19,7 +19,7 @@ on:
       - 'docs/**'
 
 jobs:
-  sonar:
+  coverall-sonar:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -33,9 +33,21 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.m2
-          key: sonar-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: code-coverage-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: SonarCloud Test
+      - name: Run Integration Test
+        run: mvn -B -T 4 post-integration-test -Pcode-coverage -pl '!distribution','!code-coverage' -am
+      - name: Generate reports
+        run: mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+      - name: Upload to Code Coverage (Coveralls)
+        run: |
+            mvn -B coveralls:report \
+            -DserviceName=travis_ci \
+            -Dbranch=$BRANCH_NAME \
+            -DpullRequest=$PR_NUMBER \
+            -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
+            -Pcode-coverage
+      - name: SonarCloud Report
         env: 
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
@@ -46,7 +58,7 @@ jobs:
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
           -DskipTests -pl '!distribution' -am
-  
+
   coveralls:
     runs-on: ubuntu-latest
     strategy:
@@ -57,21 +69,4 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 1.8
-      - name: Cache Maven packages
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2
-          key: code-coverage-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-      - name: Run Integration Test
-        run: mvn -B -T 4 post-integration-test -Pcode-coverage -pl '!distribution','!code-coverage' -am
-      - name: Generate reports
-        run: mvn -B post-integration-test -Pcode-coverage -pl code-coverage
-      - name: Upload to Code Coverage (Coveralls)
-        run: |
-          mvn -B coveralls:report \
-          -DserviceName=travis_ci \
-          -Dbranch=$BRANCH_NAME \
-          -DpullRequest=$PR_NUMBER \
-          -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
-          -Pcode-coverage
+
