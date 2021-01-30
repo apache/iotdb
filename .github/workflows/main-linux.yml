@@ -1,7 +1,9 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Main Unix
+name: Main Linux
+# Main Unix is quite different with Mac and Win Github Action.
+# It consists of not only the UT/IT, but also code coverage and sonar report.
 
 on:
   push:
@@ -19,14 +21,13 @@ on:
       - 'docs/**'
 
 jobs:
-  unix:
+  ubuntu:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         java: [8, 11.0.x]
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os}}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -42,10 +43,10 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
         run: mvn -B apache-rat:check -P client-cpp -P site -P code-coverage
-      - name: Test Server Module with Maven
+      - name: IT/UT Test
         run:  mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && matrix.os == 'ubuntu-latest' && matrix.java == '11.0.x'}}
+        if: ${{ success() && matrix.java == '8'}}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -55,7 +56,8 @@ jobs:
           -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
           -Pcode-coverage
       - name: SonarCloud Report
-        if: ${{ success() && matrix.os == 'ubuntu-latest' && matrix.java == '11.0.x'}}
+        #jdk8 is faster to run UT/IT
+        if: ${{ success() &&  matrix.java == '8'}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'

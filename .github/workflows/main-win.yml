@@ -25,7 +25,6 @@ jobs:
       max-parallel: 20
       matrix:
         java: [8, 11.0.x]
-        os: [windows-latest]
           # to reduce the CI time cost; we split the whole CI to 3 parts:
           # modules except the server and the cluster:
           #   -Diotdb.skip.test=true -Dcluster.skip.test=true
@@ -38,7 +37,7 @@ jobs:
                   'server',
                   'cluster'
         ]
-    runs-on: ${{ matrix.os}}
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
