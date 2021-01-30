@@ -72,7 +72,7 @@ jobs:
           mvn -B coveralls:report \
           --no-transfer-progress \
           -DserviceName=travis_ci \
-          -D branch=$BRANCH_NAME \
-          -D pullRequest=$PR_NUMBER \
-          -D repoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
+          -Dbranch=$BRANCH_NAME \
+          -DpullRequest=$PR_NUMBER \
+          -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
           -Pcode-coverage -pl code-coverage
