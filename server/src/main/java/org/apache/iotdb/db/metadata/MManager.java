@@ -232,7 +232,7 @@ public class MManager {
       List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
       for (PartialPath sg : storageGroups) {
         MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getLeafCount());
+        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);

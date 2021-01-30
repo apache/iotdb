@@ -152,7 +152,6 @@ public class FileLoaderTest {
     for (List<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          LOGGER.error("sync file name is" + newTsFile.getAbsolutePath());
           fileLoader.addTsfile(newTsFile);
         }
       }
@@ -213,7 +212,6 @@ public class FileLoaderTest {
                 + File.separator + "0" + File.separator + (time + i * 100
                 + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
-        LOGGER.error("file name is" + fileName);
 
         File syncFile = new File(fileName);
         File dataFile = new File(
@@ -257,7 +255,6 @@ public class FileLoaderTest {
     for (List<File> set : allFileList.values()) {
       for (File newTsFile : set) {
         if (!newTsFile.getName().endsWith(TsFileResource.RESOURCE_SUFFIX)) {
-          LOGGER.error("sync file name is" + newTsFile.getAbsolutePath());
           fileLoader.addTsfile(newTsFile);
         }
       }
