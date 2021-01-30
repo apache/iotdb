@@ -19,7 +19,7 @@ on:
       - 'docs/**'
 
 jobs:
-  build:
+  unix:
     strategy:
       fail-fast: false
       max-parallel: 20
