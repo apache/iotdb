@@ -1,7 +1,7 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Main
+name: Main Unix
 
 on:
   push:
@@ -26,18 +26,6 @@ jobs:
       matrix:
         java: [8, 11.0.x]
         os: [ubuntu-latest, macos-latest]
-        # to reduce the CI time cost; we split the whole CI to 3 parts:
-        # modules except the server and the cluster:
-        #   -Diotdb.skip.test=true -Dcluster.skip.test=true
-        # the server module:
-        #   -pl server -am -DskipTests=true -Diotdb.test.only=true
-        # the cluster module:
-        #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
-        # but we just add labels here to make the action name more graceful
-        it_task: ['others',
-                  'server',
-                  'cluster'
-                ]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -53,13 +41,28 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P client-cpp
+        run: mvn -B apache-rat:check -P client-cpp -P site -P code-coverage
       - name: Test Server Module with Maven
-        if: ${{ matrix.it_task == 'server'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
-      - name: Test Cluster Module with Maven
-        if: ${{ matrix.it_task == 'cluster'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
-      - name: Test Other Modules with Maven
-        if: ${{ matrix.it_task == 'others'}}
-        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+        run:  mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+      - name: Code Coverage (Coveralls)
+        if: ${{ success() && matrix.os == 'ubuntu-latest' && matrix.java == '11.0.x'}}
+        run: |
+          mvn -B post-integration-test -Pcode-coverage -pl code-coverage
+          mvn -B coveralls:report \
+          -DserviceName=travis_ci \
+          -Dbranch=$BRANCH_NAME \
+          -DpullRequest=$PR_NUMBER \
+          -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
+          -Pcode-coverage
+      - name: SonarCloud Report
+        if: ${{ success() && matrix.os == 'ubuntu-latest' && matrix.java == '11.0.x'}}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
+        run: |
+          mvn -B verify sonar:sonar \
+          -Dsonar.organization=apache \
+          -Dsonar.projectKey=apache_incubator-iotdb \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
+          -DskipTests -pl '!distribution' -am
