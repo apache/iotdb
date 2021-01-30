@@ -1,0 +1,65 @@
+# This workflow will build a Java project with Maven
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+
+name: Main
+
+on:
+  push:
+    branches:
+      - master
+      - 'rel/*'
+    paths-ignore:
+      - 'docs/**'
+  pull_request:
+    branches:
+      - master
+      - 'rel/*'
+      - cluster_new
+    paths-ignore:
+      - 'docs/**'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        java: [8, 11.0.x]
+        os: [ubuntu-latest, macos-latest]
+        # to reduce the CI time cost; we split the whole CI to 3 parts:
+        # modules except the server and the cluster:
+        #   -Diotdb.skip.test=true -Dcluster.skip.test=true
+        # the server module:
+        #   -pl server -am -DskipTests=true -Diotdb.test.only=true
+        # the cluster module:
+        #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        # but we just add labels here to make the action name more graceful
+        it_task: ['others',
+                  'server',
+                  'cluster'
+                ]
+    runs-on: ${{ matrix.os}}
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+      - name: Check Apache Rat
+        run: mvn -B apache-rat:check -P client-cpp
+      - name: Test Server Module with Maven
+        if: ${{ matrix.it_task == 'server'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+      - name: Test Cluster Module with Maven
+        if: ${{ matrix.it_task == 'cluster'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+      - name: Test Other Modules with Maven
+        if: ${{ matrix.it_task == 'others'}}
+        run:  mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
