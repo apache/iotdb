@@ -95,10 +95,16 @@ public class MemTableFlushTask {
       encodingTaskQueue.put(new StartFlushGroupIOTask(deviceId));
       List<String> measurements = MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceId);
       logger.info(String.format("Flush {} in order: {}",deviceId, measurements.toString()));
+      int flushCount = 0;
+      int totalFlushNum = memTable.getMemTableMap().get(deviceId).keySet().size();
       for(String measurementId : measurements) {
+        if (flushCount >= totalFlushNum) {
+          break;
+        }
         if (!memTable.getMemTableMap().get(deviceId).containsKey(measurementId)) {
           continue;
         }
+        flushCount++;
         // print log to show the order of measurements
         logger.info(String.format("Flush %s.%s", deviceId, measurementId));
         long startTime = System.currentTimeMillis();
