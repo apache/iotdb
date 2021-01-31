@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.udf.api.customizer.strategy;
 
 import java.time.ZoneId;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;

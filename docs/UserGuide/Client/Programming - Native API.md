@@ -150,6 +150,14 @@ Here we show the commonly used interfaces and their parameters in the Native API
         List<List<String>> measurementsList, List<List<TSDataType>> typesList,
         List<List<Object>> valuesList)
   ```
+* Insert multiple Records that belong to the same device. 
+  With type info the server has no need to do type inference, which leads a better performance
+  
+  ```
+  void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
   
 * Raw data query. Time interval include startTime and exclude endTime
 
@@ -183,6 +191,16 @@ Here we show the commonly used interfaces and their parameters in the Native API
         List<List<String>> measurementsList, List<List<TSDataType>> typesList,
         List<List<Object>> valuesList)
   ```
+
+* Test the network and client cost of insertRecordsOfOneDevice. 
+This method NOT insert data into database and server just return after accept the request, 
+this method should be used to test other time cost in client
+
+  ```
+  void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```  
 
 * Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
@@ -407,4 +425,12 @@ Create multiple timeseries with a single method. Users can provide props, tags, 
 ```
 boolean checkTimeseriesExists(String path)
 ```
+
 Add a method to check whether the specific timeseries exists.
+
+```
+public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader)
+```
+
+Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.

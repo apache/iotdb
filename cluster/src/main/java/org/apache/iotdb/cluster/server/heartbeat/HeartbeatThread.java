@@ -67,8 +67,8 @@ public class HeartbeatThread implements Runnable {
   public void run() {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
-    long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
-        + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
+    long electionWait = ClusterConstant.getElectionLeastTimeOutMs()
+        + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -246,8 +246,8 @@ public class HeartbeatThread implements Runnable {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
-        long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
-            + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
+        long electionWait = ClusterConstant.getElectionLeastTimeOutMs()
+            + Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }

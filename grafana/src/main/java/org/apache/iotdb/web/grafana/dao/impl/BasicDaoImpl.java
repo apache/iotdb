@@ -77,6 +77,7 @@ public class BasicDaoImpl implements BasicDao {
   @Override
   public List<String> getMetaData() {
     ConnectionCallback<Object> connectionCallback = new ConnectionCallback<Object>() {
+      @Override
       public Object doInConnection(Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement()) {
           statement.execute("show timeseries root.*");

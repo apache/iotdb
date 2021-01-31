@@ -456,4 +456,11 @@ service TSMetaService extends RaftService {
 
   Node checkAlive()
 
+  /**
+  * When a node starts, it send handshakes to all other nodes so they know the node is alive
+  * again. Notice that heartbeats exists only between leaders and followers, so coordinators
+  * cannot know when another node resumes, and handshakes are mainly used to update node status
+  * on coordinator side.
+  **/
+  void handshake(Node sender);
 }

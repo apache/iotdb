@@ -59,7 +59,7 @@ public class BatchTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
     when(connection.createStatement())
-        .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 1L));
+        .thenReturn(new IoTDBStatement(connection, client, sessionId, zoneID, 0, 1L));
 
   }
 

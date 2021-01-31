@@ -111,7 +111,7 @@ public class SyncReceiverLogAnalyzerTest {
         correctSequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
-            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
+            getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + "0" + File.separator + "0" + File.separator + System
                 .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + rand
                 + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         Thread.sleep(1);
@@ -137,8 +137,8 @@ public class SyncReceiverLogAnalyzerTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
-        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.updateStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.updateEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }

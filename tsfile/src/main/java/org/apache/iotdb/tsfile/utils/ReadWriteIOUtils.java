@@ -353,6 +353,25 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * write string to outputStream.
+   *
+   * @return the length of string represented by byte[].
+   */
+  public static int writeVar(String s, OutputStream outputStream) throws IOException {
+    int len = 0;
+    if (s == null) {
+      len += ReadWriteForEncodingUtils.writeVarInt(-1, outputStream);
+      return len;
+    }
+
+    byte[] bytes = s.getBytes(TSFileConfig.STRING_CHARSET);
+    len += ReadWriteForEncodingUtils.writeVarInt(bytes.length, outputStream);
+    outputStream.write(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  /**
    * write string to byteBuffer.
    *
    * @return the length of string represented by byte[].
@@ -364,6 +383,18 @@ public class ReadWriteIOUtils {
     int len = 0;
     byte[] bytes = s.getBytes();
     len += write(bytes.length, buffer);
+    buffer.put(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  public static int writeVar(String s, ByteBuffer buffer) {
+    if (s == null) {
+      return ReadWriteForEncodingUtils.writeVarInt(-1, buffer);
+    }
+    int len = 0;
+    byte[] bytes = s.getBytes();
+    len += ReadWriteForEncodingUtils.writeVarInt(bytes.length, buffer);
     buffer.put(bytes);
     len += bytes.length;
     return len;
@@ -404,7 +435,7 @@ public class ReadWriteIOUtils {
    */
   public static int write(CompressionType compressionType, OutputStream outputStream)
       throws IOException {
-    short n = compressionType.serialize();
+    byte n = compressionType.serialize();
     return write(n, outputStream);
   }
 
@@ -412,7 +443,7 @@ public class ReadWriteIOUtils {
    * write compressionType to byteBuffer.
    */
   public static int write(CompressionType compressionType, ByteBuffer buffer) {
-    short n = compressionType.serialize();
+    byte n = compressionType.serialize();
     return write(n, buffer);
   }
 
@@ -420,12 +451,12 @@ public class ReadWriteIOUtils {
    * TSDataType.
    */
   public static int write(TSDataType dataType, OutputStream outputStream) throws IOException {
-    short n = dataType.serialize();
+    byte n = dataType.serialize();
     return write(n, outputStream);
   }
 
   public static int write(TSDataType dataType, ByteBuffer buffer) {
-    short n = dataType.serialize();
+    byte n = dataType.serialize();
     return write(n, buffer);
   }
 
@@ -433,13 +464,20 @@ public class ReadWriteIOUtils {
    * TSEncoding.
    */
   public static int write(TSEncoding encoding, OutputStream outputStream) throws IOException {
-    short n = encoding.serialize();
+    byte n = encoding.serialize();
     return write(n, outputStream);
   }
 
   public static int write(TSEncoding encoding, ByteBuffer buffer) {
-    short n = encoding.serialize();
+    byte n = encoding.serialize();
     return write(n, buffer);
+  }
+
+  /**
+   * read a byte var from inputStream.
+   */
+  public static byte readByte(InputStream inputStream) throws IOException {
+    return (byte) inputStream.read();
   }
 
   /**
@@ -576,10 +614,42 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * string length's type is varInt
+   */
+  public static String readVarIntString(InputStream inputStream) throws IOException {
+    int strLength = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    if (strLength <= 0) {
+      return null;
+    }
+    byte[] bytes = new byte[strLength];
+    int readLen = inputStream.read(bytes, 0, strLength);
+    if (readLen != strLength) {
+      throw new IOException(String.format(RETURN_ERROR,
+          strLength, readLen));
+    }
+    return new String(bytes, 0, strLength);
+  }
+
+  /**
    * read string from byteBuffer.
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    } else if (strLength == 0) {
+      return "";
+    }
+    byte[] bytes = new byte[strLength];
+    buffer.get(bytes, 0, strLength);
+    return new String(bytes, 0, strLength);
+  }
+
+  /**
+   * string length's type is varInt
+   */
+  public static String readVarIntString(ByteBuffer buffer) {
+    int strLength = ReadWriteForEncodingUtils.readVarInt(buffer);
     if (strLength < 0) {
       return null;
     } else if (strLength == 0) {
@@ -695,14 +765,11 @@ public class ReadWriteIOUtils {
    * <p>
    * read a int + buffer
    */
-  public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
-    int byteLength = readInt(buffer);
+  public static byte[] readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
+    int byteLength = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     byte[] bytes = new byte[byteLength];
     buffer.get(bytes);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(byteLength);
-    byteBuffer.put(bytes);
-    byteBuffer.flip();
-    return byteBuffer;
+    return bytes;
   }
 
   /**
@@ -783,32 +850,32 @@ public class ReadWriteIOUtils {
   }
 
   public static CompressionType readCompressionType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
+    byte n = readByte(inputStream);
     return CompressionType.deserialize(n);
   }
 
   public static CompressionType readCompressionType(ByteBuffer buffer) {
-    short n = readShort(buffer);
+    byte n = buffer.get();
     return CompressionType.deserialize(n);
   }
 
   public static TSDataType readDataType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
+    byte n = readByte(inputStream);
     return TSDataType.deserialize(n);
   }
 
   public static TSDataType readDataType(ByteBuffer buffer) {
-    short n = readShort(buffer);
+    byte n = buffer.get();
     return TSDataType.deserialize(n);
   }
 
   public static TSEncoding readEncoding(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
+    byte n = readByte(inputStream);
     return TSEncoding.deserialize(n);
   }
 
   public static TSEncoding readEncoding(ByteBuffer buffer) {
-    short n = readShort(buffer);
+    byte n = buffer.get();
     return TSEncoding.deserialize(n);
   }
 

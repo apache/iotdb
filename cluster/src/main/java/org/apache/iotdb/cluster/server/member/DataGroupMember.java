@@ -77,12 +77,13 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
-import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
+import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.Timer;
-import org.apache.iotdb.cluster.server.Timer.Statistic;
+import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -158,11 +159,11 @@ public class DataGroupMember extends RaftMember {
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new AsyncClientPool(nodes.getHeader().getIp(), new AsyncDataClient.FactoryAsync(factory)),
+        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(nodes.getHeader().getIp(), new AsyncDataHeartbeatClient.FactoryAsync(factory), false),
+        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
-        new AsyncClientPool(nodes.getHeader().getIp(), new SingleManagerFactory(factory)));
+        new AsyncClientPool(new SingleManagerFactory(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -389,7 +390,7 @@ public class DataGroupMember extends RaftMember {
 
     snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
     if (logger.isDebugEnabled()) {
-      logger.info("{} received a snapshot {}", name, snapshot);
+      logger.debug("{} received a snapshot {}", name, snapshot);
     }
     snapshot.getDefaultInstaller(this).install(snapshot, -1);
   }
@@ -768,7 +769,7 @@ public class DataGroupMember extends RaftMember {
     return new DataMemberReport(character, leader.get(), term.get(),
         logManager.getLastLogTerm(), lastReportedLogIndex, logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(), getHeader(), readOnly,
-        QueryCoordinator.getINSTANCE()
+        NodeStatusManager.getINSTANCE()
             .getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime, prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());
   }

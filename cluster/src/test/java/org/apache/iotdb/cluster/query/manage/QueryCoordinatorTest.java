@@ -35,6 +35,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.monitor.NodeStatus;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
@@ -68,6 +70,11 @@ public class QueryCoordinatorTest {
 
     MetaGroupMember metaGroupMember = new MetaGroupMember() {
       @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getAsyncClient(node);
+      }
+
+      @Override
       public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncMetaClient(new Factory(),  null, node, null) {
@@ -89,8 +96,8 @@ public class QueryCoordinatorTest {
         }
       }
     };
-    coordinator.setMetaGroupMember(metaGroupMember);
-    coordinator.clear();
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(metaGroupMember);
+    NodeStatusManager.getINSTANCE().clear();
   }
 
   @After
@@ -108,10 +115,6 @@ public class QueryCoordinatorTest {
     Collections.shuffle(unorderedNodes);
 
     List<Node> reorderedNodes = coordinator.reorderNodes(unorderedNodes);
-    for (Node orderedNode : orderedNodes) {
-      long latency = coordinator.getLastResponseLatency(orderedNode);
-      System.out.printf("%s -> %d%n", orderedNode, latency);
-    }
     assertEquals(orderedNodes, reorderedNodes);
   }
 }

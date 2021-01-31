@@ -22,10 +22,8 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.encoding.bitpacking.LongPacker;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 /**
@@ -41,8 +39,8 @@ public class LongRleEncoder extends RleEncoder<Long> {
   /**
    * Constructor of LongRleEncoder.
    */
-  public LongRleEncoder(EndianType endianType) {
-    super(endianType);
+  public LongRleEncoder() {
+    super();
     bufferedValues = new Long[TSFileConfig.RLE_MIN_REPEATED_NUM];
     preValue = (long) 0;
     values = new ArrayList<Long>();

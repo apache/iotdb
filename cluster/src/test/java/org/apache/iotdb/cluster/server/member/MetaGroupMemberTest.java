@@ -69,7 +69,6 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -91,6 +90,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
@@ -153,6 +153,7 @@ public class MetaGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevSeedNodes);
   }
 
+  @Override
   @Before
   public void setUp() throws Exception {
     prevSeedNodes = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
@@ -178,7 +179,7 @@ public class MetaGroupMemberTest extends MemberTest {
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
+    NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
     System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
@@ -218,8 +219,9 @@ public class MetaGroupMemberTest extends MemberTest {
 
       AsyncClient getClient(Node node) {
         return new TestAsyncClient(node.nodeIdentifier) {
+          @Override
           public void startElection(ElectionRequest request,
-              AsyncMethodCallback<Long> resultHandler) {
+                                    AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {
               long resp = dummyResponse.get();
               // MIN_VALUE means let the request time out
@@ -287,6 +289,7 @@ public class MetaGroupMemberTest extends MemberTest {
     return resp;
   }
 
+  @Override
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node, new Coordinator()) {
 
@@ -351,6 +354,11 @@ public class MetaGroupMemberTest extends MemberTest {
         return getClient(node);
       }
 
+      @Override
+      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
+        return getClient(node);
+      }
+
       AsyncClient getClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
@@ -364,6 +372,11 @@ public class MetaGroupMemberTest extends MemberTest {
                   resultHandler.onComplete(resp);
                 }
               }).start();
+            }
+
+            @Override
+            public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
+              new Thread(() -> resultHandler.onComplete(null)).start();
             }
 
             @Override
@@ -457,6 +470,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
     };
+    metaGroupMember.getCoordinator().setMetaGroupMember(metaGroupMember);
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
@@ -721,6 +735,42 @@ public class MetaGroupMemberTest extends MemberTest {
     mockDataClusterServer = true;
     // as a leader
     testMetaMember.setCharacter(LEADER);
+    testMetaMember.setAppendLogThreadPool(testThreadPool);
+    for (int i = 10; i < 20; i++) {
+      // process a non partitioned plan
+      SetStorageGroupPlan setStorageGroupPlan =
+        new SetStorageGroupPlan(new PartialPath(TestUtils.getTestSg(i)));
+      TSStatus status = coordinator.executeNonQueryPlan(setStorageGroupPlan);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSg(i))));
+
+      // process a partitioned plan
+      TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
+      CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
+        new PartialPath(schema.getFullPath()), schema.getType(),
+        schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+        Collections.emptyMap(), Collections.emptyMap(), null);
+      status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
+      if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      }
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
+      assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
+    }
+    testThreadPool.shutdownNow();
+  }
+
+  @Test
+  public void testProcessNonQueryAsFollower() throws IllegalPathException, QueryProcessException {
+    System.out.println("Start testProcessNonQuery()");
+    mockDataClusterServer = true;
+
+    MetaGroupMember testMetaMember2 = getMetaGroupMember(TestUtils.getNode(2));
+    testMetaMember2.setCharacter(LEADER);
+
+    // as a follower
+    testMetaMember.setCharacter(FOLLOWER);
+    testMetaMember.setLeader(testMetaMember2.thisNode);
     testMetaMember.setAppendLogThreadPool(testThreadPool);
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan

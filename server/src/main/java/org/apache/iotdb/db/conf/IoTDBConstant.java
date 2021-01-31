@@ -72,6 +72,9 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String QUERY_ID = "queryId";
+  public static final String START_TIME = "startTime";
+  public static final String STATEMENT = "statement";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";
@@ -98,6 +101,13 @@ public class IoTDBConstant {
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
+
+  //sdt parameters
+  public static final String LOSS = "loss";
+  public static final String SDT = "sdt";
+  public static final String SDT_COMP_DEV = "compdev";
+  public static final String SDT_COMP_MIN_TIME = "compmintime";
+  public static final String SDT_COMP_MAX_TIME = "compmaxtime";
 
   // data folder name
   public static final String SEQUENCE_FLODER_NAME = "sequence";

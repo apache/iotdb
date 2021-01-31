@@ -187,6 +187,7 @@ public class PartialPath extends Path implements Comparable<Path> {
     return true;
   }
 
+  @Override
   public boolean equals(String obj) {
     return this.getFullPath().equals(obj);
   }

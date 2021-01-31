@@ -86,8 +86,8 @@ public class ClientServer extends TSServiceImpl {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientServer.class);
   /**
-   * The Coordinator of the local node. Through this node ClientServer queries data and meta
-   * from the cluster and performs data manipulations to the cluster.
+   * The Coordinator of the local node. Through this node ClientServer queries data and meta from
+   * the cluster and performs data manipulations to the cluster.
    */
   private Coordinator coordinator;
 
@@ -291,7 +291,7 @@ public class ClientServer extends TSServiceImpl {
    * @throws StorageEngineException
    */
   @Override
-  protected void releaseQueryResource(long queryId) throws StorageEngineException, IOException {
+  protected void releaseQueryResource(long queryId) throws StorageEngineException {
     // release resources locally
     super.releaseQueryResource(queryId);
     // release resources remotely
@@ -307,11 +307,11 @@ public class ClientServer extends TSServiceImpl {
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
               AsyncDataClient client = coordinator.getAsyncDataClient(queriedNode,
-                      RaftServer.getReadOperationTimeoutMS());
+                  RaftServer.getReadOperationTimeoutMS());
               client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
               SyncDataClient syncDataClient = coordinator.getSyncDataClient(queriedNode,
-                      RaftServer.getReadOperationTimeoutMS());
+                  RaftServer.getReadOperationTimeoutMS());
               syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
             }
           } catch (IOException | TException e) {

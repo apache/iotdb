@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -49,15 +50,31 @@ public class SyncClientPool {
   }
 
   /**
+   * See getClient(Node node, boolean activatedOnly)
+   * @param node
+   * @return
+   */
+  public Client getClient(Node node) {
+    return getClient(node, true);
+  }
+
+  /**
    * Get a client of the given node from the cache if one is available, or create a new one.
    * <p>
    * IMPORTANT!!! The caller should check whether the return value is null or not!
    *
-   * @param node the node want to connect
+   * @param node          the node want to connect
+   * @param activatedOnly if true, only return a client if the node's NodeStatus.isActivated ==
+   *                      true, which avoid unnecessary wait for already down nodes, but heartbeat
+   *                      attempts should always try to connect so the node can be reactivated ASAP
    * @return if the node can connect, return the client, otherwise null
    */
-  public Client getClient(Node node) {
+  public Client getClient(Node node, boolean activatedOnly) {
     ClusterNode clusterNode = new ClusterNode(node);
+    if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
+      return null;
+    }
+
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
@@ -111,12 +128,15 @@ public class SyncClientPool {
     synchronized (this) {
       if (client.getInputProtocol() != null && client.getInputProtocol().getTransport().isOpen()) {
         clientStack.push(client);
+        NodeStatusManager.getINSTANCE().activate(node);
       } else {
         try {
           clientStack.push(syncClientFactory.getSyncClient(node, this));
+          NodeStatusManager.getINSTANCE().activate(node);
         } catch (TTransportException e) {
           logger.error("Cannot open transport for client {}", node, e);
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue - 1);
+          NodeStatusManager.getINSTANCE().deactivate(node);
         }
       }
       this.notifyAll();

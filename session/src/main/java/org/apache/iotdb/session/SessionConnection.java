@@ -35,6 +35,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
@@ -66,6 +67,10 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
+  //TestOnly
+  public SessionConnection() {
+  }
+
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
@@ -75,6 +80,8 @@ public class SessionConnection {
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
+    RpcTransportFactory.setInitialBufferCapacity(session.initialBufferCapacity);
+    RpcTransportFactory.setMaxLength(session.maxFrameSize);
     transport = RpcTransportFactory.INSTANCE.getTransport(
         new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
 
@@ -240,11 +247,11 @@ public class SessionConnection {
     }
   }
 
-  protected boolean checkTimeseriesExists(String path)
+  protected boolean checkTimeseriesExists(String path, long timeout)
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = null;
     try {
-      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
+      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       return dataSet.hasNext();
     } finally {
       if (dataSet != null) {
@@ -253,10 +260,11 @@ public class SessionConnection {
     }
   }
 
-  protected SessionDataSet executeQueryStatement(String sql)
+  protected SessionDataSet executeQueryStatement(String sql, long timeout)
       throws StatementExecutionException, IoTDBConnectionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(session.fetchSize);
+    execReq.setTimeout(timeout);
     TSExecuteStatementResp execResp;
     try {
       execResp = client.executeQueryStatement(execReq);
@@ -279,8 +287,9 @@ public class SessionConnection {
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
-        execResp.isIgnoreTimeStamp());
+        execResp.isIgnoreTimeStamp(), timeout);
   }
+
 
   protected void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -402,6 +411,26 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.insertStringRecords(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+            MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.insertRecordsOfOneDevice(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.insertRecordsOfOneDevice(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

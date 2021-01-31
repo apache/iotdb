@@ -22,107 +22,77 @@ public enum CompressionType {
   /**
    * Do not comprocess
    */
-  UNCOMPRESSED("", 0),
+  UNCOMPRESSED("", (byte) 0),
 
   /**
    * SNAPPY
    */
-  SNAPPY(".snappy", 1),
+  SNAPPY(".snappy", (byte) 1),
 
   /**
    * GZIP
    */
-  GZIP(".gzip", 2),
+  GZIP(".gzip", (byte) 2),
 
   /**
    * LZO
    */
-  LZO(".lzo", 3),
+  LZO(".lzo", (byte) 3),
 
   /**
    * SDT
    */
-  SDT(".sdt", 4),
+  SDT(".sdt", (byte) 4),
 
   /**
    * PAA
    */
-  PAA(".paa", 5),
+  PAA(".paa", (byte) 5),
 
   /**
    * PLA
    */
-  PLA(".pla", 6),
+  PLA(".pla", (byte) 6),
 
   /**
    * LZ4
    */
-  LZ4(".lz4", 7);
+  LZ4(".lz4", (byte) 7);
 
   private final String extensionName;
-  private final int index;
+  private final byte index;
 
-  CompressionType(String extensionName, int index) {
+  CompressionType(String extensionName, byte index) {
     this.extensionName = extensionName;
     this.index = index;
   }
 
   /**
-   * deserialize short number.
+   * deserialize byte number.
    *
-   * @param compressor short number
+   * @param compressor byte number
    * @return CompressionType
    */
-  public static CompressionType deserialize(short compressor) {
-    return getCompressionType(compressor);
-  }
-
-  public static byte deserializeToByte(short compressor) {
-    //check compressor is valid
-    getCompressionType(compressor);
-    return (byte) compressor;
-  }
-
-
-  private static CompressionType getCompressionType(short compressor) {
+  public static CompressionType deserialize(byte compressor) {
     for (CompressionType compressionType : CompressionType.values()) {
       if (compressor == compressionType.index) {
         return compressionType;
       }
     }
-
     throw new IllegalArgumentException("Invalid input: " + compressor);
   }
 
-  /**
-   * give an byte to return a compression type.
-   *
-   * @param compressor byte number
-   * @return CompressionType
-   */
-  public static CompressionType byteToEnum(byte compressor) {
-    return getCompressionType(compressor);
-  }
-
   public static int getSerializedSize() {
-    return Short.BYTES;
-  }
-
-  /**
-   * serialize.
-   *
-   * @return short number
-   */
-  public short serialize() {
-    return enumToByte();
+    return Byte.BYTES;
   }
 
   /**
    * @return byte number
    */
-  public byte enumToByte() {
-    return (byte) index;
+  public byte serialize() {
+    return this.index;
   }
+
   /**
    * get extension.
    *

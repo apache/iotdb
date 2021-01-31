@@ -146,7 +146,14 @@
         List<List<String>> measurementsList, List<List<TSDataType>> typesList,
         List<List<Object>> valuesList)
   ```
+  
+* 插入同属于一个device的多个 Record。
 
+  ```
+  void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
 
 * 原始数据查询。时间间隔包含开始时间，不包含结束时间
 
@@ -181,6 +188,13 @@
           List<List<Object>> valuesList)
     ```
 
+* 测试 testInsertRecordsOfOneDevice，不实际写入数据，只将数据传输到 server 即返回。
+
+    ```
+    void testInsertRecordsOfOneDevice(List<String> deviceIds, List<Long> times,
+          List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+          List<List<Object>> valuesList)
+    ```
 
 * 测试 insertRecord，不实际写入数据，只将数据传输到 server 即返回。
 
@@ -396,4 +410,12 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<
 ```
 boolean checkTimeseriesExists(String path)
 ```
+
 用于检测时间序列是否存在
+
+```
+public Session(String host, int rpcPort, String username, String password,
+      boolean isEnableCacheLeader)
+```
+
+开启一个session，并指定是否启用leader缓存。注意此接口对于分布式写入能够提高性能，但对于单机版写入反而会给客户端增加较少的消耗。

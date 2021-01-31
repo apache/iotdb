@@ -76,9 +76,6 @@ When both exist, the specified configuration item will overwrite the configurati
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 6669
 ```
 
-Note: The distributed version uses the 707 identifier to instruct the client to do the appropriate metadata cache so that the data can then be sent directly to the leader of the corresponding data group later.
-Therefore, it is recommended to re-install `mvn install -pl jdbc -am -Dmaven.test.skip=true` and `mvn install -pl jdbc -am -Dmaven.test.skip=true` on current branch to update the latest client.
-
 ## OverWrite the configurations of Stand-alone node
 
 Some configurations in the iotdb-engines.properties will be ignored

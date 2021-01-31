@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.stream.IntStream;
-import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.slot.SlotNodeRemovalResult;

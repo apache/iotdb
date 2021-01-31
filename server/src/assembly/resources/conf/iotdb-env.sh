@@ -21,6 +21,15 @@
 # You can put your env variable here
 # export JAVA_HOME=$JAVA_HOME
 
+# Set max number of open files
+max_num=$(ulimit -n)
+if [ $max_num -le 65535 ]; then
+    ulimit -n 65535
+    if [ $? -ne 0 ]; then
+        echo "Warning: Failed to set max number of files to be 65535, maybe you need to use 'sudo ulimit -n 65535' to set it when you use iotdb in production environments."
+    fi
+fi
+
 calculate_heap_sizes()
 {
     case "`uname`" in
@@ -189,7 +198,6 @@ if [ ${JMX_LOCAL} = "false" ]; then
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.rmi.port=$JMX_PORT"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.randomIDs=true"
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
   IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.password.file=${IOTDB_CONF}/jmx.password"
