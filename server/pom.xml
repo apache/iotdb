@@ -297,5 +297,19 @@
                 <iotdb.ut.skip>true</iotdb.ut.skip>
             </properties>
         </profile>
+        <profile>
+            <id>only_test_server</id>
+            <activation>
+                <property>
+                    <name>iotdb.test.only</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <iotdb.test.skip>false</iotdb.test.skip>
+                <iotdb.ut.skip>false</iotdb.ut.skip>
+                <iotdb.it.skip>false</iotdb.it.skip>
+            </properties>
+        </profile>
     </profiles>
 </project>
