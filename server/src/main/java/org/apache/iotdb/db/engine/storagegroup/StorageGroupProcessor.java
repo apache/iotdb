@@ -1889,9 +1889,9 @@ public class StorageGroupProcessor {
     resources.clear();
   }
 
-  public void merge() {
+  public void merge(boolean isFullMerge) {
     for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
-      executeCompaction(timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      executeCompaction(timePartitionId, isFullMerge);
     }
   }
 
