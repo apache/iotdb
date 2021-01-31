@@ -69,9 +69,15 @@ public abstract class TsFileManagement {
   public ModificationFile mergingModification;
   private long mergeStartTime;
 
+  protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
+  }
+
+  public void setForceFullMerge(boolean forceFullMerge) {
+    isForceFullMerge = forceFullMerge;
   }
 
   /**

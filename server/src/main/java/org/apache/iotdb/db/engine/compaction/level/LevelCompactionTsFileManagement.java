@@ -74,8 +74,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private final boolean enableUnseqCompaction = IoTDBDescriptor.getInstance().getConfig()
       .isEnableUnseqCompaction();
-  private final boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig()
-      .isForceFullMerge();
   // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources = new ConcurrentSkipListMap<>();
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new ConcurrentSkipListMap<>();
