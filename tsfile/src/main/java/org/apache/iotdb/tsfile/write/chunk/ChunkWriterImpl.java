@@ -52,6 +52,11 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private PublicBAOS pageBuffer;
 
+  /**
+   * current chunk data size, i.e the size of pageBuffer
+   */
+  private int chunkDataSize;
+
   private int numOfPages;
 
   /**
@@ -351,6 +356,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
       writePageToPageBuffer();
     }
+    chunkDataSize = pageBuffer.size();
   }
   
   @Override
@@ -419,18 +425,18 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // start to write this column chunk
     writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
-        measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
+        measurementSchema.getEncodingType(), statistics, chunkDataSize, numOfPages);
 
     long dataOffset = writer.getPos();
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);
 
-    long dataSize = writer.getPos() - dataOffset;
-    if (dataSize != pageBuffer.size()) {
+    int dataSize = (int) (writer.getPos() - dataOffset);
+    if (dataSize != chunkDataSize) {
       throw new IOException(
           "Bytes written is inconsistent with the size of data: " + dataSize + " !="
-              + " " + pageBuffer.size());
+              + " " + chunkDataSize);
     }
 
     writer.endCurrentChunk();
