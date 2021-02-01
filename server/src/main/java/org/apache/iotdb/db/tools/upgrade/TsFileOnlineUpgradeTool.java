@@ -170,12 +170,14 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
                   : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
-              dataSize -= (Integer.BYTES * 2 // the bytes of uncompressedSize and compressedSize
-                  // count, startTime, endTime
+              dataSize -= (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                  // count, startTime, endTime bytes size in old statistics
                   + 24
+                  // statistics bytes size
                   // new boolean StatsSize is 8 bytes larger than old one
                   + (pageHeader.getStatistics().getStatsSize() 
                       - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                  // page data bytes
                   + pageHeader.getCompressedSize());
             }
             pageHeadersInChunkGroup.add(pageHeadersInChunk);
