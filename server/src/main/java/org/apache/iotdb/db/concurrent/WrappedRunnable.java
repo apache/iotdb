@@ -27,6 +27,7 @@ public abstract class WrappedRunnable implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
 
+  @Override
   public final void run() {
     try {
       runMayThrow();

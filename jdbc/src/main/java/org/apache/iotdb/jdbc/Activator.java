@@ -24,6 +24,7 @@ import java.util.Hashtable;
 
 public class Activator implements BundleActivator {
 
+  @Override
   public void start(BundleContext context) {
     IoTDBDataSourceFactory dsf = new IoTDBDataSourceFactory();
     Dictionary<String, String> props = new Hashtable<String, String>();
@@ -32,6 +33,7 @@ public class Activator implements BundleActivator {
     context.registerService(DataSourceFactory.class.getName(), dsf, props);
   }
 
+  @Override
   public void stop(BundleContext context) {
     // EMPTY
   }

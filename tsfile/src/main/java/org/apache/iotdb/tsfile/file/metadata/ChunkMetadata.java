@@ -269,6 +269,7 @@ public class ChunkMetadata implements Accountable {
         .getSizeByType(dataType);
   }
 
+  @Override
   public void setRamSize(long size) {
     this.ramSize = size;
   }

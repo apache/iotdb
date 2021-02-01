@@ -32,6 +32,7 @@ public class LocalFSInputFactory implements FileInputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalFSInputFactory.class);
 
+  @Override
   public TsFileInput getTsFileInput(String filePath) {
     try {
       return new LocalTsFileInput(Paths.get(filePath));

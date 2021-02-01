@@ -46,6 +46,7 @@ public class CountPlan extends ShowPlan {
     return level;
   }
 
+  @Override
   public PartialPath getPath() {
     return path;
   }

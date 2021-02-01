@@ -22,14 +22,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>client-cpp</artifactId>
         <groupId>org.apache.iotdb</groupId>
+        <artifactId>client-cpp</artifactId>
         <version>0.12.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../client-cpp/pom.xml</relativePath>
     </parent>
-    <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp-example</artifactId>
-    <version>0.12.0-SNAPSHOT</version>
+    <name>IoTDB-Client CPP Examples</name>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -51,6 +50,7 @@
             </activation>
             <properties>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
+                <boost.include.dir>/usr/local/include</boost.include.dir>
             </properties>
         </profile>
         <profile>
@@ -62,6 +62,7 @@
             </activation>
             <properties>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
+                <boost.include.dir/>
             </properties>
         </profile>
     </profiles>
@@ -138,6 +139,9 @@
                             <sourcePath>${project.build.directory}</sourcePath>
                             <targetPath>${project.build.directory}</targetPath>
                             <generator>${cmake.generator}</generator>
+                            <options>
+                                <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                            </options>
                         </configuration>
                     </execution>
                     <execution>

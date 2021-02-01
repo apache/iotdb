@@ -185,10 +185,12 @@ public abstract class AbstractMemTable implements IMemTable {
     return memChunk.getTVList().size();
   }
 
+  @Override
   public int getSeriesNumber() {
     return seriesNumber;
   }
 
+  @Override
   public long getTotalPointsNum() {
     return totalPointsNum;
   }

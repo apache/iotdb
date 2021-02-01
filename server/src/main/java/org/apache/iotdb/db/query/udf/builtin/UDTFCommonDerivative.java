@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class UDTFCommonDerivative extends UDTFDerivative {
 
+  @Override
   protected void doTransform(Row row, PointCollector collector)
       throws UDFInputSeriesDataTypeNotValidException, IOException {
     long currentTime = row.getTime();

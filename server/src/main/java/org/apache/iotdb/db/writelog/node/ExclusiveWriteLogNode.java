@@ -93,6 +93,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
   }
 
+  @Override
   public void initBuffer(ByteBuffer[] byteBuffers) {
     this.logBufferWorking = byteBuffers[0];
     this.logBufferIdle = byteBuffers[1];

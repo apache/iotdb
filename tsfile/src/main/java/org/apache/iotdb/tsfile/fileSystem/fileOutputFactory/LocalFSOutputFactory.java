@@ -33,6 +33,7 @@ public class LocalFSOutputFactory implements FileOutputFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalFSOutputFactory.class);
 
+  @Override
   public TsFileOutput getTsFileOutput(String filePath, boolean append) {
     try {
       return new LocalTsFileOutput(new FileOutputStream(new File(filePath), append));
