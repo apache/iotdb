@@ -172,8 +172,12 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
               dataInChunk.add(pageData);
               dataSize -= (Integer.BYTES * 2 // the bytes of uncompressedSize and compressedSize
                   + pageHeader.getStatistics().getSerializedSize()
+                  // count, startTime, endTime
+                  + 24
+                  // new boolean StatsSize is 8 bytes larger than old one
+                  + (pageHeader.getStatistics().getStatsSize() 
+                      - (dataType == TSDataType.BOOLEAN ? 8 : 0))
                   + pageHeader.getCompressedSize());
-
             }
             pageHeadersInChunkGroup.add(pageHeadersInChunk);
             pageDataInChunkGroup.add(dataInChunk);
