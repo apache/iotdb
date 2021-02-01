@@ -249,7 +249,7 @@ public class IoTDBFlushIT {
       statement.execute("insert into root.db_0.tab0(time ,salary) values(5,1000)");
       statement.execute("flush");
 
-      int[] result = new int[] {1400, 1500, 1200, 1100, 1000};
+      int[] result = new int[] {1400, 1300, 1200, 1100, 1000};
 
       try (ResultSet resultSet = statement.executeQuery("SELECT salary FROM root.db_0.tab0")) {
         int index = 0;
@@ -278,7 +278,7 @@ public class IoTDBFlushIT {
       statement.execute("insert into root.db_0.tab0(time ,salary) values(5,1000)");
       statement.execute("flush");
 
-      int[] result = new int[] {1400, 1500, 1200, 1100, 1000};
+      int[] result = new int[] {1400, 1300, 1200, 1100, 1000};
 
       try (ResultSet resultSet = statement.executeQuery("SELECT salary FROM root.db_0.tab0")) {
         int index = 0;
