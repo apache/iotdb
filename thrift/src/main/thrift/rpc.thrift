@@ -294,6 +294,13 @@ struct ServerProperties {
   1: required string version;
   2: required list<string> supportedTimeAggregationOperations;
   3: required string timestampPrecision;
+  4: i32 maxConcurrentClientNum;
+  5: string watermarkSecretKey;
+  6: string watermarkBitString
+  7: i32 watermarkParamMarkRate;
+  8: i32 watermarkParamMaxRightBit;
+  9:i32 thriftMaxFrameSize;
+  10:bool isReadOnly;
 }
 
 service TSIService {

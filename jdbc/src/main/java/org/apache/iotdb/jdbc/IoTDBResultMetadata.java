@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.jdbc;
 
+import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -145,7 +146,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   public String getColumnTypeName(int column) throws SQLException {
     checkColumnIndex(column);
     if (column == 1 && !ignoreTimestamp) {
-      return "TIMESTAMP";
+      return "TIME";
     }
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     String columnType;
@@ -183,13 +184,13 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       case "BOOLEAN":
         return 1;
       case "INT32":
-        return Integer.MAX_VALUE;
+        return 10;
       case "INT64":
-        return Integer.MAX_VALUE;
+        return 19;
       case "FLOAT":
-        return Integer.MAX_VALUE;
+        return 38;
       case "DOUBLE":
-        return Integer.MAX_VALUE;
+        return 308;
       case "TEXT":
         return Integer.MAX_VALUE;
       default:
@@ -199,18 +200,63 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public int getScale(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public int getScale(int column) throws SQLException {
+    checkColumnIndex(column);
+    if (column == 1 && !ignoreTimestamp) {
+      return 0;
+    }
+    String columnType;
+    if (!ignoreTimestamp) {
+      columnType = columnTypeList.get(column - 2);
+    } else {
+      columnType = columnTypeList.get(column - 1);
+    }
+    switch (columnType.toUpperCase()) {
+      case "BOOLEAN":
+      case "INT32":
+      case "INT64":
+      case "TEXT":
+        return 0;
+      case "FLOAT":
+        return 6;
+      case "DOUBLE":
+        return 15;
+      default:
+        break;
+    }
+    return 0;
   }
 
   @Override
-  public String getSchemaName(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public String getSchemaName(int column) throws SQLException {
+    checkColumnIndex(column);
+    if (column == 1 && !ignoreTimestamp) {
+      return "TIME";
+    }
+    //Temporarily use column names as getSchemaName
+    String columName;
+    if (!ignoreTimestamp) {
+      columName = columnInfoList.get(column - 2);
+    } else {
+      columName = columnInfoList.get(column - 1);
+    }
+    return columName;
   }
 
   @Override
-  public String getTableName(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public String getTableName(int column) throws SQLException {
+    checkColumnIndex(column);
+    if (column == 1 && !ignoreTimestamp) {
+      return "TIME";
+    }
+    //Temporarily use column names as table names
+    String columName;
+    if (!ignoreTimestamp) {
+      columName = columnInfoList.get(column - 2);
+    } else {
+      columName = columnInfoList.get(column - 1);
+    }
+    return columName;
   }
 
   @Override
