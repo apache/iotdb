@@ -133,6 +133,49 @@ public class RegularDataEncoderLongTest {
     shouldReadAndWrite(data, 4);
   }
 
+  @Test
+  public void testMissingPointsNoRegularDesc() throws IOException {
+    long[] data = new long[] {1000, 900, 800, 700, 600, 0};
+
+    shouldReadAndWrite(data, 6);
+  }
+
+  @Test
+  public void testMissingPointsNoRegularDescRevise() throws IOException {
+    long[] originalData = new long[] {1000, 900, 800, 700, 1200, 0};
+    long[] correctData = new long[] {1000, 900, 800, 700, 600, 0};
+    out = new ByteArrayOutputStream();
+    writeData(originalData, 6);
+    byte[] page = out.toByteArray();
+    System.out.println("encoding data size:" + page.length + " byte");
+    buffer = ByteBuffer.wrap(page);
+    int i = 0;
+    while (regularDataDecoder.hasNext(buffer)) {
+      assertEquals(correctData[i++], regularDataDecoder.readInt(buffer));
+    }
+  }
+
+  @Test
+  public void testMissingPointsNoRegularCorrect() throws IOException {
+    long[] originalData = new long[] {1000, 1100, 1200, 1500, 1700, 1500};
+    long[] correctData = new long[] {1000, 1100, 1200, 1300, 1400, 1500};
+    out = new ByteArrayOutputStream();
+    writeData(originalData, 6);
+    byte[] page = out.toByteArray();
+    System.out.println("encoding data size:" + page.length + " byte");
+    buffer = ByteBuffer.wrap(page);
+    int i = 0;
+    while (regularDataDecoder.hasNext(buffer)) {
+      assertEquals(correctData[i++], regularDataDecoder.readInt(buffer));
+    }
+  }
+
+  @Test
+  public void testMissingPointsRegular() throws IOException {
+    long[] originalData = new long[] {1000, 1100, 1200, 1800, 1900};
+    shouldReadAndWrite(originalData, 5);
+  }
+
   private long[] getMissingPointData(List<String> originalData, int missingPointInterval) {
     List<String> dates = originalData;
 

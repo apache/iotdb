@@ -22,6 +22,8 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.BitSet;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.iotdb.tsfile.exception.encoding.TsFileEncodingException;
 import org.slf4j.Logger;
@@ -117,6 +119,8 @@ public abstract class RegularDataEncoder extends Encoder {
 
     private int[] data;
     private int firstValue;
+    private int endValue;
+    private int dataTotal;
     private int previousValue;
     private int minDeltaBase;
     private int newBlockSize;
@@ -178,29 +182,45 @@ public abstract class RegularDataEncoder extends Encoder {
     @Override
     protected void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
       // get the new regular data if the missing point exists in the original data
+      Map<Integer, Integer> minDeltaMap = new HashMap<Integer, Integer>();
       if (writeIndex > 1) {
         previousValue = data[0];
-        minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point
-        // exists
+
+        // 1. calculate the most number of neighboring differences
         for (int i = 1; i < writeIndex; i++) {
           int delta = data[i] - previousValue; // calculate delta
-          if (delta != minDeltaBase) {
-            isMissingPoint = true;
-          }
-          if (delta < minDeltaBase) {
-            minDeltaBase = delta;
+          if (minDeltaMap.containsKey(delta)) {
+            int number = minDeltaMap.get(delta);
+            number ++;
+            minDeltaMap.put(delta, number);
+          } else {
+            minDeltaMap.put(delta, 1);
           }
           previousValue = data[i];
         }
       }
-      firstValue = data[0];
-      if (isMissingPoint) {
-        newBlockSize = ((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1;
-        if (newBlockSize < 0) {
-          LOGGER.error("Failed to encode data of int type and regular.");
-          throw new TsFileEncodingException("Failed to encode data of int type, please check whether data and regular match");
+
+      // 2. if the number of difference values is the same, select the smallest value.
+      int maxCount = 0;
+      for (int key : minDeltaMap.keySet()) {
+        int count = minDeltaMap.get(key);
+        if (count > maxCount || (count == maxCount && key < minDeltaBase)) {
+          maxCount = count;
+          minDeltaBase = key;
         }
+      }
+
+      // exist muti differential value
+      if (minDeltaMap.size() > 1) {
+        isMissingPoint = true;
+      }
+
+
+      firstValue = data[0];
+      endValue = data[writeIndex - 1];
+      dataTotal = writeIndex;
+      if (isMissingPoint) {
+        newBlockSize = ((endValue - firstValue) / minDeltaBase) + 1;
         writeIndex = newBlockSize;
       }
     }
@@ -208,7 +228,12 @@ public abstract class RegularDataEncoder extends Encoder {
     @Override
     protected void writeBitmap(ByteArrayOutputStream out) throws IOException {
       // generate bitmap
-      data2Diff(data);
+      try {
+        data2Diff(data);
+      } catch (IndexOutOfBoundsException | NegativeArraySizeException e) {
+        LOGGER.error("encoding set regular, but data of int type are irregular data");
+        throw new TsFileEncodingException("encoding set regular, but data of int type are irregular data, which are storage");
+      }
       byte[] bsArr = bitmap.toByteArray();
       out.write(BytesUtils.intToBytes(bsArr.length));
       out.write(bsArr);
@@ -235,9 +260,24 @@ public abstract class RegularDataEncoder extends Encoder {
       bitmap = new BitSet(newBlockSize);
       bitmap.flip(0, newBlockSize);
       int offset = 0;
-      for (int i = 1; i < missingPointData.length; i++) {
+      for (int i = 1; i < dataTotal; i++) {
         int delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
+          // determine whether a point is an error point:
+          // 1.if a point is greater than two adjacent points
+          // 2.greater than or less than all points.
+          if (minDeltaBase > 0 && (i + 1 < dataTotal) && (missingPointData[i] >= endValue || missingPointData[i] <= firstValue
+          || missingPointData[i] - missingPointData[i + 1] > 0)) {
+            missingPointData[i] = firstValue + minDeltaBase * i;
+            continue;
+          }
+
+          if (minDeltaBase < 0 && (i + 1 < dataTotal) && (missingPointData[i] <= endValue || missingPointData[i] >= firstValue
+                  || missingPointData[i] - missingPointData[i + 1] < 0)) {
+            missingPointData[i] = firstValue + minDeltaBase * i;
+            continue;
+          }
+
           int missingPointNum = (int) (delta / minDeltaBase) - 1;
           for (int j = 0; j < missingPointNum; j++) {
             bitmap.set(i + (offset++), false);
@@ -251,6 +291,8 @@ public abstract class RegularDataEncoder extends Encoder {
 
     private long[] data;
     private long firstValue;
+    private long endValue;
+    private long dataTotal;
     private long previousValue;
     private long minDeltaBase;
     private int newBlockSize;
@@ -308,29 +350,42 @@ public abstract class RegularDataEncoder extends Encoder {
     @Override
     protected void checkMissingPoint(ByteArrayOutputStream out) throws IOException {
       // get the new regular data if the missing point exists in the original data
+      Map<Long, Integer> minDeltaMap = new HashMap<Long, Integer>();
       if (writeIndex > 1) {
         previousValue = data[0];
-        minDeltaBase = data[1] - data[0];
-        // calculate minimum elapsed of the data and check whether the missing point
-        // exists
+        // 1. calculate the most number of neighboring differences
         for (int i = 1; i < writeIndex; i++) {
           long delta = data[i] - previousValue; // calculate delta
-          if (delta != minDeltaBase) {
-            isMissingPoint = true;
-          }
-          if (delta < minDeltaBase) {
-            minDeltaBase = delta;
+          if (minDeltaMap.containsKey(delta)) {
+            int number = minDeltaMap.get(delta);
+            number ++;
+            minDeltaMap.put(delta, number);
+          } else {
+            minDeltaMap.put(delta, 1);
           }
           previousValue = data[i];
         }
       }
-      firstValue = data[0];
-      if (isMissingPoint) {
-        newBlockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
-        if (newBlockSize < 0) {
-          LOGGER.error("Failed to encode data of long type and regular.");
-          throw new TsFileEncodingException("Failed to encode data of long type, please check whether data and regular match.");
+
+      // 2. if the number of difference values is the same, select the smallest value.
+      int maxCount = 0;
+      for (long key : minDeltaMap.keySet()) {
+        int count = minDeltaMap.get(key);
+        if (count > maxCount || (count == maxCount && key < minDeltaBase)) {
+          maxCount = count;
+          minDeltaBase = key;
         }
+      }
+
+      if (minDeltaMap.size() > 1) {
+        isMissingPoint = true;
+      }
+
+      firstValue = data[0];
+      endValue = data[writeIndex - 1];
+      dataTotal = writeIndex;
+      if (isMissingPoint) {
+        newBlockSize = (int) (((endValue - firstValue) / minDeltaBase) + 1);
         writeIndex = newBlockSize;
       }
     }
@@ -338,7 +393,12 @@ public abstract class RegularDataEncoder extends Encoder {
     @Override
     protected void writeBitmap(ByteArrayOutputStream out) throws IOException {
       // generate bitmap
-      data2Diff(data);
+      try {
+        data2Diff(data);
+      } catch (IndexOutOfBoundsException | NegativeArraySizeException e) {
+        LOGGER.error("encoding set regular, but data of long type are irregular data");
+        throw new TsFileEncodingException("encoding set regular, but data of long type are irregular data, which are storage");
+      }
       byte[] bsArr = bitmap.toByteArray();
       out.write(BytesUtils.intToBytes(bsArr.length));
       out.write(bsArr);
@@ -365,9 +425,25 @@ public abstract class RegularDataEncoder extends Encoder {
       bitmap = new BitSet(newBlockSize);
       bitmap.flip(0, newBlockSize);
       int offset = 0;
-      for (int i = 1; i < missingPointData.length; i++) {
+      for (int i = 1; i < dataTotal; i++) {
         long delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
+
+          // determine whether a point is an error point:
+          // 1.if a point is greater than two adjacent points
+          // 2.greater than or less than all points.
+          long revisePoint = firstValue + minDeltaBase * i;
+          if (minDeltaBase > 0 && (i + 1 < dataTotal) && (missingPointData[i] >= endValue || missingPointData[i] <= firstValue
+                  || missingPointData[i] - missingPointData[i + 1] > 0)) {
+            missingPointData[i] = revisePoint;
+            continue;
+          }
+
+          if (minDeltaBase < 0 && (i + 1 < dataTotal) && (missingPointData[i] <= endValue || missingPointData[i] >= firstValue
+                  || missingPointData[i] - missingPointData[i + 1] < 0)) {
+            missingPointData[i] = revisePoint;
+            continue;
+          }
           int missingPointNum = (int) (delta / minDeltaBase) - 1;
           for (int j = 0; j < missingPointNum; j++) {
             bitmap.set(i + (offset++), false);
