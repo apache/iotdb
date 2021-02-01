@@ -31,6 +31,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -518,6 +519,35 @@ public class MTreeTest {
 
       assertFalse(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
       assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+
+    } catch (MetadataException e1) {
+      fail(e1.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetMeasurementMNodeCount() throws MetadataException {
+    MTree root = new MTree();
+    PartialPath sgPath = new PartialPath("root.sg1");
+    root.setStorageGroup(sgPath);
+    try {
+      root.createTimeseries(new PartialPath("root.sg1.a.b"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      MNode sgNode = root.getNodeByPath(sgPath);
+      assertEquals(1, sgNode.getMeasurementMNodeCount()); // b
+
+      root.createTimeseries(new PartialPath("root.sg1.a.b.c"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      assertEquals(2, sgNode.getMeasurementMNodeCount()); // b and c
+      MNode cNode = sgNode.getChild("a").getChild("b").getChild("c");
+      assertEquals(1, cNode.getMeasurementMNodeCount()); // c
+
+      root.createTimeseries(new PartialPath("root.sg1.a.b.c.d"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      assertEquals(3, sgNode.getMeasurementMNodeCount()); // b, c and d
+      assertEquals(2, cNode.getMeasurementMNodeCount()); // c and d
+      MNode dNode = cNode.getChild("d");
+      assertEquals(1, dNode.getMeasurementMNodeCount()); // d
 
     } catch (MetadataException e1) {
       fail(e1.getMessage());
