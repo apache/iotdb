@@ -158,7 +158,8 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
             List<ByteBuffer> dataInChunk = new ArrayList<>();
             List<Boolean> needToDecodeInfo = new ArrayList<>();
-            for (int j = 0; j < header.getNumOfPages(); j++) {
+            int dataSize = header.getDataSize();
+            while (dataSize > 0) {
               // a new Page
               PageHeader pageHeader = reader.readPageHeader(dataType);
               boolean needToDecode = 
@@ -169,6 +170,10 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
                   : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
+              dataSize -= Integer.BYTES * 2 // the bytes of uncompressedSize and compressedSize
+                  - pageHeader.getStatistics().getSerializedSize()
+                  - pageHeader.getCompressedSize();
+
             }
             pageHeadersInChunkGroup.add(pageHeadersInChunk);
             pageDataInChunkGroup.add(dataInChunk);
