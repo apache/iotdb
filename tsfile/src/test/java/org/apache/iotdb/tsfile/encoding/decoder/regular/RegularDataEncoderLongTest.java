@@ -151,7 +151,7 @@ public class RegularDataEncoderLongTest {
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (regularDataDecoder.hasNext(buffer)) {
-      assertEquals(correctData[i++], regularDataDecoder.readInt(buffer));
+      assertEquals(correctData[i++], regularDataDecoder.readLong(buffer));
     }
   }
 
@@ -166,7 +166,7 @@ public class RegularDataEncoderLongTest {
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (regularDataDecoder.hasNext(buffer)) {
-      assertEquals(correctData[i++], regularDataDecoder.readInt(buffer));
+      assertEquals(correctData[i++], regularDataDecoder.readLong(buffer));
     }
   }
 
