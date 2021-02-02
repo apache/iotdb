@@ -56,7 +56,6 @@ jobs:
           -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
           -Pcode-coverage
       - name: SonarCloud Report
-        #jdk8 is faster to run UT/IT
         if: ${{ success() &&  matrix.java == '11'}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
