@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 public class UDTFBottomK extends UDTFSelectK {
 
+  @Override
   protected void constructPQ() throws UDFInputSeriesDataTypeNotValidException {
     switch (dataType) {
       case INT32:

@@ -53,6 +53,7 @@ public class ReadOnlyTsFile implements AutoCloseable {
     return tsFileExecutor.execute(queryExpression, partitionStartOffset, partitionEndOffset);
   }
 
+  @Override
   public void close() throws IOException {
     fileReader.close();
   }

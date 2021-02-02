@@ -38,6 +38,7 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
 
   private ClusterPhysicalGenerator physicalGenerator;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();

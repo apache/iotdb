@@ -44,6 +44,7 @@ public class ShowDevicesDataSet extends ShowDataSet {
     getQueryDataSet();
   }
 
+  @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
     Set<PartialPath> devicesSet = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();

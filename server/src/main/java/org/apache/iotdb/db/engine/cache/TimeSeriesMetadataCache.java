@@ -290,6 +290,7 @@ public class TimeSeriesMetadataCache {
       return Objects.hash(filePath, device, measurement);
     }
 
+    @Override
     public void setRamSize(long size) {
       this.ramSize = size;
     }

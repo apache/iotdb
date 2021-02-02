@@ -370,6 +370,15 @@ bool Session::checkSorted(Tablet& tablet) {
     return true;
 }
 
+bool Session::checkSorted(vector<int64_t>& times) {
+    for (int i = 1; i < times.size(); i++) {
+        if (times[i] < times[i - 1]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void Session::sortTablet(Tablet& tablet) {
     /*
      * following part of code sort the batch data by time,
@@ -408,12 +417,63 @@ void Session::sortIndexByTimestamp(int* index, int64_t* timestamps, int length) 
     }
 }
 
-vector<string> Session::sortList(vector<string>& valueList, int* index, int indexLength) {
-    vector<string> sortedValues(valueList.size());
-    for (int i = 0; i < indexLength; i++) {
-        sortedValues[i] = valueList[index[i]];
+/**
+ * Append value into buffer in Big Endian order to comply with IoTDB server
+ */
+void Session::appendValues(string &buffer, char* value, int size) {
+    for (int i = size - 1; i >= 0; i--) {
+        buffer.append(value + i, 1);
     }
-    return sortedValues;
+}
+
+void Session::putValuesIntoBuffer(vector<TSDataType::TSDataType>& types, vector<char*>& values, string& buf) {
+    for (int i = 0; i < values.size(); i++) {
+        int8_t typeNum = getDataTypeNumber(types[i]);
+        buf.append((char*)(&typeNum), sizeof(int8_t));
+        switch (types[i]) {
+            case TSDataType::BOOLEAN:
+                buf.append(values[i], 1);
+                break;
+            case TSDataType::INT32:
+                appendValues(buf, values[i], sizeof(int32_t));
+                break;
+            case TSDataType::INT64:
+                appendValues(buf, values[i], sizeof(int64_t));
+                break;
+            case TSDataType::FLOAT:
+                appendValues(buf, values[i], sizeof(float));
+                break;
+            case TSDataType::DOUBLE:
+                appendValues(buf, values[i], sizeof(double));
+                break;
+            case TSDataType::TEXT:
+                string str(values[i]);
+                int len = str.length();
+                appendValues(buf, (char*)(&len), sizeof(int));
+                // no need to change the byte order of string value
+                buf.append(values[i], len);
+                break;
+        }
+    }
+}
+
+int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
+    switch (type) {
+        case TSDataType::BOOLEAN:
+            return 0;
+        case TSDataType::INT32:
+            return 1;
+        case TSDataType::INT64:
+            return 2;
+        case TSDataType::FLOAT:
+            return 3;
+        case TSDataType::DOUBLE:
+            return 4;
+        case TSDataType::TEXT:
+            return 5;
+        default:
+            return -1;
+    }
 }
 
 void Session::open()
@@ -555,6 +615,26 @@ void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measu
     }
 }
 
+void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measurements,
+    vector<TSDataType::TSDataType>& types, vector<char*>& values)
+{
+    shared_ptr<TSInsertRecordReq> req(new TSInsertRecordReq());
+    req->__set_sessionId(sessionId);
+    req->__set_deviceId(deviceId);
+    req->__set_timestamp(time);
+    req->__set_measurements(measurements);
+    string buffer;
+    putValuesIntoBuffer(types, values, buffer);
+    req->__set_values(buffer);
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->insertRecord(*resp,*req);
+        RpcUtils::verifySuccess(*resp);
+    } catch (IoTDBConnectionException& e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
 void Session::insertRecords(vector<string>& deviceIds, vector<int64_t>& times, vector<vector<string>>& measurementsList, vector<vector<string>>& valuesList) {
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -580,13 +660,90 @@ void Session::insertRecords(vector<string>& deviceIds, vector<int64_t>& times, v
     }
 }
 
+void Session::insertRecords(vector<string>& deviceIds, vector<int64_t>& times,
+    vector<vector<string>>& measurementsList, vector<vector<TSDataType::TSDataType>> typesList,
+    vector<vector<char*>>& valuesList) {
+    int len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+        logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
+        throw exception(e);
+    }
+    shared_ptr<TSInsertRecordsReq> request(new TSInsertRecordsReq());
+    request->__set_sessionId(sessionId);
+    request->__set_deviceIds(deviceIds);
+    request->__set_timestamps(times);
+    request->__set_measurementsList(measurementsList);
+    vector<string> bufferList;
+    for (int i = 0; i < valuesList.size(); i++) {
+        string buffer;
+        putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+        bufferList.push_back(buffer);
+    }
+    request->__set_valuesList(bufferList);
+
+    try {
+        shared_ptr<TSStatus> resp(new TSStatus());
+        client->insertRecords(*resp, *request);
+        RpcUtils::verifySuccess(*resp);
+    } catch (IoTDBConnectionException& e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertRecordsOfOneDevice(string deviceId, vector<int64_t>& times,
+    vector<vector<string>> measurementsList, vector<vector<TSDataType::TSDataType>> typesList,
+    vector<vector<char*>>& valuesList) {
+    insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+}
+
+void Session::insertRecordsOfOneDevice(string deviceId, vector<int64_t>& times,
+    vector<vector<string>> measurementsList, vector<vector<TSDataType::TSDataType>> typesList,
+    vector<vector<char*>>& valuesList, bool sorted) {
+
+    if (sorted) {
+        if (!checkSorted(times)) {
+            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
+        }
+    } else {
+        int* index = new int[times.size()];
+        for (int i = 0; i < times.size(); i++) {
+            index[i] = i;
+        }
+
+        this->sortIndexByTimestamp(index, times.data(), times.size());
+        sort(times.begin(), times.end());
+        measurementsList = sortList(measurementsList, index, times.size());
+        typesList = sortList(typesList, index, times.size());
+        valuesList = sortList(valuesList, index, times.size());
+    }
+    unique_ptr<TSInsertRecordsOfOneDeviceReq> request(new TSInsertRecordsOfOneDeviceReq());
+    request->__set_sessionId(sessionId);
+    request->__set_deviceId(deviceId);
+    request->__set_timestamps(times);
+    request->__set_measurementsList(measurementsList);
+    vector<string> bufferList;
+    for (int i = 0; i < valuesList.size(); i++) {
+        string buffer;
+        putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+        bufferList.push_back(buffer);
+    }
+    request->__set_valuesList(bufferList);
+
+    try {
+        unique_ptr<TSStatus> resp(new TSStatus());
+        client->insertRecordsOfOneDevice(*resp, *request);
+        RpcUtils::verifySuccess(*resp);
+    } catch (const exception& e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
 
 void Session::insertTablet(Tablet& tablet) {
     try
     {
         insertTablet(tablet, false);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         logic_error error(e.what());
         throw exception(error);
@@ -630,7 +787,7 @@ void Session::insertTablets(map<string, Tablet*>& tablets) {
     {
         insertTablets(tablets, false);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
         logic_error error(e.what());
         throw exception(error);
@@ -669,7 +826,7 @@ void Session::insertTablets(map<string, Tablet*>& tablets, bool sorted) {
             client->insertTablets(*resp, *request);
             RpcUtils::verifySuccess(*resp);
         }
-        catch (const std::exception& e)
+        catch (const exception& e)
         {
             throw IoTDBConnectionException(e.what());
         }
