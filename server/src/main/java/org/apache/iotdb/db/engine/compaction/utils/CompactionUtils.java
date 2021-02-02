@@ -121,7 +121,7 @@ public class CompactionUtils {
     }
   }
 
-  private static void writeByAppendMerge(String device, RateLimiter compactionWriteRateLimiter,
+  public static void writeByAppendMerge(String device, RateLimiter compactionWriteRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource, RestorableTsFileIOWriter writer,
       Map<String, List<Modification>> modificationCache) throws IOException, IllegalPathException {
@@ -139,7 +139,7 @@ public class CompactionUtils {
     }
   }
 
-  private static void writeByDeserializeMerge(String device, RateLimiter compactionRateLimiter,
+  public static void writeByDeserializeMerge(String device, RateLimiter compactionRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource, RestorableTsFileIOWriter writer,
       Map<String, List<Modification>> modificationCache) throws IOException, IllegalPathException {
