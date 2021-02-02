@@ -1770,6 +1770,7 @@ public class StorageGroupProcessor {
   }
 
   private void executeCompaction(long timePartition, boolean fullMerge){
+    writeLock();
     if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance()
         .isTerminated()) {
       compactionMergeWorking = true;
@@ -1788,6 +1789,7 @@ public class StorageGroupProcessor {
       logger.info("{} last compaction merge task is working, skip current merge",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
     }
+    writeUnlock();
   }
 
   /**
