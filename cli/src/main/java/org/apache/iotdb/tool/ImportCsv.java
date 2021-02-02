@@ -20,9 +20,10 @@ package org.apache.iotdb.tool;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
 import jline.console.ConsoleReader;
 import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.cli.CommandLine;
@@ -103,7 +105,7 @@ public class ImportCsv extends AbstractCsvTool {
       return;
     }
     System.out.println("Start to import data from: " + file.getName());
-    try (BufferedReader br = new BufferedReader(new FileReader(file));
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();
@@ -160,6 +162,7 @@ public class ImportCsv extends AbstractCsvTool {
           valuesList = new ArrayList<>();
         }
       }
+      // TODO change it to insertTablet, now is slow
       session.insertRecords(devices, times, measurementsList, valuesList);
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
@@ -169,14 +172,6 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("CSV file read exception because: " + e.getMessage());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
-    } finally {
-      try {
-        if (session != null) {
-          session.close();
-        }
-      } catch (IoTDBConnectionException e) {
-        System.out.println("Sql statement can not be closed because: " + e.getMessage());
-      }
     }
   }
 
@@ -339,7 +334,7 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static int getFileLineCount(File file) throws IOException {
     int line;
-    try (LineNumberReader count = new LineNumberReader(new FileReader(file))) {
+    try (LineNumberReader count = new LineNumberReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
       while (count.skip(Long.MAX_VALUE) > 0) {
         // Loop just in case the file is > Long.MAX_VALUE or skip() decides to not read the entire file
       }
