@@ -110,6 +110,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     }
   }
 
+  @Override
   public void close() throws IOException {
     this.reader.close();
   }

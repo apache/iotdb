@@ -151,6 +151,20 @@
                 <cluster.ut.skip>true</cluster.ut.skip>
             </properties>
         </profile>
+        <profile>
+            <id>only_test_Cluster</id>
+            <activation>
+                <property>
+                    <name>cluster.test.only</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <cluster.test.skip>false</cluster.test.skip>
+                <cluster.ut.skip>false</cluster.ut.skip>
+                <cluster.it.skip>false</cluster.it.skip>
+            </properties>
+        </profile>
     </profiles>
     <build>
         <plugins>

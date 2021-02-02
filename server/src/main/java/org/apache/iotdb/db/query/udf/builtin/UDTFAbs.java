@@ -64,6 +64,7 @@ public class UDTFAbs extends UDTFMath {
     }
   }
 
+  @Override
   protected void setTransformer() {
     throw new UnsupportedOperationException("UDTFAbs#setTransformer()");
   }

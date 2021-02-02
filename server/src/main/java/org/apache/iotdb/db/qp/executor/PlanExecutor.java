@@ -1025,7 +1025,8 @@ public class PlanExecutor implements IPlanExecutor {
       throw new PathNotExistException(failedPaths);
     } else {
       throw new StorageEngineException(
-          INSERT_MEASUREMENTS_FAILED_MESSAGE + plan.getFailedMeasurements());
+          INSERT_MEASUREMENTS_FAILED_MESSAGE + plan.getFailedMeasurements() 
+          + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : "" ));
     }
   }
 
@@ -1044,6 +1045,9 @@ public class PlanExecutor implements IPlanExecutor {
 
       List<String> notExistedPaths = null;
       List<String> failedMeasurements = null;
+
+      // If there are some exceptions, we assume they caused by the same reason.
+      Exception exception = null;
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
         if (plan.getFailedMeasurements() != null) {
           if (notExistedPaths == null) {
@@ -1055,6 +1059,7 @@ public class PlanExecutor implements IPlanExecutor {
           List<Exception> exceptions = plan.getFailedExceptions();
           boolean isPathNotExistException = true;
           for (Exception e : exceptions) {
+            exception = e;
             Throwable curException = e;
             while (curException.getCause() != null) {
               curException = curException.getCause();
@@ -1075,7 +1080,8 @@ public class PlanExecutor implements IPlanExecutor {
         throw new PathNotExistException(notExistedPaths);
       } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
         throw new StorageEngineException(
-            "failed to insert points " + failedMeasurements);
+            "failed to insert points " + failedMeasurements
+            + (exception != null ? (" caused by " + exception.getMessage()) : "" ));
       }
 
     } catch (StorageEngineException | MetadataException e) {

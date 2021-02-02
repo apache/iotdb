@@ -843,6 +843,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return markerBuffer.get();
   }
 
+  @Override
   public void close() throws IOException {
     if (resourceLogger.isDebugEnabled()) {
       resourceLogger.debug("{} reader is closed.", file);

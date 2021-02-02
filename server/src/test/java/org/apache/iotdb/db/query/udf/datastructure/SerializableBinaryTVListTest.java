@@ -36,6 +36,7 @@ public class SerializableBinaryTVListTest extends SerializableTVListTest {
   private List<Binary> originalList;
   private SerializableBinaryTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -44,6 +45,7 @@ public class SerializableBinaryTVListTest extends SerializableTVListTest {
         .newSerializableTVList(TSDataType.TEXT, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

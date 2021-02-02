@@ -38,11 +38,13 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
   private ElasticSerializableTVList tvList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
