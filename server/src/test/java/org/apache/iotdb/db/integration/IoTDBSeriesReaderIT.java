@@ -46,6 +46,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBStatement;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -55,6 +56,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -261,21 +263,29 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     dataTypes.add(TSDataType.FLOAT);
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     dataTypes.add(TSDataType.TEXT);
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     dataTypes.add(TSDataType.BOOLEAN);
-    pathList.add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s5));
+    pathList
+        .add(new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s5));
     dataTypes.add(TSDataType.DOUBLE);
-    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
+    pathList
+        .add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     dataTypes.add(TSDataType.INT32);
-    pathList.add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
+    pathList
+        .add(new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     dataTypes.add(TSDataType.INT64);
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
@@ -303,7 +313,8 @@ public class IoTDBSeriesReaderIT {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    PartialPath p = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath p = new PartialPath(
+        TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     pathList.add(p);
     dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
@@ -333,7 +344,8 @@ public class IoTDBSeriesReaderIT {
   public void seriesTimeDigestReadTest()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath path = new PartialPath(
+        TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
@@ -360,8 +372,10 @@ public class IoTDBSeriesReaderIT {
   public void crossSeriesReadUpdateTest()
       throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path1 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    PartialPath path2 = new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1);
+    PartialPath path1 = new PartialPath(
+        TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    PartialPath path2 = new PartialPath(
+        TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 
@@ -406,6 +420,47 @@ public class IoTDBSeriesReaderIT {
       assertFalse(resultSet.next());
     } finally {
       resultSet.close();
+    }
+  }
+
+  /**
+   * Test when one un-sequenced file may cover a long time range.
+   */
+  @Test
+  public void queryWithLongRangeUnSeqTest() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // make up data
+      final String INSERT_TEMPLATE = "insert into root.sg.d1(time, s1) values(%d, %d)";
+      final String FLUSH_CMD = "flush";
+      for (int i = 1; i <= 10; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+      for (int i = 12; i <= 20; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+      for (int i = 21; i <= 110; i++) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+        if (i % 10 == 0) {
+          statement.execute(FLUSH_CMD);
+        }
+      }
+      // unSeq from here
+      for (int i = 11; i <= 101; i += 10) {
+        statement.execute(String.format(INSERT_TEMPLATE, i, i));
+      }
+      statement.execute(FLUSH_CMD);
+
+      // query from here
+      ResultSet resultSet = statement.executeQuery("select s1 from root.sg.d1 where time > 10");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(100, cnt);
     }
   }
 }
