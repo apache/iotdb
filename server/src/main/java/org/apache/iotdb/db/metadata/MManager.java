@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 import java.io.File;
@@ -506,6 +507,11 @@ public class MManager {
       if (allTimeseries.isEmpty()) {
         throw new PathNotExistException(prefixPath.getFullPath());
       }
+
+      if (!prefixPath.getMeasurement().equals(PATH_WILDCARD)) {
+        allTimeseries = allTimeseries.stream().filter(ts -> ts.getFullPath().endsWith(prefixPath.getMeasurement())).collect(toList());
+      }
+
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_ARRAY));
 

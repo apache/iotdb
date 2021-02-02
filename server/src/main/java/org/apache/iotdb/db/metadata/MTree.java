@@ -50,6 +50,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -476,7 +477,17 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !IoTDBConstant.PATH_ROOT.equals(nodes[0])) {
       throw new IllegalPathException(path.getFullPath());
     }
-    // delete the last node of path
+
+    // judge whether it has children
+    if (MapUtils.isNotEmpty(curNode.getChildren())) {
+      // it has children, then itself should be converted into MNode type.
+      MeasurementMNode cur = (MeasurementMNode) curNode;
+      MNode mNode = new MNode(cur.getParent(), cur.getName());
+      cur.getParent().replaceChild(cur.getName(), mNode);
+      return new Pair<>(null, cur);
+    }
+
+    // it has no children, then delete itself directly.
     curNode.getParent().deleteChild(curNode.getName());
     MeasurementMNode deletedNode = (MeasurementMNode) curNode;
     if (deletedNode.getAlias() != null) {

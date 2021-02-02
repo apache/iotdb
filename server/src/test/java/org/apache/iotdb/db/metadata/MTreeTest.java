@@ -523,6 +523,14 @@ public class MTreeTest {
       assertFalse(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
       assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
 
+      root.createTimeseries(new PartialPath("root.sg1.aa.bb"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.createTimeseries(new PartialPath("root.sg1.aa.bb.cc"), TSDataType.INT32, TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
+      root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.sg1.aa.bb"));
+      assertFalse(root.isPathExist(new PartialPath("root.sg1.aa.bb")));
+      assertTrue(root.isPathExist(new PartialPath("root.sg1.aa.bb.cc")));
+
     } catch (MetadataException e1) {
       fail(e1.getMessage());
     }
