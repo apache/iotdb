@@ -340,19 +340,47 @@ public class MTree implements Serializable {
    * @param path a full path or a prefix path
    */
   boolean isPathExist(PartialPath path) {
+    Object[] res = judgePathExistAndGetLastNode(path);
+    return (boolean) res[0];
+  }
+
+  /**
+   * Check whether the given timeseries exists.
+   *
+   * @param path a timeseries path
+   */
+  boolean isTimeSeriesExist(PartialPath path) {
+    Object[] res = judgePathExistAndGetLastNode(path);
+    boolean pathExist = (boolean) res[0];
+    if (pathExist) {
+      return res[1] instanceof MeasurementMNode;
+    }
+
+    return false;
+  }
+
+  /**
+   * @param path a full path or a prefix path
+   *
+   * @return res[0] refers to flag indicating if path exists; res[1] refers to lastNode
+   */
+  Object[] judgePathExistAndGetLastNode(PartialPath path) {
+    Object[] res = {false, null};
     String[] nodeNames = path.getNodes();
     MNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
-      return false;
+      return res;
     }
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
       cur = cur.getChild(childName);
       if (cur == null) {
-        return false;
+        return res;
       }
     }
-    return true;
+    res[0] = true;
+    res[1] = cur;
+    return res;
   }
 
   /**

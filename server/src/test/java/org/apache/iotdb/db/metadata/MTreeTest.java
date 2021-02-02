@@ -515,21 +515,20 @@ public class MTreeTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
       root.createTimeseries(new PartialPath("root.sg1.a.b.c"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
-      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
-      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
+      assertTrue(root.isTimeSeriesExist(new PartialPath("root.sg1.a.b")));
+      assertTrue(root.isTimeSeriesExist(new PartialPath("root.sg1.a.b.c")));
 
       root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.sg1.a.b.c"));
-
-      assertFalse(root.isPathExist(new PartialPath("root.sg1.a.b.c")));
-      assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+      assertFalse(root.isTimeSeriesExist(new PartialPath("root.sg1.a.b.c")));
+      assertTrue(root.isTimeSeriesExist(new PartialPath("root.sg1.a.b")));
 
       root.createTimeseries(new PartialPath("root.sg1.aa.bb"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
       root.createTimeseries(new PartialPath("root.sg1.aa.bb.cc"), TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
       root.deleteTimeseriesAndReturnEmptyStorageGroup(new PartialPath("root.sg1.aa.bb"));
-      assertFalse(root.isPathExist(new PartialPath("root.sg1.aa.bb")));
-      assertTrue(root.isPathExist(new PartialPath("root.sg1.aa.bb.cc")));
+      assertFalse(root.isTimeSeriesExist(new PartialPath("root.sg1.aa.bb")));
+      assertTrue(root.isTimeSeriesExist(new PartialPath("root.sg1.aa.bb.cc")));
 
     } catch (MetadataException e1) {
       fail(e1.getMessage());
