@@ -2182,6 +2182,7 @@ public class StorageGroupProcessor {
       TsFileResource existingTsFile = iterator.next();
       if (newTsFile.isPlanRangeCovers(existingTsFile)
           && !newTsFile.getTsFile().equals(existingTsFile.getTsFile())
+          && !existingTsFile.isMerging()
           && existingTsFile.tryWriteLock()) {
         logger.info("{} is covered by {}: [{}, {}], [{}, {}], remove it", existingTsFile,
             newTsFile, existingTsFile.minPlanIndex, existingTsFile.maxPlanIndex,
