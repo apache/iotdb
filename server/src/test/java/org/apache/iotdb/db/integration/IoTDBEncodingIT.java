@@ -95,7 +95,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -122,7 +121,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -149,7 +147,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -176,7 +173,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -203,7 +199,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -230,7 +225,6 @@ public class IoTDBEncodingIT {
           assertEquals(result[index], salary);
           index ++;
         }
-        assertEquals(4, resultSet.next());
       }
     } catch (Exception e) {
       e.printStackTrace();
