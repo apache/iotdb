@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1548,19 +1549,20 @@ public class StorageGroupProcessor {
     List<ModificationFile> updatedModFiles = new ArrayList<>();
 
     try {
-      Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
-      for (PartialPath device : devicePaths) {
-        Long lastUpdateTime = null;
-        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-          Long curTime = latestTimeMap.get(device.getFullPath());
-          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-            lastUpdateTime = curTime;
-          }
-        }
+      Set<PartialPath> devicePaths = new TreeSet<>();
+      PartialPath device = path.getDevicePath();
+      devicePaths.add(device);
 
-        // delete Last cache record if necessary
-        tryToDeleteLastCache(device, path, startTime, endTime);
+      Long lastUpdateTime = null;
+      for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
+        Long curTime = latestTimeMap.get(device.getFullPath());
+        if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
+          lastUpdateTime = curTime;
+        }
       }
+
+      // delete Last cache record if necessary
+      tryToDeleteLastCache(device, path, startTime, endTime);
 
       // write log to impacted working TsFileProcessors
       logDeletion(startTime, endTime, path);
