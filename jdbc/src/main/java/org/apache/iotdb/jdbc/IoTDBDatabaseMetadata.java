@@ -244,14 +244,14 @@ private void initWatermarkEncoder() {
     List<String> columnTypeList=new ArrayList<String>();
     Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
     Field[] fields = new Field[8];
-    fields[0] = new Field("", "SCOPE", "TEXT");
+    fields[0] = new Field("", "SCOPE", "INT32");
     fields[1] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[2] = new Field("", "DATA_TYPE", "TEXT");
+    fields[2] = new Field("", "DATA_TYPE", "INT32");
     fields[3] = new Field("", "TYPE_NAME", "TEXT");
     fields[4] = new Field("", "COLUMN_SIZE", "INT32");
-    fields[5] = new Field("", "BUFFER_LENGTH", "TEXT");
+    fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
     fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
-    fields[7] = new Field("", "PSEUDO_COLUMN","TEXT");
+    fields[7] = new Field("", "PSEUDO_COLUMN","INT32");
 
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
@@ -496,9 +496,76 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public ResultSet getColumnPrivileges(String arg0, String arg1, String arg2,
-      String arg3) throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  public ResultSet getColumnPrivileges(String catalog, String schemaPattern, String tableNamePattern,
+      String columnNamePattern) throws SQLException {
+    Statement stmt=this.connection.createStatement();
+
+    String sql="SHOW STORAGE GROUP";
+    if(catalog!=null&&catalog.length()>0){
+      sql=sql +" "+catalog;
+    }else if(schemaPattern!=null&&schemaPattern.length()>0){
+      sql=sql +" "+schemaPattern;
+    }
+    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
+      sql=sql +"."+tableNamePattern;
+    }
+
+    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)
+        &&tableNamePattern!=null&&tableNamePattern.length()>0&&columnNamePattern!=null&&columnNamePattern.length()>0){
+      sql=sql +"."+columnNamePattern;
+    }
+    ResultSet rs=stmt.executeQuery(sql);
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "GRANTOR", "TEXT");
+    fields[5] = new Field("", "GRANTEE", "TEXT");
+    fields[6] = new Field("", "PRIVILEGE", "TEXT");
+    fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
+    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
+    ListDataSet dataSet=new ListDataSet();
+    for (int i=0;i<fields.length;i++){
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    while (rs.next()){
+      List<Map> properties=new ArrayList<Map>();
+      for (int i = 0; i < fields.length; i++) {
+        Map<String,Object> m=new HashMap<>();
+        m.put("type",listType.get(i));
+        if(i<4){
+          m.put("val",rs.getString(1));
+        }else if(i==5){
+          m.put("val",getUserName());
+        }else if(i==6){
+          m.put("val","");
+        }else if(i==7){
+          m.put("val","NO");
+        }else{
+          m.put("val","");
+        }
+
+        properties.add(m);
+      }
+      bigproperties.add(properties);
+    }
+    addToDataSet(bigproperties,dataSet);
+    TSQueryDataSet tsdataset=null;
+    try {
+      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
+        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
   }
 
   @Override
@@ -1020,7 +1087,7 @@ private void initWatermarkEncoder() {
     fields[2] = new Field("", "PROCEDURE_NAME", "TEXT");
     fields[3] = new Field("", "COLUMN_NAME", "TEXT");
     fields[4] = new Field("", "COLUMN_TYPE", "TEXT");
-    fields[5] = new Field("", "DATA_TYPE", "TEXT");
+    fields[5] = new Field("", "DATA_TYPE", "INT32");
     fields[6] = new Field("", "TYPE_NAME", "TEXT");
     fields[7] = new Field("", "PRECISION", "TEXT");
     fields[8] = new Field("", "LENGTH", "TEXT");
@@ -1029,7 +1096,7 @@ private void initWatermarkEncoder() {
     fields[11] = new Field("", "NULLABLE", "TEXT");
     fields[12] = new Field("", "REMARKS", "TEXT");
     fields[13] = new Field("", "COLUMN_DEF", "TEXT");
-    fields[14] = new Field("", "SQL_DATA_TYPE", "TEXT");
+    fields[14] = new Field("", "SQL_DATA_TYPE", "INT32");
     fields[15] = new Field("", "SQL_DATETIME_SUB", "TEXT");
     fields[16] = new Field("", "CHAR_OCTET_LENGTH", "TEXT");
     fields[17] = new Field("", "ORDINAL_POSITION", "TEXT");
@@ -1255,7 +1322,70 @@ private void initWatermarkEncoder() {
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    Statement stmt=this.connection.createStatement();
+
+    String sql="SHOW STORAGE GROUP";
+    if(catalog!=null&&catalog.length()>0){
+      sql=sql +" "+catalog;
+    }else if(schemaPattern!=null&&schemaPattern.length()>0){
+      sql=sql +" "+schemaPattern;
+    }
+    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
+      sql=sql +"."+tableNamePattern;
+    }
+
+    ResultSet rs=stmt.executeQuery(sql);
+    Field[] fields = new Field[8];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "GRANTOR", "TEXT");
+    fields[5] = new Field("", "GRANTEE", "TEXT");
+    fields[6] = new Field("", "PRIVILEGE", "TEXT");
+    fields[7] = new Field("", "IS_GRANTABLE", "TEXT");
+    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
+    ListDataSet dataSet=new ListDataSet();
+    for (int i=0;i<fields.length;i++){
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    while (rs.next()){
+      List<Map> properties=new ArrayList<Map>();
+      for (int i = 0; i < fields.length; i++) {
+        Map<String,Object> m=new HashMap<>();
+        m.put("type",listType.get(i));
+        if(i<4){
+          m.put("val",rs.getString(1));
+        }else if(i==5){
+          m.put("val",getUserName());
+        }else if(i==6){
+          m.put("val","");
+        }else if(i==7){
+          m.put("val","NO");
+        }else{
+          m.put("val","");
+        }
+
+        properties.add(m);
+      }
+      bigproperties.add(properties);
+    }
+    addToDataSet(bigproperties,dataSet);
+    TSQueryDataSet tsdataset=null;
+    try {
+      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
+        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
   }
 
   @Override
@@ -1290,15 +1420,263 @@ private void initWatermarkEncoder() {
 
   @Override
   public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
-      String columnNamePattern) {
-    return null;
+      String columnNamePattern) throws SQLException{
+    Statement stmt = this.connection.createStatement();
+
+    String sql = "SHOW STORAGE GROUP";
+    if (catalog != null && catalog.length() > 0) {
+      sql = sql + " " + catalog;
+    } else if (schemaPattern != null && schemaPattern.length() > 0) {
+      sql = sql + " " + schemaPattern;
+    }
+    if (((catalog != null && catalog.length() > 0)
+        || schemaPattern != null && schemaPattern.length() > 0) && tableNamePattern != null
+        && tableNamePattern.length() > 0) {
+      sql = sql + "." + tableNamePattern;
+    }
+
+    if (((catalog != null && catalog.length() > 0)
+        || schemaPattern != null && schemaPattern.length() > 0)
+        && tableNamePattern != null && tableNamePattern.length() > 0 && columnNamePattern != null
+        && columnNamePattern.length() > 0) {
+      sql = sql + "." + columnNamePattern;
+    }
+    ResultSet rs = stmt.executeQuery(sql);
+    Field[] fields = new Field[24];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "COLUMN_NAME", "TEXT");
+    fields[4] = new Field("", "DATA_TYPE", "INT32");
+    fields[5] = new Field("", "TYPE_NAME", "TEXT");
+    fields[6] = new Field("", "COLUMN_SIZE", "INT32");
+    fields[7] = new Field("", "BUFFER_LENGTH", "INT32");
+    fields[8] = new Field("", "DECIMAL_DIGITS", "INT32");
+    fields[9] = new Field("", "NUM_PREC_RADIX", "INT32");
+    fields[10] = new Field("", "NULLABLE", "INT32");
+    fields[11] = new Field("", "REMARKS", "TEXT");
+    fields[12] = new Field("", "COLUMN_DEF", "TEXT");
+    fields[13] = new Field("", "SQL_DATA_TYPE", "INT32");
+    fields[14] = new Field("", "SQL_DATETIME_SUB", "INT32");
+    fields[15] = new Field("", "CHAR_OCTET_LENGTH", "INT32");
+    fields[16] = new Field("", "ORDINAL_POSITION", "INT32");
+    fields[17] = new Field("", "IS_NULLABLE", "TEXT");
+    fields[18] = new Field("", "SCOPE_CATALOG", "TEXT");
+    fields[19] = new Field("", "SCOPE_SCHEMA", "TEXT");
+    fields[20] = new Field("", "SCOPE_TABLE", "TEXT");
+    fields[21] = new Field("", "SOURCE_DATA_TYPE", "INT32");
+    fields[22] = new Field("", "IS_AUTOINCREMENT", "TEXT");
+    fields[23] = new Field("", "IS_GENERATEDCOLUMN", "TEXT");
+
+    List<TSDataType> listType = Arrays
+        .asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+            TSDataType.INT32, TSDataType.TEXT, TSDataType.INT32, TSDataType.INT32,
+            TSDataType.INT32,TSDataType.INT32,TSDataType.INT32,TSDataType.TEXT, TSDataType.TEXT,
+            TSDataType.INT32, TSDataType.INT32, TSDataType.INT32, TSDataType.INT32,
+            TSDataType.TEXT, TSDataType.TEXT,TSDataType.TEXT, TSDataType.TEXT,
+            TSDataType.INT32,TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList = new ArrayList<String>();
+    List<String> columnTypeList = new ArrayList<String>();
+    Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
+    List<List<Map>> bigproperties = new ArrayList<List<Map>>();
+    ListDataSet dataSet = new ListDataSet();
+    for (int i = 0; i < fields.length; i++) {
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(), i);
+    }
+    while (rs.next()) {
+      List<Map> properties = new ArrayList<Map>();
+      for (int i = 0; i < fields.length; i++) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", listType.get(i));
+        if (i < 4) {
+          m.put("val", rs.getString(1));
+        } else if (i == 4) {
+          m.put("val", getSQLType(fields[i].getSqlType()));
+        }  else if (i == 6) {
+          m.put("val", getTypePrecision(fields[i].getSqlType()));
+        } else if(i==7){
+          m.put("val", 0);
+        }else if(i==8){
+          m.put("val", getTypeScale(fields[i].getSqlType()));
+        }else if(i==9){
+          m.put("val", 10);
+        }else if(i==10){
+          m.put("val", 0);
+        }else if(i==11){
+          m.put("val", "");
+        }else if(i==12){
+          m.put("val", "");
+        }else if(i==13){
+          m.put("val", 0);
+        }else if(i==14){
+          m.put("val", 0);
+        }else if(i==15){
+          m.put("val", getTypePrecision(fields[i].getSqlType()));
+        }else if(i==16){
+          m.put("val", 1);
+        }else if(i==17){
+          m.put("val", "NO");
+        }else if(i==18){
+          m.put("val", "");
+        }else if(i==19){
+          m.put("val", "");
+        }else if(i==20){
+          m.put("val", "");
+        }else if(i==21){
+          m.put("val", 0);
+        }else if(i==22){
+          m.put("val", "NO");
+        }else if(i==23){
+          m.put("val", "NO");
+        }else{
+          m.put("val", "");
+        }
+
+        properties.add(m);
+      }
+      bigproperties.add(properties);
+    }
+    addToDataSet(bigproperties, dataSet);
+    TSQueryDataSet tsdataset = null;
+    try {
+      tsdataset = convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(),
+          getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true,
+        client,
+        null, 0, sessionId, tsdataset, (long) 60 * 1000, false);
+
+
+  }
+
+    public int getTypeScale(String columnType) throws SQLException {
+      switch (columnType.toUpperCase()) {
+        case "BOOLEAN":
+        case "INT32":
+        case "INT64":
+        case "TEXT":
+          return 0;
+        case "FLOAT":
+          return 6;
+        case "DOUBLE":
+          return 15;
+        default:
+          break;
+      }
+      return 0;
+
+  }
+  private int getSQLType(String columnType){
+    switch (columnType.toUpperCase()) {
+      case "BOOLEAN":
+        return Types.BOOLEAN;
+      case "INT32":
+        return Types.INTEGER;
+      case "INT64":
+        return Types.BIGINT;
+      case "FLOAT":
+        return Types.FLOAT;
+      case "DOUBLE":
+        return Types.DOUBLE;
+      case "TEXT":
+        return Types.LONGVARCHAR;
+      default:
+        break;
+    }
+    return 0;
+
+  }
+  private int getTypePrecision(String columnType) throws SQLException {
+    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
+    switch (columnType.toUpperCase()) {
+      case "BOOLEAN":
+        return 1;
+      case "INT32":
+        return 10;
+      case "INT64":
+        return 19;
+      case "FLOAT":
+        return 38;
+      case "DOUBLE":
+        return 308;
+      case "TEXT":
+        return Integer.MAX_VALUE;
+      default:
+        break;
+    }
+    return 0;
   }
 
   @Override
   public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern,
       String[] types)
       throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    Statement stmt=this.connection.createStatement();
+
+    String sql="SHOW STORAGE GROUP";
+    if(catalog!=null&&catalog.length()>0){
+      sql=sql +" "+catalog;
+    }else if(schemaPattern!=null&&schemaPattern.length()>0){
+      sql=sql +" "+schemaPattern;
+    }
+    if(((catalog!=null&&catalog.length()>0)||schemaPattern!=null&&schemaPattern.length()>0)&&tableNamePattern!=null&&tableNamePattern.length()>0){
+      sql=sql +"."+tableNamePattern;
+    }
+
+    ResultSet rs=stmt.executeQuery(sql);
+    Field[] fields = new Field[10];
+    fields[0] = new Field("", "TABLE_CAT", "TEXT");
+    fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
+    fields[2] = new Field("", "TABLE_NAME", "TEXT");
+    fields[3] = new Field("", "TABLE_TYPE", "TEXT");
+    fields[4] = new Field("", "REMARKS", "TEXT");
+    fields[5] = new Field("", "TYPE_CAT", "TEXT");
+    fields[6] = new Field("", "TYPE_SCHEM", "TEXT");
+    fields[7] = new Field("", "TYPE_NAME", "TEXT");
+    fields[8] = new Field("", "SELF_REFERENCING_COL_NAME", "TEXT");
+    fields[9] = new Field("", "REF_GENERATION", "TEXT");
+
+    List<TSDataType> listType=Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
+        TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT);
+    List<String> columnNameList=new ArrayList<String>();
+    List<String> columnTypeList=new ArrayList<String>();
+    Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
+    List<List<Map>> bigproperties=new ArrayList<List<Map>>();
+    ListDataSet dataSet=new ListDataSet();
+    for (int i=0;i<fields.length;i++){
+      columnNameList.add(fields[i].getName());
+      columnTypeList.add(fields[i].getSqlType());
+      columnNameIndex.put(fields[i].getName(),i);
+    }
+    while (rs.next()){
+      List<Map> properties=new ArrayList<Map>();
+      for (int i = 0; i < fields.length; i++) {
+        Map<String,Object> m=new HashMap<>();
+        m.put("type",listType.get(i));
+        if(i<3){
+          m.put("val",rs.getString(1));
+        }else if(i==4){
+          m.put("val","TABLE");
+        }else{
+          m.put("val","");
+        }
+        properties.add(m);
+      }
+      bigproperties.add(properties);
+    }
+    addToDataSet(bigproperties,dataSet);
+    TSQueryDataSet tsdataset=null;
+    try {
+      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
+        null, 0, sessionId, tsdataset, (long)60 * 1000,false);
   }
 
   @Override
@@ -1383,7 +1761,7 @@ private void initWatermarkEncoder() {
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[2] = new Field("", "TABLE_NAME", "TEXT");
     fields[3] = new Field("", "CLASS_NAME", "TEXT");
-    fields[4] = new Field("", "DATA_TYPE", "TEXT");
+    fields[4] = new Field("", "DATA_TYPE", "INT32");
     fields[5] = new Field("", "REMARKS", "TEXT");
     fields[6] = new Field("", "BASE_TYPE", "TEXT");
     for (int i = 0; i < fields.length; i++) {
@@ -1413,14 +1791,14 @@ private void initWatermarkEncoder() {
     List<String> columnTypeList=new ArrayList<String>();
     Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
     Field[] fields = new Field[8];
-    fields[0] = new Field("", "SCOPE", "TEXT");
+    fields[0] = new Field("", "SCOPE", "INT32");
     fields[1] = new Field("", "COLUMN_NAME", "TEXT");
-    fields[2] = new Field("", "DATA_TYPE", "TEXT");
+    fields[2] = new Field("", "DATA_TYPE", "INT32");
     fields[3] = new Field("", "TYPE_NAME", "TEXT");
-    fields[4] = new Field("", "COLUMN_SIZE", "TEXT");
-    fields[5] = new Field("", "BUFFER_LENGTH", "TEXT");
-    fields[6] = new Field("", "DECIMAL_DIGITS", "TEXT");
-    fields[7] = new Field("", "PSEUDO_COLUMN", "TEXT");
+    fields[4] = new Field("", "COLUMN_SIZE", "INT32");
+    fields[5] = new Field("", "BUFFER_LENGTH", "INT32");
+    fields[6] = new Field("", "DECIMAL_DIGITS", "INT32");
+    fields[7] = new Field("", "PSEUDO_COLUMN", "INT32");
     for (int i = 0; i < fields.length; i++) {
       columnNameList.add(fields[i].getName());
       columnTypeList.add(fields[i].getSqlType());
