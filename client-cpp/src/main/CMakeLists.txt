@@ -44,7 +44,7 @@ INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
 
 IF(MSVC)
-    ADD_LIBRARY(iotdb_session ${SESSION_SRCS})
+    ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
 ELSE()
     ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
 ENDIF()
