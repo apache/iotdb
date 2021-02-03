@@ -715,7 +715,13 @@ public class MManager {
     MNode deviceNode = getNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
-      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
+      MNode child = deviceNode.getChild(measurements[i]);
+      if (child instanceof MeasurementMNode) {
+        mNodes[i] = ((MeasurementMNode) child);
+      } else {
+        mNodes[i] = null;
+      }
+
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
