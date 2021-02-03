@@ -741,15 +741,15 @@ public class MManager {
     return mtree.getDevices(prefixPath);
   }
 
-  public Set<PartialPath> getMatchDevices(PartialPath prefixPath) throws MetadataException {
-    mtree.checkPartialPath(prefixPath);
+  public Set<PartialPath> getMatchDevices(PartialPath path) throws MetadataException {
+    mtree.checkPartialPath(path);
 
-    if (prefixPath.getFullPath().contains("*")) {
-      return mtree.getDevices(prefixPath);
+    if (path.getFullPath().contains("*")) {
+      return mtree.getDevices(path.getDevicePath());
     }
 
     Set<PartialPath> res = new TreeSet<>();
-    res.add(prefixPath);
+    res.add(path.getDevicePath());
     return res;
   }
 
