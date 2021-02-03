@@ -265,6 +265,13 @@ public class MTree implements Serializable {
     }
   }
 
+  protected void checkPartialPath(PartialPath partialPath) throws MetadataException {
+    String[] nodes = partialPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(partialPath.getFullPath());
+    }
+  }
+
   //check if sdt parameters are valid
   private void checkSDTFormat(String path, Map<String, String> props) throws IllegalParameterOfPathException {
     if (!props.containsKey(SDT_COMP_DEV)) {

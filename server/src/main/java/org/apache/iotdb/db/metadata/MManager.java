@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
@@ -738,6 +739,18 @@ public class MManager {
    */
   public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
     return mtree.getDevices(prefixPath);
+  }
+
+  public Set<PartialPath> getMatchDevices(PartialPath prefixPath) throws MetadataException {
+    mtree.checkPartialPath(prefixPath);
+
+    if (prefixPath.getFullPath().contains("*")) {
+      return mtree.getDevices(prefixPath);
+    }
+
+    Set<PartialPath> res = new TreeSet<>();
+    res.add(prefixPath);
+    return res;
   }
 
   public Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
