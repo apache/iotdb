@@ -50,7 +50,7 @@ public class UpgradeTask extends WrappedRunnable {
     try {
       String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       List<TsFileResource> upgradedResources;
-      if (!UpgradeUtils.isUpgradedFileGenerated(oldTsfilePath)) {
+      if (!UpgradeUtils.isUpgradedFileGenerated(upgradeResource.getTsFile().getName())) {
         logger.info("generate upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = generateUpgradedFiles();
       }

@@ -156,7 +156,8 @@ public class UpgradeUtils {
               FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath())))) {
         String line = null;
         while ((line = upgradeLogReader.readLine()) != null) {
-          String oldFileName = line.split(COMMA_SEPERATOR)[0];
+          String oldFilePath = line.split(COMMA_SEPERATOR)[0];
+          String oldFileName = new File(oldFilePath).getName();
           if (upgradeRecoverMap.containsKey(oldFileName)) {
             upgradeRecoverMap.put(oldFileName, upgradeRecoverMap.get(oldFileName) + 1);
           } else {
