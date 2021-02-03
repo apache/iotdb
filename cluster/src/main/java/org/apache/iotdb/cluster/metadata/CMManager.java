@@ -1462,7 +1462,8 @@ public class CMManager extends MManager {
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
       resultSet.addAll(localResult);
-      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
+      logger.debug("Fetched local timeseries {} schemas of {} from {}", localResult.size(),
+          plan.getPath(), group);
     } catch (MetadataException e) {
       logger
           .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
@@ -1491,7 +1492,8 @@ public class CMManager extends MManager {
 
     if (resultBinary != null) {
       int size = resultBinary.getInt();
-      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
+      logger
+          .debug("Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
       for (int i = 0; i < size; i++) {
         resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
@@ -1519,17 +1521,19 @@ public class CMManager extends MManager {
       }
     }
 
-    if (results != null) {
-      logger.debug("Fetched {} schemas of {} from {}", results.size(), plan.getPath(), group);
-      for (String path : results) {
-        try {
-          resultSet.add(new PartialPath(path));
-        } catch (IllegalPathException e) {
-          logger.error("Failed to execute show devices {} in group: {}.", plan, group);
-        }
-      }
-    } else {
+    if (results == null) {
       logger.error("Failed to execute show devices {} in group: {}.", plan, group);
+      return;
+    }
+
+    logger.debug("Fetched remote devices {} schemas of {} from {}", results.size(), plan.getPath(),
+        group);
+    for (String path : results) {
+      try {
+        resultSet.add(new PartialPath(path));
+      } catch (IllegalPathException e) {
+        logger.error("Failed to execute show devices {} in group: {}.", plan, group);
+      }
     }
   }
 

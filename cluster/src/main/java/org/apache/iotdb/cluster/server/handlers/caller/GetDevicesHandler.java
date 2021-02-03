@@ -26,6 +26,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("common-java:DuplicatedBlocks")
 public class GetDevicesHandler implements AsyncMethodCallback<Set<String>> {
 
   private static final Logger logger = LoggerFactory.getLogger(GetDevicesHandler.class);
