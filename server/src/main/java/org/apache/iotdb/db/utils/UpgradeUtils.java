@@ -164,30 +164,6 @@ public class UpgradeUtils {
             upgradeRecoverMap.put(oldFileName, 1);
           }
         }
-        for (String key : upgradeRecoverMap.keySet()) {
-          if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.BEGIN_UPGRADE_FILE
-              .getCheckStatusCode()) {
-            // delete generated TsFiles and partition directories
-            File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
-                .getParentFile();
-            File[] partitionDirs = upgradeDir.listFiles();
-            if (partitionDirs == null) {
-              return;
-            }
-            for (File partitionDir : partitionDirs) {
-              if (partitionDir.isDirectory()) {
-                File[] generatedFiles = partitionDir.listFiles();
-                for (File generatedFile : generatedFiles) {
-                  if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
-                      .getFile(key).getName())) {
-                    Files.delete(generatedFile.toPath());
-                    Files.deleteIfExists(new File(generatedFile + ModificationFile.FILE_SUFFIX).toPath());
-                  }
-                }
-              }
-            }
-          }
-        }
       } catch (IOException e) {
         logger.error("meet error when recover upgrade process, file path:{}",
             UpgradeLog.getUpgradeLogPath(), e);
