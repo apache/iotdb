@@ -21,6 +21,7 @@ package org.apache.iotdb.db.tools.upgrade;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -327,9 +328,12 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
           File newFile = FSFactoryProducer.getFSFactory().getFile(partitionDir 
               + File.separator + oldTsFile.getName());
           try {
+            if (newFile.exists()) {
+              logger.debug("delete uncomplated file {}", newFile);
+              Files.delete(newFile.toPath());
+            }
             if (!newFile.createNewFile()) {
-              logger.error("The TsFile {} has been created ", newFile);
-              return null;
+              logger.error("Create new TsFile {} failed because it exists", newFile);
             }
             TsFileIOWriter writer = new TsFileIOWriter(newFile);
             if (oldModification != null) {
@@ -337,7 +341,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             }
             return writer;
           } catch (IOException e) {
-            logger.error("Create new TsFile {} failed ", newFile);
+            logger.error("Create new TsFile {} failed ", newFile, e);
             return null;
           }
         }
