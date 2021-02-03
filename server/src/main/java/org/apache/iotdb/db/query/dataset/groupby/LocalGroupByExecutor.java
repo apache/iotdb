@@ -177,9 +177,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     }
 
     timeRange.set(curStartTime, curEndTime - 1);
-    /*if (calcFromCacheData(curStartTime, curEndTime)) {
+    if (calcFromCacheData(curStartTime, curEndTime)) {
       return results;
-    }*/
+    }
 
     // read page data firstly
     if (readAndCalcFromPage(curStartTime, curEndTime)) {
