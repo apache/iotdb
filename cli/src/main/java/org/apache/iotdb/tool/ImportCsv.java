@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -96,6 +97,7 @@ public class ImportCsv extends AbstractCsvTool {
   /**
    * Data from csv To tsfile.
    */
+  @SuppressWarnings("squid:S1135")
   private static void loadDataFromCSV(File file) {
     int fileLine;
     try {
@@ -105,8 +107,8 @@ public class ImportCsv extends AbstractCsvTool {
       return;
     }
     System.out.println("Start to import data from: " + file.getName());
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
-        ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();
       String[] cols = splitCsvLine(header);
@@ -334,7 +336,7 @@ public class ImportCsv extends AbstractCsvTool {
 
   private static int getFileLineCount(File file) throws IOException {
     int line;
-    try (LineNumberReader count = new LineNumberReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+    try (LineNumberReader count = new LineNumberReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
       while (count.skip(Long.MAX_VALUE) > 0) {
         // Loop just in case the file is > Long.MAX_VALUE or skip() decides to not read the entire file
       }
