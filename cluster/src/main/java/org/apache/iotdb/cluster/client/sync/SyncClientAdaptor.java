@@ -49,6 +49,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GetDevicesHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
@@ -59,6 +60,7 @@ import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -347,6 +349,26 @@ public class SyncClientAdaptor {
 
     client.getAllDevices(header, pathsToQuery, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
+  }
+
+  public static Set<String> getDevices(AsyncDataClient client, Node header, ShowDevicesPlan plan)
+      throws InterruptedException, TException, IOException {
+    GetDevicesHandler handler = new GetDevicesHandler();
+    AtomicReference<Set<String>> response = new AtomicReference<>(null);
+    handler.setResponse(response);
+    handler.setContact(client.getNode());
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+        handler);
+    synchronized (response) {
+      if (response.get() == null) {
+        response.wait(RaftServer.getReadOperationTimeoutMS());
+      }
+    }
+    return response.get();
   }
 
   public static Long getGroupByExecutor(AsyncDataClient client, GroupByRequest request)

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

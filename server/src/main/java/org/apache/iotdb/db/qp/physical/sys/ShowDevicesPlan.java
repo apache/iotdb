@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 
 public class ShowDevicesPlan extends ShowPlan {
+
+  public ShowDevicesPlan() {
+    super(ShowContentType.DEVICES);
+  }
 
   public ShowDevicesPlan(PartialPath path) {
     super(ShowContentType.DEVICES, path);
@@ -29,6 +37,23 @@ public class ShowDevicesPlan extends ShowPlan {
   public ShowDevicesPlan(PartialPath path, int limit, int offset,
       int fetchSize) {
     super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_DEVICES.ordinal());
+    putString(outputStream, path.getFullPath());
+    outputStream.writeInt(limit);
+    outputStream.writeInt(offset);
+    outputStream.writeLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+    path = new PartialPath(readString(buffer));
+    limit = buffer.getInt();
+    offset = buffer.getInt();
+    this.index = buffer.getLong();
   }
 }
 

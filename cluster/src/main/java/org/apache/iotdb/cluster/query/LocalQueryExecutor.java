@@ -26,6 +26,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -51,6 +52,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -93,7 +95,7 @@ public class LocalQueryExecutor {
     this.name = dataGroupMember.getName();
     this.queryManager = dataGroupMember.getQueryManager();
   }
-  
+
   private CMManager getCMManager() {
     return ((CMManager) IoTDB.metaManager);
   }
@@ -182,7 +184,7 @@ public class LocalQueryExecutor {
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequester(),
-        request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
+            request.getQueryId(), request.getFetchSize(), request.getDeduplicatedPathNum());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
     IBatchReader batchReader = readerFactory.getSeriesBatchReader(path, deviceMeasurements,
@@ -350,6 +352,18 @@ public class LocalQueryExecutor {
     return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
+  public Set<String> getDevices(ByteBuffer planBuffer)
+      throws CheckConsistencyException, IOException, MetadataException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    ShowDevicesPlan plan = (ShowDevicesPlan) PhysicalPlan.Factory.create(planBuffer);
+    Set<PartialPath> partialPaths = getCMManager().getLocalDevices(plan);
+    Set<String> results = new HashSet<>(partialPaths.size());
+    for (PartialPath path : partialPaths) {
+      results.add(path.getFullPath());
+    }
+    return results;
+  }
+
   /**
    * Execute aggregations over the given path and return the results to the requester.
    *
@@ -424,15 +438,18 @@ public class LocalQueryExecutor {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
     }
     List<Integer> nodeSlots =
-        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable()).getNodeSlots(
-            dataGroupMember.getHeader());
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getNodeSlots(
+                dataGroupMember.getHeader());
     try {
       if (ascending) {
-        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-            dataType, results, null, new SlotTsFileFilter(nodeSlots));
+        AggregationExecutor
+            .aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
+                dataType, results, null, new SlotTsFileFilter(nodeSlots));
       } else {
-        AggregationExecutor.aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
-            dataType, null, results, new SlotTsFileFilter(nodeSlots));
+        AggregationExecutor
+            .aggregateOneSeries(new PartialPath(path), allSensors, context, timeFilter,
+                dataType, null, results, new SlotTsFileFilter(nodeSlots));
       }
     } catch (IllegalPathException e) {
       //ignore
@@ -489,10 +506,12 @@ public class LocalQueryExecutor {
     }
 
     ClusterQueryUtils.checkPathExistence(path);
-    List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+    List<Integer> nodeSlots = ((SlotPartitionTable) dataGroupMember.getMetaGroupMember()
+        .getPartitionTable())
         .getNodeSlots(dataGroupMember.getHeader());
     LocalGroupByExecutor executor = new LocalGroupByExecutor(path,
-        deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
+        deviceMeasurements, dataType, context, timeFilter, new SlotTsFileFilter(nodeSlots),
+        ascending);
     for (Integer aggregationType : aggregationTypes) {
       executor.addAggregateResult(AggregateResultFactory
           .getAggrResultByType(AggregationType.values()[aggregationType], dataType, ascending));

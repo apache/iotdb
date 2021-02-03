@@ -1027,8 +1027,8 @@ public class PlanExecutor implements IPlanExecutor {
       throw new PathNotExistException(failedPaths);
     } else {
       throw new StorageEngineException(
-          INSERT_MEASUREMENTS_FAILED_MESSAGE + plan.getFailedMeasurements() 
-          + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : "" ));
+          INSERT_MEASUREMENTS_FAILED_MESSAGE + plan.getFailedMeasurements()
+              + (!exceptions.isEmpty() ? (" caused by " + exceptions.get(0).getMessage()) : ""));
     }
   }
 
@@ -1083,7 +1083,7 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (notExistedPaths != null && !failedMeasurements.isEmpty()) {
         throw new StorageEngineException(
             "failed to insert points " + failedMeasurements
-            + (exception != null ? (" caused by " + exception.getMessage()) : "" ));
+                + (exception != null ? (" caused by " + exception.getMessage()) : ""));
       }
 
     } catch (StorageEngineException | MetadataException e) {
