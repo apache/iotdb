@@ -187,7 +187,7 @@ public class Session implements IInsertSession {
 
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
-    defaultSessionConnection = constructSessionConnection(defaultEndPoint, zoneId);
+    defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
     metaSessionConnection = defaultSessionConnection;
     isClosed = false;
     if (enableCacheLeader) {
@@ -214,10 +214,10 @@ public class Session implements IInsertSession {
     }
   }
 
-  public SessionConnection constructSessionConnection(EndPoint endpoint, ZoneId zoneId)
+  public SessionConnection constructSessionConnection(Session session, EndPoint endpoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     TTransport transport = createTransport(endpoint);
-    return new SessionConnection(this, transport, endpoint, zoneId);
+    return new SessionConnection(session, transport, endpoint, zoneId);
   }
 
   private TTransport createTransport(EndPoint endpoint) {
@@ -461,7 +461,7 @@ public class Session implements IInsertSession {
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(e.getEndPoint(), k -> {
             try {
-              return constructSessionConnection(e.getEndPoint(), zoneId);
+              return constructSessionConnection(this, e.getEndPoint(), zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
@@ -481,7 +481,7 @@ public class Session implements IInsertSession {
       SessionConnection connection = endPointToSessionConnection
           .computeIfAbsent(endpoint, k -> {
             try {
-              return constructSessionConnection(endpoint, zoneId);
+              return constructSessionConnection(this, endpoint, zoneId);
             } catch (IoTDBConnectionException ex) {
               tmp.set(ex);
               return null;
