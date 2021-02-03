@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -172,6 +173,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       .getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
   private static final int DEFAULT_FETCH_SIZE = 10000;
+  private static final long MS_TO_MONTH = 30 * 86400_000L;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final boolean enableMetric = config.isEnableMetricService();
@@ -555,11 +557,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
 
       if (plan instanceof GroupByTimePlan) {
-        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) plan;
-        // the actual row number of group by query should be calculated from startTime, endTime and interval.
-        fetchSize = Math.min(
-            (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
-                .getInterval()), fetchSize);
+        fetchSize = Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) plan), fetchSize);
       }
 
       // get deduplicated path num
@@ -664,6 +662,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
                 .getInstance().getUsedMemoryProportion());
       }
     }
+  }
+
+  /*
+  calculate fetch size for group by time plan
+   */
+  private int getFetchSizeForGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
+    int rows =  (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
+        .getInterval());
+    // rows gets 0 is caused by: the end time - the start time < the time interval.
+    if (rows == 0 && groupByTimePlan.isIntervalByMonth()) {
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTimeInMillis(groupByTimePlan.getStartTime());
+      calendar.add(Calendar.MONTH, (int) (groupByTimePlan.getInterval() / MS_TO_MONTH));
+      rows = calendar.getTimeInMillis() <= groupByTimePlan.getEndTime() ? 1 : 0;
+    }
+    return rows;
   }
 
   private TSExecuteStatementResp getListDataSetHeaders(QueryDataSet dataSet) {
