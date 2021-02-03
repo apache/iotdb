@@ -51,9 +51,11 @@ public class UpgradeTask extends WrappedRunnable {
       String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
       List<TsFileResource> upgradedResources;
       if (!UpgradeUtils.isUpgradedFileGenerated(oldTsfilePath)) {
+        logger.info("generate upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = generateUpgradedFiles();
       }
       else {
+        logger.info("find upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = findUpgradedFiles();
       }
       upgradeResource.writeLock();
@@ -96,6 +98,9 @@ public class UpgradeTask extends WrappedRunnable {
   private List<TsFileResource> findUpgradedFiles() throws IOException {
     upgradeResource.readLock();
     List<TsFileResource> upgradedResources = new ArrayList<>();
+    String oldTsfilePath = upgradeResource.getTsFile().getAbsolutePath();
+    UpgradeLog.writeUpgradeLogFile(
+        oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
       File upgradeFolder = upgradeResource.getTsFile().getParentFile();
       for (File tempPartitionDir : upgradeFolder.listFiles()) {
@@ -108,6 +113,8 @@ public class UpgradeTask extends WrappedRunnable {
           upgradedResources.add(resource);
         }
       }
+      UpgradeLog.writeUpgradeLogFile(
+          oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
       upgradeResource.readUnlock();
     }
