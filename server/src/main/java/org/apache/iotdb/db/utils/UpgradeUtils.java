@@ -144,6 +144,10 @@ public class UpgradeUtils {
         .getCheckStatusCode();
   }
 
+  public static void clearUpgradeRecoverMap() {
+    upgradeRecoverMap = null;
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
