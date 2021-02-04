@@ -59,10 +59,7 @@ public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL = "Fail to reconnect to server. Please check server status";
-  private String username;
-  private String password;
-  private int fetchSize;
-  private boolean enableRPCCompression;
+  private Session session;
   private TTransport transport;
   private TSIService.Iface client;
   private long sessionId;
@@ -74,26 +71,27 @@ public class SessionConnection {
   public SessionConnection() {
   }
 
-  public SessionConnection(Session session, TTransport transport, EndPoint endPoint, ZoneId zoneId)
+  public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
-    this.username = session.username;
-    this.password = session.password;
-    this.fetchSize = session.fetchSize;
-    this.enableRPCCompression = session.enableRPCCompression;
-    this.transport = transport;
+    this.session = session;
     this.endPoint = endPoint;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
+    RpcTransportFactory.setInitialBufferCapacity(session.initialBufferCapacity);
+    RpcTransportFactory.setMaxLength(session.maxFrameSize);
+    transport = RpcTransportFactory.INSTANCE.getTransport(
+        new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
+
     try {
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
 
-    if (enableRPCCompression) {
+    if (session.enableRPCCompression) {
       client = new TSIService.Client(new TCompactProtocol(transport));
     } else {
       client = new TSIService.Client(new TBinaryProtocol(transport));
@@ -101,8 +99,8 @@ public class SessionConnection {
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
-    openReq.setUsername(username);
-    openReq.setPassword(password);
+    openReq.setUsername(session.username);
+    openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
 
     try {
@@ -265,7 +263,7 @@ public class SessionConnection {
   protected SessionDataSet executeQueryStatement(String sql, long timeout)
       throws StatementExecutionException, IoTDBConnectionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
-    execReq.setFetchSize(fetchSize);
+    execReq.setFetchSize(session.fetchSize);
     execReq.setTimeout(timeout);
     TSExecuteStatementResp execResp;
     try {
@@ -319,7 +317,7 @@ public class SessionConnection {
       throws StatementExecutionException, IoTDBConnectionException {
     TSRawDataQueryReq execReq = new TSRawDataQueryReq(sessionId, paths, startTime, endTime,
         statementId);
-    execReq.setFetchSize(fetchSize);
+    execReq.setFetchSize(session.fetchSize);
     TSExecuteStatementResp execResp;
     try {
       execResp = client.executeRawDataQuery(execReq);

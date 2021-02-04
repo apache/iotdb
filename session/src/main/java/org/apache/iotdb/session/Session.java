@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -60,9 +59,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,17 +210,11 @@ public class Session implements IInsertSession {
     }
   }
 
-  public SessionConnection constructSessionConnection(Session session, EndPoint endpoint, ZoneId zoneId)
-      throws IoTDBConnectionException {
-    TTransport transport = createTransport(endpoint);
-    return new SessionConnection(session, transport, endpoint, zoneId);
-  }
 
-  private TTransport createTransport(EndPoint endpoint) {
-    RpcTransportFactory.setInitialBufferCapacity(initialBufferCapacity);
-    RpcTransportFactory.setMaxLength(maxFrameSize);
-    return RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(endpoint.getIp(), endpoint.getPort(), connectionTimeoutInMs));
+  public SessionConnection constructSessionConnection(Session session, EndPoint endpoint,
+      ZoneId zoneId)
+      throws IoTDBConnectionException {
+    return new SessionConnection(session, endpoint, zoneId);
   }
 
   public synchronized String getTimeZone() {
