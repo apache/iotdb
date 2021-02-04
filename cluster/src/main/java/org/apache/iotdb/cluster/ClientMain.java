@@ -329,7 +329,7 @@ public class ClientMain {
     }
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
-        resp.getDataTypeList(), resp.columnNameIndexMap, queryId, client, sessionId,
+        resp.getDataTypeList(), resp.columnNameIndexMap, queryId, statementId, client, sessionId,
         resp.queryDataSet, false);
 
     while (dataSet.hasNext()) {

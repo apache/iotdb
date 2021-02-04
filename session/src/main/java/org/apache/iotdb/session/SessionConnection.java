@@ -286,7 +286,7 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.getQueryId(), statementId, client, sessionId, execResp.queryDataSet,
         execResp.isIgnoreTimeStamp(), timeout);
   }
 
@@ -338,7 +338,7 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.getQueryId(), statementId, client, sessionId, execResp.queryDataSet,
         execResp.isIgnoreTimeStamp());
   }
 
