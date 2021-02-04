@@ -61,6 +61,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
    * @exception  IOException  if an I/O error occurs.
    */
   @Override
+  @SuppressWarnings("squid:S3551")
   public void writeTo(OutputStream out) throws IOException {
     out.write(buf, 0, count);
   }
@@ -76,6 +77,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
    * reusing the already allocated buffer space.
    */
   @Override
+  @SuppressWarnings("squid:S3551")
   public void reset() {
     count = 0;
   }
