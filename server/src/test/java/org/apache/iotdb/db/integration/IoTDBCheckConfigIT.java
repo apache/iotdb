@@ -132,7 +132,6 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.reactiveDaemon();
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-      assertTrue(true);
     } catch (Throwable t) {
       assertTrue(false);
     } finally {
