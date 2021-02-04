@@ -64,6 +64,7 @@ public class IoTDBRpcDataSet {
 
   public long sessionId;
   public long queryId;
+  public long statementId;
   public boolean ignoreTimeStamp;
 
   public int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
@@ -76,9 +77,10 @@ public class IoTDBRpcDataSet {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      long queryId, long statementId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       int fetchSize) {
     this.sessionId = sessionId;
+    this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
     this.queryId = queryId;
@@ -170,6 +172,7 @@ public class IoTDBRpcDataSet {
       try {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
         closeReq.setQueryId(queryId);
+        closeReq.setStatementId(statementId);
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
