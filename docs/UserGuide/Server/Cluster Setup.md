@@ -76,6 +76,55 @@ When both exist, the specified configuration item will overwrite the configurati
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
 ```
 
+## One-click build script of n nodes and n-1 replicas pseudo-distributed.
+```
+#!/bin/bash  
+
+#config the number of node
+NODE_NUM=3
+
+export CLUSTER_JAR_PATH=./
+#CLUSTER_SNAPSHOT_NAME is something like cluster-0.11.0-SNAPSHOT
+CLUSTER_SNAPSHOT_NAME=$(find $CLUSTER_JAR_PATH -name "cluster-*-SNAPSHOT" | sed 's#.*/##')
+
+#config different types of port
+RPC_PORT=6667
+JMX_PORT=31999
+internal_meta_port=9005
+internal_data_port=40012
+cluster_rpc_port=55561
+
+for((i=1,rpc_port=$RPC_PORT,jmx_port=$JMX_PORT;i<=$NODE_NUM;i++,rpc_port++,jmx_port++));  
+do   
+temp_name="$CLUSTER_SNAPSHOT_NAME"$i
+#first step: copy IoTDB cluster package
+cp -rf $CLUSTER_JAR_PATH/$CLUSTER_SNAPSHOT_NAME $CLUSTER_JAR_PATH/$temp_name
+
+#second step: respectively modify the rpc and jmx ports
+sed -i -e "s/${RPC_PORT}/${rpc_port}/g" $CLUSTER_JAR_PATH/$temp_name/conf/iotdb-engine.properties
+sed -i -e "s/${JMX_PORT}/${jmx_port}/g" $CLUSTER_JAR_PATH/$temp_name/conf/iotdb-env.sh
+done  
+
+#third step: change permissions
+chmod -R 777 $CLUSTER_JAR_PATH/
+
+#fourth step: start the nodes
+for((i=1;i<=$NODE_NUM;i++));
+do 
+temp_name="$CLUSTER_SNAPSHOT_NAME"$i
+
+if [ $i -eq 1 ];then
+nohup $CLUSTER_JAR_PATH/$temp_name/sbin/start-node.sh >/dev/null 2>&1 &
+continue
+fi
+
+nohup $CLUSTER_JAR_PATH/$temp_name/sbin/start-node.sh -internal_meta_port $internal_meta_port -internal_data_port $internal_data_port -cluster_rpc_port $cluster_rpc_port >/dev/null 2>&1 &
+((internal_meta_port=$internal_meta_port+2))
+((internal_data_port=$internal_data_port+2))
+((cluster_rpc_port=$cluster_rpc_port+1))
+done
+```
+
 ## OverWrite the configurations of Stand-alone node
 
 Some configurations in the iotdb-engines.properties will be ignored
