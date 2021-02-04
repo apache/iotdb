@@ -69,6 +69,55 @@ or
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT1\sbin\start-node.bat  -internal_meta_port 9005 -internal_data_port 40012 -cluster_rpc_port 55561
 > nohup cluster\target\cluster-0.11.0-SNAPSHOT2\sbin\start-node.bat  -internal_meta_port 9007 -internal_data_port 40014 -cluster_rpc_port 55562
 ```
+## n节点n-1副本伪分布式一键搭建脚本
+```
+#!/bin/bash  
+
+#配置节点个数
+NODE_NUM=3
+
+export CLUSTER_JAR_PATH=./
+#表示如 cluster-0.11.0-SNAPSHOT 的字符串变量
+CLUSTER_SNAPSHOT_NAME=$(find $CLUSTER_JAR_PATH -name "cluster-*-SNAPSHOT" | sed 's#.*/##')
+
+#端口配置
+RPC_PORT=6667
+JMX_PORT=31999
+internal_meta_port=9005
+internal_data_port=40012
+cluster_rpc_port=55561
+
+for((i=1,rpc_port=$RPC_PORT,jmx_port=$JMX_PORT;i<=$NODE_NUM;i++,rpc_port++,jmx_port++));  
+do   
+temp_name="$CLUSTER_SNAPSHOT_NAME"$i
+#第一步（复制IoTDB集群包）
+cp -rf $CLUSTER_JAR_PATH/$CLUSTER_SNAPSHOT_NAME $CLUSTER_JAR_PATH/$temp_name
+
+#第二步（分别修改rpc与jmx端口）
+sed -i -e "s/${RPC_PORT}/${rpc_port}/g" $CLUSTER_JAR_PATH/$temp_name/conf/iotdb-engine.properties
+sed -i -e "s/${JMX_PORT}/${jmx_port}/g" $CLUSTER_JAR_PATH/$temp_name/conf/iotdb-env.sh
+done  
+
+#第三步（更改权限）
+chmod -R 777 $CLUSTER_JAR_PATH/
+
+#第四步（启动节点）
+for((i=1;i<=$NODE_NUM;i++));
+do 
+temp_name="$CLUSTER_SNAPSHOT_NAME"$i
+
+if [ $i -eq 1 ];then
+nohup $CLUSTER_JAR_PATH/$temp_name/sbin/start-node.sh >/dev/null 2>&1 &
+continue
+fi
+
+nohup $CLUSTER_JAR_PATH/$temp_name/sbin/start-node.sh -internal_meta_port $internal_meta_port -internal_data_port $internal_data_port -cluster_rpc_port $cluster_rpc_port >/dev/null 2>&1 &
+((internal_meta_port=$internal_meta_port+2))
+((internal_data_port=$internal_data_port+2))
+((cluster_rpc_port=$cluster_rpc_port+1))
+done
+```
+
 
 ## 被覆盖的单机版选项
 
