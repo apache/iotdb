@@ -43,10 +43,10 @@ public class SessionDataSet {
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      long queryId, long statementId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
-        ignoreTimeStamp, queryId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE);
+        ignoreTimeStamp, queryId, statementId, client, sessionId, queryDataSet, Config.DEFAULT_FETCH_SIZE);
   }
 
   public int getFetchSize() {

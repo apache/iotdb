@@ -329,8 +329,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     try {
-      // statement close
-      if (req.isSetStatementId()) {
+
+      // ResultSet close
+      if (req.isSetStatementId() && req.isSetQueryId()) {
+        releaseQueryResource(req.queryId);
+        // clear the statementId2QueryId map
+        if (statementId2QueryId.containsKey(req.getStatementId())) {
+          statementId2QueryId.get(req.getStatementId()).remove(req.getQueryId());
+        }
+      } else {
+        // statement close
         long stmtId = req.getStatementId();
         Set<Long> queryIdSet = statementId2QueryId.remove(stmtId);
         if (queryIdSet != null) {
@@ -338,9 +346,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             releaseQueryResource(queryId);
           }
         }
-      } else {
-        // ResultSet close
-        releaseQueryResource(req.queryId);
+        // clear the sessionId2StatementId map
+        if (sessionId2StatementId.containsKey(req.getSessionId())) {
+          sessionId2StatementId.get(req.getSessionId()).remove(req.getStatementId());
+        }
       }
 
     } catch (Exception e) {
