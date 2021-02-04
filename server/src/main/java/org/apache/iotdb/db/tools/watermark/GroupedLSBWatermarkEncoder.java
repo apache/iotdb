@@ -61,6 +61,7 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return resultInteger.mod(new BigInteger(base.toString())).intValue();
   }
 
+  @Override
   public boolean needEncode(long timestamp) {
     return hashMod(String.format("%s%d", secretKey, timestamp), markRate) == 0;
   }
@@ -84,28 +85,33 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
     return bitString.charAt(bitIndex) == '1';
   }
 
+  @Override
   public int encodeInt(int value, long timestamp) {
     int targetBitPosition = getBitPosition(timestamp);
     boolean targetBitValue = getBitValue(timestamp);
     return EncodingUtils.setBit(value, targetBitPosition, targetBitValue);
   }
 
+  @Override
   public long encodeLong(long value, long timestamp) {
     int targetBitPosition = getBitPosition(timestamp);
     boolean targetBitValue = getBitValue(timestamp);
     return EncodingUtils.setBit(value, targetBitPosition, targetBitValue);
   }
 
+  @Override
   public float encodeFloat(float value, long timestamp) {
     int intBits = Float.floatToIntBits(value);
     return Float.intBitsToFloat(encodeInt(intBits, timestamp));
   }
 
+  @Override
   public double encodeDouble(double value, long timestamp) {
     long longBits = Double.doubleToLongBits(value);
     return Double.longBitsToDouble(encodeLong(longBits, timestamp));
   }
 
+  @Override
   public RowRecord encodeRecord(RowRecord record) {
     long timestamp = record.getTimestamp();
     if (!needEncode(timestamp)) {

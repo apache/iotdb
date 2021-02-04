@@ -56,6 +56,7 @@ public class IoTDBDefaultThreadExceptionHandlerTest {
 
   class TestThread extends Thread {
 
+    @Override
     public void run() {
       throw new RuntimeException(message);
     }

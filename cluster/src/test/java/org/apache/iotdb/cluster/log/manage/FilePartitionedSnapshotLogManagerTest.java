@@ -47,6 +47,7 @@ import org.junit.Test;
 
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
+  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();

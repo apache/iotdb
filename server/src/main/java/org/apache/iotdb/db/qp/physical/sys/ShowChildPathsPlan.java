@@ -32,6 +32,7 @@ public class ShowChildPathsPlan extends ShowPlan {
     canBeSplit = false;
   }
 
+  @Override
   public PartialPath getPath() {
     return this.prefixPath;
   }

@@ -35,6 +35,7 @@ public class SerializableIntTVListTest extends SerializableTVListTest {
   private List<Integer> originalList;
   private SerializableIntTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -43,6 +44,7 @@ public class SerializableIntTVListTest extends SerializableTVListTest {
         .newSerializableTVList(TSDataType.INT32, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

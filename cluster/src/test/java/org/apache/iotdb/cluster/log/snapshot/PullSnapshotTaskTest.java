@@ -45,7 +45,9 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
@@ -61,22 +63,29 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PullSnapshotTaskTest extends DataSnapshotTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(PullSnapshotTaskTest.class);
   private DataGroupMember sourceMember;
   private DataGroupMember targetMember;
   private List<TimeseriesSchema> timeseriesSchemas;
   private List<TsFileResource> tsFileResources;
   private boolean hintRegistered;
   private int requiredRetries;
+  private CompactionStrategy defaultCompaction = IoTDBDescriptor.getInstance().getConfig()
+      .getCompactionStrategy();
 
+  @Override
   @Before
   public void setUp() throws MetadataException, StartupException {
+    IoTDBDescriptor.getInstance().getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     super.setUp();
     hintRegistered = false;
     sourceMember = new TestDataGroupMember() {
@@ -263,7 +272,8 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor(partitionGroup, slots,
         requiresReadOnly);
 
-    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember, FileSnapshot.Factory.INSTANCE, null);
+    PullSnapshotTask task = new PullSnapshotTask(descriptor, sourceMember,
+        FileSnapshot.Factory.INSTANCE, null);
     task.call();
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
@@ -275,6 +285,11 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
+      if (i != loadedFiles.get(i).getMaxPlanIndex()) {
+        logger.error("error occurred, i={}, minPlanIndex={}, maxPlanIndex={}, tsFileName={}", i,
+            loadedFiles.get(i).getMinPlanIndex(), loadedFiles.get(i).getMaxPlanIndex(),
+            loadedFiles.get(i).getTsFile().getAbsolutePath());
+      }
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
@@ -300,5 +315,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
   }
 }
