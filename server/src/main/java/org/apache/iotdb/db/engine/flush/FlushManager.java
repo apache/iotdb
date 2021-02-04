@@ -136,10 +136,8 @@ public class FlushManager implements FlushManagerMBean, IService {
       if (LOGGER.isDebugEnabled()) {
         if (tsFileProcessor.isManagedByFlushManager()) {
           LOGGER.debug(
-              "{} is already in the flushPool, the first one: {}, the given processor flushMemtable number = {}",
+              "{} is already in the flushPool, the given processor flushMemtable number = {}",
               tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath(),
-              tsFileProcessorQueue.isEmpty() ? "empty now"
-                  : tsFileProcessorQueue.getFirst().getStorageGroupName(),
               tsFileProcessor.getFlushingMemTableSize());
         } else {
           LOGGER.debug("No flushing memetable to do, register TsProcessor {} failed.",
