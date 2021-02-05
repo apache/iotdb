@@ -79,7 +79,7 @@ public class PublicBAOS extends ByteArrayOutputStream {
   }
 
   @Override
-  public int size() {
+  public synchronized int size() {
     return count;
   }
 }
