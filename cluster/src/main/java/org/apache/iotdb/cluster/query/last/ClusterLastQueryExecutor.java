@@ -246,33 +246,25 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       } catch (IOException e) {
         return null;
       }
-      buffer =
-          SyncClientAdaptor.last(
-              asyncDataClient,
-              seriesPaths,
-              dataTypeOrdinals,
-              context,
+      buffer = SyncClientAdaptor
+          .last(asyncDataClient, seriesPaths, dataTypeOrdinals, context,
               queryPlan.getDeviceToMeasurements(),
               group.getHeader());
       return buffer;
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
-      SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      ByteBuffer result =
-          syncDataClient.last(
-              new LastQueryRequest(
-                  PartialPath.toStringList(seriesPaths),
-                  dataTypeOrdinals,
-                  context.getQueryId(),
-                  queryPlan.getDeviceToMeasurements(),
-                  group.getHeader(),
-                  syncDataClient.getNode()));
-      ClientUtils.putBackSyncClient(syncDataClient);
-      return result;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient = metaGroupMember
+            .getClientProvider().getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+        return syncDataClient
+            .last(new LastQueryRequest(PartialPath.toStringList(seriesPaths), dataTypeOrdinals,
+                context.getQueryId(), queryPlan.getDeviceToMeasurements(), group.getHeader(),
+                syncDataClient.getNode()));
+      } finally {
+        ClientUtils.putBackSyncClient(syncDataClient);
+      }
     }
   }
 }

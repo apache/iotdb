@@ -249,12 +249,8 @@ public class ClusterPreviousFill extends PreviousFill {
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       byteBuffer = syncDataClient.previousFill(request);
     } catch (Exception e) {
-      logger.error(
-          "{}: Cannot perform previous fill of {} to {}",
-          metaGroupMember.getName(),
-          arguments.getPath(),
-          node,
-          e);
+      logger.error("{}: Cannot perform previous fill of {} to {}", metaGroupMember.getName(),
+          arguments.getPath(), node, e);
     } finally {
       ClientUtils.putBackSyncClient(syncDataClient);
     }

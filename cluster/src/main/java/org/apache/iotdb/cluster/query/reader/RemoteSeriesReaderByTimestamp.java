@@ -89,20 +89,23 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   }
 
   private ByteBuffer fetchResultSync(long timestamp) throws IOException {
+    SyncDataClient curSyncClient = null;
     try {
-      SyncDataClient curSyncClient =
-          sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
-      ByteBuffer buffer =
-          curSyncClient.fetchSingleSeriesByTimestamp(
-              sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp);
-      curSyncClient.putBack();
-      return buffer;
+      curSyncClient = sourceInfo
+          .getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      return curSyncClient
+          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+              sourceInfo.getReaderId(), timestamp);
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(true, timestamp)) {
         return null;
       }
       return fetchResultSync(timestamp);
+    } finally {
+      if (curSyncClient != null) {
+        curSyncClient.putBack();
+      }
     }
   }
 }
