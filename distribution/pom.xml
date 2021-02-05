@@ -134,19 +134,12 @@
             <version>${project.version}</version>
             <type>zip</type>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+            <classifier>${os.classifier}</classifier>
+        </dependency>
     </dependencies>
-    <profiles>
-        <profile>
-            <id>client-cpp</id>
-            <dependencies>
-                <dependency>
-                    <groupId>org.apache.iotdb</groupId>
-                    <artifactId>client-cpp</artifactId>
-                    <version>${project.version}</version>
-                    <type>pom</type>
-                    <classifier>${os.classifier}</classifier>
-                </dependency>
-            </dependencies>
-        </profile>
-    </profiles>
 </project>

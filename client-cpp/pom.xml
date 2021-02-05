@@ -40,7 +40,6 @@
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <cmake.build.type>Release</cmake.build.type>
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
-        <cpp.test.skip>false</cpp.test.skip>
     </properties>
     <modules>
         <module>../example/client-cpp-example</module>
@@ -101,12 +100,7 @@
             </properties>
         </profile>
         <profile>
-            <id>thrift-generation</id>
-            <activation>
-                <file>
-                    <exists>../thrift/src/main/thrift</exists>
-                </file>
-            </activation>
+            <id>compile-cpp</id>
             <build>
                 <plugins>
                     <!-- Build and do session integration test -->
@@ -295,10 +289,7 @@
             </build>
         </profile>
         <profile>
-            <id>cpp.test.skip</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
+            <id>cppTest</id>
             <build>
                 <plugins>
                     <plugin>
@@ -306,6 +297,25 @@
                         <artifactId>cmake-maven-plugin</artifactId>
                         <version>3.7.2-b1</version>
                         <executions>
+                            <!-- Generate Cmake build directory to compile testing program -->
+                            <execution>
+                                <id>cmake-generate-test</id>
+                                <phase>test-compile</phase>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <configuration>
+                                    <classifier>${os.classifier}</classifier>
+                                    <downloadBinaries>false</downloadBinaries>
+                                    <sourcePath>${project.build.directory}/build/test</sourcePath>
+                                    <targetPath>${project.build.directory}/build/test</targetPath>
+                                    <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
+                                    </options>
+                                </configuration>
+                            </execution>
                             <!-- Actually executes the testing compilation -->
                             <execution>
                                 <id>cmake-compile-test</id>
@@ -328,7 +338,6 @@
                                     <goal>test</goal>
                                 </goals>
                                 <configuration>
-                                    <skipTests>${cpp.test.skip}</skipTests>
                                     <buildDirectory>${project.build.directory}/build/test</buildDirectory>
                                     <downloadBinaries>false</downloadBinaries>
                                 </configuration>
@@ -348,7 +357,6 @@
                                     <goal>start</goal>
                                 </goals>
                                 <configuration>
-                                    <skip>${cpp.test.skip}</skip>
                                     <name>start-iotdb</name>
                                     <waitForInterrupt>false</waitForInterrupt>
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
@@ -367,26 +375,11 @@
                                 <goals>
                                     <goal>stop-all</goal>
                                 </goals>
-                                <configuration>
-                                    <skip>${cpp.test.skip}</skip>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-        <profile>
-            <id>skipCppTests</id>
-            <activation>
-                <property>
-                    <name>skipTests</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <properties>
-                <cpp.test.skip>true</cpp.test.skip>
-            </properties>
         </profile>
     </profiles>
 </project>

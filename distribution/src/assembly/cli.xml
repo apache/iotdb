@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-cli-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
@@ -37,16 +37,16 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>sbin</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>-->
-        <!--            <fileMode>0755</fileMode>-->
-        <!--        </fileSet>-->
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>tools</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>-->
-        <!--            <fileMode>0755</fileMode>-->
-        <!--        </fileSet>-->
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>

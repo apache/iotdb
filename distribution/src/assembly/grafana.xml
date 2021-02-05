@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-grafana-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
