@@ -92,6 +92,7 @@ public class SingleFileLogReader implements ILogReader {
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
       logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
+      logger.error("Successfully read index is {}", idx);
       fileCorrupted = true;
       return false;
     }
@@ -122,6 +123,7 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     close();
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
+    logger.info("WAL file: {} size is {}", logFile.getName(), logFile.length());
     this.filepath = logFile.getPath();
     idx = 0;
   }
