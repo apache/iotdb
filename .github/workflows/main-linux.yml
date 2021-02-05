@@ -19,7 +19,8 @@ on:
       - cluster_new
     paths-ignore:
       - 'docs/**'
-
+  workflow_dispatch: 
+    
 jobs:
   ubuntu:
     strategy:
@@ -57,9 +58,6 @@ jobs:
           -Pcode-coverage
       - name: SonarCloud Report
         if: ${{ success() &&  matrix.java == '11'}}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
         run: |
           mvn -B verify sonar:sonar \
           -Dsonar.organization=apache \
