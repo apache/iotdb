@@ -372,6 +372,27 @@ public class CMManager extends MManager {
     return super.getSeriesSchema(device, measurement);
   }
 
+  /**
+   * Check whether the path exists.
+   *
+   * @param path a full path or a prefix path
+   */
+  @Override
+  public boolean isPathExist(PartialPath path) {
+    boolean localExist = super.isPathExist(path);
+    if (localExist) {
+      return true;
+    }
+
+    // search the cache
+    cacheLock.readLock().lock();
+    try {
+      return mRemoteMetaCache.containsKey(path);
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+  }
+
   private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
@@ -396,6 +417,10 @@ public class CMManager extends MManager {
         // not happening
         return null;
       }
+    }
+
+    public synchronized boolean containsKey(PartialPath key) {
+      return cache.containsKey(key);
     }
   }
 
