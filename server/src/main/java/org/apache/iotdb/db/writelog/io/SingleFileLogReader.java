@@ -37,9 +37,8 @@ import org.slf4j.LoggerFactory;
  */
 public class SingleFileLogReader implements ILogReader {
 
-  private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
   public static final int LEAST_LOG_SIZE = 12; // size + checksum
-
+  private static final Logger logger = LoggerFactory.getLogger(SingleFileLogReader.class);
   private DataInputStream logStream;
   private String filepath;
 
@@ -91,8 +90,9 @@ public class SingleFileLogReader implements ILogReader {
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
-      logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
-      logger.error("Successfully read index is {}", idx);
+      logger.error(
+          "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
+          filepath, e);
       fileCorrupted = true;
       return false;
     }
@@ -101,11 +101,11 @@ public class SingleFileLogReader implements ILogReader {
 
   @Override
   public PhysicalPlan next() {
-    if (!hasNext()){
+    if (!hasNext()) {
       throw new NoSuchElementException();
     }
 
-    idx ++;
+    idx++;
     return batchLogReader.next();
   }
 
