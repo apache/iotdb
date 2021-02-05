@@ -85,10 +85,12 @@ public class MemTableFlushTask {
    */
   public void syncFlushMemTable()
       throws ExecutionException, InterruptedException {
-    LOGGER.info("The memTable size of SG {} is {}, the avg series points num in chunk is {} ",
+    LOGGER.info(
+        "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
         storageGroup,
         memTable.memSize(),
-        memTable.getTotalPointsNum() / memTable.getSeriesNumber());
+        memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
+        memTable.getSeriesNumber());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
