@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -158,7 +159,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       return fetchResultSync();
     } finally {
       if (curSyncClient != null) {
-        curSyncClient.putBack();
+        ClientUtils.putBackSyncClient(curSyncClient);
       }
     }
   }
