@@ -92,7 +92,7 @@ public class SingleFileLogReader implements ILogReader {
     } catch (Exception e) {
       logger.error(
           "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
-          filepath, e);
+          idx, filepath, e);
       fileCorrupted = true;
       return false;
     }
