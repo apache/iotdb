@@ -82,6 +82,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File getFile(String pathname) {
     try {
       return (File) constructorWithPathname.newInstance(pathname);
@@ -93,6 +94,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File getFile(String parent, String child) {
     try {
       return (File) constructorWithParentStringAndChild.newInstance(parent, child);
@@ -103,6 +105,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File getFile(File parent, String child) {
     try {
       return (File) constructorWithParentFileAndChild.newInstance(parent, child);
@@ -113,6 +116,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File getFile(URI uri) {
     try {
       return (File) constructorWithUri.newInstance(uri);
@@ -123,6 +127,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public BufferedReader getBufferedReader(String filePath) {
     try {
       return (BufferedReader) getBufferedReader
@@ -135,6 +140,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
       return (BufferedWriter) getBufferedWriter
@@ -147,6 +153,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public BufferedInputStream getBufferedInputStream(String filePath) {
     try {
       return (BufferedInputStream) getBufferedInputStream
@@ -160,6 +167,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public BufferedOutputStream getBufferedOutputStream(String filePath) {
     try {
       return (BufferedOutputStream) getBufferedOutputStream
@@ -173,6 +181,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public void moveFile(File srcFile, File destFile) {
     try {
       renameTo.invoke(constructorWithPathname.newInstance(srcFile.getAbsolutePath()), destFile);
@@ -183,6 +192,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
     try {
       return (File[]) listFilesBySuffix
@@ -195,6 +205,7 @@ public class HDFSFactory implements FSFactory {
     }
   }
 
+  @Override
   public File[] listFilesByPrefix(String fileFolder, String prefix) {
     try {
       return (File[]) listFilesByPrefix

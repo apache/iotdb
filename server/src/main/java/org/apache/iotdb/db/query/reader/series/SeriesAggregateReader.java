@@ -41,6 +41,7 @@ public class SeriesAggregateReader implements IAggregateReader {
         timeFilter, valueFilter, fileFilter, ascending);
   }
 
+  @Override
   public boolean isAscending() {
     return seriesReader.getOrderUtils().getAscending();
   }

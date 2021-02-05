@@ -175,7 +175,6 @@ public class PageReaderTest {
             new DeltaBinaryDecoder.LongDeltaDecoder(), null);
 
         int index = 0;
-        long startTimestamp = System.currentTimeMillis();
         BatchData data = pageReader.getAllSatisfiedPageData();
         Assert.assertNotNull(data);
 
@@ -185,10 +184,6 @@ public class PageReaderTest {
           data.next();
           index++;
         }
-        long endTimestamp = System.currentTimeMillis();
-        System.out
-            .println("TestName: [" + name + "]\n\tTSDataType: " + dataType + "\tRead-Count:" + count
-                + "\tTime-used:" + (endTimestamp - startTimestamp) + "ms");
         Assert.assertEquals(count, index);
       } catch (IOException e) {
         e.printStackTrace();

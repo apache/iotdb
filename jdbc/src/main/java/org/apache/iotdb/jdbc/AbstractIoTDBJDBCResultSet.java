@@ -33,6 +33,10 @@ import java.sql.*;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.thrift.TException;
 
 public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
@@ -47,8 +51,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       TSIService.Iface client,
       String sql, long queryId, long sessionId, long timeout)
       throws SQLException {
-    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
+    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex,
+        ignoreTimeStamp, queryId, ((IoTDBStatement) statement).getStmtId(), client, sessionId, null,
         statement.getFetchSize(), timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;

@@ -26,8 +26,6 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-tools</artifactId>
-    <groupId>org.apache.iotdb</groupId>
-    <version>0.12.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Compile Tools</name>
     <properties>
@@ -36,10 +34,10 @@
         <boost.version.underline>${boost.version.underline-short}_0</boost.version.underline>
         <cmake-version>3.17.3</cmake-version>
         <openssl.include.dir>-Dtrue1=true1</openssl.include.dir>
+        <bison.executable.dir>-Dtrue1=true1</bison.executable.dir>
         <cmake.build.type/>
     </properties>
     <modules>
-        <module>boost</module>
         <module>thrift</module>
     </modules>
     <profiles>
@@ -89,6 +87,7 @@
                 <gradlew.executable>./gradlew</gradlew.executable>
                 <openssl.include.default.path>/usr/local/opt/openssl/include</openssl.include.default.path>
                 <openssl.include.dir>-DCMAKE_CXX_FLAGS="-I${openssl.include.default.path}"</openssl.include.dir>
+                <bison.executable.dir>-DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison</bison.executable.dir>
             </properties>
         </profile>
         <profile>
@@ -115,6 +114,8 @@
                 <thrift.make.executable>make</thrift.make.executable>
                 <thrift.compiler.executable>thrift.exe</thrift.compiler.executable>
                 <gradlew.executable>gradlew.bat</gradlew.executable>
+                <boost.include.dir/>
+                <boost.library.dir/>
             </properties>
         </profile>
     </profiles>

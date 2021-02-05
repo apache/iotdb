@@ -353,6 +353,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     }
   }
   
+  @Override
   public void clearPageWriter() {
     pageWriter = null;
   }
@@ -425,7 +426,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);
 
-    long dataSize = writer.getPos() - dataOffset;
+    int dataSize = (int) (writer.getPos() - dataOffset);
     if (dataSize != pageBuffer.size()) {
       throw new IOException(
           "Bytes written is inconsistent with the size of data: " + dataSize + " !="

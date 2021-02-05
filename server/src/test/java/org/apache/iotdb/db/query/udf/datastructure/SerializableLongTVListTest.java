@@ -35,6 +35,7 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
   private List<Long> originalList;
   private SerializableLongTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -43,6 +44,7 @@ public class SerializableLongTVListTest extends SerializableTVListTest {
         .newSerializableTVList(TSDataType.INT64, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
