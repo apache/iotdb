@@ -298,6 +298,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -490,6 +492,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -563,6 +567,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
         null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -758,6 +764,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -809,6 +817,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -1014,25 +1024,35 @@ private void initWatermarkEncoder() {
 
   @Override
   public String getNumericFunctions() throws SQLException {
-    Statement statement =connection.createStatement();
-    StringBuilder str=new StringBuilder("");
-    ResultSet resultSet = statement.executeQuery("show functions");
-    List<String> listfunction= Arrays.asList("MAX_TIME","MIN_TIME","TIME_DIFFERENCE","NOW");
-    while (resultSet.next()){
-      if(listfunction.contains(resultSet.getString(1))){
-        continue;
+    ResultSet resultSet=null;
+    Statement statement=null;
+    String result="";
+    try {
+      statement =connection.createStatement();
+      StringBuilder str=new StringBuilder("");
+      resultSet = statement.executeQuery("show functions");
+      List<String> listfunction= Arrays.asList("MAX_TIME","MIN_TIME","TIME_DIFFERENCE","NOW");
+      while (resultSet.next()){
+        if(listfunction.contains(resultSet.getString(1))){
+          continue;
+        }
+        str.append(resultSet.getString(1)).append(",");
       }
-      str.append(resultSet.getString(1)).append(",");
-    }
-    String result=str.toString();
-    if(result.length()>0){
-      result=result.substring(0,result.length()-1);
+       result=str.toString();
+      if(result.length()>0){
+        result=result.substring(0,result.length()-1);
+      }
+    }catch (Exception e){
+      e.printStackTrace();
+    }finally {
+      colse(resultSet,statement);
     }
     return result;
   }
 
   @Override
   public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
+    Statement stmt=connection.createStatement();
     List<String> columnNameList=new ArrayList<String>();
     List<String> columnTypeList=new ArrayList<String>();
     Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
@@ -1067,11 +1087,13 @@ private void initWatermarkEncoder() {
     addToDataSet(bigproperties,dataSet);
     TSQueryDataSet tsdataset=null;
     try {
-      tsdataset=convertQueryDataSetByFetchSize(dataSet,connection.createStatement().getFetchSize(),getWatermarkEncoder());
+      tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(null,stmt);
     }
-    return new IoTDBJDBCResultSet(connection.createStatement(), columnNameList, columnTypeList, columnNameIndex, true, client,
+    return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
   }
 
@@ -1178,6 +1200,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(null,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -1244,6 +1268,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -1305,16 +1331,25 @@ private void initWatermarkEncoder() {
   }
 
   @Override
-  public String getSystemFunctions() throws SQLException {
-    Statement statement =connection.createStatement();
-    StringBuilder str=new StringBuilder("");
-    ResultSet resultSet = statement.executeQuery("show functions");
-    while (resultSet.next()){
-      str.append(resultSet.getString(1)).append(",");
-    }
-    String result=str.toString();
-    if(result.length()>0){
-      result=result.substring(0,result.length()-1);
+  public String getSystemFunctions(){
+    String result="";
+    Statement statement=null;
+    ResultSet resultSet=null;
+    try {
+      statement =connection.createStatement();
+      StringBuilder str=new StringBuilder("");
+       resultSet = statement.executeQuery("show functions");
+      while (resultSet.next()){
+        str.append(resultSet.getString(1)).append(",");
+      }
+      result=str.toString();
+      if(result.length()>0){
+        result=result.substring(0,result.length()-1);
+      }
+    }catch (Exception ex){
+      ex.printStackTrace();
+    }finally {
+      colse(resultSet,statement);
     }
     return result;
   }
@@ -1383,6 +1418,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
         null, 0, sessionId, tsdataset, (long)60 * 1000,false);
@@ -1391,7 +1428,6 @@ private void initWatermarkEncoder() {
   @Override
   public ResultSet getTableTypes() throws SQLException {
     Statement stmt=this.connection.createStatement();
-
     List<String> columnNameList=new ArrayList<String>();
     List<String> columnTypeList=new ArrayList<String>();
     Map<String, Integer> columnNameIndex=new HashMap<String, Integer>();
@@ -1412,8 +1448,9 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    } finally {
+      colse(null,stmt);
     }
-    //return new IoTDBNonAlignJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, false, client, null, 0, sessionId, tsdataset, (long)60 * 1000);
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
   }
@@ -1545,11 +1582,31 @@ private void initWatermarkEncoder() {
           getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(rs,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true,
         client,
         null, 0, sessionId, tsdataset, (long) 60 * 1000, false);
 
+
+  }
+    private void colse(ResultSet rs ,Statement stmt){
+    if (rs != null) {
+      try {
+        rs.close();
+      } catch (Exception ex) {
+        rs = null;
+      }
+
+    }
+    try {
+      if(stmt!=null){
+        stmt.close();
+      }
+    }catch (Exception ex){
+      stmt=null;
+    }
 
   }
 
@@ -1744,6 +1801,8 @@ private void initWatermarkEncoder() {
       tsdataset=convertQueryDataSetByFetchSize(dataSet,stmt.getFetchSize(),getWatermarkEncoder());
     } catch (IOException e) {
       e.printStackTrace();
+    }finally {
+      colse(null,stmt);
     }
     return new IoTDBJDBCResultSet(stmt, columnNameList, columnTypeList, columnNameIndex, true, client,
             null, 0, sessionId, tsdataset, (long)60 * 1000,false);
