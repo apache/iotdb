@@ -91,8 +91,9 @@ public class SingleFileLogReader implements ILogReader {
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
     } catch (Exception e) {
-      logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
-      logger.error("Successfully read index is {}", idx);
+      logger.error(
+          "Cannot read more PhysicalPlans from {}, successfully read index is {}. The reason is",
+          idx, filepath, e);
       fileCorrupted = true;
       return false;
     }
