@@ -25,7 +25,7 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-cluster-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
@@ -39,29 +39,31 @@
         </dependencySet>
     </dependencySets>
     <fileSets>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-        </fileSet>
+        <!--        <fileSet>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/conf</directory>-->
+        <!--            <outputDirectory>conf</outputDirectory>-->
+        <!--        </fileSet>-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/cluster/src/assembly/resources/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
-        </fileSet>
+        <!--        <fileSet>-->
+        <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
+        <!--            <outputDirectory>conf</outputDirectory>-->
+        <!--        </fileSet>-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
             <outputDirectory>tools</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!--have problem, may be no necessary-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
+        <!--end-->
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
@@ -71,10 +73,6 @@
             <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/tools</directory>
             <outputDirectory>tools</outputDirectory>
             <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
         </fileSet>
     </fileSets>
     <files>

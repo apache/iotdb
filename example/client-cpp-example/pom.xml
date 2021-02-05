@@ -23,12 +23,15 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.apache.iotdb</groupId>
-        <artifactId>client-cpp</artifactId>
+        <artifactId>iotdb-examples</artifactId>
         <version>0.12.0-SNAPSHOT</version>
-        <relativePath>../../client-cpp/pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>client-cpp-example</artifactId>
     <name>IoTDB-Client CPP Examples</name>
+    <properties>
+        <cmake-version>3.17.3</cmake-version>
+    </properties>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -61,11 +64,20 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <boost.include.dir/>
             </properties>
         </profile>
     </profiles>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>
@@ -89,7 +101,7 @@
                                     <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
                                 </fileSet>
                                 <fileSet>
-                                    <sourceFile>${project.parent.basedir}/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
+                                    <sourceFile>${project.parent.basedir}/../client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
                                     <destinationFile>${project.build.directory}/client-cpp-${project.version}-cpp-${os.classifier}.zip</destinationFile>
                                 </fileSet>
                             </fileSets>
