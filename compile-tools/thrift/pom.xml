@@ -107,103 +107,13 @@
                 </plugins>
             </build>
         </profile>
-        <!-- If C++ is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-cpp</id>
-            <properties>
-                <thrift.with.cpp>ON</thrift.with.cpp>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>package-thrift-cpp</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <descriptors>
-                                        <descriptor>src/assembly/cpp.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- If C# is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-dotnet</id>
-            <properties>
-                <thrift.with.csharp>ON</thrift.with.csharp>
-            </properties>
-            <build>
-                <plugins>
-                    <!-- This library is currently not buildable via CMake (yet) -->
-                    <!--plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>package-thrift-cpp</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>single</goal>
-                </goals>
-                <configuration>
-                  <finalName>${project.artifactId}-${project.version}</finalName>
-                  <descriptors>
-                    <descriptor>src/assembly/csharp.xml</descriptor>
-                  </descriptors>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin-->
-                </plugins>
-            </build>
-        </profile>
-        <!-- If Python is enabled, we need to add another assembly to the build to package the libraries -->
-        <profile>
-            <id>with-python</id>
-            <properties>
-                <thrift.with.python>ON</thrift.with.python>
-            </properties>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>package-thrift-python</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <descriptors>
-                                        <descriptor>src/assembly/python.xml</descriptor>
-                                    </descriptors>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
     </profiles>
     <build>
         <plugins>
             <plugin>
                 <groupId>com.googlecode.maven-download-plugin</groupId>
                 <artifactId>download-maven-plugin</artifactId>
+                <version>1.3.0</version>
                 <executions>
                     <!-- Download the CMake binary distribution for this platform. -->
                     <execution>
@@ -216,7 +126,6 @@
                             <url>${cmake.url}</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>true</overwrite>
                         </configuration>
                     </execution>
                     <!-- Download the sources for building the thrift compiler -->
@@ -230,7 +139,6 @@
                             <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.zip</url>
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.directory}</outputDirectory>
-                            <overwrite>false</overwrite>
                         </configuration>
                     </execution>
                 </executions>
@@ -331,32 +239,6 @@
                             <downloadBinaries>false</downloadBinaries>
                             <!-- The directory where the "generate" step generated the build configuration -->
                             <projectDirectory>${project.build.directory}/build</projectDirectory>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- Add the thrift compiler executable to the build -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>source-release-assembly</id>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>package-thrift-compiler</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <configuration>
-                            <finalName>${project.artifactId}-${project.version}</finalName>
-                            <descriptors>
-                                <descriptor>src/assembly/compiler.xml</descriptor>
-                            </descriptors>
                         </configuration>
                     </execution>
                 </executions>
