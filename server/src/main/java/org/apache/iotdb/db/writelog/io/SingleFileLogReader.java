@@ -124,7 +124,7 @@ public class SingleFileLogReader implements ILogReader {
   public void open(File logFile) throws FileNotFoundException {
     close();
     logStream = new DataInputStream(new BufferedInputStream(new FileInputStream(logFile)));
-    logger.info("WAL file: {} size is {}", logFile.getName(), logFile.length());
+    logger.info("open WAL file: {} size is {}", logFile.getName(), logFile.length());
     this.filepath = logFile.getPath();
     idx = 0;
   }
