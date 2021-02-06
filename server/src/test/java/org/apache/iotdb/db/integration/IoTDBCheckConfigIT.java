@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -29,14 +32,19 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.ByteArrayOutputStream;
 import java.security.AccessControlException;
 import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.*;
 
 public class IoTDBCheckConfigIT {
   private File propertiesFile = SystemFileFactory.INSTANCE
