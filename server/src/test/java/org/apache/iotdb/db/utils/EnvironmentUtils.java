@@ -255,7 +255,7 @@ public class EnvironmentUtils {
     }
   }
 
-  private static void shutdownDaemon() throws Exception {
+  public static void shutdownDaemon() throws Exception {
     if (daemon != null) {
       daemon.shutdown();
     }

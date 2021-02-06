@@ -80,6 +80,10 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode = String
       .valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
+  private static final String TIME_ENCODER_KEY = "time_encoder";
+  private static String timeEncoderValue = String
+          .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBConfigCheck getInstance() {
@@ -130,6 +134,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
+    systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
   }
 
 
@@ -290,6 +295,10 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
       printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
+    }
+
+    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
+      printErrorLogAndExit(TIME_ENCODER_KEY);
     }
   }
 
