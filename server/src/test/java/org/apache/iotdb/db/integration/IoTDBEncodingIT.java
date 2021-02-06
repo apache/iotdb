@@ -56,6 +56,7 @@ public class IoTDBEncodingIT {
   public void tearDown() throws Exception {
     StorageEngine.setEnablePartition(false);
     StorageEngine.setTimePartitionInterval(-1);
+    TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     EnvironmentUtils.cleanEnv();
   }
 

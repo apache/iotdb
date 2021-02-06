@@ -25,7 +25,9 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.*;
 import java.security.AccessControlException;
@@ -95,7 +97,7 @@ public class IoTDBCheckConfigIT {
 
     // read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile);
-    InputStreamReader inputStreamReader = new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+         InputStreamReader inputStreamReader = new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
       properties.load(inputStreamReader);
     }
     String timeEncoder = (String) properties.get("time_encoder");
