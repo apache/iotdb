@@ -160,6 +160,11 @@ public class MemTableFlushTask {
           continue;
         }
 
+        //store last point for SDT
+        if (i + 1 == tvPairs.size()) {
+          ((ChunkWriterImpl) seriesWriterImpl).setLastPoint(true);
+        }
+
         switch (dataType) {
           case BOOLEAN:
             seriesWriterImpl.write(time, tvPairs.getBoolean(i));
