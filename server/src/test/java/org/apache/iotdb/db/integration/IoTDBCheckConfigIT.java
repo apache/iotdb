@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -25,16 +28,23 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.security.AccessControlException;
 import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static org.junit.Assert.*;
 
 public class IoTDBCheckConfigIT {
   private File propertiesFile = SystemFileFactory.INSTANCE
@@ -107,10 +117,9 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
-    systemProperties.put("time_encoder", "TS_2DIFF");
+    systemProperties.put("time_encoder", "REGULAR");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
-    tsFileConfig.setTimeEncoder("REGULAR");
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (Throwable t) {
@@ -118,7 +127,7 @@ public class IoTDBCheckConfigIT {
     } finally {
       System.setSecurityManager(null);
     }
-    assertTrue(bytes.toString().contains("Wrong time_encoder, please set as: TS_2DIFF"));
+    assertTrue(bytes.toString().contains("Wrong time_encoder, please set as: REGULAR"));
   }
 
   @Test
@@ -126,8 +135,7 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
-    systemProperties.put("time_encoder", "REGULAR");
-    tsFileConfig.setTimeEncoder("REGULAR");
+    systemProperties.put("time_encoder", "TS_2DIFF");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
     try {
