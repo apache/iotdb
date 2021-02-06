@@ -117,10 +117,9 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
-    systemProperties.put("time_encoder", "TS_2DIFF");
+    systemProperties.put("time_encoder", "REGULAR");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
-    tsFileConfig.setTimeEncoder("REGULAR");
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
     } catch (Throwable t) {
@@ -128,7 +127,7 @@ public class IoTDBCheckConfigIT {
     } finally {
       System.setSecurityManager(null);
     }
-    assertTrue(bytes.toString().contains("Wrong time_encoder, please set as: TS_2DIFF"));
+    assertTrue(bytes.toString().contains("Wrong time_encoder, please set as: REGULAR"));
   }
 
   @Test
@@ -136,8 +135,7 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     IoTDB.metaManager.clear();
-    systemProperties.put("time_encoder", "REGULAR");
-    tsFileConfig.setTimeEncoder("REGULAR");
+    systemProperties.put("time_encoder", "TS_2DIFF");
     writeSystemFile();
     EnvironmentUtils.reactiveDaemon();
     try {
