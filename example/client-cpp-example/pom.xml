@@ -31,6 +31,7 @@
     <name>IoTDB-Client CPP Examples</name>
     <properties>
         <cmake-version>3.17.3</cmake-version>
+        <cmake.build.type>Release</cmake.build.type>
     </properties>
     <profiles>
         <profile>
