@@ -139,7 +139,7 @@
             <artifactId>client-cpp</artifactId>
             <version>${project.version}</version>
             <type>pom</type>
-            <classifier>${os.classifier}</classifier>
+            <!--            <classifier>${os.classifier}</classifier>-->
         </dependency>
     </dependencies>
 </project>
