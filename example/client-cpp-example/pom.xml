@@ -42,6 +42,7 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
             </properties>
         </profile>
@@ -53,6 +54,7 @@
                 </os>
             </activation>
             <properties>
+                <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <boost.include.dir>/usr/local/include</boost.include.dir>
             </properties>
