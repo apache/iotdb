@@ -78,8 +78,12 @@ public class PublicBAOS extends ByteArrayOutputStream {
     count = 0;
   }
 
+  /**
+   * The synchronized keyword in this function is intentionally removed. For details, see
+   * https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=173085039
+   */
   @Override
-  public synchronized int size() {
+  public int size() {
     return count;
   }
 }
