@@ -30,7 +30,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -236,6 +239,57 @@ public class IoTDBSimpleQueryIT {
       }
     } catch (SQLException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingSelectFill() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      double compDev = 2;
+      //test set sdt property
+      statement
+          .execute(
+              "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=" + compDev);
+
+      int[] originalValues = new int[1000];
+
+      Map<String, Integer> map = new HashMap<>();
+
+      Random rand = new Random();
+      for (int i = 1; i < originalValues.length; i++) {
+        originalValues[i] = rand.nextInt(500);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + i + "," + originalValues[i] + ")";
+        statement.execute(sql);
+        map.put(i + "", originalValues[i]);
+      }
+      statement.execute("flush");
+
+      for (int i = 1; i < originalValues.length; i++) {
+        String sql = "select * from root where time = " + i
+            + " fill(int32 [linear, 20ms, 20ms])";
+        ResultSet resultSet = statement.executeQuery(sql);
+
+        while (resultSet.next()) {
+          String time = resultSet.getString("Time");
+          String value = resultSet.getString("root.sg1.d0.s0");
+          //last value is not stored, cannot linear fill
+          if (value == null) {
+            continue;
+          }
+          // sdt parallelogram's height is 2 * compDev, so after linear fill, the values will fall inside
+          // the parallelogram of two stored points
+          assertTrue(Math.abs(Integer.parseInt(value) - map.get(time)) <= 2 * compDev);
+        }
+      }
+    } catch (SQLException e) {
+      fail();
     }
   }
 
