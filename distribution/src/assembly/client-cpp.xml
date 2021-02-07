@@ -26,48 +26,10 @@
         <format>zip</format>
     </formats>
     <baseDirectory>apache-iotdb-${project.version}-client-cpp-bin</baseDirectory>
-    <!--    <dependencySets>-->
-    <!--        <dependencySet>-->
-    <!--            <includes>-->
-    <!--                <include>*:client-cpp:zip:${os.classifier}</include>-->
-    <!--            </includes>-->
-    <!--            <outputDirectory>${file.separator}</outputDirectory>-->
-    <!--            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>-->
-    <!--            <unpack>true</unpack>-->
-    <!--        </dependencySet>-->
-    <!--    </dependencySets>-->
     <fileSets>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client-cpp/target/build/main/generated-sources-cpp</directory>
-            <includes>
-                <include>**/*.h</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/compile-tools/thrift/target/thrift-${thrift.version}/lib/cpp/src</directory>
-            <includes>
-                <include>**/*.h</include>
-                <include>**/*.tcc</include>
-            </includes>
-            <outputDirectory>include</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/client-cpp/target/build/main</directory>
-            <includes>
-                <include>*.so</include>
-                <include>*.dylib</include>
-                <include>**/*.dll</include>
-                <include>**/*.lib</include>
-            </includes>
-            <outputDirectory>lib</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/compile-tools/thrift/target/build/lib/Release</directory>
-            <includes>
-                <include>**/*.lib</include>
-            </includes>
-            <outputDirectory>lib</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}</directory>
+            <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
     <componentDescriptors>
