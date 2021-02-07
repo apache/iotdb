@@ -764,7 +764,7 @@ var config = {
 						title: '0-开始使用',
 						children: [
 							['0-Get Started/1-QuickStart','快速入门'],
-							['0-Get Started/2-Frequently asked questions','经常问的问题'],
+							['0-Get Started/2-Frequently asked questions','常见问题'],
 							['0-Get Started/3-Publication','调查报告']
 						]
 					},
@@ -938,7 +938,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1031,7 +1031,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},
@@ -1124,7 +1124,7 @@ var config = {
 						title: '开始',
 						children: [
 							['Get Started/QuickStart','快速入门'],
-							['Get Started/Frequently asked questions','经常问的问题'],
+							['Get Started/Frequently asked questions','常见问题'],
 							['Get Started/Publication','调查报告']
 						]
 					},

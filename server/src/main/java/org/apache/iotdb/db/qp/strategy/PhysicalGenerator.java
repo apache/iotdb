@@ -263,7 +263,7 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_DEVICES:
             ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
             return new ShowDevicesPlan(showDevicesOperator.getPath(), showDevicesOperator.getLimit(),
-                  showDevicesOperator.getOffset(), fetchSize);
+                  showDevicesOperator.getOffset(), fetchSize, showDevicesOperator.hasSgCol());
           case SQLConstant.TOK_COUNT_DEVICES:
             return new CountPlan(
                 ShowContentType.COUNT_DEVICES, ((CountOperator) operator).getPath());
