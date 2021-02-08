@@ -42,7 +42,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P client-cpp -P site -P code-coverage
+        run: mvn -B apache-rat:check -P site -P code-coverage
       - name: IT/UT Test
         shell: bash
-        run:  mvn -B clean post-integration-test -Dtest.port.closed=true
+        run:  mvn -B clean post-integration-test -Dtest.port.closed=true -P compile-cpp
