@@ -126,9 +126,10 @@ public class LastQueryExecutor {
     List<LastCacheAccessor> cacheAccessors = new ArrayList<>();
     Filter filter = (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
 
+    List<TSDataType> restDataTypes = new ArrayList<>();
     List<PartialPath> restPaths = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
-            readLastPairsFromCache(seriesPaths, filter, cacheAccessors, restPaths);
+            readLastPairsFromCache(seriesPaths, dataTypes, filter, cacheAccessors, restPaths, restDataTypes);
     // If any '>' or '>=' filters are specified, only access cache to get Last result.
     if (filter != null || restPaths.isEmpty()) {
       return resultContainer;
@@ -139,9 +140,9 @@ public class LastQueryExecutor {
     try {
       for (int i = 0; i < restPaths.size(); i++) {
         QueryDataSource dataSource =
-                QueryResourceManager.getInstance().getQueryDataSource(seriesPaths.get(i), context, null);
-        LastPointReader lastReader = new LastPointReader(seriesPaths.get(i), dataTypes.get(i),
-                lastQueryPlan.getAllMeasurementsInDevice(seriesPaths.get(i).getDevice()),
+                QueryResourceManager.getInstance().getQueryDataSource(restPaths.get(i), context, null);
+        LastPointReader lastReader = new LastPointReader(restPaths.get(i), restDataTypes.get(i),
+                lastQueryPlan.getAllMeasurementsInDevice(restPaths.get(i).getDevice()),
                 context, dataSource, Long.MAX_VALUE, null);
         readerList.add(lastReader);
       }
@@ -164,8 +165,10 @@ public class LastQueryExecutor {
     return resultContainer;
   }
 
-  private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(List<PartialPath> seriesPaths,
-          Filter filter, List<LastCacheAccessor> cacheAccessors, List<PartialPath> restPaths) {
+  private static List<Pair<Boolean, TimeValuePair>> readLastPairsFromCache(
+      List<PartialPath> seriesPaths, List<TSDataType> dataTypes, Filter filter,
+      List<LastCacheAccessor> cacheAccessors,
+      List<PartialPath> restPaths, List<TSDataType> restDataTypes) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (lastCacheEnabled) {
       for (PartialPath path : seriesPaths) {
@@ -173,6 +176,7 @@ public class LastQueryExecutor {
       }
     } else {
       restPaths.addAll(seriesPaths);
+      restDataTypes.addAll(dataTypes);
     }
     for (int i = 0; i < cacheAccessors.size(); i++) {
       TimeValuePair tvPair = cacheAccessors.get(i).read();
@@ -181,6 +185,7 @@ public class LastQueryExecutor {
       } else {
         resultContainer.add(new Pair<>(false, null));
         restPaths.add(seriesPaths.get(i));
+        restDataTypes.add(dataTypes.get(i));
       }
     }
     return resultContainer;
