@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
 
 public class IoTDBConfigCheck {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBConfigCheck.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
