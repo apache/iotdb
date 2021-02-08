@@ -94,6 +94,7 @@ public abstract class AbstractCli {
   private static String timeFormat = DEFAULT_TIME_FORMAT;
   static int maxPrintRowCount = 1000;
   private static int fetchSize = 1000;
+  static private boolean continuePrint = false;
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
@@ -305,8 +306,10 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+    if (tmp > Integer.MAX_VALUE) {
       throw new NumberFormatException();
+    } else if (tmp <= 0) {
+      continuePrint = true;
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -559,6 +562,13 @@ public abstract class AbstractCli {
           long costTime = System.currentTimeMillis() - startTime;
           println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
+            if (continuePrint) {
+              maxSizeList = new ArrayList<>(columnLength);
+              lists = cacheResult(resultSet, maxSizeList, columnLength,
+                  resultSetMetaData, zoneId);
+              output(lists, maxSizeList);
+              continue;
+            }
             println(String.format(
                 "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
                 maxPrintRowCount));
