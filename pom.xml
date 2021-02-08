@@ -100,6 +100,7 @@
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
+        <module>metrics</module>
     </modules>
     <!-- Properties Management -->
     <properties>

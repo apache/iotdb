@@ -244,7 +244,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       status = false;
       loginMessage = e.getMessage();
     }
-
     TSStatus tsStatus;
     long sessionId = -1;
     if (status) {
