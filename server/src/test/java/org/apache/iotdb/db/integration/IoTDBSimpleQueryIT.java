@@ -30,7 +30,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -150,6 +153,42 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  public void testLastQueryNonCached() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.turbine.d1.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("create timeseries root.turbine.d1.s2 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("create timeseries root.turbine.d2.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("insert into root.turbine.d1(timestamp,s1,s2) values(1,1,2)");
+
+      String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          String path = resultSet.getString("timeseries");
+          assertEquals(results[count], path);
+          count++;
+        }
+      }
+
+      assertEquals(2, count);
+
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          count++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void testSDTEncodingSeq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -186,7 +225,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -226,8 +265,8 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "15", "16", "17"};
-      String[] values = {"1", "10", "20", "1"};
+      String[] timestamps = {"1", "7", "15", "16", "17", "18"};
+      String[] values = {"1", "1", "10", "20", "1", "30"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -236,6 +275,57 @@ public class IoTDBSimpleQueryIT {
       }
     } catch (SQLException e) {
       e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSDTEncodingSelectFill() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      double compDev = 2;
+      //test set sdt property
+      statement
+          .execute(
+              "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=" + compDev);
+
+      int[] originalValues = new int[1000];
+
+      Map<String, Integer> map = new HashMap<>();
+
+      Random rand = new Random();
+      for (int i = 1; i < originalValues.length; i++) {
+        originalValues[i] = rand.nextInt(500);
+        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + i + "," + originalValues[i] + ")";
+        statement.execute(sql);
+        map.put(i + "", originalValues[i]);
+      }
+      statement.execute("flush");
+
+      for (int i = 1; i < originalValues.length; i++) {
+        String sql = "select * from root where time = " + i
+            + " fill(int32 [linear, 20ms, 20ms])";
+        ResultSet resultSet = statement.executeQuery(sql);
+
+        while (resultSet.next()) {
+          String time = resultSet.getString("Time");
+          String value = resultSet.getString("root.sg1.d0.s0");
+          //last value is not stored, cannot linear fill
+          if (value == null) {
+            continue;
+          }
+          // sdt parallelogram's height is 2 * compDev, so after linear fill, the values will fall inside
+          // the parallelogram of two stored points
+          assertTrue(Math.abs(Integer.parseInt(value) - map.get(time)) <= 2 * compDev);
+        }
+      }
+    } catch (SQLException e) {
+      fail();
     }
   }
 
@@ -272,8 +362,9 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "15", "17"};
-      String[] values = {"1", "10", "1"};
+      //will not store time = 16 since time distance to last stored time 15 is within compMinTime
+      String[] timestamps = {"1", "7", "15", "17", "18"};
+      String[] values = {"1", "1", "10", "1", "30"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -305,13 +396,11 @@ public class IoTDBSimpleQueryIT {
       }
       statement.execute("flush");
 
-
-      statement.execute("flush");
       ResultSet resultSet = statement.executeQuery("select * from root");
       int count = 0;
 
-      String[] timestamps = {"1", "21", "41"};
-      String[] values = {"1", "1", "1"};
+      String[] timestamps = {"1", "21", "41", "49"};
+      String[] values = {"1", "1", "1", "1"};
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
@@ -364,7 +453,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -408,7 +497,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
       //no sdt encoding when merging
       statement.execute("merge");
@@ -417,7 +506,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(14, count);
+      assertEquals(15, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
@@ -465,7 +554,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
       //no sdt encoding when merging
       statement.execute("merge");
@@ -474,7 +563,7 @@ public class IoTDBSimpleQueryIT {
       while (resultSet.next()) {
         count++;
       }
-      assertEquals(17, count);
+      assertEquals(18, count);
 
     } catch (SQLException e) {
       e.printStackTrace();

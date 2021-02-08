@@ -319,17 +319,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     try {
-      // statement close
-      if (req.isSetStatementId()) {
+      // ResultSet close
+      if (req.isSetStatementId() && req.isSetQueryId()) {
+        releaseQueryResourceNoExceptions(req.queryId);
+        // clear the statementId2QueryId map
+        if (statementId2QueryId.containsKey(req.getStatementId())) {
+          statementId2QueryId.get(req.getStatementId()).remove(req.getQueryId());
+        }
+      } else {
+        // statement close
         Set<Long> queryIdSet = statementId2QueryId.remove(req.getStatementId());
         if (queryIdSet != null) {
           for (long queryId : queryIdSet) {
             releaseQueryResourceNoExceptions(queryId);
           }
         }
-      } else {
-        // ResultSet close
-        releaseQueryResourceNoExceptions(req.queryId);
+        // clear the sessionId2StatementId map
+        if (sessionId2StatementId.containsKey(req.getSessionId())) {
+          sessionId2StatementId.get(req.getSessionId()).remove(req.getStatementId());
+        }
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {

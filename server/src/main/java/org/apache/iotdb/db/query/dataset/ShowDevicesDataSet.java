@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.query.dataset;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -34,11 +34,18 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
+  private static final Path[] resourcePathsWithSg = {new PartialPath(COLUMN_DEVICES, false),
+      new PartialPath(COLUMN_STORAGE_GROUP, false),};
+  private static final TSDataType[] resourceTypesWithSg = {TSDataType.TEXT, TSDataType.TEXT};
   private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false)};
   private static final TSDataType[] resourceTypes = {TSDataType.TEXT};
 
+  private boolean hasSgCol;
+
   public ShowDevicesDataSet(ShowDevicesPlan showDevicesPlan) throws MetadataException {
-    super(Arrays.asList(resourcePaths), Arrays.asList(resourceTypes));
+    super(showDevicesPlan.hasSgCol() ? Arrays.asList(resourcePathsWithSg) : Arrays.asList(resourcePaths),
+        showDevicesPlan.hasSgCol() ? Arrays.asList(resourceTypesWithSg) : Arrays.asList(resourceTypes));
+    hasSgCol = showDevicesPlan.hasSgCol();
     this.plan = showDevicesPlan;
     hasLimit = plan.hasLimit();
     getQueryDataSet();
@@ -46,11 +53,14 @@ public class ShowDevicesDataSet extends ShowDataSet {
 
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
-    Set<PartialPath> devicesSet = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
+    List<ShowDevicesResult> devicesList = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();
-    for (PartialPath path : devicesSet) {
+    for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);
-      updateRecord(record, path.getFullPath());
+      updateRecord(record, result.getName());
+      if (hasSgCol) {
+        updateRecord(record, result.getSgName());
+      }
       records.add(record);
       putRecord(record);
     }

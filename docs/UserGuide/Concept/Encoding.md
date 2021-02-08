@@ -49,7 +49,7 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 
 * REGULAR
 
-Regular data encoding is more suitable for encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), in which case it's better than TS_2DIFF.
+Regular data encoding is more suitable for time encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), in which case it's better than TS_2DIFF.
 
 Regular data encoding method is not suitable for the data with fluctuations (irregular data), and TS_2DIFF is recommended to deal with it.
 

@@ -94,6 +94,10 @@ public class IoTDBConfigCheck {
   private static final String VIRTUAL_STORAGE_GROUP_NUM = "virtual_storage_group_num";
   private static String virtualStorageGroupNum = String.valueOf(config.getVirtualStorageGroupNum());
 
+  private static final String TIME_ENCODER_KEY = "time_encoder";
+  private static String timeEncoderValue = String
+          .valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBConfigCheck getInstance() {
@@ -145,6 +149,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
     systemProperties.put(VIRTUAL_STORAGE_GROUP_NUM, virtualStorageGroupNum);
+    systemProperties.put(TIME_ENCODER_KEY, timeEncoderValue);
   }
 
 
@@ -316,6 +321,10 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(VIRTUAL_STORAGE_GROUP_NUM).equals(virtualStorageGroupNum))) {
       printErrorLogAndExit(VIRTUAL_STORAGE_GROUP_NUM);
+    }
+
+    if (!(properties.getProperty(TIME_ENCODER_KEY).equals(timeEncoderValue))) {
+      printErrorLogAndExit(TIME_ENCODER_KEY);
     }
   }
 
