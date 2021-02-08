@@ -31,4 +31,6 @@ IoTDB allows you to specify the compression method of the column when creating a
 
 * LZ4
 
+* GZIP
+
 The specified syntax for compression is detailed in [Create Timeseries Statement](../Operation%20Manual/SQL%20Reference.md).
