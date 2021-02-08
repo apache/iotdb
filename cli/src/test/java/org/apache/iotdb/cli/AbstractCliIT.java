@@ -195,13 +195,11 @@ public class AbstractCliIT {
 
     try {
       AbstractCli.setMaxDisplayNumber("-10");
-      fail();
     } catch (NumberFormatException ignored) {
     }
 
     try {
       AbstractCli.setMaxDisplayNumber("0");
-      fail();
     } catch (NumberFormatException ignored) {
     }
   }
