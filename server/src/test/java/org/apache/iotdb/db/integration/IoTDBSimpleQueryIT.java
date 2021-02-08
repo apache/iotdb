@@ -153,6 +153,42 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  public void testLastQueryNonCached() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.turbine.d1.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("create timeseries root.turbine.d1.s2 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("create timeseries root.turbine.d2.s1 with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY");
+      statement.execute("insert into root.turbine.d1(timestamp,s1,s2) values(1,1,2)");
+
+      String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
+
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          String path = resultSet.getString("timeseries");
+          assertEquals(results[count], path);
+          count++;
+        }
+      }
+
+      assertEquals(2, count);
+
+      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+        while (resultSet.next()) {
+          count++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void testSDTEncodingSeq() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
 
