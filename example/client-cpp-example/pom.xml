@@ -72,16 +72,6 @@
                 <boost.include.dir/>
             </properties>
         </profile>
-    </profiles>
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>client-cpp</artifactId>
-            <version>${project.version}</version>
-            <type>pom</type>
-        </dependency>
-    </dependencies>
-    <profiles>
         <profile>
             <id>compile-cpp</id>
             <build>
@@ -182,4 +172,12 @@
             </build>
         </profile>
     </profiles>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+    </dependencies>
 </project>
