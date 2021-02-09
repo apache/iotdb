@@ -61,7 +61,7 @@ jobs:
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Test with Maven
-        run:  mvn -B clean integration-test -Pclient-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
+        run:  mvn -B clean integration-test -P compile-cpp -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -pl server,client-cpp,example/client-cpp-example -am
 
   build-win:
     strategy:
