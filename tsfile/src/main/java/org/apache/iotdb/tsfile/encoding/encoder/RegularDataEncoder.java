@@ -56,6 +56,8 @@ public abstract class RegularDataEncoder extends Encoder {
 
   protected int writeIndex = -1;
 
+  protected int dataTotal;
+
   /**
    * constructor of RegularDataEncoder.
    *
@@ -196,6 +198,7 @@ public abstract class RegularDataEncoder extends Encoder {
       }
       firstValue = data[0];
       if (isMissingPoint) {
+        dataTotal = writeIndex;
         newBlockSize = ((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1;
         writeIndex = newBlockSize;
       }
@@ -231,7 +234,7 @@ public abstract class RegularDataEncoder extends Encoder {
       bitmap = new BitSet(newBlockSize);
       bitmap.flip(0, newBlockSize);
       int offset = 0;
-      for (int i = 1; i < missingPointData.length; i++) {
+      for (int i = 1; i < dataTotal; i++) {
         int delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
           int missingPointNum = (int) (delta / minDeltaBase) - 1;
@@ -322,6 +325,7 @@ public abstract class RegularDataEncoder extends Encoder {
       }
       firstValue = data[0];
       if (isMissingPoint) {
+        dataTotal = writeIndex;
         newBlockSize = (int) (((data[writeIndex - 1] - data[0]) / minDeltaBase) + 1);
         writeIndex = newBlockSize;
       }
@@ -357,7 +361,7 @@ public abstract class RegularDataEncoder extends Encoder {
       bitmap = new BitSet(newBlockSize);
       bitmap.flip(0, newBlockSize);
       int offset = 0;
-      for (int i = 1; i < missingPointData.length; i++) {
+      for (int i = 1; i < dataTotal; i++) {
         long delta = missingPointData[i] - missingPointData[i - 1];
         if (delta != minDeltaBase) {
           int missingPointNum = (int) (delta / minDeltaBase) - 1;
