@@ -91,7 +91,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     clear();
   }
 
-  private void renameLevelFilesMods(Collection<Modification> filterModification,
+  public void renameLevelFilesMods(Collection<Modification> filterModification,
       Collection<TsFileResource> mergeTsFiles,
       TsFileResource targetTsFile) throws IOException {
     logger.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
