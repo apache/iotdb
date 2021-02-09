@@ -77,7 +77,7 @@ statement
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
-    | SHOW DEVICES prefixPath? limitClause? #showDevices
+    | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
     | SHOW MERGE #showMergeStatus
     | SHOW QUERY PROCESSLIST #showQueryProcesslist
     | KILL QUERY INT? #killQuery
@@ -191,6 +191,7 @@ compressor
     : UNCOMPRESSED
     | SNAPPY
     | LZ4
+    | GZIP
     ;
 
 attributeClause
@@ -521,7 +522,7 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
@@ -632,7 +633,7 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
-    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET? ID?
+    | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION

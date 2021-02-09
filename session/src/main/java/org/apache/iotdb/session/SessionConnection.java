@@ -67,6 +67,10 @@ public class SessionConnection {
   private ZoneId zoneId;
   private EndPoint endPoint;
 
+  //TestOnly
+  public SessionConnection() {
+  }
+
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
@@ -243,22 +247,17 @@ public class SessionConnection {
     }
   }
 
-  protected boolean checkTimeseriesExists(String path)
+  protected boolean checkTimeseriesExists(String path, long timeout)
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = null;
     try {
-      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
+      dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path), timeout);
       return dataSet.hasNext();
     } finally {
       if (dataSet != null) {
         dataSet.closeOperationHandle();
       }
     }
-  }
-
-  protected SessionDataSet executeQueryStatement(String sql)
-      throws StatementExecutionException, IoTDBConnectionException {
-    return this.executeQueryStatement(sql, 0);
   }
 
   protected SessionDataSet executeQueryStatement(String sql, long timeout)
@@ -287,7 +286,7 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.getQueryId(), statementId, client, sessionId, execResp.queryDataSet,
         execResp.isIgnoreTimeStamp(), timeout);
   }
 
@@ -339,7 +338,7 @@ public class SessionConnection {
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet("", execResp.getColumns(), execResp.getDataTypeList(),
         execResp.columnNameIndexMap,
-        execResp.getQueryId(), client, sessionId, execResp.queryDataSet,
+        execResp.getQueryId(), statementId, client, sessionId, execResp.queryDataSet,
         execResp.isIgnoreTimeStamp());
   }
 

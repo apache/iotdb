@@ -67,6 +67,7 @@ public class BaseQueryTest extends MemberTest {
     }
   }
 
+  @Override
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig()
@@ -83,6 +84,7 @@ public class BaseQueryTest extends MemberTest {
   }
 
 
+  @Override
   @After
   public void tearDown() throws Exception {
     super.tearDown();

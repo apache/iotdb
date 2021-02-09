@@ -85,8 +85,8 @@ public class CompactionUtils {
           newChunkMetadata = chunkMetadata;
           newChunk = chunk;
         } else {
-          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
           newChunk.mergeChunk(chunk);
+          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
         }
       }
     }
@@ -120,7 +120,7 @@ public class CompactionUtils {
     return maxVersion;
   }
 
-  private static long writeByAppendMerge(long maxVersion, String device,
+  public static long writeByAppendMerge(long maxVersion, String device,
       RateLimiter compactionWriteRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource, RestorableTsFileIOWriter writer,
@@ -142,7 +142,7 @@ public class CompactionUtils {
     return maxVersion;
   }
 
-  private static long writeByDeserializeMerge(long maxVersion, String device,
+  public static long writeByDeserializeMerge(long maxVersion, String device,
       RateLimiter compactionRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource, RestorableTsFileIOWriter writer,

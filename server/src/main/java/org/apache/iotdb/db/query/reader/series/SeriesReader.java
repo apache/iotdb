@@ -454,14 +454,14 @@ public class SeriesReader {
 
   private void unpackAllOverlappedChunkMetadataToCachedPageReaders(long endpointTime, boolean init)
       throws IOException {
-    while (!cachedChunkMetadata.isEmpty() &&
-        orderUtils.isOverlapped(endpointTime, cachedChunkMetadata.peek().getStatistics())) {
-      unpackOneChunkMetaData(cachedChunkMetadata.poll());
-    }
     if (firstChunkMetadata != null &&
         orderUtils.isOverlapped(endpointTime, firstChunkMetadata.getStatistics())) {
       unpackOneChunkMetaData(firstChunkMetadata);
       firstChunkMetadata = null;
+    }
+    while (!cachedChunkMetadata.isEmpty() &&
+        orderUtils.isOverlapped(endpointTime, cachedChunkMetadata.peek().getStatistics())) {
+      unpackOneChunkMetaData(cachedChunkMetadata.poll());
     }
     if (init && firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders
         .isEmpty())) {

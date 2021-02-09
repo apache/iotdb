@@ -38,7 +38,7 @@ class IoTDBRpcDataSet(object):
     FLAG = 0x80
 
     def __init__(self, sql, column_name_list, column_type_list, column_name_index, ignore_timestamp, query_id,
-                 client, session_id, query_data_set, fetch_size):
+        client, session_id, query_data_set, fetch_size):
         self.__session_id = session_id
         self.__ignore_timestamp = ignore_timestamp
         self.__sql = sql
@@ -46,6 +46,7 @@ class IoTDBRpcDataSet(object):
         self.__client = client
         self.__fetch_size = fetch_size
         self.__column_size = len(column_name_list)
+        self.__default_time_out = 1000
 
         self.__column_name_list = []
         self.__column_type_list = []
@@ -157,7 +158,7 @@ class IoTDBRpcDataSet(object):
 
     def fetch_results(self):
         self.__rows_index = 0
-        request = TSFetchResultsReq(self.__session_id, self.__sql, self.__fetch_size, self.__query_id, True)
+        request = TSFetchResultsReq(self.__session_id, self.__sql, self.__fetch_size, self.__query_id, True, self.__default_time_out)
         try:
             resp = self.__client.fetchResults(request)
             if not resp.hasResultSet:

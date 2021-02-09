@@ -177,6 +177,7 @@ class MergeFileTask {
           }
         }
       }
+      updateStartTimeAndEndTime(seqFile, oldFileWriter);
       oldFileWriter.endFile();
 
       updatePlanIndexes(seqFile);
@@ -188,6 +189,18 @@ class MergeFileTask {
       throw e;
     } finally {
       seqFile.writeUnlock();
+    }
+  }
+
+  private void updateStartTimeAndEndTime(TsFileResource seqFile, TsFileIOWriter fileWriter) {
+    //TODO change to get one timeseries block each time
+    for (Entry<String, List<ChunkMetadata>> deviceChunkMetadataEntry : fileWriter
+        .getDeviceChunkMetadataMap().entrySet()) {
+      String device = deviceChunkMetadataEntry.getKey();
+      for (ChunkMetadata chunkMetadata : deviceChunkMetadataEntry.getValue()) {
+        seqFile.updateStartTime(device, chunkMetadata.getStartTime());
+        seqFile.updateEndTime(device, chunkMetadata.getEndTime());
+      }
     }
   }
 
@@ -283,7 +296,7 @@ class MergeFileTask {
         fileWriter.endChunkGroup();
       }
     }
-
+    updateStartTimeAndEndTime(seqFile, fileWriter);
     fileWriter.endFile();
 
     updatePlanIndexes(seqFile);

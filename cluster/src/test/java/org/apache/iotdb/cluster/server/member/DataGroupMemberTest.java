@@ -127,6 +127,7 @@ public class DataGroupMemberTest extends MemberTest {
   private int prevReplicationNum;
   private int raftId = 0;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
@@ -136,13 +137,15 @@ public class DataGroupMemberTest extends MemberTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
-      fileSnapshot.setTimeseriesSchemas(Collections.singletonList(TestUtils.getTestTimeSeriesSchema(0
-          , i)));
+      fileSnapshot
+          .setTimeseriesSchemas(Collections.singletonList(TestUtils.getTestTimeSeriesSchema(0
+              , i)));
       snapshotMap.put(i, fileSnapshot);
     }
     pulledSnapshots = new ConcurrentSkipListSet<>();
   }
 
+  @Override
   @After
   public void tearDown() throws Exception {
     dataGroupMember.stop();
@@ -153,10 +156,12 @@ public class DataGroupMemberTest extends MemberTest {
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
       DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
-        testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot.Factory.INSTANCE) {
+        testMetaMember.getPartitionTable(), partitionGroup.getHeader(),
+        FileSnapshot.Factory.INSTANCE) {
       @Override
       public Snapshot getSnapshot(long minIndex) {
-        PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(FileSnapshot.Factory.INSTANCE);
+        PartitionedSnapshot<FileSnapshot> snapshot = new PartitionedSnapshot<>(
+            FileSnapshot.Factory.INSTANCE);
         if (hasInitialSnapshots) {
           for (int i = 0; i < 100; i++) {
             snapshot.putSnapshot(i, snapshotMap.get(i));
@@ -167,6 +172,7 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
+  @Override
   DataGroupMember getDataGroupMember(RaftNode raftNode) {
     PartitionGroup nodes = partitionTable.getHeaderGroup(raftNode.getNode());
     return dataGroupMemberMap.computeIfAbsent(raftNode, n -> getDataGroupMember(n.getNode(), nodes));
@@ -844,7 +850,8 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testGetPaths()");
     String path = TestUtils.getTestSg(0);
     AtomicReference<GetAllPathsResult> pathResult = new AtomicReference<>();
-    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
+    GenericHandler<GetAllPathsResult> handler = new GenericHandler<>(TestUtils.getNode(0),
+        pathResult);
     new DataAsyncService(dataGroupMember)
         .getAllPaths(TestUtils.getNode(0), raftId, Collections.singletonList(path), false, handler);
     List<String> result = pathResult.get().paths;
@@ -894,8 +901,8 @@ public class DataGroupMemberTest extends MemberTest {
       throws IOException, IllegalPathException {
     TsFileResource resource = new RemoteTsFileResource();
     String fileName =
-        "target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0" + File.separator +
-    "0-" + serialNum + "-0.tsfile";
+        "target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0" + File.separator
+            + "0" + File.separator + "0-" + serialNum + "-0.tsfile";
     if (asHardLink) {
       fileName = fileName + ".0_0";
     }

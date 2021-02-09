@@ -229,6 +229,43 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  public void showDevicesWithSgTest() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String[] sqls = new String[]{"show devices root.ln with storage group",
+          "show devices root.ln.wf01.wt01.temperature"};
+      Set<String>[] standards = new Set[]{
+          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,root.ln.wf01.wt01,", "root.ln.wf01.wt01.status,root.ln.wf01.wt01,")),
+          new HashSet<>(Collections.singletonList(""))};
+
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                StringBuilder builder = new StringBuilder();
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                Assert.assertTrue(standard.contains(builder.toString()));
+              }
+            }
+          }
+        } catch (SQLException e) {
+          logger.error("showDevicesTest() failed", e);
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
   public void showDevicesTest() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager

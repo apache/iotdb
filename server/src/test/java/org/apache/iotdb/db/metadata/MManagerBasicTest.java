@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -362,6 +361,58 @@ public class MManagerBasicTest {
       assertEquals("root is not a legal path", e.getMessage());
     }
     assertTrue(caughtException);
+  }
+
+  @Test
+  public void testSetStorageGroupWithIllegalName() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      PartialPath path1 = new PartialPath("root.laptop\n");
+      try {
+        manager.setStorageGroup(path1);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
+      fail();
+    }
+    try {
+      PartialPath path2 = new PartialPath("root.laptop\t");
+      try {
+        manager.setStorageGroup(path2);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testCreateTimeseriesWithIllegalName() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      PartialPath path1 = new PartialPath("root.laptop.d1\n.s1");
+      try {
+        manager.createTimeseries(path1, TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.SNAPPY, null);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
+      fail();
+    }
+    try {
+      PartialPath path2 = new PartialPath("root.laptop.d1\t.s1");
+      try {
+        manager.createTimeseries(path2, TSDataType.INT32, TSEncoding.PLAIN,
+            CompressionType.SNAPPY, null);
+        fail();
+      } catch (MetadataException e) {
+      }
+    } catch (IllegalPathException e1) {
+      fail();
+    }
   }
 
   @Test

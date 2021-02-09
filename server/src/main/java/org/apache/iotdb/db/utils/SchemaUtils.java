@@ -63,7 +63,6 @@ public class SchemaUtils {
     intSet.add(TSEncoding.PLAIN);
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
-    intSet.add(TSEncoding.REGULAR);
     intSet.add(TSEncoding.GORILLA);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);

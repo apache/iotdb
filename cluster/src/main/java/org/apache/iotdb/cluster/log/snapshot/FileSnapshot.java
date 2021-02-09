@@ -60,6 +60,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -293,13 +294,11 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @return
      */
     private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException {
-      String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
-      int segSize = pathSegments.length;
-      // <storageGroupName>/<partitionNum>/<fileName>
-      String storageGroupName = pathSegments[segSize - 3];
-      long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
+      Pair<String, Long> sgNameAndTimePartitionIdPair = FilePathUtils
+          .getLogicalSgNameAndTimePartitionIdPair(resource);
       return StorageEngine.getInstance()
-          .isFileAlreadyExist(resource, new PartialPath(storageGroupName), partitionNumber);
+          .isFileAlreadyExist(resource, new PartialPath(sgNameAndTimePartitionIdPair.left),
+              sgNameAndTimePartitionIdPair.right);
     }
 
     private void removeRemoteHardLink(RemoteTsFileResource resource) {
@@ -379,11 +378,10 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @param resource
      */
     private void loadRemoteResource(RemoteTsFileResource resource) throws IllegalPathException {
-      // the new file is stored at:
-      // remote/<nodeIdentifier>/<storageGroupName>/<partitionNum>/<fileName>
-      String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
-      int segSize = pathSegments.length;
-      PartialPath storageGroupName = new PartialPath(pathSegments[segSize - 3]);
+      // the new file is stored at: remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<tsfile>
+      // you can see FilePathUtils.splitTsFilePath() method for details.
+      PartialPath storageGroupName = new PartialPath(
+          FilePathUtils.getLogicalStorageGroupName(resource));
       File remoteModFile =
           new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
@@ -429,24 +427,20 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     private File pullRemoteFile(RemoteTsFileResource resource, Node node) throws IOException {
       logger.info("{}: pulling remote file {} from {}, plan index [{}, {}]", name, resource, node
           , resource.getMinPlanIndex(), resource.getMaxPlanIndex());
-
-      String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
-      int segSize = pathSegments.length;
       // the new file is stored at:
-      // remote/<nodeIdentifier>/<storageGroupName>/<partitionNum>/<fileName>
-      // the file in the snapshot is a hardlink, remove the hardlink suffix
-      String tempFileName = pathSegments[segSize - 1].substring(0,
-          pathSegments[segSize - 1].lastIndexOf('.'));
+      // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<newTsFile>
+      // you can see FilePathUtils.splitTsFilePath() method for details.
+      String tempFileName = FilePathUtils.getTsFileNameWithoutHardLink(resource);
       String tempFilePath =
-          node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
-              File.separator + pathSegments[segSize - 2] + File.separator + tempFileName;
+          node.getNodeIdentifier() + File.separator + FilePathUtils.getTsFilePrefixPath(resource)
+              + File.separator + tempFileName;
       File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
       tempFile.getParentFile().mkdirs();
-      File tempModFile = new File(REMOTE_FILE_TEMP_DIR,
-          tempFilePath + ModificationFile.FILE_SUFFIX);
       if (pullRemoteFile(resource.getTsFile().getAbsolutePath(), node, tempFile)) {
         // TODO-Cluster#353: implement file examination, may be replaced with other algorithm
         if (resource.isWithModification()) {
+          File tempModFile = new File(REMOTE_FILE_TEMP_DIR,
+              tempFilePath + ModificationFile.FILE_SUFFIX);
           pullRemoteFile(resource.getModFile().getFilePath(), node, tempModFile);
         }
         return tempFile;

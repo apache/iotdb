@@ -19,14 +19,23 @@
 
 package org.apache.iotdb.tsfile.compress;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
+
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.xerial.snappy.Snappy;
+
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.GZIP;
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZ4;
+import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
 
 /**
  * compress data according to type in schema.
@@ -54,6 +63,8 @@ public interface ICompressor extends Serializable {
         return new SnappyCompressor();
       case LZ4:
         return new IOTDBLZ4Compressor();
+      case GZIP:
+        return new GZIPCompressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -139,7 +150,7 @@ public interface ICompressor extends Serializable {
 
     @Override
     public CompressionType getType() {
-      return CompressionType.SNAPPY;
+      return SNAPPY;
     }
   }
 
@@ -178,7 +189,75 @@ public interface ICompressor extends Serializable {
 
     @Override
     public CompressionType getType() {
-      return CompressionType.LZ4;
+      return LZ4;
+    }
+  }
+
+  class GZIPCompress {
+    public static byte[] compress(byte[] data) throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      GZIPOutputStream gzip = new GZIPOutputStream(out);
+      gzip.write(data);
+      gzip.close();
+      return out.toByteArray();
+    }
+
+    public static byte[] uncompress(byte[] data) throws IOException {
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      ByteArrayInputStream in = new ByteArrayInputStream(data);
+
+      GZIPInputStream ungzip = new GZIPInputStream(in);
+      byte[] buffer = new byte[256];
+      int n;
+      while ((n = ungzip.read(buffer)) > 0) {
+        out.write(buffer, 0, n);
+      }
+      in.close();
+
+      return out.toByteArray();
+    }
+  }
+
+  class GZIPCompressor implements ICompressor {
+    @Override
+    public byte[] compress(byte[] data) throws IOException {
+      if (null == data) {
+        return new byte[0];
+      }
+
+      return GZIPCompress.compress(data);
+    }
+
+    @Override
+    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+      byte[] dataBefore = new byte[length];
+      System.arraycopy(data, offset, dataBefore, 0, length);
+      byte[] res = GZIPCompress.compress(dataBefore);
+      System.arraycopy(res, 0, compressed, 0, res.length);
+      return res.length;
+    }
+
+    @Override
+    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+      int length = data.remaining();
+      byte[] dataBefore = new byte[length];
+      data.get(dataBefore, 0, length);
+
+      byte[] res = GZIPCompress.compress(dataBefore);
+      compressed.put(res);
+
+      return res.length;
+    }
+
+    @Override
+    public int getMaxBytesForCompression(int uncompressedDataSize) {
+      //hard to estimate
+      return Math.max(40 + uncompressedDataSize / 2, uncompressedDataSize);
+    }
+
+    @Override
+    public CompressionType getType() {
+      return GZIP;
     }
   }
 }

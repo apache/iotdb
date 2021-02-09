@@ -35,6 +35,7 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
   private List<Float> originalList;
   private SerializableFloatTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -43,6 +44,7 @@ public class SerializableFloatTVListTest extends SerializableTVListTest {
         .newSerializableTVList(TSDataType.FLOAT, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

@@ -65,6 +65,7 @@ public class IoTDBRpcDataSet {
 
   public long sessionId;
   public long queryId;
+  public long statementId;
   public boolean ignoreTimeStamp;
 
   public int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
@@ -77,9 +78,10 @@ public class IoTDBRpcDataSet {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      long queryId, long statementId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       int fetchSize, long timeout) {
     this.sessionId = sessionId;
+    this.statementId = statementId;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
     this.queryId = queryId;
@@ -171,6 +173,7 @@ public class IoTDBRpcDataSet {
     if (client != null) {
       try {
         TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
+        closeReq.setStatementId(statementId);
         closeReq.setQueryId(queryId);
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
@@ -202,8 +205,8 @@ public class IoTDBRpcDataSet {
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     rowsIndex = 0;
-    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true,
-        timeout);
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    req.setTimeout(timeout);
     try {
       TSFetchResultsResp resp = client.fetchResults(req);
 
