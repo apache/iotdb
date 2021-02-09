@@ -33,84 +33,48 @@
         <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>ON</thrift.with.csharp>
         <thrift.with.python>ON</thrift.with.python>
+        <chmod.command>chmod</chmod.command>
+        <chmod.command.para>+x cmake</chmod.command.para>
     </properties>
     <profiles>
-        <!-- Profile for linux -->
+
         <profile>
-            <id>os-unix</id>
+            <id>os-windows</id>
             <activation>
                 <os>
-                    <family>unix</family>
+                    <family>windows</family>
                 </os>
             </activation>
-            <!-- Make the cmake executable executable (Seems not to be per default) -->
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>chmod</executable>
-                                    <arguments>
-                                        <argument>+x</argument>
-                                        <argument>cmake</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <!-- Profile for mac -->
-        <profile>
-            <id>os-mac</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                </os>
-            </activation>
-            <!-- Make the cmake executable executable (Seems not to be per default) -->
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>chmod</executable>
-                                    <arguments>
-                                        <argument>+x</argument>
-                                        <argument>cmake</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
+            <properties>
+                <chmod.command>echo</chmod.command>
+                <chmod.command.para>"do nothing"</chmod.command.para>
+            </properties>
         </profile>
         <profile>
             <id>compile-cpp</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>make-cmake-executable</id>
+                                <phase>process-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <basedir>${cmake.root.dir}/bin</basedir>
+                                    <executable>${chmod.command}</executable>
+                                    <arguments>
+                                        <argument>${chmod.command.para}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
