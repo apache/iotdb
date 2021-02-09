@@ -84,6 +84,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   protected abstract boolean chunkSatisfied(ChunkMetadata chunkMetaData);
 
+  @Override
   public void close() throws IOException {
     chunkLoader.close();
   }

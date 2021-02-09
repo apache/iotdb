@@ -21,6 +21,11 @@ package org.apache.iotdb.db.metadata;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -50,6 +55,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -70,6 +76,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -190,12 +197,12 @@ public class MTree implements Serializable {
    * @param alias      alias of measurement
    */
   MeasurementMNode createTimeseries(PartialPath path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props, String alias)
-      throws MetadataException {
+      CompressionType compressor, Map<String, String> props, String alias) throws MetadataException {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
+    checkTimeseries(path.getFullPath());
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
@@ -212,6 +219,11 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
+
+    if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
+      checkSDTFormat(path.getFullPath(), props);
+    }
+
     String leafName = nodeNames[nodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
@@ -235,6 +247,58 @@ public class MTree implements Serializable {
 
       return leaf;
     }
+  }
+
+  private void checkTimeseries(String timeseries) throws IllegalPathException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+      throw new IllegalPathException(String
+          .format("The timeseries name contains unsupported character. %s",
+              timeseries));
+    }
+  }
+
+  //check if sdt parameters are valid
+  private void checkSDTFormat(String path, Map<String, String> props) throws IllegalParameterOfPathException {
+    if (!props.containsKey(SDT_COMP_DEV)) {
+      throw new IllegalParameterOfPathException("SDT compression deviation is required", path);
+    }
+
+    try {
+      double d = Double.parseDouble(props.get(SDT_COMP_DEV));
+      if (d < 0) {
+        throw new IllegalParameterOfPathException("SDT compression deviation cannot be negative", path);
+      }
+    } catch (NumberFormatException e) {
+      throw new IllegalParameterOfPathException("SDT compression deviation formatting error", path);
+    }
+
+    long compMinTime = sdtCompressionTimeFormat(SDT_COMP_MIN_TIME, props, path);
+    long compMaxTime = sdtCompressionTimeFormat(SDT_COMP_MAX_TIME, props, path);
+
+    if (compMaxTime <= compMinTime) {
+      throw new IllegalParameterOfPathException(
+          "SDT compression maximum time needs to be greater than compression minimum time", path);
+    }
+  }
+
+  private long sdtCompressionTimeFormat(String compTime, Map<String, String> props, String path)
+      throws IllegalParameterOfPathException {
+    boolean isCompMaxTime = compTime.equals(SDT_COMP_MAX_TIME);
+    long time = isCompMaxTime ? Long.MAX_VALUE : 0;
+    String s = isCompMaxTime ? "maximum" : "minimum";
+    if (props.containsKey(compTime)) {
+      try {
+        time = Long.parseLong(props.get(compTime));
+        if (time < 0) {
+          throw new IllegalParameterOfPathException(String.format("SDT compression %s time cannot be negative", s), path);
+        }
+      } catch (IllegalParameterOfPathException e) {
+        throw new IllegalParameterOfPathException(String.format("SDT compression %s time formatting error", s), path);
+      }
+    } else {
+      logger.info("{} enabled SDT but did not set compression {} time", path, s);
+    }
+    return time;
   }
 
   /**
@@ -1122,7 +1186,7 @@ public class MTree implements Serializable {
     return devices;
   }
 
-  Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
@@ -1138,7 +1202,15 @@ public class MTree implements Serializable {
     offset.remove();
     curOffset.remove();
     count.remove();
-    return devices;
+    List<ShowDevicesResult> res = new ArrayList<>();
+    for (PartialPath device : devices) {
+      if (plan.hasSgCol()) {
+        res.add(new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+      } else {
+        res.add(new ShowDevicesResult(device.getFullPath()));
+      }
+    }
+    return res;
   }
 
   /**

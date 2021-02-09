@@ -124,6 +124,7 @@ public class DataGroupMemberTest extends MemberTest {
   private boolean enableSyncLeader;
   private int prevReplicationNum;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
@@ -141,6 +142,7 @@ public class DataGroupMemberTest extends MemberTest {
     pulledSnapshots = new ConcurrentSkipListSet<>();
   }
 
+  @Override
   @After
   public void tearDown() throws Exception {
     dataGroupMember.stop();
@@ -167,6 +169,7 @@ public class DataGroupMemberTest extends MemberTest {
     };
   }
 
+  @Override
   DataGroupMember getDataGroupMember(Node node) {
     PartitionGroup nodes = partitionTable.getHeaderGroup(node);
     return dataGroupMemberMap.computeIfAbsent(node, n -> getDataGroupMember(n, nodes));

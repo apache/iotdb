@@ -27,9 +27,7 @@
         <version>0.12.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.apache.iotdb</groupId>
     <artifactId>client-cpp</artifactId>
-    <version>0.12.0-SNAPSHOT</version>
     <name>Client for cpp</name>
     <description>C++ client</description>
     <packaging>pom</packaging>
@@ -44,8 +42,15 @@
         <catch2.url>https://github.com/catchorg/Catch2/releases/download/v2.13.0/catch.hpp</catch2.url>
     </properties>
     <modules>
-        <module>client-cpp-example</module>
+        <module>../example/client-cpp-example</module>
     </modules>
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>client-cpp-tools-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <profiles>
         <profile>
             <id>os-unix</id>
@@ -61,7 +66,6 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.sh</iotdb.server.script>
-                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -78,7 +82,6 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-Darwin-x86_64/CMake.app/Contents</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/thrift</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.sh</iotdb.server.script>
-                <dev.null.path>/dev/null</dev.null.path>
             </properties>
         </profile>
         <profile>
@@ -95,7 +98,8 @@
                 <cmake.root.dir>${project.parent.basedir}/compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
                 <thrift.exec.absolute.path>${project.parent.basedir}/compile-tools/thrift/target/build/compiler/cpp/bin/${cmake.build.type}/thrift.exe</thrift.exec.absolute.path>
                 <iotdb.server.script>start-server.bat</iotdb.server.script>
-                <dev.null.path>NUL</dev.null.path>
+                <boost.include.dir/>
+                <boost.library.dir/>
             </properties>
         </profile>
         <profile>
@@ -113,6 +117,7 @@
                         <version>1.0</version>
                         <executions>
                             <execution>
+                                <!-- Copy rpc.thrift into target directory -->
                                 <id>copy-thrift-source</id>
                                 <goals>
                                     <goal>copy</goal>
@@ -127,6 +132,7 @@
                                 </configuration>
                             </execution>
                             <execution>
+                                <!-- Copy source file and CmakeLists.txt into target directory -->
                                 <id>copy-cmakelist-file</id>
                                 <phase>compile</phase>
                                 <goals>
@@ -158,7 +164,7 @@
                         <executions>
                             <execution>
                                 <id>generate-thrift-sources-cpp</id>
-                                <!-- Move from generate-sources to generate-resources to avoid executing twice -->
+                                <!-- Move from generate-sources to generate-resources to avoid double executions -->
                                 <phase>generate-resources</phase>
                                 <goals>
                                     <goal>compile</goal>
@@ -198,6 +204,10 @@
                                     -->
                                     <targetPath>${project.build.directory}/build/main</targetPath>
                                     <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
+                                    </options>
                                 </configuration>
                             </execution>
                             <!-- Actually executes the build -->
@@ -219,6 +229,7 @@
                                     <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                                 </configuration>
                             </execution>
+                            <!-- Generate Cmake build directory to compile testing program -->
                             <execution>
                                 <id>cmake-generate-test</id>
                                 <phase>test-compile</phase>
@@ -231,8 +242,13 @@
                                     <sourcePath>${project.build.directory}/build/test</sourcePath>
                                     <targetPath>${project.build.directory}/build/test</targetPath>
                                     <generator>${cmake.generator}</generator>
+                                    <options>
+                                        <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                        <option>-DBOOST_LIBRARYDIR=${boost.library.dir}</option>
+                                    </options>
                                 </configuration>
                             </execution>
+                            <!-- Actually executes the testing compilation -->
                             <execution>
                                 <id>cmake-compile-test</id>
                                 <phase>test-compile</phase>
@@ -246,6 +262,7 @@
                                     <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                                 </configuration>
                             </execution>
+                            <!-- Run the integration test cases -->
                             <execution>
                                 <id>cmake-run-test</id>
                                 <phase>test</phase>
@@ -319,7 +336,7 @@
                                     <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                                     <skipCache>false</skipCache>
                                     <!-- must be true to avoid the local Catch2 has incorrect vesion.-->
-                                    <overwrite>true</overwrite>
+                                    <overwrite>false</overwrite>
                                 </configuration>
                             </execution>
                         </executions>
@@ -327,8 +344,9 @@
                     <plugin>
                         <groupId>com.bazaarvoice.maven.plugins</groupId>
                         <artifactId>process-exec-maven-plugin</artifactId>
-                        <version>0.7</version>
+                        <version>0.9</version>
                         <executions>
+                            <!-- Start a local IoTDB server to run integration test cases -->
                             <execution>
                                 <id>iotdb-process</id>
                                 <phase>generate-test-resources</phase>
@@ -341,12 +359,13 @@
                                     <!-- Maximum time in seconds to wait after launching IoTDB -->
                                     <waitAfterLaunch>5</waitAfterLaunch>
                                     <!-- Redirect IoTDB server log to /dev/null -->
-                                    <processLogFile>${dev.null.path}</processLogFile>
+                                    <processLogFile>${project.build.directory}/build/test/test.log</processLogFile>
                                     <arguments>
-                                        <argument>../../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
+                                        <argument>${project.basedir}/../server/target/iotdb-server-${project.version}/sbin/${iotdb.server.script}</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
+                            <!-- Stop the IoTDB server when integration test finishes -->
                             <execution>
                                 <id>stop-all</id>
                                 <phase>post-integration-test</phase>

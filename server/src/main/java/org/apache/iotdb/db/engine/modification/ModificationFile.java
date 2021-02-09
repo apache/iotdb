@@ -78,6 +78,7 @@ public class ModificationFile implements AutoCloseable {
   /**
    * Release resources such as streams and caches.
    */
+  @Override
   public void close() throws IOException {
     synchronized (this) {
       writer.close();

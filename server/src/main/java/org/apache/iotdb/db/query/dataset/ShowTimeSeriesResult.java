@@ -30,11 +30,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
+public class ShowTimeSeriesResult extends ShowResult {
 
-  private String name;
   private String alias;
-  private String sgName;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
@@ -43,9 +41,8 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
 
   public ShowTimeSeriesResult(String name, String alias, String sgName, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor, Map<String, String> tags, Map<String, String> attributes) {
-    this.name = name;
+    super(name, sgName);
     this.alias = alias;
-    this.sgName = sgName;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
@@ -54,19 +51,11 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
   }
 
   public ShowTimeSeriesResult() {
-
-  }
-
-  public String getName() {
-    return name;
+    super();
   }
 
   public String getAlias() {
     return alias;
-  }
-
-  public String getSgName() {
-    return sgName;
   }
 
   public TSDataType getDataType() {
@@ -87,11 +76,6 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
 
   public Map<String, String> getAttribute() {
     return attributes;
-  }
-
-  @Override
-  public int compareTo(ShowTimeSeriesResult o) {
-    return this.name.compareTo(o.name);
   }
 
   @Override

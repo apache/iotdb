@@ -657,4 +657,8 @@ public class IoTDBStatement implements Statement {
   public long getSessionId() {
     return sessionId;
   }
+
+  public long getStmtId() {
+    return stmtId;
+  }
 }

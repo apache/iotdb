@@ -969,7 +969,6 @@ public class StorageGroupProcessor {
       long timePartitionId)
       throws WriteProcessException {
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-
     if (tsFileProcessor == null) {
       return;
     }
@@ -1065,58 +1064,52 @@ public class StorageGroupProcessor {
       boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
 
-    TsFileProcessor res;
-    // we have to ensure only one thread can change workSequenceTsFileProcessors
-    writeLock();
-    try {
-      res = tsFileProcessorTreeMap.get(timeRangeId);
-      if (res == null) {
-        // we have to remove oldest processor to control the num of the memtables
-        // TODO: use a method to control the number of memtables
-        if (tsFileProcessorTreeMap.size()
-            >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
-          Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-          logger.info(
-              "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
-              sequence, tsFileProcessorTreeMap.size(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
-              logicalStorageGroupName + "-" + virtualStorageGroupId);
-          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
-        }
+    TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
 
-        // build new processor
-        TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
-        tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
-        tsFileManagement.add(newProcessor.getTsFileResource(), sequence);
-        res = newProcessor;
+    if (null == res) {
+      // we have to remove oldest processor to control the num of the memtables
+      // TODO: use a method to control the number of memtables
+      if (tsFileProcessorTreeMap.size()
+          >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
+        Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
+        logger.info(
+            "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
+            sequence, tsFileProcessorTreeMap.size(),
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
+            logicalStorageGroupName);
+        asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
       }
 
-    } finally {
-      // unlock in finally
-      writeUnlock();
+      // build new processor
+      res = newTsFileProcessor(sequence, timeRangeId);
+      tsFileProcessorTreeMap.put(timeRangeId, res);
+      tsFileManagement.add(res.getTsFileResource(), sequence);
+
     }
 
     return res;
   }
 
 
-  private TsFileProcessor createTsFileProcessor(boolean sequence, long timePartitionId)
+  private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-    String baseDir;
-    if (sequence) {
-      baseDir = DirectoryManager.getInstance().getNextFolderForSequenceFile();
-    } else {
-      baseDir = DirectoryManager.getInstance().getNextFolderForUnSequenceFile();
-    }
+    DirectoryManager directoryManager = DirectoryManager.getInstance();
+    String baseDir = sequence ? directoryManager.getNextFolderForSequenceFile()
+        : directoryManager.getNextFolderForUnSequenceFile();
     fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, virtualStorageGroupId)
         .mkdirs();
 
-    String filePath =
-        baseDir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId
-            + File.separator + timePartitionId
-            + File.separator
-            + getNewTsFileName(timePartitionId);
+    String filePath = baseDir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId
+        + File.separator + timePartitionId
+        + File.separator
+        + getNewTsFileName(timePartitionId);
 
+    return getTsFileProcessor(sequence, filePath, timePartitionId);
+  }
+
+  private TsFileProcessor getTsFileProcessor(boolean sequence,
+                                             String filePath,
+                                             long timePartitionId) throws IOException {
     TsFileProcessor tsFileProcessor;
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(
@@ -1124,31 +1117,26 @@ public class StorageGroupProcessor {
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true, deviceNumInLastClosedTsFile);
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
-            .getTsFileResource().calculateRamSize());
-      }
     } else {
       tsFileProcessor = new TsFileProcessor(
           logicalStorageGroupName + File.separator + virtualStorageGroupId,
           fsFactory.getFileWithParent(filePath), storageGroupInfo,
           this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false, deviceNumInLastClosedTsFile);
-      if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
-        tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
-        tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
-            .getTsFileResource().calculateRamSize());
-      }
     }
+
+    if (enableMemControl) {
+      TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+      tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
+      this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+      tsFileProcessorInfo.addTSPMemCost(tsFileProcessor
+          .getTsFileResource().calculateRamSize());
+    }
+
     tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
     tsFileProcessor.addFlushListeners(customFlushListeners);
-
     tsFileProcessor.setTimeRangeId(timePartitionId);
+
     return tsFileProcessor;
   }
 
@@ -1725,6 +1713,45 @@ public class StorageGroupProcessor {
           entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice
           .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
+        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return true;
+  }
+
+
+  /**
+   * <p>
+   *  update latest flush time for partition id
+   *  </>
+   * @param partitionId partition id
+   * @param latestFlushTime lastest flush time
+   * @return true if update latest flush time success
+   */
+  private boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
+    // update the largest timestamp in the last flushing memtable
+    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice
+            .get(partitionId);
+
+    if (curPartitionDeviceLatestTime == null) {
+      logger.warn("Partition: {} does't have latest time for each device. "
+                      + "No valid record is written into memtable.  latest flush time is: {}",
+              partitionId, latestFlushTime);
+      return false;
+    }
+
+    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
+      // set lastest flush time to latestTimeForEachDevice
+      entry.setValue(latestFlushTime);
+
+      partitionLatestFlushedTimeForEachDevice
+              .computeIfAbsent(partitionId, id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+      newlyFlushedPartitionLatestFlushedTimeForEachDevice
+              .computeIfAbsent(partitionId, id -> new HashMap<>())
+              .put(entry.getKey(), entry.getValue());
+      if (globalLatestFlushedTimeForEachDevice
+              .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
     }
@@ -2600,6 +2627,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(logicalStorageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions",
             processor.getTsFileResource().getTsFilePath());
       }
@@ -2613,6 +2641,7 @@ public class StorageGroupProcessor {
       if (filter.satisfy(logicalStorageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        updateLatestFlushTimeToPartition(tsFileResource.getTimePartition(), Long.MIN_VALUE);
         logger.debug("{} is removed during deleting partitions", tsFileResource.getTsFilePath());
       }
     }

@@ -36,6 +36,7 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
   private List<Boolean> originalList;
   private SerializableBooleanTVList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -44,6 +45,7 @@ public class SerializableBooleanTVListTest extends SerializableTVListTest {
         .newSerializableTVList(TSDataType.BOOLEAN, QUERY_ID);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();
