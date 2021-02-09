@@ -37,7 +37,6 @@
         <chmod.command.para>+x cmake</chmod.command.para>
     </properties>
     <profiles>
-
         <profile>
             <id>os-windows</id>
             <activation>
@@ -68,9 +67,7 @@
                                 <configuration>
                                     <basedir>${cmake.root.dir}/bin</basedir>
                                     <executable>${chmod.command}</executable>
-                                    <arguments>
-                                        <argument>${chmod.command.para}</argument>
-                                    </arguments>
+                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>
