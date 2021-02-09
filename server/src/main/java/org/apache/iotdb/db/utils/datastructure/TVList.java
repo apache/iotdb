@@ -205,6 +205,7 @@ public abstract class TVList {
 
   protected abstract void expandValues();
 
+  @Override
   public abstract TVList clone();
 
   public TVList clone(long version) {

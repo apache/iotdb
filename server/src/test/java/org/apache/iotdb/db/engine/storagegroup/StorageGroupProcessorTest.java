@@ -163,6 +163,33 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
+  public void testInsertDataAndRemovePartitionAndInsert()
+          throws WriteProcessException, QueryProcessException, IllegalPathException {
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    processor.removePartitions((storageGroupName, timePartitionId) -> true);
+
+    for (int j = 0; j < 10; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+      processor.asyncCloseAllWorkingTsFileProcessors();
+    }
+    processor.syncCloseAllWorkingTsFileProcessors();
+
+    QueryDataSource queryDataSource = processor
+            .query(new PartialPath(deviceId), measurementId, context,
+                    null, null);
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+  }
+
+  @Test
   public void testIoTDBTabletWriteAndSyncClose()
       throws QueryProcessException, IllegalPathException {
     String[] measurements = new String[2];

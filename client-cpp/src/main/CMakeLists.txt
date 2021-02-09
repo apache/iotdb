@@ -21,22 +21,33 @@ PROJECT(iotdb_session CXX)
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Wall")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 
-# TODO May use FIND_PACKAGE instead
-IF(MSVC)
-    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include/boost-1_72)
-ELSE()
-    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
-    INCLUDE_DIRECTORIES(${TOOLS_DIR}/boost/target/lib/boost/include)
+FIND_PACKAGE(Boost REQUIRED)
+IF (DEFINED BOOST_INCLUDEDIR)
+    include_directories(SYSTEM "${BOOST_INCLUDEDIR}")
 ENDIF()
 
-INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
-#ADD_SUBDIRECTORY(generated-sources-cpp)
+IF(MSVC)
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/Release/thriftmd.lib")
+ELSE()
+    SET(THRIFT_STATIC_LIB "${TOOLS_DIR}/thrift/target/build/lib/libthrift.a")
+ENDIF()
 
+# Add Boost include path for MacOS
+INCLUDE_DIRECTORIES(/usr/local/include)
+# Add Thrift include directory
+INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.13.0/lib/cpp/src)
+
+# Add ./generated-sources-cpp as a Cmake subdirectory
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
 
-ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
+IF(MSVC)
+    ADD_LIBRARY(iotdb_session ${SESSION_SRCS})
+ELSE()
+    ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
+ENDIF()
+
+# Link with Thrift static library
 TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})

@@ -95,6 +95,7 @@ public class SessionDataSetWrapper implements AutoCloseable{
   /**
    * close this dataset to release the session
    */
+  @Override
   public void close() {
     pool.closeResultSet(this);
   }

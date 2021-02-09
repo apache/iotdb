@@ -94,6 +94,7 @@ public abstract class AbstractCli {
   private static int fetchSize = 1000;
   static String timestampPrecision = "ms";
   static String timeFormat = RpcUtils.DEFAULT_TIME_FORMAT;
+  static private boolean continuePrint = false;
 
   private static int lineCount = 0;
   private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
@@ -204,8 +205,10 @@ public abstract class AbstractCli {
 
   static void setMaxDisplayNumber(String maxDisplayNum) {
     long tmp = Long.parseLong(maxDisplayNum.trim());
-    if (tmp > Integer.MAX_VALUE || tmp <= 0) {
+    if (tmp > Integer.MAX_VALUE) {
       throw new NumberFormatException();
+    } else if (tmp <= 0) {
+      continuePrint = true;
     } else {
       maxPrintRowCount = Integer.parseInt(maxDisplayNum.trim());
     }
@@ -458,6 +461,13 @@ public abstract class AbstractCli {
           long costTime = System.currentTimeMillis() - startTime;
           println(String.format("It costs %.3fs", costTime / 1000.0));
           while (!isReachEnd) {
+            if (continuePrint) {
+              maxSizeList = new ArrayList<>(columnLength);
+              lists = cacheResult(resultSet, maxSizeList, columnLength,
+                  resultSetMetaData, zoneId);
+              output(lists, maxSizeList);
+              continue;
+            }
             println(String.format(
                 "Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.",
                 maxPrintRowCount));

@@ -42,6 +42,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
   private List<RowRecord> originalList;
   private SerializableRowRecordList testList;
 
+  @Override
   @Before
   public void setUp() throws Exception {
     super.setUp();
@@ -50,6 +51,7 @@ public class SerializableRowRecordListTest extends SerializableListTest {
         .newSerializableRowRecordList(QUERY_ID, DATA_TYPES, INTERNAL_ROW_RECORD_LIST_CAPACITY);
   }
 
+  @Override
   @After
   public void tearDown() {
     super.tearDown();

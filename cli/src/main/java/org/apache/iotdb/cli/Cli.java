@@ -108,18 +108,13 @@ public class Cli extends AbstractCli {
   }
 
   private static void serve() {
-    try (ConsoleReader reader = new ConsoleReader()) {
-      reader.setExpandEvents(false);
-
+    try {
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
       password = commandLine.getOptionValue(PASSWORD_ARGS);
-      if (password == null) {
-        password = reader.readLine("please input your password:", '\0');
-      }
-      if (hasExecuteSQL) {
+      if (hasExecuteSQL && password != null) {
         try (IoTDBConnection connection = (IoTDBConnection) DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
           properties = connection.getServerProperties();
@@ -130,8 +125,13 @@ public class Cli extends AbstractCli {
           println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
         }
       }
-
-      receiveCommands(reader);
+      try (ConsoleReader reader = new ConsoleReader()) {
+        reader.setExpandEvents(false);
+        if (password == null) {
+          password = reader.readLine("please input your password:", '\0');
+        }
+        receiveCommands(reader);
+      }
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {

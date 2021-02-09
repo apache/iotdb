@@ -120,6 +120,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return pathsNum;
   }
 
+  @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public boolean hasNextWithoutConstraint() throws IOException {
     if (curDataSetInitialized && currentDataSet.hasNext()) {
@@ -214,6 +215,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     }
   }
 
+  @Override
   public RowRecord nextWithoutConstraint() throws IOException {
     RowRecord originRowRecord = currentDataSet.next();
 
