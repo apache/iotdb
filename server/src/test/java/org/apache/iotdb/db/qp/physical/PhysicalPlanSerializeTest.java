@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -325,4 +326,27 @@ public class PhysicalPlanSerializeTest {
     PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(result, authorPlan);
   }
+
+  @Test
+  public void alterTimeSeriesBasicInfoPlanTest() throws IllegalPathException, IOException {
+    AlterTimeSeriesBasicInfoPlan plan = new AlterTimeSeriesBasicInfoPlan(
+        new PartialPath("root.sg.a.b"), TSDataType.DOUBLE,
+        TSEncoding.RLE, CompressionType.SNAPPY);
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    ByteBuffer byteBuffer1 = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
+    plan.serialize(byteBuffer2);
+
+    byteBuffer2.flip();
+    Assert.assertEquals(byteBuffer1, byteBuffer2);
+
+    PhysicalPlan result = Factory.create(byteBuffer1);
+    Assert.assertEquals(OperatorType.ALTER_TIMESERIES_BASIC_INFO, result.getOperatorType());
+    Assert.assertEquals(plan, result);
+  }
+
 }
