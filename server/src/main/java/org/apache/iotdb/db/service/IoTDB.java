@@ -41,7 +41,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.metrics.Metric;
+import org.apache.iotdb.metrics.MetricRegistry;
 import org.apache.iotdb.metrics.MetricManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class IoTDB implements IoTDBMBean {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static Metric serverMetric = MetricManager.getMetric("iotdb");
+  public static MetricRegistry serverMetricRegistry = MetricManager.getMetric("iotdb");
 
   public static void main(String[] args) {
     if (args.length > 0) {

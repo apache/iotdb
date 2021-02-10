@@ -52,13 +52,13 @@ public class MetricManager {
   }
  }
 
- public static Metric getMetric(String namespace) {
+ public static MetricRegistry getMetric(String namespace) {
   return factory.getMetric(namespace);
  }
  public static void enableKnownMetric(KnownMetric metric) {
   factory.enableKnownMetric(metric);
  }
- public static Map<String, Metric> getAllMetrics() {
+ public static Map<String, MetricRegistry> getAllMetrics() {
   return factory.getAllMetrics();
  }
  public static boolean isEnable() {
