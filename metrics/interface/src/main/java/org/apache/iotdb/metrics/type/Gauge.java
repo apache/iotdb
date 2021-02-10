@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.metrics.type;
 
-public interface Gauge<T> extends Metric {
-  T value();
+public interface Gauge extends IMetric {
+  long value();
+  void set(long value);
 }

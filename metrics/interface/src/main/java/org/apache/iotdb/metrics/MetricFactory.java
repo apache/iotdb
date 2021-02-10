@@ -11,10 +11,10 @@ public interface MetricFactory {
     * @param namespace
     * @return
     */
-   MetricRegistry getMetric(String namespace);
+   MetricManager getMetric(String namespace);
 
    void enableKnownMetric(KnownMetric metric);
-   Map<String, MetricRegistry> getAllMetrics();
+   Map<String, MetricManager> getAllMetrics();
    boolean isEnable();
 
 }

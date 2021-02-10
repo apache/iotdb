@@ -20,7 +20,7 @@ package org.apache.iotdb.metrics.type;
 
 import java.util.concurrent.TimeUnit;
 
-public interface Timer extends Metric {
+public interface Timer extends IMetric {
   void update(long duration, TimeUnit unit);
 
   default void updateMillis(long durationMillis) {
@@ -35,7 +35,7 @@ public interface Timer extends Metric {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
-  Snapshot takeSnapshot();
+  HistogramSnapshot takeSnapshot();
 
-  Meter getMeter();
+  Rate getMeter();
 }

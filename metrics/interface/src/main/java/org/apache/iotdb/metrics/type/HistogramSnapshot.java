@@ -18,13 +18,29 @@
  */
 package org.apache.iotdb.metrics.type;
 
-public interface Meter extends Metric {
-  long getCount();
-  double getOneMinuteRate();
-  double getMeanRate();
-  double getFiveMinuteRate();
-  double getFifteenMinuteRate();
+import java.io.OutputStream;
 
-  void mark();
-  void mark(long n);
+/**
+ * used by Timer and Histogram
+ */
+public interface HistogramSnapshot {
+
+  public abstract double getValue(double quantile);
+
+  public abstract long[] getValues();
+  public abstract int size();
+
+  public double getMedian();
+
+  public abstract long getMax();
+  public abstract double getMean();
+  public abstract long getMin();
+  public abstract double getStdDev();
+
+  /**
+   * Writes the values of the snapshot to the given stream.
+   *
+   * @param output an output stream
+   */
+  public abstract void dump(OutputStream output);
 }

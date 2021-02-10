@@ -1,67 +1,42 @@
 package org.apache.iotdb.metrics;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.type.Timer;
+
 import java.util.Map;
-import java.util.ServiceLoader;
-import org.apache.iotdb.metrics.impl.DoNothingFactory;
+import java.util.concurrent.TimeUnit;
 
-public class MetricManager {
+public interface MetricManager {
 
- private static List<MetricReporter> reporters = new ArrayList<>();
+  Counter counter(String metric, String... tags);
+  Gauge gauge(String metric, String... tags);
+  Histogram histogram(String metric, String... tags);
+  Rate rate(String metric, String... tags);
+  Timer timer(String metric, String... tags);
 
- private static MetricFactory factory;
+  //metric.counter(5, "insertRecords","interface","insertRecords","sg","sg1");
+  void count(int delta, String metric, String... tags);
+  void count(long delta, String metric, String... tags);
+  void histogram(int value, String metric, String... tags);
+  void histogram(long value, String metric, String... tags);
+  void gauge(int value, String metric, String... tags);
+  void gauge(long value, String metric, String... tags);
+  void meter(int value, String metric, String... tags);
+  void meter(long value, String metric, String... tags);
+  void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
+  void timerStart(String metric, String... tags);
+  void timerEnd(String metric, String... tags);
 
- static {
-  init();
- }
+  Map<String, String[]> getAllMetricKeys();
 
- private static void init() {
-
-  ServiceLoader<MetricReporter> reporter = ServiceLoader.load(MetricReporter.class);
-  for (MetricReporter r : reporter) {
-   reporters.add(r);
-   r.start();
-  }
-
-  ServiceLoader<MetricFactory> metricFactories = ServiceLoader.load(MetricFactory.class);
-  int size = 0;
-  MetricFactory nothingFactory = null;
-
-  for (MetricFactory mf : metricFactories) {
-   if (mf instanceof DoNothingFactory) {
-    nothingFactory = mf;
-    continue;
-   }
-    size ++;
-    if (size > 1) {
-     throw new RuntimeException("More than one Metric Implementation is detected.");
-    }
-   factory = mf;
-  }
-
-  // if no more implementation, we use nothingFactory.
-  if (size == 0) {
-   factory = nothingFactory;
-  }
- }
-
- public static void stop() {
-  for (MetricReporter r : reporters) {
-   r.stop();
-  }
- }
-
- public static MetricRegistry getMetric(String namespace) {
-  return factory.getMetric(namespace);
- }
- public static void enableKnownMetric(KnownMetric metric) {
-  factory.enableKnownMetric(metric);
- }
- public static Map<String, MetricRegistry> getAllMetrics() {
-  return factory.getAllMetrics();
- }
- public static boolean isEnable() {
-  return factory.isEnable();
- }
+  // key is name + tags
+  Map<String[], Counter> getAllCounters();
+  Map<String[], Gauge> getAllGauges();
+  Map<String[], Rate> getAllMeters();
+  Map<String[], Histogram> getAllHistograms();
+  Map<String[], Timer> getAllTimers();
 }

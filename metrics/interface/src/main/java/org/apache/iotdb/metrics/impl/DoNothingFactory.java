@@ -4,12 +4,12 @@ import java.util.Collections;
 import java.util.Map;
 import org.apache.iotdb.metrics.MetricFactory;
 import org.apache.iotdb.metrics.KnownMetric;
-import org.apache.iotdb.metrics.MetricRegistry;
+import org.apache.iotdb.metrics.MetricManager;
 
 public class DoNothingFactory implements MetricFactory {
-  private DoNothingMetricRegistry metric = new DoNothingMetricRegistry();
+  private DoNothingMetricManager metric = new DoNothingMetricManager();
   @Override
-  public MetricRegistry getMetric(String namespace) {
+  public MetricManager getMetric(String namespace) {
     return metric;
   }
 
@@ -19,7 +19,7 @@ public class DoNothingFactory implements MetricFactory {
   }
 
   @Override
-  public Map<String, MetricRegistry> getAllMetrics() {
+  public Map<String, MetricManager> getAllMetrics() {
     return Collections.emptyMap();
   }
 

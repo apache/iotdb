@@ -18,34 +18,5 @@
  */
 package org.apache.iotdb.metrics.type;
 
-import java.io.OutputStream;
-
-/**
- * used by Timer and Histogram
- */
-public interface Snapshot {
-
-  public abstract double getValue(double quantile);
-
-  public abstract long[] getValues();
-  public abstract int size();
-
-  public double getMedian();
-  public double get75thPercentile();
-  public double get95thPercentile();
-  public double get98thPercentile();
-  public double get99thPercentile();
-  public double get999thPercentile();
-
-  public abstract long getMax();
-  public abstract double getMean();
-  public abstract long getMin();
-  public abstract double getStdDev();
-
-  /**
-   * Writes the values of the snapshot to the given stream.
-   *
-   * @param output an output stream
-   */
-  public abstract void dump(OutputStream output);
+public interface IMetric {
 }

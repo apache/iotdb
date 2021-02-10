@@ -1,17 +1,41 @@
 package org.apache.iotdb.metrics.impl;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.metrics.MetricRegistry;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.Meter;
-import org.apache.iotdb.metrics.type.Metric;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Timer;
 
-public class DoNothingMetricRegistry implements MetricRegistry {
+public class DoNothingMetricManager implements MetricManager {
+
+  @Override
+  public Counter counter(String metric, String... tags) {
+    return null;
+  }
+
+  @Override
+  public Gauge gauge(String metric, String... tags) {
+    return null;
+  }
+
+  @Override
+  public Histogram histogram(String metric, String... tags) {
+    return null;
+  }
+
+  @Override
+  public Rate rate(String metric, String... tags) {
+    return null;
+  }
+
+  @Override
+  public Timer timer(String metric, String... tags) {
+    return null;
+  }
 
   @Override
   public void count(int delta, String metric, String... tags) {
@@ -74,11 +98,6 @@ public class DoNothingMetricRegistry implements MetricRegistry {
   }
 
   @Override
-  public Metric getMetricValue(String metric, String... tags) {
-    return null;
-  }
-
-  @Override
   public Map<String[], Counter> getAllCounters() {
     return null;
   }
@@ -89,7 +108,7 @@ public class DoNothingMetricRegistry implements MetricRegistry {
   }
 
   @Override
-  public Map<String[], Meter> getAllMeters() {
+  public Map<String[], Rate> getAllMeters() {
     return null;
   }
 
