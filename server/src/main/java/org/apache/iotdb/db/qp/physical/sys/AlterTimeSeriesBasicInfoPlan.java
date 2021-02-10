@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -88,6 +91,19 @@ public class AlterTimeSeriesBasicInfoPlan extends PhysicalPlan {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.write((byte) PhysicalPlanType.ALTER_TIMESERIES_BASIC_INFO.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+    stream.write((byte) dataType.ordinal());
+    stream.write((byte) encodingType.ordinal());
+    stream.write((byte) compressor.ordinal());
+
+    stream.writeLong(index);
+  }
+
+  @Override
   public void serialize(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.ALTER_TIMESERIES_BASIC_INFO.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
@@ -113,5 +129,25 @@ public class AlterTimeSeriesBasicInfoPlan extends PhysicalPlan {
     this.index = buffer.getLong();
   }
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(path, dataType, encodingType, compressor);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+
+    AlterTimeSeriesBasicInfoPlan that = (AlterTimeSeriesBasicInfoPlan) o;
+    return Objects.equals(path, that.path) &&
+        dataType == that.dataType &&
+        encodingType == that.encodingType &&
+        compressor == that.compressor;
+  }
 
 }
