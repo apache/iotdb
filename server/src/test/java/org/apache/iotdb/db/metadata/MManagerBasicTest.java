@@ -626,4 +626,32 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testChangeTimeSeriesBasicInfo() {
+    try {
+      String path = "root.sg1.aa.bb.cc";
+      String subOfPath = "root.sg1.aa.bb";
+      MManager manager = IoTDB.metaManager;
+
+      manager.createTimeseries(new PartialPath(path), TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+
+      List<PartialPath> paths = manager.getAllTimeseriesPath(new PartialPath("root"));
+      assertEquals(1, paths.size());
+      assertEquals(path, paths.get(0).toString());
+
+      manager.changeTimeSeriesBasicInfo(new PartialPath(subOfPath), TSDataType.FLOAT, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      paths = manager.getAllTimeseriesPath(new PartialPath("root"));
+      assertEquals(2, paths.size());
+
+      PartialPath path1 = paths.get(0).getNodeLength() > paths.get(1).getNodeLength() ? paths.get(0): paths.get(1);
+      PartialPath path2 = paths.get(0).getNodeLength() < paths.get(1).getNodeLength() ? paths.get(0): paths.get(1);
+      assertEquals(path, path1.toString());
+      assertEquals(subOfPath, path2.toString());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
 }
