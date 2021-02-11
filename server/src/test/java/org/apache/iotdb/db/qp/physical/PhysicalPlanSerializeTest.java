@@ -100,8 +100,14 @@ public class PhysicalPlanSerializeTest {
   @Test
   public void setStorageGroupPlanTest() throws IllegalPathException, IOException {
     SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new PartialPath("root.sg"));
-    ByteBuffer byteBuffer = serializePlan(setStorageGroupPlan);
-    PhysicalPlan result = Factory.create(byteBuffer);
+
+    ByteBuffer byteBuffer1 = serializePlan(setStorageGroupPlan);
+    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
+    setStorageGroupPlan.serialize(byteBuffer2);
+    byteBuffer2.flip();
+    Assert.assertEquals(byteBuffer1, byteBuffer2);
+
+    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.SET_STORAGE_GROUP, result.getOperatorType());
     Assert.assertEquals("root.sg", ((SetStorageGroupPlan) result).getPath().getFullPath());
     Assert.assertEquals(result, setStorageGroupPlan);
@@ -155,8 +161,14 @@ public class PhysicalPlanSerializeTest {
         Collections.singletonMap("prop1", "propValue1"),
         Collections.singletonMap("tag1", "tagValue1"),
         Collections.singletonMap("attr1", "attrValue1"), "temperature");
-    ByteBuffer byteBuffer = serializePlan(createTimeSeriesPlan);
-    PhysicalPlan result = Factory.create(byteBuffer);
+
+    ByteBuffer byteBuffer1 = serializePlan(createTimeSeriesPlan);
+    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
+    createTimeSeriesPlan.serialize(byteBuffer2);
+    byteBuffer2.flip();
+    Assert.assertEquals(byteBuffer1, byteBuffer2);
+
+    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(createTimeSeriesPlan, result);
   }
@@ -166,8 +178,14 @@ public class PhysicalPlanSerializeTest {
     CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
         new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
         null, null, null, null);
-    ByteBuffer byteBuffer = serializePlan(createTimeSeriesPlan);
-    PhysicalPlan result = Factory.create(byteBuffer);
+
+    ByteBuffer byteBuffer1 = serializePlan(createTimeSeriesPlan);
+    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
+    createTimeSeriesPlan.serialize(byteBuffer2);
+    byteBuffer2.flip();
+    Assert.assertEquals(byteBuffer1, byteBuffer2);
+
+    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(createTimeSeriesPlan, result);
   }
