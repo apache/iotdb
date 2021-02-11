@@ -47,7 +47,7 @@ public class TSFileDescriptor {
     loadProps();
   }
 
-  public static final TSFileDescriptor getInstance() {
+  public static TSFileDescriptor getInstance() {
     return TsfileDescriptorHolder.INSTANCE;
   }
 

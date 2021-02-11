@@ -36,7 +36,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   private RPCService() {
   }
 
-  public static final RPCService getInstance() {
+  public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
   }
 
