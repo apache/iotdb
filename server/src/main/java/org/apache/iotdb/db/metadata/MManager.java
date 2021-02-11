@@ -376,7 +376,12 @@ public class MManager {
     }
   }
 
-  private void changeTimeSeriesBasicInfo(PartialPath path,
+  /**
+   * It can only change a non-timeseries into a timeseries.
+   * That is, it can only change a non-measurement node into a measurement node by altering its basic information:
+   * TSDataType, TSEncoding, CompressionType.
+   */
+  public void changeTimeSeriesBasicInfo(PartialPath path,
       TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws MetadataException {
     MeasurementMNode leafMNode;
     MNode nodeByPath = mtree.getNodeByPath(path);
