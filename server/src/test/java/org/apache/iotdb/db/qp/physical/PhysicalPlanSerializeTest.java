@@ -68,6 +68,18 @@ public class PhysicalPlanSerializeTest {
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
+  public PhysicalPlan testTwoSerializeMethodAndDeserialize(PhysicalPlan plan)
+      throws IOException, IllegalPathException {
+    ByteBuffer byteBuffer1 = serializePlan(plan);
+    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
+
+    plan.serialize(byteBuffer2);
+    byteBuffer2.flip();
+    Assert.assertEquals(byteBuffer1, byteBuffer2);
+
+    return Factory.create(byteBuffer1);
+  }
+
   @Test
   public void showTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
     ShowTimeSeriesPlan timeSeriesPlan = new ShowTimeSeriesPlan(new PartialPath("root.sg.d1.s1"),
@@ -86,12 +98,9 @@ public class PhysicalPlanSerializeTest {
   @Test
   public void setTTLPlanSerializeTest() throws IllegalPathException, IOException {
     SetTTLPlan setTTLPlan = new SetTTLPlan(new PartialPath("root.sg"), 1000000L);
-    ByteBuffer byteBuffer1 = serializePlan(setTTLPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    setTTLPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(setTTLPlan);
+
     Assert.assertEquals(OperatorType.TTL, result.getOperatorType());
     Assert.assertEquals("root.sg", ((SetTTLPlan) result).getStorageGroup().getFullPath());
     Assert.assertEquals(1000000L, ((SetTTLPlan) result).getDataTTL());
@@ -101,13 +110,8 @@ public class PhysicalPlanSerializeTest {
   public void setStorageGroupPlanTest() throws IllegalPathException, IOException {
     SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new PartialPath("root.sg"));
 
-    ByteBuffer byteBuffer1 = serializePlan(setStorageGroupPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    setStorageGroupPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(setStorageGroupPlan);
 
-    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.SET_STORAGE_GROUP, result.getOperatorType());
     Assert.assertEquals("root.sg", ((SetStorageGroupPlan) result).getPath().getFullPath());
     Assert.assertEquals(result, setStorageGroupPlan);
@@ -117,12 +121,9 @@ public class PhysicalPlanSerializeTest {
   public void deleteTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
     DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan(
         Collections.singletonList(new PartialPath("root.sg.d1.s1")));
-    ByteBuffer byteBuffer1 = serializePlan(deleteTimeSeriesPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    deleteTimeSeriesPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(deleteTimeSeriesPlan);
+
     Assert.assertEquals(OperatorType.DELETE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals("root.sg.d1.s1", result.getPaths().get(0).getFullPath());
   }
@@ -131,12 +132,9 @@ public class PhysicalPlanSerializeTest {
   public void deleteStorageGroupPlanSerializeTest() throws IllegalPathException, IOException {
     DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(
         Collections.singletonList(new PartialPath("root.sg")));
-    ByteBuffer byteBuffer1 = serializePlan(deleteStorageGroupPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    deleteStorageGroupPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(deleteStorageGroupPlan);
+
     Assert.assertEquals(OperatorType.DELETE_STORAGE_GROUP, result.getOperatorType());
     Assert.assertEquals("root.sg", result.getPaths().get(0).getFullPath());
   }
@@ -145,12 +143,9 @@ public class PhysicalPlanSerializeTest {
   public void dataAuthPlanSerializeTest() throws IOException, IllegalPathException {
     DataAuthPlan dataAuthPlan = new DataAuthPlan(
         OperatorType.GRANT_WATERMARK_EMBEDDING, Arrays.asList("user1", "user2"));
-    ByteBuffer byteBuffer1 = serializePlan(dataAuthPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    dataAuthPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(dataAuthPlan);
+
     Assert.assertEquals(Arrays.asList("user1", "user2"), ((DataAuthPlan) result).getUsers());
   }
 
@@ -162,13 +157,8 @@ public class PhysicalPlanSerializeTest {
         Collections.singletonMap("tag1", "tagValue1"),
         Collections.singletonMap("attr1", "attrValue1"), "temperature");
 
-    ByteBuffer byteBuffer1 = serializePlan(createTimeSeriesPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    createTimeSeriesPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createTimeSeriesPlan);
 
-    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(createTimeSeriesPlan, result);
   }
@@ -179,13 +169,8 @@ public class PhysicalPlanSerializeTest {
         new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
         null, null, null, null);
 
-    ByteBuffer byteBuffer1 = serializePlan(createTimeSeriesPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    createTimeSeriesPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(createTimeSeriesPlan);
 
-    PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(createTimeSeriesPlan, result);
   }
@@ -206,12 +191,8 @@ public class PhysicalPlanSerializeTest {
         Collections.singletonMap("attr2", "attrValue2")));
     plan.setAlias(Arrays.asList("temperature", "speed"));
 
-    ByteBuffer byteBuffer1 = serializePlan(plan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    plan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(plan);
+
     Assert.assertEquals(OperatorType.CREATE_MULTI_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(plan, result);
   }
@@ -229,12 +210,8 @@ public class PhysicalPlanSerializeTest {
     plan.setAttributes(null);
     plan.setAlias(null);
 
-    ByteBuffer byteBuffer1 = serializePlan(plan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    plan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(plan);
+
     Assert.assertEquals(OperatorType.CREATE_MULTI_TIMESERIES, result.getOperatorType());
     Assert.assertEquals(plan, result);
   }
@@ -274,12 +251,8 @@ public class PhysicalPlanSerializeTest {
     AuthorPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "root", "root", "root", "", null,
         null);
 
-    ByteBuffer byteBuffer1 = serializePlan(authorPlan);
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    authorPlan.serialize(byteBuffer2);
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-    PhysicalPlan result = Factory.create(byteBuffer1);
+    PhysicalPlan result = testTwoSerializeMethodAndDeserialize(authorPlan);
+
     Assert.assertEquals(result, authorPlan);
   }
 }
