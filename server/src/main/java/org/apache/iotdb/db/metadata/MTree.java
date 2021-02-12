@@ -77,6 +77,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1240,7 +1241,7 @@ public class MTree implements Serializable {
     return devices;
   }
 
-  Set<PartialPath> getDevices(ShowDevicesPlan plan) throws MetadataException {
+  List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
     String[] nodes = plan.getPath().getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
@@ -1256,7 +1257,15 @@ public class MTree implements Serializable {
     offset.remove();
     curOffset.remove();
     count.remove();
-    return devices;
+    List<ShowDevicesResult> res = new ArrayList<>();
+    for (PartialPath device : devices) {
+      if (plan.hasSgCol()) {
+        res.add(new ShowDevicesResult(device.getFullPath(), getStorageGroupPath(device).getFullPath()));
+      } else {
+        res.add(new ShowDevicesResult(device.getFullPath()));
+      }
+    }
+    return res;
   }
 
   /**

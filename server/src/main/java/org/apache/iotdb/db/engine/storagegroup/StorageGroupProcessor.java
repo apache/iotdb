@@ -502,7 +502,7 @@ public class StorageGroupProcessor {
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
-        logger.error("{} - {} compaction submit task failed", logicalStorageGroupName, virtualStorageGroupId);
+        logger.error("{} - {} compaction submit task failed", logicalStorageGroupName, virtualStorageGroupId, e);
       }
     } else {
       logger.error("{} compaction pool not started ,recover failed",
@@ -1806,7 +1806,7 @@ public class StorageGroupProcessor {
                     tsFileProcessor.getTimeRangeId()));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack();
-        logger.error("{} compaction submit task failed", logicalStorageGroupName + "-" + virtualStorageGroupId);
+        logger.error("{} compaction submit task failed", logicalStorageGroupName + "-" + virtualStorageGroupId, e);
       }
     } else {
       logger.info("{} last compaction merge task is working, skip current merge",

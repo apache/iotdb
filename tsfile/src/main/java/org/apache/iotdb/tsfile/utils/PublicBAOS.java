@@ -79,4 +79,9 @@ public class PublicBAOS extends ByteArrayOutputStream {
   public void reset() {
     count = 0;
   }
+
+  @Override
+  public int size() {
+    return count;
+  }
 }
