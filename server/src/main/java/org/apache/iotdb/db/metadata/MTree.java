@@ -1125,6 +1125,7 @@ public class MTree implements Serializable {
       }
 
       PartialPath nodePath = node.getPartialPath();
+      nodePath.setMeasurementAlias(((MeasurementMNode) node).getAlias());
       String[] tsRow = new String[7];
       tsRow[0] = ((MeasurementMNode) node).getAlias();
       MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();

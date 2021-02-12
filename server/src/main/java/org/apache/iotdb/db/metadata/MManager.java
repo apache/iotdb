@@ -510,7 +510,10 @@ public class MManager {
       }
 
       if (!prefixPath.getMeasurement().equals(PATH_WILDCARD)) {
-        allTimeseries = allTimeseries.stream().filter(ts -> ts.getFullPath().endsWith(prefixPath.getMeasurement())).collect(toList());
+        allTimeseries = allTimeseries.stream()
+            .filter(ts -> ts.getFullPath().endsWith(prefixPath.getMeasurement()) ||
+                ts.getMeasurementAlias().equals(prefixPath.getMeasurement()))
+            .collect(toList());
       }
 
       // Monitor storage group seriesPath is not allowed to be deleted
