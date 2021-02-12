@@ -856,11 +856,7 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    try {
-      return getCount(root, nodes, 1);
-    } catch (PathNotExistException e) {
-      throw new PathNotExistException(prefixPath.getFullPath());
-    }
+    return getAllTimeseriesPath(prefixPath).size();
   }
 
   /**
@@ -909,34 +905,10 @@ public class MTree implements Serializable {
     }
     return getCountInGivenLevel(node, level - (i - 1));
   }
-
-  /** Traverse the MTree to get the count of timeseries. */
-  private int getCount(MNode node, String[] nodes, int idx) throws PathNotExistException {
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
-      if (next != null) {
-        if (next instanceof MeasurementMNode) {
-          return 1;
-        } else {
-          return getCount(next, nodes, idx + 1);
-        }
-      } else {
-        throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodeReg);
-      }
-    } else {
-      int cnt = 0;
-      for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode) {
-          cnt++;
-        }
-        cnt += getCount(child, nodes, idx + 1);
-      }
-      return cnt;
-    }
-  }
-
-  /** Traverse the MTree to get the count of devices. */
+  
+  /**
+   * Traverse the MTree to get the count of devices.
+   */
   private int getDevicesCount(MNode node, String[] nodes, int idx) throws MetadataException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     int cnt = 0;

@@ -227,6 +227,46 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
   }
 
+  /**
+   * IoTDB > COUNT TIMESERIES root
+   * IoTDB > COUNT TIMESERIES root.ln
+   * IoTDB > COUNT TIMESERIES root.ln.*.*.status
+   * IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
+   */
+  @Test
+  public void testGetAllTimeseriesCount() {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(new PartialPath("root.laptop.d1"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d1.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d1.s1.t1"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d1.s2"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d2.s1"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+      manager.createTimeseries(new PartialPath("root.laptop.d2.s2"), TSDataType.INT32, TSEncoding.PLAIN,
+              CompressionType.GZIP, null);
+  
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 5);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 4);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   @Test
   public void testSetStorageGroupAndExist() {
 
