@@ -226,13 +226,7 @@ public class MManagerBasicTest {
     }
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
   }
-
-  /**
-   * IoTDB > COUNT TIMESERIES root
-   * IoTDB > COUNT TIMESERIES root.ln
-   * IoTDB > COUNT TIMESERIES root.ln.*.*.status
-   * IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
-   */
+  
   @Test
   public void testGetAllTimeseriesCount() {
     MManager manager = IoTDB.metaManager;
