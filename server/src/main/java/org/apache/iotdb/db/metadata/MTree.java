@@ -46,6 +46,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.utils.Holder;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -848,7 +849,8 @@ public class MTree implements Serializable {
 
   /**
    * Get the count of timeseries under the given prefix path.
-   *
+   * if prefixPath contains '*', then not throw PathNotExistException()
+   * 
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
   int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
@@ -856,7 +858,53 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getAllTimeseriesPath(prefixPath).size();
+    Holder<Integer> countHolder = new Holder<>(0);
+    try {
+      getAllTimeseriesCountHelper(root, nodes, 1, countHolder, false);
+    } catch (PathNotExistException e) {
+      throw new PathNotExistException(prefixPath.getFullPath());
+    }
+    return countHolder.getValue();
+  }
+
+  /**
+   * Traverse the MTree to get the count of timeseries.
+   */
+  private void getAllTimeseriesCountHelper(MNode node, String[] nodes, int idx, Holder<Integer> countHolder, boolean wildcard) throws PathNotExistException {
+    if (idx < nodes.length) {
+       if (PATH_WILDCARD.equals(nodes[idx])) {
+         for (MNode child : node.getChildren().values()) {
+           getAllTimeseriesCountHelper(child, nodes, idx+1, countHolder, true);
+         }
+       } else {
+         MNode child = node.getChild(nodes[idx]);
+         if (child == null) {
+           if (!wildcard) {
+             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
+           } else {
+             return;
+           }
+         }
+         getAllTimeseriesCountHelper(child, nodes, idx+1, countHolder, wildcard);
+       }
+    } else if (idx == nodes.length) {
+      if (node instanceof MeasurementMNode) {
+        countHolder.setValue(countHolder.getValue() + 1);
+      }
+      for (MNode child : node.getChildren().values()) {
+        getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
+      }
+    } else {
+      if (node instanceof MeasurementMNode) {
+        countHolder.setValue(countHolder.getValue() + 1);
+      }
+      if (node.getChildren().size() == 0) {
+        return;
+      }
+      for (MNode child : node.getChildren().values()) {
+        getAllTimeseriesCountHelper(child, nodes, idx + 1, countHolder, wildcard);
+      }
+    }
   }
 
   /**

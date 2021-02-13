@@ -245,7 +245,7 @@ public class MManagerBasicTest {
               CompressionType.GZIP, null);
       manager.createTimeseries(new PartialPath("root.laptop.d2.s2"), TSDataType.INT32, TSEncoding.PLAIN,
               CompressionType.GZIP, null);
-  
+      
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root")), 6);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 6);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
@@ -255,6 +255,13 @@ public class MManagerBasicTest {
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 4);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
+
+      try {
+        manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"));
+        fail("Expected exception");
+      } catch (MetadataException e) {
+        assertEquals("Path [root.laptop.d3.s1] does not exist", e.getMessage());
+      }
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
