@@ -32,8 +32,8 @@ public class ClusterNode extends Node {
   public ClusterNode() {
   }
 
-  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort) {
-    super(ip, metaPort, nodeIdentifier, dataPort);
+  public ClusterNode(String ip, int metaPort, int nodeIdentifier, int dataPort, int clientPort) {
+    super(ip, metaPort, nodeIdentifier, dataPort, clientPort);
   }
 
   public ClusterNode(Node other) {

@@ -32,6 +32,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
@@ -41,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -65,37 +67,18 @@ public class ClusterMain {
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
-  private static final String OPTION_INTERVAL_META_PORT = "internal_meta_port";
-  private static final String OPTION_INTERVAL_DATA_PORT = "internal_data_port";
-  private static final String OPTION_CLUSTER_RPC_PORT = "rpc_port";
-  private static final String OPTION_SEED_NODES = "seed_nodes";
-  private static final String OPTION_DEBUG_RPC_PORT = "debug_rpc_port";
-  private static final String OPTION_CLUSTER_RPC_IP = "rpc_address";
-
   private static MetaClusterServer metaServer;
 
   public static void main(String[] args) {
     if (args.length < 1) {
       logger.error("Usage: <-s|-a|-r> "
-              + "[-{} <internal meta port>] "
-              + "[-{} <internal data port>] "
-              + "[-{} <cluster rpc port>] "
-              + "[-{} <cluster RPC address>]\n"
-              + "[-{} <node1:meta_port:data_port:cluster_rpc_port,"
-              + "node2:meta_port:data_port:cluster_rpc_port,"
-              + "...,noden:meta_port:data_port:cluster_rpc_port,>] "
-              + "[-{} <debug rpc port>]"
+              + "[-D{} <cluster module configure file>] "
+              + "[-D{} <server module configure file>] "
               + "-s: start the node as a seed\n"
               + "-a: start the node as a new node\n"
-              + "-r: remove the node out of the cluster\n"
-              + "or: set CLUSTER_CONF and IOTDB_CONF environment variable",
-          OPTION_INTERVAL_META_PORT,
-          OPTION_INTERVAL_DATA_PORT,
-          OPTION_CLUSTER_RPC_PORT,
-          OPTION_CLUSTER_RPC_IP,
-          OPTION_SEED_NODES,
-          //debug rpc is for starting another rpc port for the singleton IoTDB server.
-          OPTION_DEBUG_RPC_PORT
+              + "-r: remove the node out of the cluster\n",
+          ClusterConstant.CLUSTER_CONF,
+          IoTDBConstant.IOTDB_CONF
       );
 
       return;
@@ -105,6 +88,7 @@ public class ClusterMain {
     // the server's configuration.
     IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(false);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    //auto create schema is took over by cluster module, so we disable it in the server module.
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
     // params check

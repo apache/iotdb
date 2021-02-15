@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.monitor.Peer;
 
 /**
  * interfaces that the mbean of RaftMember will use
