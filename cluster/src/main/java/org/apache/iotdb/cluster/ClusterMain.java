@@ -224,78 +224,78 @@ public class ClusterMain {
   private static void replaceDefaultProps(String[] params) {
     Options options = new Options();
 
-    Option metaPort = new Option(OPTION_INTERVAL_META_PORT, OPTION_INTERVAL_META_PORT, true,
-        "port for metadata service");
-    metaPort.setRequired(false);
-    options.addOption(metaPort);
-
-    Option dataPort = new Option(OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true,
-        "port for data service");
-    dataPort.setRequired(false);
-    options.addOption(dataPort);
-
-    Option clusterRpcPort = new Option(OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true,
-        "port for client service");
-    clusterRpcPort.setRequired(false);
-    options.addOption(clusterRpcPort);
-
-    Option clusterRpcIP = new Option(OPTION_CLUSTER_RPC_IP, OPTION_CLUSTER_RPC_IP, true,
-        "IP for client service");
-    clusterRpcIP.setRequired(false);
-    options.addOption(clusterRpcIP);
-
-    Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
-        "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
-    seedNodes.setRequired(false);
-    options.addOption(seedNodes);
-
-    Option debugRpcPort = new Option(OPTION_DEBUG_RPC_PORT, OPTION_DEBUG_RPC_PORT, true,
-        "port for debug client service (using single node mode)");
-    clusterRpcPort.setRequired(false);
-    options.addOption(debugRpcPort);
+//    Option metaPort = new Option(OPTION_INTERVAL_META_PORT, OPTION_INTERVAL_META_PORT, true,
+//        "port for metadata service");
+//    metaPort.setRequired(false);
+//    options.addOption(metaPort);
+//
+//    Option dataPort = new Option(OPTION_INTERVAL_DATA_PORT, OPTION_INTERVAL_DATA_PORT, true,
+//        "port for data service");
+//    dataPort.setRequired(false);
+//    options.addOption(dataPort);
+//
+//    Option clusterRpcPort = new Option(OPTION_CLUSTER_RPC_PORT, OPTION_CLUSTER_RPC_PORT, true,
+//        "port for client service");
+//    clusterRpcPort.setRequired(false);
+//    options.addOption(clusterRpcPort);
+//
+//    Option clusterRpcIP = new Option(OPTION_CLUSTER_RPC_IP, OPTION_CLUSTER_RPC_IP, true,
+//        "IP for client service");
+//    clusterRpcIP.setRequired(false);
+//    options.addOption(clusterRpcIP);
+//
+//    Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
+//        "comma-separated {IP/DOMAIN}:meta_port:data_port:client_port pairs");
+//    seedNodes.setRequired(false);
+//    options.addOption(seedNodes);
+//
+//    Option debugRpcPort = new Option(OPTION_DEBUG_RPC_PORT, OPTION_DEBUG_RPC_PORT, true,
+//        "port for debug client service (using single node mode)");
+//    clusterRpcPort.setRequired(false);
+//    options.addOption(debugRpcPort);
 
     CommandLine commandLine = parseCommandLine(options, params);
     if (commandLine == null) {
       logger.error("replaces properties failed, use default conf params");
     } else {
-      ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
-      if (commandLine.hasOption(OPTION_INTERVAL_META_PORT)) {
-        clusterConfig.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_INTERVAL_META_PORT)));
-        logger.debug("replace local meta port with={}", clusterConfig.getInternalMetaPort());
-      }
-
-      if (commandLine.hasOption(OPTION_INTERVAL_DATA_PORT)) {
-        clusterConfig.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_INTERVAL_DATA_PORT)));
-        logger.debug("replace local data port with={}", clusterConfig.getInternalDataPort());
-      }
-
-      if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
-        clusterConfig.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_CLUSTER_RPC_PORT)));
-        logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
-      }
-
-      if (commandLine.hasOption(OPTION_CLUSTER_RPC_IP)) {
-        IoTDBDescriptor.getInstance().getConfig()
-            .setRpcAddress(commandLine.getOptionValue(OPTION_CLUSTER_RPC_IP));
-        logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
-      }
-
-      if (commandLine.hasOption(OPTION_SEED_NODES)) {
-        String seedNodeUrls = commandLine.getOptionValue(OPTION_SEED_NODES);
-        clusterConfig.setSeedNodeUrls(ClusterDescriptor.getSeedUrlList(seedNodeUrls));
-        logger.debug("replace seed nodes with={}", clusterConfig.getSeedNodeUrls());
-      }
-
-      if (commandLine.hasOption(OPTION_DEBUG_RPC_PORT)) {
-        IoTDBDescriptor.getInstance().getConfig().setRpcPort(Integer.parseInt(commandLine.getOptionValue(
-            OPTION_DEBUG_RPC_PORT)));
-        IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(true);
-        logger.debug("replace local cluster (single node) rpc port with={}", commandLine.getOptionValue(
-            OPTION_DEBUG_RPC_PORT));
-      }
+//      ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+//      if (commandLine.hasOption(OPTION_INTERVAL_META_PORT)) {
+//        clusterConfig.setInternalMetaPort(Integer.parseInt(commandLine.getOptionValue(
+//            OPTION_INTERVAL_META_PORT)));
+//        logger.debug("replace local meta port with={}", clusterConfig.getInternalMetaPort());
+//      }
+//
+//      if (commandLine.hasOption(OPTION_INTERVAL_DATA_PORT)) {
+//        clusterConfig.setInternalDataPort(Integer.parseInt(commandLine.getOptionValue(
+//            OPTION_INTERVAL_DATA_PORT)));
+//        logger.debug("replace local data port with={}", clusterConfig.getInternalDataPort());
+//      }
+//
+//      if (commandLine.hasOption(OPTION_CLUSTER_RPC_PORT)) {
+//        clusterConfig.setClusterRpcPort(Integer.parseInt(commandLine.getOptionValue(
+//            OPTION_CLUSTER_RPC_PORT)));
+//        logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
+//      }
+//
+//      if (commandLine.hasOption(OPTION_CLUSTER_RPC_IP)) {
+//        IoTDBDescriptor.getInstance().getConfig()
+//            .setRpcAddress(commandLine.getOptionValue(OPTION_CLUSTER_RPC_IP));
+//        logger.debug("replace local cluster rpc port with={}", clusterConfig.getClusterRpcPort());
+//      }
+//
+//      if (commandLine.hasOption(OPTION_SEED_NODES)) {
+//        String seedNodeUrls = commandLine.getOptionValue(OPTION_SEED_NODES);
+//        clusterConfig.setSeedNodeUrls(ClusterDescriptor.getSeedUrlList(seedNodeUrls));
+//        logger.debug("replace seed nodes with={}", clusterConfig.getSeedNodeUrls());
+//      }
+//
+//      if (commandLine.hasOption(OPTION_DEBUG_RPC_PORT)) {
+//        IoTDBDescriptor.getInstance().getConfig().setRpcPort(Integer.parseInt(commandLine.getOptionValue(
+//            OPTION_DEBUG_RPC_PORT)));
+//        IoTDBDescriptor.getInstance().getConfig().setEnableRPCService(true);
+//        logger.debug("replace local cluster (single node) rpc port with={}", commandLine.getOptionValue(
+//            OPTION_DEBUG_RPC_PORT));
+//      }
     }
   }
 

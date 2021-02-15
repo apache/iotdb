@@ -25,7 +25,7 @@ public class AsyncDataClientTest {
 
   @Test
   public void test() throws IOException, TException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", new SingleManagerFactory(new Factory()));
+    AsyncClientPool asyncClientPool = new AsyncClientPool(new SingleManagerFactory(new Factory()));
     AsyncDataClient client;
     Node node = TestUtils.getNode(0);
     client = new AsyncDataClient(new Factory(), new TAsyncClientManager(),

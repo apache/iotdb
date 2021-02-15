@@ -284,7 +284,7 @@ public class ClusterUtils {
     int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
     int clientPort = Integer.parseInt(str.substring(clientPortFirstPos, clientPortLastPos));
     //TODO hxd: we do not set values to all fields of a Node.
-    return new Node(ip, metaPort, id, dataPort, clientPort);
+    return new Node(ip, metaPort, id, dataPort).setClientPort(clientPort);
   }
 
   public static Node parseNode(String nodeUrl) {

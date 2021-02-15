@@ -53,7 +53,7 @@ public class AsyncClientPoolTest {
   }
 
   private void getClient() throws IOException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", testAsyncClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     for (int i = 0; i < 10; i++) {
       AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
       if (client instanceof TestAsyncClient) {
@@ -64,7 +64,7 @@ public class AsyncClientPoolTest {
   }
 
   private void putClient() throws IOException {
-    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", testAsyncClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     List<AsyncClient> testClients = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
@@ -95,7 +95,7 @@ public class AsyncClientPoolTest {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
     testAsyncClientFactory = new TestAsyncClientFactory();
-    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", testAsyncClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
     for (int i = 0; i < 5; i++) {
       asyncClientPool.getClient(TestUtils.getNode(0));
@@ -121,7 +121,7 @@ public class AsyncClientPoolTest {
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(10);
       testAsyncClientFactory = new TestAsyncClientFactory();
-      AsyncClientPool asyncClientPool = new AsyncClientPool("Test", testAsyncClientFactory);
+      AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
       Node node = TestUtils.getNode(0);
       List<AsyncClient> clients = new ArrayList<>();
@@ -160,7 +160,7 @@ public class AsyncClientPoolTest {
     try {
       ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(1);
       testAsyncClientFactory = new TestAsyncClientFactory();
-      AsyncClientPool asyncClientPool = new AsyncClientPool("Test", testAsyncClientFactory);
+      AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
       Node node = TestUtils.getNode(0);
       List<AsyncClient> clients = new ArrayList<>();
@@ -177,7 +177,7 @@ public class AsyncClientPoolTest {
   @Test
   public void testRecreateClient() throws IOException {
     testAsyncClientFactory = new TestAsyncClientFactory();
-    AsyncClientPool asyncClientPool = new AsyncClientPool("Test", new AsyncMetaClient.FactoryAsync(new Factory()));
+    AsyncClientPool asyncClientPool = new AsyncClientPool(new AsyncMetaClient.FactoryAsync(new Factory()));
 
     AsyncMetaClient client = (AsyncMetaClient) asyncClientPool.getClient(TestUtils.getNode(0));
     client.onError(new Exception());
