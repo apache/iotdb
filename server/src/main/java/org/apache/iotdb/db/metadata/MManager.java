@@ -69,7 +69,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -88,7 +87,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -365,37 +363,9 @@ public class MManager {
         ChangeTagOffsetPlan changeTagOffsetPlan = (ChangeTagOffsetPlan) plan;
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         break;
-      case ALTER_TIMESERIES_BASIC_INFO:
-        AlterTimeSeriesBasicInfoPlan alterTimeSeriesBasicInfoPlan = (AlterTimeSeriesBasicInfoPlan) plan;
-        changeTimeSeriesBasicInfo(alterTimeSeriesBasicInfoPlan.getPath(),
-            alterTimeSeriesBasicInfoPlan.getDataType(), alterTimeSeriesBasicInfoPlan.getEncodingType(),
-            alterTimeSeriesBasicInfoPlan.getCompressor());
-        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
-  }
-
-  /**
-   * It can only change a non-timeseries into a timeseries.
-   * That is, it can only change a non-measurement node into a measurement node by altering its basic information:
-   * TSDataType, TSEncoding, CompressionType.
-   */
-  public void changeTimeSeriesBasicInfo(PartialPath path,
-      TSDataType dataType, TSEncoding encoding, CompressionType compressor) throws MetadataException {
-    MeasurementMNode leafMNode;
-    MNode nodeByPath = mtree.getNodeByPath(path);
-    if (nodeByPath instanceof MeasurementMNode) {
-      leafMNode = (MeasurementMNode) nodeByPath;
-      leafMNode.setSchema(new MeasurementSchema(leafMNode.getName(), dataType, encoding, compressor, null));
-    } else {
-      MNode parent = nodeByPath.getParent();
-      MeasurementMNode newNode = new MeasurementMNode(parent, nodeByPath.getName(), null,
-          dataType, getDefaultEncoding(dataType),
-          compressor, null);
-      parent.replaceChild(newNode.getName(), newNode);
-    }
-
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
@@ -1017,8 +987,10 @@ public class MManager {
 
     // persist to meta log
     try {
-      logWriter.alterTimeSeriesBasicInfo(measurementMNode.getPartialPath(),
-          dataType, getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor());
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(measurementMNode.getPartialPath(), dataType,
+          getDefaultEncoding(dataType), TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          null, null, null, null);
+      logWriter.createTimeseries(plan);
     } catch (IOException e) {
       throw new MetadataException(String.format("alter the basic info of %s failed", measurementMNode.getFullPath()));
     }

@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.qp.physical;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Properties;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -27,7 +34,6 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.Factory;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -43,24 +49,15 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Properties;
 
 public class PhysicalPlanSerializeTest {
 
   @Test
   public void showTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
-    ShowTimeSeriesPlan timeSeriesPlan =
-        new ShowTimeSeriesPlan(new PartialPath("root.sg.d1.s1"), true, "unit", "10", 0, 0, false);
+    ShowTimeSeriesPlan timeSeriesPlan = new ShowTimeSeriesPlan(new PartialPath("root.sg.d1.s1"),
+        true, "unit", "10", 0, 0, false);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     timeSeriesPlan.serialize(dataOutputStream);
@@ -110,8 +107,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void deleteTimeSeriesPlanSerializeTest() throws IllegalPathException, IOException {
-    DeleteTimeSeriesPlan deleteTimeSeriesPlan =
-        new DeleteTimeSeriesPlan(Collections.singletonList(new PartialPath("root.sg.d1.s1")));
+    DeleteTimeSeriesPlan deleteTimeSeriesPlan = new DeleteTimeSeriesPlan(
+        Collections.singletonList(new PartialPath("root.sg.d1.s1")));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     deleteTimeSeriesPlan.serialize(dataOutputStream);
@@ -128,8 +125,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void deleteStorageGroupPlanSerializeTest() throws IllegalPathException, IOException {
-    DeleteStorageGroupPlan deleteStorageGroupPlan =
-        new DeleteStorageGroupPlan(Collections.singletonList(new PartialPath("root.sg")));
+    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(
+        Collections.singletonList(new PartialPath("root.sg")));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     deleteStorageGroupPlan.serialize(dataOutputStream);
@@ -146,8 +143,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void dataAuthPlanSerializeTest() throws IOException, IllegalPathException {
-    DataAuthPlan dataAuthPlan =
-        new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING, Arrays.asList("user1", "user2"));
+    DataAuthPlan dataAuthPlan = new DataAuthPlan(
+        OperatorType.GRANT_WATERMARK_EMBEDDING, Arrays.asList("user1", "user2"));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     dataAuthPlan.serialize(dataOutputStream);
@@ -163,16 +160,11 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createTimeSeriesPlanSerializeTest1() throws IOException, IllegalPathException {
-    CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg.d1.s1"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY,
-            Collections.singletonMap("prop1", "propValue1"),
-            Collections.singletonMap("tag1", "tagValue1"),
-            Collections.singletonMap("attr1", "attrValue1"),
-            "temperature");
+    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
+        new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
+        Collections.singletonMap("prop1", "propValue1"),
+        Collections.singletonMap("tag1", "tagValue1"),
+        Collections.singletonMap("attr1", "attrValue1"), "temperature");
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     createTimeSeriesPlan.serialize(dataOutputStream);
@@ -185,16 +177,9 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void createTimeSeriesPlanSerializeTest2() throws IOException, IllegalPathException {
-    CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg.d1.s1"),
-            TSDataType.DOUBLE,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY,
-            null,
-            null,
-            null,
-            null);
+    CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
+        new PartialPath("root.sg.d1.s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
+        null, null, null, null);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     createTimeSeriesPlan.serialize(dataOutputStream);
@@ -213,18 +198,12 @@ public class PhysicalPlanSerializeTest {
     plan.setDataTypes(Arrays.asList(TSDataType.DOUBLE, TSDataType.INT64));
     plan.setEncodings(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
     plan.setCompressors(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
-    plan.setProps(
-        Arrays.asList(
-            Collections.singletonMap("prop1", "propValue1"),
-            Collections.singletonMap("prop2", "propValue2")));
-    plan.setTags(
-        Arrays.asList(
-            Collections.singletonMap("tag1", "tagValue1"),
-            Collections.singletonMap("tag2", "tagValue2")));
-    plan.setAttributes(
-        Arrays.asList(
-            Collections.singletonMap("attr1", "attrValue1"),
-            Collections.singletonMap("attr2", "attrValue2")));
+    plan.setProps(Arrays.asList(Collections.singletonMap("prop1", "propValue1"),
+        Collections.singletonMap("prop2", "propValue2")));
+    plan.setTags(Arrays.asList(Collections.singletonMap("tag1", "tagValue1"),
+        Collections.singletonMap("tag2", "tagValue2")));
+    plan.setAttributes(Arrays.asList(Collections.singletonMap("attr1", "attrValue1"),
+        Collections.singletonMap("attr2", "attrValue2")));
     plan.setAlias(Arrays.asList("temperature", "speed"));
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -270,14 +249,9 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void AlterTimeSeriesPlanSerializeTest() throws IOException, IllegalPathException {
-    AlterTimeSeriesPlan alterTimeSeriesPlan =
-        new AlterTimeSeriesPlan(
-            new PartialPath("root.sg.d1.s1"),
-            AlterType.RENAME,
-            Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"),
-            null,
-            null,
-            null);
+    AlterTimeSeriesPlan alterTimeSeriesPlan = new AlterTimeSeriesPlan(
+        new PartialPath("root.sg.d1.s1"), AlterType.RENAME,
+        Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"), null, null, null);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     alterTimeSeriesPlan.serialize(dataOutputStream);
@@ -303,8 +277,7 @@ public class PhysicalPlanSerializeTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     PhysicalPlan result = Factory.create(byteBuffer);
     Assert.assertEquals(OperatorType.LOAD_CONFIGURATION, result.getOperatorType());
-    Assert.assertEquals(
-        LoadConfigurationPlanType.GLOBAL,
+    Assert.assertEquals(LoadConfigurationPlanType.GLOBAL,
         ((LoadConfigurationPlan) result).getLoadConfigurationPlanType());
     Assert.assertEquals(properties[0], ((LoadConfigurationPlan) result).getIoTDBProperties());
     Assert.assertEquals(properties[1], ((LoadConfigurationPlan) result).getClusterProperties());
@@ -312,8 +285,8 @@ public class PhysicalPlanSerializeTest {
 
   @Test
   public void authorPlanSerializeTest() throws IOException, AuthException, IllegalPathException {
-    AuthorPlan authorPlan =
-        new AuthorPlan(AuthorType.CREATE_ROLE, "root", "root", "root", "", null, null);
+    AuthorPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "root", "root", "root", "", null,
+        null);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     authorPlan.serialize(dataOutputStream);
@@ -325,28 +298,6 @@ public class PhysicalPlanSerializeTest {
     Assert.assertEquals(byteBuffer1, byteBuffer2);
     PhysicalPlan result = Factory.create(byteBuffer1);
     Assert.assertEquals(result, authorPlan);
-  }
-
-  @Test
-  public void alterTimeSeriesBasicInfoPlanTest() throws IllegalPathException, IOException {
-    AlterTimeSeriesBasicInfoPlan plan = new AlterTimeSeriesBasicInfoPlan(
-        new PartialPath("root.sg.a.b"), TSDataType.DOUBLE,
-        TSEncoding.RLE, CompressionType.SNAPPY);
-
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    plan.serialize(dataOutputStream);
-
-    ByteBuffer byteBuffer1 = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-    ByteBuffer byteBuffer2 = ByteBuffer.allocate(byteBuffer1.limit());
-    plan.serialize(byteBuffer2);
-
-    byteBuffer2.flip();
-    Assert.assertEquals(byteBuffer1, byteBuffer2);
-
-    PhysicalPlan result = Factory.create(byteBuffer1);
-    Assert.assertEquals(OperatorType.ALTER_TIMESERIES_BASIC_INFO, result.getOperatorType());
-    Assert.assertEquals(plan, result);
   }
 
 }

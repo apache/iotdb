@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesBasicInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -149,12 +148,6 @@ public class MLogWriter implements AutoCloseable {
 
   public void changeAlias(PartialPath path, String alias) throws IOException {
     ChangeAliasPlan plan = new ChangeAliasPlan(path, alias);
-    putLog(plan);
-  }
-
-  public void alterTimeSeriesBasicInfo(PartialPath path,
-      TSDataType dataType, TSEncoding encodingType, CompressionType compressionType) throws IOException {
-    AlterTimeSeriesBasicInfoPlan plan = new AlterTimeSeriesBasicInfoPlan(path, dataType, encodingType, compressionType);
     putLog(plan);
   }
 
