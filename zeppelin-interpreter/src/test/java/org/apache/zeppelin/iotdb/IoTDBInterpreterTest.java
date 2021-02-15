@@ -323,6 +323,19 @@ public class IoTDBInterpreterTest {
   }
 
   @Test
+  public void testShowDevicesWithSg() {
+    InterpreterResult actual = interpreter
+        .internalInterpret("show devices with storage group", null);
+    String gt = "devices\tstorage group\n"
+        + "root.test.wf01.wt01\troot.test.wf01\n"
+        + "root.test.wf02.wt02\troot.test.wf02";
+    Assert.assertNotNull(actual);
+    Assert.assertEquals(Code.SUCCESS, actual.code());
+    System.out.println(actual.message().get(0).getData());
+    Assert.assertEquals(gt, actual.message().get(0).getData());
+  }
+
+  @Test
   public void testShowAllTTL() {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter

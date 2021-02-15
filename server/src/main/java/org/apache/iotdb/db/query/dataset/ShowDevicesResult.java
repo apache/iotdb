@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,26 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+public class ShowDevicesResult extends ShowResult {
 
-public class ShowDevicesPlan extends ShowPlan {
-
-  private boolean hasSgCol;
-
-  public ShowDevicesPlan(PartialPath path) {
-    super(ShowContentType.DEVICES, path);
+  public ShowDevicesResult(String name, String sgName) {
+    super(name, sgName);
   }
 
-  public ShowDevicesPlan(PartialPath path, int limit, int offset,
-      int fetchSize, boolean hasSgCol) {
-    super(ShowContentType.DEVICES, path, limit, offset, fetchSize);
-    this.hasSgCol = hasSgCol;
-  }
-
-  public boolean hasSgCol() {
-    return hasSgCol;
+  public ShowDevicesResult(String name) {
+    super(name);
   }
 }
-

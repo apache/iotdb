@@ -92,20 +92,18 @@ public class QueryFileManager {
    * this jdbc request must be cleared and thus the usage reference must be decreased.
    */
   void removeUsedFilesForQuery(long queryId) {
-    Set<TsFileResource> tsFiles = sealedFilePathsMap.get(queryId);
-    if (tsFiles != null) {
-      for (TsFileResource tsFile : sealedFilePathsMap.get(queryId)) {
+    sealedFilePathsMap.computeIfPresent(queryId, (k, v) -> {
+      for (TsFileResource tsFile : v) {
         FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
       }
-      sealedFilePathsMap.remove(queryId);
-    }
-    tsFiles = unsealedFilePathsMap.get(queryId);
-    if (tsFiles != null) {
-      for (TsFileResource tsFile : unsealedFilePathsMap.get(queryId)) {
-        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
+      return null;
+    });
+    unsealedFilePathsMap.computeIfPresent(queryId, (k, v) -> {
+      for (TsFileResource tsFile : v) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
       }
-      unsealedFilePathsMap.remove(queryId);
-    }
+      return null;
+    });
   }
 
   /**
