@@ -81,6 +81,20 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 
 * Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
 
+## 代码格式化
+
+我们使用 [Spotless
+plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google-java-format](https://github.com/google/google-java-format) 格式化Java代码. 你可以通过以下步骤将IDE配置为在保存时自动应用格式：
+
+1. 下载 [google-java-format
+   plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169)
+2. 从磁盘安装 (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
+3. 开启插件，并保持默认的GOOGLE格式 (2-space indents)
+4. 在Spotless没有升级到18+之前,不要升级google-java-format插件
+5. 安装 [Save Actions
+   插件](https://plugins.jetbrains.com/plugin/7642-save-actions)
+6. 开启插件, 并打开 "Optimize imports" and "Reformat file" 选项.
+7. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为.*\.java”
 ## 贡献代码
 
 可以到 jira 上领取现有 issue 或者自己创建 issue 再领取，评论说我要做这个 issue 就可以。
@@ -90,6 +104,7 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 * 在 idea 中添加code style为 根目录的 java-google-style.xml
 * 修改代码，增加测试用例（单元测试、集成测试）
 	* 集成测试参考: server/src/test/java/org/apache/iotdb/db/integration/IoTDBTimeZoneIT
+* 用 `mvn spotless:check` 检查代码样式，并用`mvn spotless:apply`修复样式
 * 提交 PR, 以 [IOTDB-jira号] 开头
 * 发邮件到 dev 邮件列表：(I've submitted a PR for issue IOTDB-xxx [link])
 * 根据其他人的审阅意见进行修改，继续更新，直到合并
