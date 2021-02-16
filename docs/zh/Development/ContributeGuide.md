@@ -84,17 +84,15 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 ## 代码格式化
 
 我们使用 [Spotless
-plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google-java-format](https://github.com/google/google-java-format) 格式化Java代码. 你可以通过以下步骤将IDE配置为在保存时自动应用格式：
+plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google-java-format](https://github.com/google/google-java-format) 格式化Java代码. 你可以通过以下步骤将IDE配置为在保存时自动应用格式以IDEA为例)：
 
-1. 下载 [google-java-format
-   plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169)
+1. 下载 [google-java-format-plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), 安装到IDEA(Preferences -> plugins -> search google-java-format),[更详细的操作手册](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)                                                                                                                                                                             2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 2. 从磁盘安装 (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 3. 开启插件，并保持默认的GOOGLE格式 (2-space indents)
 4. 在Spotless没有升级到18+之前,不要升级google-java-format插件
-5. 安装 [Save Actions
-   插件](https://plugins.jetbrains.com/plugin/7642-save-actions)
-6. 开启插件, 并打开 "Optimize imports" and "Reformat file" 选项.
-7. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为.*\.java”
+5. 安装 [Save Actions 插件](https://plugins.jetbrains.com/plugin/7642-save-actions) , 并开启插件, 打开 "Optimize imports" and "Reformat file" 选项.
+6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为.*\.java”, 避免在编辑的其他文件时候发生意外的重新格式化
+
 ## 贡献代码
 
 可以到 jira 上领取现有 issue 或者自己创建 issue 再领取，评论说我要做这个 issue 就可以。

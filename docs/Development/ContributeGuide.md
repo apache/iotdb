@@ -86,17 +86,16 @@ Precautions:
 ### Code Formatting
 
 We use the [Spotless
-plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps:
+plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together with [google-java-format](https://github.com/google/google-java-format) to format our Java code. You can configure your IDE to automatically apply formatting on saving with these steps(Take idea as an example):
 
 1. Download the [google-java-format
-   plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169)
+   plugin v1.7.0.5](https://plugins.jetbrains.com/plugin/8527-google-java-format/versions/stable/83169), it can be installed in IDEA (Preferences -> plugins -> search google-java-format), [More detailed setup manual](https://github.com/google/google-java-format#intellij-android-studio-and-other-jetbrains-ides)
 2. Install the plugin from disk (Plugins -> little gear icon -> "Install plugin from disk" -> Navigate to downloaded zip file)
 3. In the plugin settings, enable the plugin and keep the default Google code style (2-space indents)
 4. Remember to never update this plugin to a later version，until Spotless was upgraded to version 1.8+.
 5. Install the [Save Actions
-   plugin](https://plugins.jetbrains.com/plugin/7642-save-actions)
-6. Enable the plugin, along with "Optimize imports" and "Reformat file"
-7. In the "Save Actions" settings page, setup a "File Path Inclusion" for `.*\.java`. Otherwise you will get unintended reformatting in other files you edit.
+   plugin](https://plugins.jetbrains.com/plugin/7642-save-actions) , and enable the plugin, along with "Optimize imports" and "Reformat file"
+6. In the "Save Actions" settings page, setup a "File Path Inclusion" for `.*\.java`. Otherwise you will get unintended reformatting in other files you edit.
 
 ## Contributing code
 
