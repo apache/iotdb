@@ -218,9 +218,10 @@ public class MTree implements Serializable {
     // only write on mtree will be synchronized
     synchronized (this) {
       MNode child = cur.getChild(leafName);
-      if (child instanceof MeasurementMNode) {
-          throw new PathAlreadyExistException(path.getFullPath());
+      if (child instanceof MeasurementMNode || child instanceof StorageGroupMNode) {
+        throw new PathAlreadyExistException(path.getFullPath());
       }
+
       if (alias != null) {
         MNode childByAlias = cur.getChild(alias);
         if (childByAlias instanceof MeasurementMNode) {

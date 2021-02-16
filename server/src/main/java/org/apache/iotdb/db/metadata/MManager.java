@@ -979,6 +979,10 @@ public class MManager {
       return (MeasurementMNode) node;
     }
 
+    if (node instanceof StorageGroupMNode) {
+      throw new PathAlreadyExistException(node.getPartialPath().getFullPath());
+    }
+
     MNode parent = node.getParent();
     MeasurementMNode measurementMNode = new MeasurementMNode(parent, node.getName(), null,
         dataType, getDefaultEncoding(dataType),
