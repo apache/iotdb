@@ -141,7 +141,7 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
-        <sonar.java.checkstyle.reportPaths>checkstyle.xml</sonar.java.checkstyle.reportPaths>
+        <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
@@ -767,6 +767,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <outputFile>target/checkstyle-report.xml</outputFile>
                             <configLocation>checkstyle.xml</configLocation>
                         </configuration>
                     </execution>
