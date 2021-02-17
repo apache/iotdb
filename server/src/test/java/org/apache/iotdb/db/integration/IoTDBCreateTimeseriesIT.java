@@ -103,12 +103,12 @@ public class IoTDBCreateTimeseriesIT {
    */
   @Test
   public void testCreateTimeseries2() throws Exception {
-    String timeSeries = "root.sg1.a.b.c";
+    String storageGroup = "root.sg1.a.b.c";
 
-    statement.execute(String.format("SET storage group TO %s", timeSeries));
+    statement.execute(String.format("SET storage group TO %s", storageGroup));
     try {
       statement.execute(
-          String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", timeSeries));
+          String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", storageGroup));
     } catch (IoTDBSQLException ignored) {
     }
 
@@ -123,17 +123,17 @@ public class IoTDBCreateTimeseriesIT {
         resultList.add(str);
       }
     }
-    Assert.assertFalse(resultList.contains(timeSeries));
+    Assert.assertFalse(resultList.contains(storageGroup));
 
     statement.execute("show storage group");
     resultList.clear();
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String storageGroup = resultSet.getString("storage group");
-        resultList.add(storageGroup);
+        String res = resultSet.getString("storage group");
+        resultList.add(res);
       }
     }
-    Assert.assertTrue(resultList.contains(timeSeries));
+    Assert.assertTrue(resultList.contains(storageGroup));
 
   }
 

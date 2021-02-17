@@ -31,6 +31,7 @@ import java.util.Set;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -158,7 +159,7 @@ public class IoTDBAutoCreateSchemaIT {
    * insert data when the time series that is a prefix path of an existing time series hasn't been created
    */
   @Test
-  public void insert() throws Exception {
+  public void testInsertAutoCreate1() throws Exception {
     String[] timeSeriesArray = {"root.sg1.a.a", "root.sg1.a", "root.sg1.a.a.a"};
 
     for (String timeSeries : timeSeriesArray) {
@@ -184,6 +185,44 @@ public class IoTDBAutoCreateSchemaIT {
     Assert.assertEquals(3, valueList.length);
     Assert.assertEquals(1, strSet.size());
     Assert.assertTrue(strSet.contains("aabb"));
+  }
+
+  /**
+   * test if automatically creating a time series will cause the storage group with same name to disappear
+   */
+  @Test
+  public void testInsertAutoCreate2() throws Exception {
+    String storageGroup = "root.sg2.a.b.c";
+    String timeSeriesPrefix = "root.sg2.a.b";
+
+    statement.execute(String.format("SET storage group TO %s", storageGroup));
+    try {
+      statement.execute(
+          String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
+    } catch (IoTDBSQLException ignored) {
+    }
+
+    EnvironmentUtils.stopDaemon();
+    setUp();
+
+    statement.execute("show timeseries");
+    Set<String> resultList = new HashSet<>();
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        String str = resultSet.getString("timeseries");
+        resultList.add(str);
+      }
+    }
+    Assert.assertFalse(resultList.contains(timeSeriesPrefix + "c"));
+
+    statement.execute("show storage group");
+    resultList.clear();
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        resultList.add(resultSet.getString("storage group"));
+      }
+    }
+    Assert.assertTrue(resultList.contains(storageGroup));
   }
 
 }
