@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.cache;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -38,7 +39,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -145,6 +148,26 @@ public class ChunkMetadataCacheTest {
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
         .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
+
+    String seqTsFilePath = seqResources.get(0).getTsFilePath();
+    TsFileSequenceReader tsFileReader =
+        FileReaderManager.getInstance().get(seqTsFilePath, true);
+    Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
+    List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
+
+    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
+      ChunkMetadataCache.getInstance()
+          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+    }
+    Assert.assertEquals("The hit rate should be 0.0", 0.0,
+        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
+
+    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
+      ChunkMetadataCache.getInstance()
+          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+    }
+    Assert.assertEquals("The hit rate should be 0.0", 0.0,
+        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
   }
 
   @Test
@@ -155,7 +178,6 @@ public class ChunkMetadataCacheTest {
 
     List<TsFileResource> seqResources = queryDataSource.getSeqResources();
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
-
     Assert.assertEquals(1, seqResources.size());
     Assert.assertEquals(3, unseqResources.size());
     Assert.assertTrue(seqResources.get(0).isClosed());
@@ -163,9 +185,25 @@ public class ChunkMetadataCacheTest {
     Assert.assertTrue(unseqResources.get(1).isClosed());
     Assert.assertTrue(unseqResources.get(2).isClosed());
 
-    List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
-    Assert.assertEquals(0, metaDataList.size());
+    String seqTsFilePath = seqResources.get(0).getTsFilePath();
+    TsFileSequenceReader tsFileReader =
+        FileReaderManager.getInstance().get(seqTsFilePath, true);
+    Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
+    List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
+
+    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
+      ChunkMetadataCache.getInstance()
+          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+    }
+    Assert.assertEquals("The hit rate should be 0.0", 0.0,
+        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
+
+    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
+      ChunkMetadataCache.getInstance()
+          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
+    }
+    Assert.assertEquals("The hit rate should be 0.5", 0.5,
+        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
   }
 
 
