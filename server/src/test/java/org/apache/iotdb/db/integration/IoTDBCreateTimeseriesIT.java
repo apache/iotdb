@@ -43,19 +43,22 @@ import org.junit.Test;
  */
 public class IoTDBCreateTimeseriesIT {
   private Statement statement;
+  private Connection connection;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    Connection connection = DriverManager.
+    connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
     statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
+    statement.close();
+    connection.close();
     EnvironmentUtils.cleanEnv();
   }
 
