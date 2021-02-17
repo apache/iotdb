@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.engine.measurementorderoptimizer;
+package org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel;
 
 import com.csvreader.CsvReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class SeekCostModel {
   private static List<Pair<Long, Float>> empiricalData = new ArrayList<>();
@@ -24,9 +22,9 @@ public class SeekCostModel {
    * Read the empirical data from local file
    */
   public static boolean readEmpiricalData() {
-    // String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    // EMPIRICAL_SEEK_FILE = new File(dataDirs[0] + File.separator + "approximation" + File.separator + "empirical_seek_data.csv");
-    EMPIRICAL_SEEK_FILE = new File("E:\\Thing\\Workspace\\IoTDB\\src\\my branch\\data\\data\\approximation\\empirical_seek_data.csv");
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    String filename = systemDir + File.separator + "experiment" + File.separator +  "seek_time.csv";
+    EMPIRICAL_SEEK_FILE = new File(filename);
     logger.info("Loading seek empirical data from " + EMPIRICAL_SEEK_FILE.getAbsolutePath());
     try{
       if (!EMPIRICAL_SEEK_FILE.exists()) {
@@ -72,7 +70,7 @@ public class SeekCostModel {
    * @Param measurements
    * @Param blockSize is a list of integer, which is the size of per block in byte.
   */
-  public static float approximate(List<QueryRecord> queries, List<String> measurements, List<Long> chunkSize) {
+  public static float approximate(List<QueryRecord> queries, List<String> measurements, List<Long> chunkSize, int chunkGroupNum) {
     if (!init) {
       readEmpiricalData();
       init = true;
@@ -81,7 +79,7 @@ public class SeekCostModel {
 
     for(QueryRecord query: queries) {
       List<String> queryMeasurements = query.getSensors();
-      List<String> sortedAndDeduplicatedQueryMeasurements = sortInSameOrderAndDeduplicate(queryMeasurements, measurements);
+      List<String> sortedAndDeduplicatedQueryMeasurements = CostModel.sortInSameOrderAndDeduplicate(queryMeasurements, measurements);
 
       int k = 0;
       for(int i = 0; i < sortedAndDeduplicatedQueryMeasurements.size(); ++i) {
@@ -99,31 +97,14 @@ public class SeekCostModel {
       }
     }
 
-    return totalCost;
+    return totalCost * chunkGroupNum;
   }
 
-  /**
-   * Sort the order of query measurements so that the order of them are the same as the physical order of measurements.
-   */
-  private static List<String> sortInSameOrderAndDeduplicate(List<String> queryMeasurements, List<String> measurements) {
-    List<String> sortedQueryMeasurements = new ArrayList<>();
-    Set<String> measurementSet = new HashSet<>();
-    for(int i = 0; i < queryMeasurements.size(); ++i) {
-      measurementSet.add(queryMeasurements.get(i));
-    }
-    int k = 0;
-    for(int i = 0; i < measurements.size(); ++i) {
-      if (measurementSet.contains(measurements.get(i))) {
-        sortedQueryMeasurements.add(measurements.get(i));
-      }
-    }
-    return sortedQueryMeasurements;
-  }
 
   /**
    * Return the cost of seeking a specified distance according to the empirical data
    */
-  private static float getSeekCost(long distance) {
+  public static float getSeekCost(long distance) {
     float seekCost = 0;
     for(int i = 0; i < empiricalData.size() - 1; ++i) {
       if (distance >= empiricalData.get(i).left && distance < empiricalData.get(i + 1).left) {

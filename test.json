@@ -1,0 +1,1 @@
+[{"type": "aggregation", "device": "root.test.device", "sensors": ["s0", "s201", "s302", "s401"], "ops": ["avg", "avg", "count", "avg"]}, {"type": "group by", "device": "root.test.device", "sensors": ["s0", "s100"], "ops": ["avg", "avg"], "startTime": 0, "endTime": 1000, "interval": 10, "slidingStep": 10}]

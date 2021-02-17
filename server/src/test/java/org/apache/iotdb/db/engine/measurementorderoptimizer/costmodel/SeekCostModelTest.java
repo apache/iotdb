@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.engine.measurementorderoptimizer.costmodel;
 
-import org.apache.iotdb.db.engine.measurementorderoptimizer.SeekCostModel;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.AggregationQueryRecord;
 import org.apache.iotdb.db.query.workloadmanager.queryrecord.QueryRecord;
 import org.junit.Test;
@@ -24,8 +23,8 @@ public class SeekCostModelTest {
     for(int i = 0; i < 5; i++) {
       queryRecords.add(new AggregationQueryRecord("D" + i, randomSample(measurements, i * 2 + 1), randomSample(operations, i * 2 + 1)));
     }
-    float cost = SeekCostModel.approximate(queryRecords, measurements, chunkSizes);
-    System.out.println(cost);
+    /*float cost = SeekCostModel.approximate(queryRecords, measurements, chunkSizes);
+    System.out.println(cost);*/
   }
 
   private List<String> randomSample(List<String> options, int num) {

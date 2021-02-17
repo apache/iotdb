@@ -29,26 +29,7 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1296,4 +1277,77 @@ public class Session {
     return flag;
   }
 
+  public void readRecordFromFile() throws IoTDBConnectionException {
+    try {
+      client.readQueryRecords();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          client.readQueryRecords();
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public void readMetadataFromFile() throws IoTDBConnectionException {
+    try {
+      client.readMetadata();
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          client.readMetadata();
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public MeasurementOrder optimizeBySA(String deviceID) throws IoTDBConnectionException {
+    MeasurementOrder order = null;
+    try {
+      order = client.optimizeBySA(deviceID);
+      return order;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          order = client.optimizeBySA(deviceID);
+          return order;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
+
+  public MeasurementOrderSet runDivergentDesign(String deviceID) throws IoTDBConnectionException {
+    MeasurementOrderSet order = null;
+    try {
+      order = client.divergentDesign(deviceID);
+      return order;
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          order = client.divergentDesign(deviceID);
+          return order;
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(
+                "Fail to reconnect to server. Please check server status");
+      }
+    }
+  }
 }

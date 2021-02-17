@@ -287,6 +287,15 @@ struct ServerProperties {
 	3: required string timestampPrecision;
 }
 
+struct MeasurementOrder {
+    1: required string deviceid;
+    2: required list<string> measurements;
+}
+
+struct MeasurementOrderSet {
+    1: optional list<MeasurementOrder> measurementsOrders;
+}
+
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -357,4 +366,13 @@ service TSIService {
 	TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
 	i64 requestStatementId(1:i64 sessionId);
+
+  TSStatus readQueryRecords();
+
+  MeasurementOrderSet divergentDesign(1:string deviceID);
+
+  TSStatus readMetadata();
+
+  MeasurementOrder optimizeBySA(1:string deviceID);
+
 }

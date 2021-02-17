@@ -13,7 +13,7 @@ public class MeasurementOrderOptimizerTest {
 
   @Test
   public void simulatedAnnealingTest() {
-    List<String> measurements = new ArrayList<>();
+    /*List<String> measurements = new ArrayList<>();
     List<Long> chunkSizes = new ArrayList<>();
     List<String> operations = new ArrayList<>(Arrays.asList(new String[] {"AVG", "SUM", "COUNT", "LAST"}));
     for(int i = 0; i < 20; i++) {
@@ -38,7 +38,7 @@ public class MeasurementOrderOptimizerTest {
     List<String> newMeasurementOrder = optimizer.getMeasurementsOrder("D1");
     List<Long> newChunkSizeOrder = optimizer.getChunkSize("D1");
     float costAfter = SeekCostModel.approximate(queryRecords, newMeasurementOrder, newChunkSizeOrder);
-    System.out.println(costAfter);
+    System.out.println(costAfter);*/
   }
 
   private List<String> randomSample(List<String> options, int num) {

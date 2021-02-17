@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service;
 
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -52,6 +53,10 @@ import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.divergentdesign.DivergentDesign;
+import org.apache.iotdb.db.engine.divergentdesign.Replica;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOptimizationType;
+import org.apache.iotdb.db.engine.measurementorderoptimizer.MeasurementOrderOptimizer;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -92,6 +97,7 @@ import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -99,37 +105,7 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1760,6 +1736,40 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     sessionId2StatementId.computeIfAbsent(sessionId, s -> new CopyOnWriteArraySet<>())
         .add(statementId);
     return statementId;
+  }
+
+  @Override
+  public TSStatus readQueryRecords() throws TException {
+    WorkloadManager.getInstance().readFromFile();
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public MeasurementOrderSet divergentDesign(String deviceID) {
+    DivergentDesign divergentDesign = new DivergentDesign(deviceID);
+    Replica[] optimalReplicas = divergentDesign.optimize();
+    MeasurementOrderSet orderSet = new MeasurementOrderSet();
+    for(Replica replica : optimalReplicas) {
+      MeasurementOrder order = new MeasurementOrder();
+      order.measurements = replica.getMeasurements();
+      order.setDeviceid(replica.getDeviceId());
+      orderSet.addToMeasurementsOrders(order);
+    }
+    return orderSet;
+  }
+
+  @Override
+  public TSStatus readMetadata() {
+    MeasurementOrderOptimizer.getInstance().readMetadataFromFile();
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public MeasurementOrder optimizeBySA(String deviceID) {
+    MeasurementOrderOptimizer.getInstance().optimizeOrder(deviceID, MeasurementOptimizationType.SA);
+    List<String> measurements = new ArrayList<>(MeasurementOrderOptimizer.getInstance().getMeasurementsOrder(deviceID));
+    MeasurementOrder result = new MeasurementOrder(deviceID, measurements);
+    return result;
   }
 
   private TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {

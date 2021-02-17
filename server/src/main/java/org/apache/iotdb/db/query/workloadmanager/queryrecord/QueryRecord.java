@@ -3,7 +3,6 @@ package org.apache.iotdb.db.query.workloadmanager.queryrecord;
 import java.util.List;
 
 public abstract class QueryRecord {
-  protected int hashcode = 0;
   protected String device;
   protected List<String> sensors;
   protected List<String> ops;

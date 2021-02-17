@@ -29,11 +29,15 @@ public class GroupByQueryRecord extends QueryRecord {
     this(device, sensors, ops, startTime, endTime, interval, interval);
   }
 
+  public long getVisitLength() {
+    return endTime - startTime;
+  }
+
   private void recoverSql() {
     StringBuilder sb = new StringBuilder();
     sb.append("SELECT ");
-    for(int i = 0; i < sensors.size(); ++i) {
-      sb.append(ops.get(i) + "(" + sensors.get(i) +  ")");
+    for (int i = 0; i < sensors.size(); ++i) {
+      sb.append(ops.get(i) + "(" + sensors.get(i) + ")");
       if (i != sensors.size() - 1) {
         sb.append(", ");
       }
@@ -70,7 +74,6 @@ public class GroupByQueryRecord extends QueryRecord {
   public String getSql() {
     return sql;
   }
-
 
   @Override
   public String getSqlWithTimestamp() {
