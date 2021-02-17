@@ -148,26 +148,6 @@ public class ChunkMetadataCacheTest {
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
         .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5), null);
     Assert.assertEquals(0, metaDataList.size());
-
-    String seqTsFilePath = seqResources.get(0).getTsFilePath();
-    TsFileSequenceReader tsFileReader =
-        FileReaderManager.getInstance().get(seqTsFilePath, true);
-    Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
-    List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
-
-    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
-      ChunkMetadataCache.getInstance()
-          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
-    }
-    Assert.assertEquals("The hit rate should be 0.0", 0.0,
-        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
-
-    for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
-      ChunkMetadataCache.getInstance()
-          .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
-    }
-    Assert.assertEquals("The hit rate should be 0.0", 0.0,
-        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
   }
 
   @Test
@@ -191,19 +171,23 @@ public class ChunkMetadataCacheTest {
     Map<String, List<TimeseriesMetadata>> stringListMap = tsFileReader.getAllTimeseriesMetadata();
     List<TimeseriesMetadata> timeseriesMetadataList = stringListMap.get(storageGroup);
 
+    ChunkMetadataCache.getInstance().clear();
+    double hitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
     for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
       ChunkMetadataCache.getInstance()
           .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
     }
-    Assert.assertEquals("The hit rate should be 0.0", 0.0,
-        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
+    double decreaseHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should not increase",
+        decreaseHitRatio <= hitRatio);
 
     for (TimeseriesMetadata tsMd : timeseriesMetadataList) {
       ChunkMetadataCache.getInstance()
           .get(seqTsFilePath, new Path(storageGroup, tsMd.getMeasurementId()), tsMd);
     }
-    Assert.assertEquals("The hit rate should be 0.5", 0.5,
-        ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio(), 0.00001);
+    double increaseHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
+    Assert.assertTrue("The hit rate should increase",
+        decreaseHitRatio < increaseHitRatio);
   }
 
 
