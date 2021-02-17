@@ -29,6 +29,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.utils.TestOnly;
 
 public class MetaUtils {
 
@@ -105,6 +106,7 @@ public class MetaUtils {
     return new PartialPath(storageGroupNodes);
   }
 
+  @TestOnly
   public static List<String> getMultiFullPaths(MNode node) {
     if (node == null) {
       return Collections.emptyList();
@@ -121,6 +123,7 @@ public class MetaUtils {
     return result;
   }
 
+  @TestOnly
   public static void collectLastNode(MNode node, List<MNode> lastNodeList) {
     if (node != null) {
       Map<String, MNode> children = node.getChildren();

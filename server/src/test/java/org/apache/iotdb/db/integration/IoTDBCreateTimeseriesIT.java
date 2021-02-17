@@ -24,9 +24,11 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -62,13 +64,12 @@ public class IoTDBCreateTimeseriesIT {
    */
   @Test
   public void testCreateTimeseries1() throws Exception {
-    String timeSeries1 = "root.sg1.aa.bb";
-    String timeSeries2 = "root.sg1.aa.bb.cc";
+    String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
-    statement.execute(
-        String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", timeSeries1));
-    statement.execute(
-        String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", timeSeries2));
+    for (String timeSeries : timeSeriesArray) {
+      statement.execute(
+          String.format("create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY", timeSeries));
+    }
 
     EnvironmentUtils.stopDaemon();
     setUp();
@@ -83,16 +84,15 @@ public class IoTDBCreateTimeseriesIT {
         resultList.add(timeseries);
       }
     }
-    Assert.assertEquals(2, resultList.size());
+    Assert.assertEquals(3, resultList.size());
 
-    if (resultList.get(0).split("\\.").length < resultList.get(1).split("\\.").length) {
-      Assert.assertEquals(timeSeries1, resultList.get(0));
-      Assert.assertEquals(timeSeries2, resultList.get(1));
-    } else {
-      Assert.assertEquals(timeSeries2, resultList.get(0));
-      Assert.assertEquals(timeSeries1, resultList.get(1));
-    }
+    List<String> collect = resultList.stream()
+        .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
+        .collect(Collectors.toList());
 
+    Assert.assertEquals(timeSeriesArray[2], collect.get(0));
+    Assert.assertEquals(timeSeriesArray[0], collect.get(1));
+    Assert.assertEquals(timeSeriesArray[1], collect.get(2));
   }
 
   /**

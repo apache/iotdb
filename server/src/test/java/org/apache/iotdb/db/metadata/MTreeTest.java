@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -780,6 +781,7 @@ public class MTreeTest {
     root.createTimeseries(new PartialPath("root.sg1.a.b"), TSDataType.INT32, TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap(), null);
 
-    assertTrue(root.isPathExist(new PartialPath("root.sg1.a.b")));
+    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    Assert.assertTrue(node instanceof MeasurementMNode);
   }
 }
