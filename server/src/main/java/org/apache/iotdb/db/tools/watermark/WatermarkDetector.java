@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.tools.watermark;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+
+import org.apache.thrift.EncodingUtils;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.thrift.EncodingUtils;
 
 public class WatermarkDetector {
 
   public static void main(String[] args) throws IOException, LogicalOperatorException {
     if (args == null || args.length != 8) {
-      throw new IOException("Usage: ./detect-watermark.sh [filePath] [secretKey] "
-          + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] "
-          + "[dataType: int/float/double]");
+      throw new IOException(
+          "Usage: ./detect-watermark.sh [filePath] [secretKey] "
+              + "[watermarkBitString] [embed_row_cycle] [embed_lsb_num] [alpha] [columnIndex] "
+              + "[dataType: int/float/double]");
     }
     String filePath = args[0]; // data file path
     String secretKey = args[1]; // watermark secret key
@@ -54,14 +57,28 @@ public class WatermarkDetector {
       throw new IOException("invalid parameter: supported data types are int/float/double");
     }
 
-    isWatermarked(filePath, secretKey, watermarkBitString, embed_row_cycle, embed_lsb_num, alpha,
-        columnIndex, dataType);
+    isWatermarked(
+        filePath,
+        secretKey,
+        watermarkBitString,
+        embed_row_cycle,
+        embed_lsb_num,
+        alpha,
+        columnIndex,
+        dataType);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static boolean isWatermarked(String filePath, String secretKey, String watermarkBitString,
-      int embed_row_cycle, int embed_lsb_num, double alpha,
-      int columnIndex, String dataType) throws LogicalOperatorException, IOException {
+  public static boolean isWatermarked(
+      String filePath,
+      String secretKey,
+      String watermarkBitString,
+      int embed_row_cycle,
+      int embed_lsb_num,
+      double alpha,
+      int columnIndex,
+      String dataType)
+      throws LogicalOperatorException, IOException {
     System.out.println("-----Watermark detection begins-----");
     int[] trueNums = new int[watermarkBitString.length()]; // for majority vote
     int[] falseNums = new int[watermarkBitString.length()]; // for majority vote
@@ -74,31 +91,34 @@ public class WatermarkDetector {
       while ((line = reader.readLine()) != null) {
         items = line.split(",");
         long timestamp = parseTimestamp(items[0]);
-        if (GroupedLSBWatermarkEncoder
-                .hashMod(String.format("%s%d", secretKey, timestamp), embed_row_cycle)
-                == 0) {
+        if (GroupedLSBWatermarkEncoder.hashMod(
+                String.format("%s%d", secretKey, timestamp), embed_row_cycle)
+            == 0) {
           String str = items[columnIndex];
           if (str.equals("null")) {
             continue;
           }
 
-          int targetBitPosition = GroupedLSBWatermarkEncoder
-                  .hashMod(String.format("%s%d%s", secretKey, timestamp, secretKey),
-                          embed_lsb_num);
-          int groupId = GroupedLSBWatermarkEncoder
-                  .hashMod(String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
+          int targetBitPosition =
+              GroupedLSBWatermarkEncoder.hashMod(
+                  String.format("%s%d%s", secretKey, timestamp, secretKey), embed_lsb_num);
+          int groupId =
+              GroupedLSBWatermarkEncoder.hashMod(
+                  String.format("%d%s", timestamp, secretKey), watermarkBitString.length());
 
           boolean isTrue = true;
           switch (dataType) {
             case "int":
-              isTrue = EncodingUtils.testBit(Integer.parseInt(items[columnIndex]), targetBitPosition);
+              isTrue =
+                  EncodingUtils.testBit(Integer.parseInt(items[columnIndex]), targetBitPosition);
               break;
             case "float":
               int floatToIntBits = Float.floatToIntBits(Float.parseFloat(items[columnIndex]));
               isTrue = EncodingUtils.testBit(floatToIntBits, targetBitPosition);
               break;
             case "double":
-              long doubleToLongBits = Double.doubleToLongBits(Double.parseDouble(items[columnIndex]));
+              long doubleToLongBits =
+                  Double.doubleToLongBits(Double.parseDouble(items[columnIndex]));
               isTrue = EncodingUtils.testBit(doubleToLongBits, targetBitPosition);
               break;
             default:
@@ -127,11 +147,11 @@ public class WatermarkDetector {
     }
 
     int b = calMin(cnt, alpha);
-    System.out
-        .println(
-            String.format("total counted number = %d, detected hit number = %d", cnt, hit_cnt));
-    System.out.println(String
-        .format("To reach the significant level %f, the hit number should be not smaller than: %d",
+    System.out.println(
+        String.format("total counted number = %d, detected hit number = %d", cnt, hit_cnt));
+    System.out.println(
+        String.format(
+            "To reach the significant level %f, the hit number should be not smaller than: %d",
             alpha, b));
     boolean isWatermarked;
     if (hit_cnt >= b) {
@@ -145,9 +165,7 @@ public class WatermarkDetector {
     return isWatermarked;
   }
 
-  /**
-   * Parses timestamp from string type to long type
-   */
+  /** Parses timestamp from string type to long type */
   private static long parseTimestamp(String str) throws LogicalOperatorException {
     long timestamp;
     try {
@@ -186,15 +204,14 @@ public class WatermarkDetector {
 
     b++;
     if (b > l) {
-      System.out.println("The total counted number or the alpha is too small to find b "
-          + "that meets the formula: (C(l,b)+C(l,b+1)+C(l,b+2)+...+C(l,l))/2^l < alpha");
+      System.out.println(
+          "The total counted number or the alpha is too small to find b "
+              + "that meets the formula: (C(l,b)+C(l,b+1)+C(l,b+2)+...+C(l,l))/2^l < alpha");
     }
     return b;
   }
 
-  /**
-   * Calculates combinatorial number C(n,m).
-   */
+  /** Calculates combinatorial number C(n,m). */
   private static BigDecimal Comb(int n, int m) {
     BigDecimal res1 = new BigDecimal("1");
     for (int i = n; i > m; i--) {
@@ -206,5 +223,4 @@ public class WatermarkDetector {
     }
     return res1.divide(res2, 10, RoundingMode.HALF_EVEN);
   }
-
 }

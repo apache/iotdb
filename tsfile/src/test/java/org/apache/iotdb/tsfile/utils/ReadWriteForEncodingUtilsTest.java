@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class ReadWriteForEncodingUtilsTest {
 

@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.builtin;
 
-/**
- * All built-in UDFs need to register their function names and classes here.
- */
+/** All built-in UDFs need to register their function names and classes here. */
 public enum BuiltinFunction {
-
   SIN("SIN", UDTFSin.class),
   COS("COS", UDTFCos.class),
   TAN("TAN", UDTFTan.class),

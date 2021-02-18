@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import java.io.IOException;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -29,16 +27,34 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.io.IOException;
+import java.util.Set;
 
 public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public SeriesAggregateReader(PartialPath seriesPath, Set<String> allSensors,  TSDataType dataType,
-      QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
-      TsFileFilter fileFilter, boolean ascending) {
-    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
-        timeFilter, valueFilter, fileFilter, ascending);
+  public SeriesAggregateReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      QueryDataSource dataSource,
+      Filter timeFilter,
+      Filter valueFilter,
+      TsFileFilter fileFilter,
+      boolean ascending) {
+    this.seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            dataSource,
+            timeFilter,
+            valueFilter,
+            fileFilter,
+            ascending);
   }
 
   @Override
@@ -54,7 +70,8 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = currentFileStatistics();
-    return !seriesReader.isFileOverlapped() && containedByTimeFilter(fileStatistics)
+    return !seriesReader.isFileOverlapped()
+        && containedByTimeFilter(fileStatistics)
         && !seriesReader.currentFileModified();
   }
 
@@ -76,7 +93,8 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = currentChunkStatistics();
-    return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics)
+    return !seriesReader.isChunkOverlapped()
+        && containedByTimeFilter(chunkStatistics)
         && !seriesReader.currentChunkModified();
   }
 
@@ -101,7 +119,8 @@ public class SeriesAggregateReader implements IAggregateReader {
     if (currentPageStatistics == null) {
       return false;
     }
-    return !seriesReader.isPageOverlapped() && containedByTimeFilter(currentPageStatistics)
+    return !seriesReader.isPageOverlapped()
+        && containedByTimeFilter(currentPageStatistics)
         && !seriesReader.currentPageModified();
   }
 

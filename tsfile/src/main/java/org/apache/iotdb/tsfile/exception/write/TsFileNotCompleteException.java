@@ -23,8 +23,7 @@ import java.io.IOException;
 
 public class TsFileNotCompleteException extends IOException {
 
-  public TsFileNotCompleteException() {
-  }
+  public TsFileNotCompleteException() {}
 
   public TsFileNotCompleteException(String message) {
     super(message);

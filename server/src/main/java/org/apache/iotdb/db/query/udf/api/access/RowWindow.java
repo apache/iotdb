@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.query.udf.api.access;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.IOException;
 
 public interface RowWindow {
 
@@ -33,8 +34,8 @@ public interface RowWindow {
 
   /**
    * Returns the row at the specified position in this window.
-   * <p>
-   * Note that the Row instance returned by this method each time is the same instance. In other
+   *
+   * <p>Note that the Row instance returned by this method each time is the same instance. In other
    * words, calling this method will only change the member variables inside the Row instance, but
    * will not generate a new Row instance.
    *

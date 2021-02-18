@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.query.timegenerator;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -43,6 +40,10 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 from root where
  * s3 < 0 and time > 100", this class can iterate back to every timestamp of the query.
@@ -56,11 +57,9 @@ public class ServerTimeGenerator extends TimeGenerator {
     this.context = context;
   }
 
-  /**
-   * Constructor of EngineTimeGenerator.
-   */
-  public ServerTimeGenerator(IExpression expression, QueryContext context,
-      RawDataQueryPlan queryPlan)
+  /** Constructor of EngineTimeGenerator. */
+  public ServerTimeGenerator(
+      IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     this.context = context;
     this.queryPlan = queryPlan;
@@ -71,7 +70,8 @@ public class ServerTimeGenerator extends TimeGenerator {
     }
   }
 
-  public void serverConstructNode(IExpression expression) throws IOException, StorageEngineException {
+  public void serverConstructNode(IExpression expression)
+      throws IOException, StorageEngineException {
     List<PartialPath> pathList = new ArrayList<>();
     getPartialPathFromExpression(expression, pathList);
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
@@ -100,7 +100,8 @@ public class ServerTimeGenerator extends TimeGenerator {
     QueryDataSource queryDataSource;
     try {
       dataType = IoTDB.metaManager.getSeriesType(path);
-      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
+      queryDataSource =
+          QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
       // update valueFilter by TTL
       valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     } catch (Exception e) {
@@ -110,16 +111,22 @@ public class ServerTimeGenerator extends TimeGenerator {
     // get the TimeFilter part in SingleSeriesExpression
     Filter timeFilter = getTimeFilter(valueFilter);
 
-    return new SeriesRawDataBatchReader(path,
-        queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context, queryDataSource,
-        timeFilter, valueFilter, null, queryPlan.isAscending());
+    return new SeriesRawDataBatchReader(
+        path,
+        queryPlan.getAllMeasurementsInDevice(path.getDevice()),
+        dataType,
+        context,
+        queryDataSource,
+        timeFilter,
+        valueFilter,
+        null,
+        queryPlan.isAscending());
   }
 
-  /**
-   * extract time filter from a value filter
-   */
+  /** extract time filter from a value filter */
   private Filter getTimeFilter(Filter filter) {
-    if (filter instanceof UnaryFilter && ((UnaryFilter) filter).getFilterType() == FilterType.TIME_FILTER) {
+    if (filter instanceof UnaryFilter
+        && ((UnaryFilter) filter).getFilterType() == FilterType.TIME_FILTER) {
       return filter;
     }
     if (filter instanceof AndFilter) {
@@ -135,7 +142,6 @@ public class ServerTimeGenerator extends TimeGenerator {
     }
     return null;
   }
-
 
   @Override
   protected boolean isAscending() {

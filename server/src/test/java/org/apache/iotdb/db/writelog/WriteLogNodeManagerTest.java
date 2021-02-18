@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.writelog;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertNotSame;
-import static junit.framework.TestCase.assertSame;
-import static junit.framework.TestCase.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -40,9 +30,21 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertNotSame;
+import static junit.framework.TestCase.assertSame;
+import static junit.framework.TestCase.assertTrue;
 
 public class WriteLogNodeManagerTest {
 
@@ -67,45 +69,64 @@ public class WriteLogNodeManagerTest {
   public void testGetAndDelete() throws IOException {
     String identifier = "testLogNode";
     WriteLogNodeManager manager = MultiFileLogNodeManager.getInstance();
-    WriteLogNode logNode = manager.getNode(identifier, () -> {
-      ByteBuffer[] buffers = new ByteBuffer[2];
-      buffers[0] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      buffers[1] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      return buffers;
-    });
+    WriteLogNode logNode =
+        manager.getNode(
+            identifier,
+            () -> {
+              ByteBuffer[] buffers = new ByteBuffer[2];
+              buffers[0] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              buffers[1] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              return buffers;
+            });
     assertEquals(identifier, logNode.getIdentifier());
 
-    WriteLogNode theSameNode = manager.getNode(identifier, () -> {
-      ByteBuffer[] buffers = new ByteBuffer[2];
-      buffers[0] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      buffers[1] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      return buffers;
-    });
+    WriteLogNode theSameNode =
+        manager.getNode(
+            identifier,
+            () -> {
+              ByteBuffer[] buffers = new ByteBuffer[2];
+              buffers[0] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              buffers[1] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              return buffers;
+            });
     assertSame(logNode, theSameNode);
 
-    manager.deleteNode(identifier, (ByteBuffer[] array) -> {
-      for (ByteBuffer byteBuffer : array) {
-        MmapUtil.clean((MappedByteBuffer) byteBuffer);
-      }
-    });
-    WriteLogNode anotherNode = manager.getNode(identifier, () -> {
-      ByteBuffer[] buffers = new ByteBuffer[2];
-      buffers[0] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      buffers[1] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      return buffers;
-    });
+    manager.deleteNode(
+        identifier,
+        (ByteBuffer[] array) -> {
+          for (ByteBuffer byteBuffer : array) {
+            MmapUtil.clean((MappedByteBuffer) byteBuffer);
+          }
+        });
+    WriteLogNode anotherNode =
+        manager.getNode(
+            identifier,
+            () -> {
+              ByteBuffer[] buffers = new ByteBuffer[2];
+              buffers[0] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              buffers[1] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              return buffers;
+            });
     assertNotSame(logNode, anotherNode);
-    manager.deleteNode(identifier, (ByteBuffer[] array) -> {
-      for (ByteBuffer byteBuffer : array) {
-        MmapUtil.clean((MappedByteBuffer) byteBuffer);
-      }
-    });
+    manager.deleteNode(
+        identifier,
+        (ByteBuffer[] array) -> {
+          for (ByteBuffer byteBuffer : array) {
+            MmapUtil.clean((MappedByteBuffer) byteBuffer);
+          }
+        });
   }
 
   @Test
@@ -117,21 +138,31 @@ public class WriteLogNodeManagerTest {
     File tempProcessorStore = File.createTempFile("managerTest", "processorStore");
 
     WriteLogNodeManager manager = MultiFileLogNodeManager.getInstance();
-    WriteLogNode logNode = manager.getNode("root.managerTest", () -> {
-      ByteBuffer[] buffers = new ByteBuffer[2];
-      buffers[0] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      buffers[1] = ByteBuffer
-          .allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-      return buffers;
-    });
+    WriteLogNode logNode =
+        manager.getNode(
+            "root.managerTest",
+            () -> {
+              ByteBuffer[] buffers = new ByteBuffer[2];
+              buffers[0] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              buffers[1] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              return buffers;
+            });
 
-    InsertRowPlan bwInsertPlan = new InsertRowPlan(new PartialPath("logTestDevice"), 100,
-        new String[]{"s1", "s2", "s3", "s4"},
-        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
-        new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
-        new PartialPath("root.logTestDevice.s1"));
+    InsertRowPlan bwInsertPlan =
+        new InsertRowPlan(
+            new PartialPath("logTestDevice"),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
+    DeletePlan deletePlan =
+        new DeletePlan(Long.MIN_VALUE, 50, new PartialPath("root.logTestDevice.s1"));
 
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
     assertFalse(walFile.exists());

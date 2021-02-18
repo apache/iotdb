@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.tsfile.constant.TestConstant;
+
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,8 +28,9 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class BytesUtilsTest {
 
@@ -53,7 +55,6 @@ public class BytesUtilsTest {
     int rb2 = BytesUtils.bytesToInt(ret, 4);
     assertEquals("testBytesToFloat", b1, rb1);
     assertEquals("testBytesToFloat", b2, rb2);
-
   }
 
   @Test
@@ -379,5 +380,4 @@ public class BytesUtilsTest {
     InputStream in = new ByteArrayInputStream(bs);
     assertEquals(l, BytesUtils.readBool(in));
   }
-
 }

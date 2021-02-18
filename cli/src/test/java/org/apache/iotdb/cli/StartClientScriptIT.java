@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.cli;
 
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
+import org.junit.*;
+
 import java.io.File;
 import java.io.IOException;
-
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.junit.*;
 
 public class StartClientScriptIT extends AbstractScript {
 
@@ -51,18 +52,31 @@ public class StartClientScriptIT extends AbstractScript {
   protected void testOnWindows() throws IOException {
     String dir = getCliPath();
     final String[] output = {
-        "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
-        "-h",
-        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+      "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
+    };
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6668",
+            "-u",
+            "root",
+            "-pw",
+            "root");
     testOutput(builder, output);
 
-    final String[] output2 = {
-        "Msg: The statement is executed successfully."};
-    ProcessBuilder builder2 = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "sbin" + File.separator + "start-cli.bat",
-        "-e", "\"flush\"");
+    final String[] output2 = {"Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 =
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            dir + File.separator + "sbin" + File.separator + "start-cli.bat",
+            "-e",
+            "\"flush\"");
     testOutput(builder2, output2);
   }
 
@@ -70,18 +84,29 @@ public class StartClientScriptIT extends AbstractScript {
   protected void testOnUnix() throws IOException {
     String dir = getCliPath();
     final String[] output = {
-        "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."};
-    ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "sbin" + File.separator + "start-cli.sh",
-        "-h",
-        "127.0.0.1", "-p", "6668", "-u", "root", "-pw", "root");
+      "IoTDB> Connection Error, please check whether the network is available or the server has started. Host is 127.0.0.1, port is 6668."
+    };
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "sh",
+            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6668",
+            "-u",
+            "root",
+            "-pw",
+            "root");
     testOutput(builder, output);
 
-    final String[] output2 = {
-        "Msg: The statement is executed successfully."};
-    ProcessBuilder builder2 = new ProcessBuilder("sh",
-        dir + File.separator + "sbin" + File.separator + "start-cli.sh",
-        "-e", "\"flush\"");
+    final String[] output2 = {"Msg: The statement is executed successfully."};
+    ProcessBuilder builder2 =
+        new ProcessBuilder(
+            "sh",
+            dir + File.separator + "sbin" + File.separator + "start-cli.sh",
+            "-e",
+            "\"flush\"");
     testOutput(builder2, output2);
   }
 }

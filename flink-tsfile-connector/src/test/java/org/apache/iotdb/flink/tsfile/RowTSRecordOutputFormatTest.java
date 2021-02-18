@@ -30,48 +30,46 @@ import java.util.List;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-/**
- * Tests for TSRecordOutputFormat
- */
+/** Tests for TSRecordOutputFormat */
 public class RowTSRecordOutputFormatTest extends RowTsFileOutputFormatTestBase {
 
-	@Test
-	public void testWriteData() throws IOException {
-		String outputDirPath = tmpDir + File.separator + "testOutput";
-		new File(outputDirPath).mkdirs();
-		TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputDirPath);
+  @Test
+  public void testWriteData() throws IOException {
+    String outputDirPath = tmpDir + File.separator + "testOutput";
+    new File(outputDirPath).mkdirs();
+    TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputDirPath);
 
-		try {
-			outputFormat.configure(new Configuration());
-			outputFormat.open(0, 2);
-			List<Row> data = prepareData();
-			for (Row row : data) {
-				outputFormat.writeRecord(row);
-			}
-		} finally {
-			outputFormat.close();
-		}
+    try {
+      outputFormat.configure(new Configuration());
+      outputFormat.open(0, 2);
+      List<Row> data = prepareData();
+      for (Row row : data) {
+        outputFormat.writeRecord(row);
+      }
+    } finally {
+      outputFormat.close();
+    }
 
-		String[] actual = readTsFile(outputDirPath + File.separator + "1.tsfile", paths);
-		String[] expected = {
-			"1,1.2,20,null,2.3,11,19",
-			"2,null,20,50,25.4,10,21",
-			"3,1.4,21,null,null,null,null",
-			"4,1.2,20,51,null,null,null",
-			"6,7.2,10,11,null,null,null",
-			"7,6.2,20,21,null,null,null",
-			"8,9.2,30,31,null,null,null"
-		};
-		assertArrayEquals(actual, expected);
-	}
+    String[] actual = readTsFile(outputDirPath + File.separator + "1.tsfile", paths);
+    String[] expected = {
+      "1,1.2,20,null,2.3,11,19",
+      "2,null,20,50,25.4,10,21",
+      "3,1.4,21,null,null,null,null",
+      "4,1.2,20,51,null,null,null",
+      "6,7.2,10,11,null,null,null",
+      "7,6.2,20,21,null,null,null",
+      "8,9.2,30,31,null,null,null"
+    };
+    assertArrayEquals(actual, expected);
+  }
 
-	@Test
-	public void testGetter() {
-		String outputFilePath = tmpDir + File.separator + "test.tsfile";
-		TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputFilePath);
+  @Test
+  public void testGetter() {
+    String outputFilePath = tmpDir + File.separator + "test.tsfile";
+    TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputFilePath);
 
-		assertEquals(rowTSRecordConverter, outputFormat.getConverter());
-		assertEquals(schema, outputFormat.getSchema());
-		assertEquals(config, outputFormat.getConfig().get());
-	}
+    assertEquals(rowTSRecordConverter, outputFormat.getConverter());
+    assertEquals(schema, outputFormat.getSchema());
+    assertEquals(config, outputFormat.getConfig().get());
+  }
 }

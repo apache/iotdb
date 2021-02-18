@@ -18,7 +18,18 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import com.google.common.base.Preconditions;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,15 +38,6 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The `IoTDBSink` allows flink jobs to write events into IoTDB timeseries. By default send only one
@@ -76,22 +78,26 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   }
 
   void initSession() throws Exception {
-    pool = new SessionPool(options.getHost(), options.getPort(), options.getUser(),
-        options.getPassword(), sessionPoolSize);
+    pool =
+        new SessionPool(
+            options.getHost(),
+            options.getPort(),
+            options.getUser(),
+            options.getPassword(),
+            sessionPoolSize);
 
     try {
       pool.setStorageGroup(options.getStorageGroup());
-    }
-    catch (StatementExecutionException e){
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()){
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         throw e;
       }
     }
-    
+
     for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
       if (!pool.checkTimeseriesExists(option.getPath())) {
-        pool.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(),
-            option.getCompressor());
+        pool.createTimeseries(
+            option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
       }
     }
   }
@@ -99,13 +105,17 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   void initScheduler() {
     if (batchSize > 0) {
       scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-      scheduledExecutor.scheduleAtFixedRate(() -> {
-        try {
-          flush();
-        } catch (Exception e) {
-          LOG.error("flush error", e);
-        }
-      }, flushIntervalMs, flushIntervalMs, TimeUnit.MILLISECONDS);
+      scheduledExecutor.scheduleAtFixedRate(
+          () -> {
+            try {
+              flush();
+            } catch (Exception e) {
+              LOG.error("flush error", e);
+            }
+          },
+          flushIntervalMs,
+          flushIntervalMs,
+          TimeUnit.MILLISECONDS);
     }
   }
 
@@ -132,8 +142,12 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     }
 
     convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-    pool.insertRecord(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
-        event.getTypes(), event.getValues());
+    pool.insertRecord(
+        event.getDevice(),
+        event.getTimestamp(),
+        event.getMeasurements(),
+        event.getTypes(),
+        event.getValues());
     LOG.debug("send event successfully");
   }
 
@@ -171,8 +185,10 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
   }
 
   private void convertText(String device, List<String> measurements, List<Object> values) {
-    if (device != null && measurements != null && values != null && measurements.size() == values
-        .size()) {
+    if (device != null
+        && measurements != null
+        && values != null
+        && measurements.size() == values.size()) {
       for (int i = 0; i < measurements.size(); i++) {
         String measurement = device + TsFileConstant.PATH_SEPARATOR + measurements.get(i);
         IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);

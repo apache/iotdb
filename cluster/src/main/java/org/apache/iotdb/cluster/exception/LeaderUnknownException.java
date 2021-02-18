@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.cluster.exception;
 
-import java.util.Collection;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-/**
- * Raised when a request should be forwarded to the leader but the leader cannot be found.
- */
+import java.util.Collection;
+
+/** Raised when a request should be forwarded to the leader but the leader cannot be found. */
 public class LeaderUnknownException extends Exception {
 
   public LeaderUnknownException(Collection<Node> nodes) {

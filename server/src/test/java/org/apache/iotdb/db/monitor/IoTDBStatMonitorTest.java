@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.db.monitor;
 
-import java.io.File;
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -31,6 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -38,24 +33,30 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * This is a integration test for StatMonitor.
- */
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+/** This is a integration test for StatMonitor. */
 public class IoTDBStatMonitorTest {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBStatMonitorTest.class);
 
   private StatMonitor statMonitor;
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String STORAGE_GROUP_NAME = "root.sg";
-  private static String[] dataset = new String[]{
-      "SET STORAGE GROUP TO root.sg",
-      "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-      "insert into root.sg.d1(timestamp,s1) values(5,5)",
-      "insert into root.sg.d1(timestamp,s1) values(12,12)",
-      "insert into root.sg.d1(timestamp,s1) values(15,15)",
-      "insert into root.sg.d1(timestamp,s1) values(25,25)",
-      "insert into root.sg.d1(timestamp,s1) values(100,100)",
-  };
+  private static String[] dataset =
+      new String[] {
+        "SET STORAGE GROUP TO root.sg",
+        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+        "insert into root.sg.d1(timestamp,s1) values(5,5)",
+        "insert into root.sg.d1(timestamp,s1) values(12,12)",
+        "insert into root.sg.d1(timestamp,s1) values(15,15)",
+        "insert into root.sg.d1(timestamp,s1) values(25,25)",
+        "insert into root.sg.d1(timestamp,s1) values(100,100)",
+      };
 
   @Before
   public void setUp() throws Exception {
@@ -63,7 +64,7 @@ public class IoTDBStatMonitorTest {
     config.setEnableMonitorSeriesWrite(true);
     EnvironmentUtils.envSetUp();
     statMonitor = StatMonitor.getInstance();
-    if (statMonitor.globalSeries.isEmpty()){
+    if (statMonitor.globalSeries.isEmpty()) {
       statMonitor.initMonitorSeriesInfo();
     }
     insertSomeData();
@@ -84,15 +85,15 @@ public class IoTDBStatMonitorTest {
     // restart server
     EnvironmentUtils.restartDaemon();
     long time = 0;
-    while(!StorageEngine.getInstance().isAllSgReady()){
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       Thread.sleep(500);
       time += 500;
 
-      if(time > 10000){
+      if (time > 10000) {
         logger.warn("wait for sg ready for : " + (time / 1000) + " s");
       }
 
-      if(time > 30000){
+      if (time > 30000) {
         throw new IllegalStateException("wait too long in IoTDBStatMonitorTest");
       }
     }
@@ -106,16 +107,17 @@ public class IoTDBStatMonitorTest {
     Assert.assertEquals(5, statMonitor.getGlobalReqSuccessNum());
     Assert.assertEquals(5, statMonitor.getStorageGroupTotalPointsNum(STORAGE_GROUP_NAME));
     Assert.assertEquals(0, statMonitor.getDataSizeInByte());
-    Assert.assertEquals(new File(config.getSystemDir()).getAbsolutePath(),
-        statMonitor.getSystemDirectory());
+    Assert.assertEquals(
+        new File(config.getSystemDir()).getAbsolutePath(), statMonitor.getSystemDirectory());
     Assert.assertEquals(config.isEnableWal(), statMonitor.getWriteAheadLogStatus());
   }
 
   private void saveStatValueTest() throws MetadataException, StorageEngineException {
     statMonitor.saveStatValue(STORAGE_GROUP_NAME);
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResult = statement.execute("select TOTAL_POINTS from root.stats.\"root.sg\"");
       Assert.assertTrue(hasResult);
@@ -158,8 +160,9 @@ public class IoTDBStatMonitorTest {
 
   private void insertSomeData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : dataset) {

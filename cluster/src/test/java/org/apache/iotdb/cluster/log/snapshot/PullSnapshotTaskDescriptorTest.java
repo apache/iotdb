@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -28,9 +31,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class PullSnapshotTaskDescriptorTest {
 

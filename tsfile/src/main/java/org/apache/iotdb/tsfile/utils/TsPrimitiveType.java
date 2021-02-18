@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.Serializable;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.io.Serializable;
 
 public abstract class TsPrimitiveType implements Serializable {
 
@@ -117,12 +118,12 @@ public abstract class TsPrimitiveType implements Serializable {
 
   @Override
   public boolean equals(Object object) {
-    return (object instanceof TsPrimitiveType) && (((TsPrimitiveType) object).getValue()
-        .equals(getValue()));
+    return (object instanceof TsPrimitiveType)
+        && (((TsPrimitiveType) object).getValue().equals(getValue()));
   }
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return getValue().hashCode();
   }
 
@@ -461,5 +462,4 @@ public abstract class TsPrimitiveType implements Serializable {
       return false;
     }
   }
-
 }

@@ -4,22 +4,24 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.RaftServer;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.junit.Test;
+
+import java.io.IOException;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class AsyncDataClientTest {
 
@@ -28,26 +30,33 @@ public class AsyncDataClientTest {
     AsyncClientPool asyncClientPool = new AsyncClientPool(new SingleManagerFactory(new Factory()));
     AsyncDataClient client;
     Node node = TestUtils.getNode(0);
-    client = new AsyncDataClient(new Factory(), new TAsyncClientManager(),
-        new TNonblockingSocket(node.getIp(), node.getDataPort()
-            , RaftServer.getConnectionTimeoutInMS()));
+    client =
+        new AsyncDataClient(
+            new Factory(),
+            new TAsyncClientManager(),
+            new TNonblockingSocket(
+                node.getIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
     assertTrue(client.isReady());
 
     client = (AsyncDataClient) asyncClientPool.getClient(TestUtils.getNode(0));
 
     assertEquals(TestUtils.getNode(0), client.getNode());
 
-    client.matchTerm(0, 0, TestUtils.getNode(0), new AsyncMethodCallback<Boolean>() {
-      @Override
-      public void onComplete(Boolean aBoolean) {
-        // do nothing
-      }
+    client.matchTerm(
+        0,
+        0,
+        TestUtils.getNode(0),
+        new AsyncMethodCallback<Boolean>() {
+          @Override
+          public void onComplete(Boolean aBoolean) {
+            // do nothing
+          }
 
-      @Override
-      public void onError(Exception e) {
-        // do nothing
-      }
-    });
+          @Override
+          public void onError(Exception e) {
+            // do nothing
+          }
+        });
     assertFalse(client.isReady());
 
     client.onError(new Exception());

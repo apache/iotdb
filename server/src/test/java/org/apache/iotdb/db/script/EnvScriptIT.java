@@ -18,26 +18,25 @@
  */
 package org.apache.iotdb.db.script;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class EnvScriptIT {
 
   @Before
-  public void setUp() throws Exception {
-  }
+  public void setUp() throws Exception {}
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void test() throws IOException, InterruptedException {
@@ -51,29 +50,29 @@ public class EnvScriptIT {
 
   private void testStartClientOnWindows(String suffix, String os) throws IOException {
     String dir = getServerPath();
-    final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
-    String cmd =
-        dir + File.separator + "conf" + File.separator + "iotdb-env"
-            + suffix;
+    final String output =
+        "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env" + suffix;
     ProcessBuilder startBuilder = new ProcessBuilder("cmd.exe", "/c", cmd);
     testOutput(dir, suffix, startBuilder, output, os);
   }
 
   private void testStartClientOnUnix(String suffix, String os) throws IOException {
     String dir = getServerPath();
-    final String output = "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
-    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env"
-            + suffix;
+    final String output =
+        "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).";
+    String cmd = dir + File.separator + "conf" + File.separator + "iotdb-env" + suffix;
     ProcessBuilder builder = new ProcessBuilder("bash", cmd);
     testOutput(cmd, suffix, builder, output, os);
   }
 
-  private void testOutput(String cmd, String suffix, ProcessBuilder builder,
-      String output, String os) throws IOException {
-	builder.redirectErrorStream(true);
+  private void testOutput(
+      String cmd, String suffix, ProcessBuilder builder, String output, String os)
+      throws IOException {
+    builder.redirectErrorStream(true);
     Process startProcess = builder.start();
-    BufferedReader startReader = new BufferedReader(
-        new InputStreamReader(startProcess.getInputStream()));
+    BufferedReader startReader =
+        new BufferedReader(new InputStreamReader(startProcess.getInputStream()));
     List<String> runtimeOuput = new ArrayList<>();
     String line;
     try {
@@ -84,7 +83,7 @@ public class EnvScriptIT {
         }
         runtimeOuput.add(line);
       }
-      assertEquals(output, runtimeOuput.get(runtimeOuput.size()-1));
+      assertEquals(output, runtimeOuput.get(runtimeOuput.size() - 1));
     } finally {
       startReader.close();
       startProcess.destroy();
@@ -104,7 +103,7 @@ public class EnvScriptIT {
   protected String getServerPath() {
     // This is usually always set by the JVM
     File userDir = new File(System.getProperty("user.dir"));
-    if(!userDir.exists()) {
+    if (!userDir.exists()) {
       throw new RuntimeException("user.dir " + userDir.getAbsolutePath() + " doesn't exist.");
     }
     File target = new File(userDir, "target/maven-archiver/pom.properties");
@@ -115,7 +114,11 @@ public class EnvScriptIT {
     } catch (IOException e) {
       return "target/iotdb-server-";
     }
-    return new File(userDir, String.format("target/%s-%s", properties.getProperty("artifactId"), properties.getProperty("version"))).getAbsolutePath();
+    return new File(
+            userDir,
+            String.format(
+                "target/%s-%s",
+                properties.getProperty("artifactId"), properties.getProperty("version")))
+        .getAbsolutePath();
   }
-
 }

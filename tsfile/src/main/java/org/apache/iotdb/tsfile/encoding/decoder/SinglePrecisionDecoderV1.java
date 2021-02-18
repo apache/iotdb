@@ -19,18 +19,16 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-/**
- * Decoder for value value using gorilla.
- */
+/** Decoder for value value using gorilla. */
 public class SinglePrecisionDecoderV1 extends GorillaDecoderV1 {
 
   private static final Logger logger = LoggerFactory.getLogger(SinglePrecisionDecoderV1.class);
@@ -88,7 +86,8 @@ public class SinglePrecisionDecoderV1 extends GorillaDecoderV1 {
     if (!nextFlag2) {
       // case: '10'
       int tmp = 0;
-      for (int i = 0; i < TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNum - tailingZeroNum;
+      for (int i = 0;
+          i < TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNum - tailingZeroNum;
           i++) {
         int bit = readBit(buffer) ? 1 : 0;
         tmp |= bit << (TSFileConfig.VALUE_BITS_LENGTH_32BIT - 1 - leadingZeroNum - i);
@@ -97,8 +96,8 @@ public class SinglePrecisionDecoderV1 extends GorillaDecoderV1 {
       preValue = tmp;
     } else {
       // case: '11'
-      int leadingZeroNumTmp = readIntFromStream(buffer,
-          TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT);
+      int leadingZeroNumTmp =
+          readIntFromStream(buffer, TSFileConfig.LEADING_ZERO_BITS_LENGTH_32BIT);
       int lenTmp = readIntFromStream(buffer, TSFileConfig.FLOAT_VALUE_LENGTH);
       int tmp = readIntFromStream(buffer, lenTmp);
       tmp <<= (TSFileConfig.VALUE_BITS_LENGTH_32BIT - leadingZeroNumTmp - lenTmp);

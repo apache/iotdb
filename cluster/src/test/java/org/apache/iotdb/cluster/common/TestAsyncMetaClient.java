@@ -19,20 +19,24 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.io.IOException;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
+
+import java.io.IOException;
 
 public class TestAsyncMetaClient extends AsyncMetaClient {
 
   private Node node;
 
-  public TestAsyncMetaClient(TProtocolFactory protocolFactory,
+  public TestAsyncMetaClient(
+      TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager,
-      Node node, AsyncClientPool pool)
+      Node node,
+      AsyncClientPool pool)
       throws IOException {
     super(protocolFactory, clientManager, node, pool);
     this.node = node;
@@ -46,5 +50,4 @@ public class TestAsyncMetaClient extends AsyncMetaClient {
   public void setNode(Node node) {
     this.node = node;
   }
-
 }
