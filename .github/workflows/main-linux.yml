@@ -19,6 +19,7 @@ on:
       - cluster_new
     paths-ignore:
       - 'docs/**'
+  workflow_dispatch:
 
 jobs:
   ubuntu:
@@ -46,7 +47,7 @@ jobs:
       - name: IT/UT Test
         run:  mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && matrix.java == '8'}}
+        if: ${{ success() && matrix.java == '11'}}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -56,11 +57,10 @@ jobs:
           -DrepoToken=MiEOlMMMNQhLNV4yayn7rRUPyVSQzbzbZ \
           -Pcode-coverage
       - name: SonarCloud Report
-        #jdk8 is faster to run UT/IT
-        if: ${{ success() &&  matrix.java == '8'}}
+        if: ${{ success() &&  matrix.java == '11'}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: '2d9c9a58d772a57806a168e00181e3e19f2763dc'
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
         run: |
           mvn -B verify sonar:sonar \
           -Dsonar.organization=apache \

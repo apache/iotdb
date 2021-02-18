@@ -52,11 +52,6 @@ public class ChunkWriterImpl implements IChunkWriter {
    */
   private PublicBAOS pageBuffer;
 
-  /**
-   * current chunk data size, i.e the size of pageBuffer
-   */
-  private int chunkDataSize;
-
   private int numOfPages;
 
   /**
@@ -87,17 +82,18 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * SDT parameters
    */
-  private SDTEncoder sdtEncoder;
   private boolean isSdtEncoding;
+  // When the ChunkWriter WILL write the last data point in the chunk, set it to true to tell SDT saves the point.
+  private boolean isLastPoint;
+  // do not re-execute SDT compression when merging chunks
+  private boolean isMerging;
+  private SDTEncoder sdtEncoder;
+
   private static final String LOSS = "loss";
   private static final String SDT = "sdt";
   private static final String SDT_COMP_DEV = "compdev";
   private static final String SDT_COMP_MIN_TIME = "compmintime";
   private static final String SDT_COMP_MAX_TIME = "compmaxtime";
-  /**
-   * do not re-execute SDT compression when merging chunks
-   */
-  private boolean isMerging;
 
   /**
    * first page info
@@ -159,27 +155,28 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   @Override
   public void write(long time, long value) {
+    // store last point for sdtEncoding, it still needs to go through encoding process
+    // in case it exceeds compdev and needs to store second last point
     if (!isSdtEncoding || sdtEncoder.encodeLong(time, value)) {
-      if (isSdtEncoding) {
-        //store last read time and value
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getLongValue();
-      }
-      pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getLongValue() : value);
     }
+    if (isSdtEncoding && isLastPoint) {
+      pageWriter.write(time, value);
+    }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, int value) {
     if (!isSdtEncoding || sdtEncoder.encodeInt(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getIntValue();
-      }
-      pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getIntValue() : value);
     }
+    if (isSdtEncoding && isLastPoint) {
+      pageWriter.write(time, value);
+    }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
@@ -191,25 +188,26 @@ public class ChunkWriterImpl implements IChunkWriter {
   @Override
   public void write(long time, float value) {
     if (!isSdtEncoding || sdtEncoder.encodeFloat(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getFloatValue();
-      }
-      pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getFloatValue() : value);
     }
+    //store last point for sdt encoding
+    if (isSdtEncoding && isLastPoint) {
+      pageWriter.write(time, value);
+    }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
   public void write(long time, double value) {
     if (!isSdtEncoding || sdtEncoder.encodeDouble(time, value)) {
-      if (isSdtEncoding) {
-        time = sdtEncoder.getTime();
-        value = sdtEncoder.getDoubleValue();
-      }
-      pageWriter.write(time, value);
-      checkPageSizeAndMayOpenANewPage();
+      pageWriter.write(isSdtEncoding ? sdtEncoder.getTime() : time,
+          isSdtEncoding ? sdtEncoder.getDoubleValue() : value);
     }
+    if (isSdtEncoding && isLastPoint) {
+      pageWriter.write(time, value);
+    }
+    checkPageSizeAndMayOpenANewPage();
   }
 
   @Override
@@ -356,7 +354,6 @@ public class ChunkWriterImpl implements IChunkWriter {
     if (pageWriter != null && pageWriter.getPointNumber() > 0) {
       writePageToPageBuffer();
     }
-    chunkDataSize = pageBuffer.size();
   }
   
   @Override
@@ -425,7 +422,7 @@ public class ChunkWriterImpl implements IChunkWriter {
 
     // start to write this column chunk
     writer.startFlushChunk(measurementSchema, compressor.getType(), measurementSchema.getType(),
-        measurementSchema.getEncodingType(), statistics, chunkDataSize, numOfPages);
+        measurementSchema.getEncodingType(), statistics, pageBuffer.size(), numOfPages);
 
     long dataOffset = writer.getPos();
 
@@ -433,10 +430,10 @@ public class ChunkWriterImpl implements IChunkWriter {
     writer.writeBytesToStream(pageBuffer);
 
     int dataSize = (int) (writer.getPos() - dataOffset);
-    if (dataSize != chunkDataSize) {
+    if (dataSize != pageBuffer.size()) {
       throw new IOException(
           "Bytes written is inconsistent with the size of data: " + dataSize + " !="
-              + " " + chunkDataSize);
+              + " " + pageBuffer.size());
     }
 
     writer.endCurrentChunk();
@@ -448,5 +445,9 @@ public class ChunkWriterImpl implements IChunkWriter {
 
   public boolean isMerging() {
     return isMerging;
+  }
+
+  public void setLastPoint(boolean isLastPoint) {
+    this.isLastPoint = isLastPoint;
   }
 }
