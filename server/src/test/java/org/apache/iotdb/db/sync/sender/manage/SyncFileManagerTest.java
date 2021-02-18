@@ -71,7 +71,7 @@ public class SyncFileManagerTest {
 
   @Test
   public void testGetValidFiles() throws IOException, MetadataException {
-    Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
+    Map<String, Map<Long, Map<Long, Set<File>>>> allFileList = new HashMap<>();
 
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {
@@ -80,12 +80,13 @@ public class SyncFileManagerTest {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+            .computeIfAbsent(0L, k -> new HashMap<>())
             .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName = FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-            + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
+            + File.separator + getSgName(i) + File.separator + "0" + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(getSgName(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -106,25 +107,27 @@ public class SyncFileManagerTest {
     updateLastLocalFiles(allFileList);
 
     manager.getValidFiles(dataDir);
-    Map<String, Map<Long, Set<File>>> lastFileMap = manager.getLastLocalFilesMap();
+    Map<String, Map<Long, Map<Long, Set<File>>>> lastFileMap = manager.getLastLocalFilesMap();
     assertFileMap(allFileList, lastFileMap);
 
     // add some files
-    Map<String, Map<Long, Set<File>>> correctToBeSyncedFiles = new HashMap<>();
+    Map<String, Map<Long, Map<Long, Set<File>>>> correctToBeSyncedFiles = new HashMap<>();
     r = new Random(1);
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+          .computeIfAbsent(0L, k -> new HashMap<>())
             .computeIfAbsent(0L, k -> new HashSet<>());
         correctToBeSyncedFiles.computeIfAbsent(getSgName(i), k -> new HashMap<>())
+          .computeIfAbsent(0L, k -> new HashMap<>())
             .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + getSgName(i) + File.separator + "0" + File.separator + rand;
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator + "0" + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(getSgName(i)).get(0L).add(file);
-        correctToBeSyncedFiles.get(getSgName(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
+        correctToBeSyncedFiles.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -138,8 +141,8 @@ public class SyncFileManagerTest {
       }
     }
     manager.getValidFiles(dataDir);
-    Map<String, Map<Long, Set<File>>> curFileMap = manager.getCurrentSealedLocalFilesMap();
-    Map<String, Map<Long, Set<File>>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
+    Map<String, Map<Long, Map<Long, Set<File>>>> curFileMap = manager.getCurrentSealedLocalFilesMap();
+    Map<String, Map<Long, Map<Long, Set<File>>>> toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     assertFileMap(allFileList, curFileMap);
     assertFileMap(correctToBeSyncedFiles, toBeSyncedFilesMap);
 
@@ -155,17 +158,19 @@ public class SyncFileManagerTest {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
-            .computeIfAbsent(0L, k -> new HashSet<>());
+          .computeIfAbsent(0L, k -> new HashMap<>())
+          .computeIfAbsent(0L, k -> new HashSet<>());
         correctToBeSyncedFiles.computeIfAbsent(getSgName(i), k -> new HashMap<>())
-            .computeIfAbsent(0L, k -> new HashSet<>());
+          .computeIfAbsent(0L, k -> new HashMap<>())
+          .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = r.nextInt(10000) + TSFILE_SUFFIX;
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + getSgName(i) + File.separator + "0" + File.separator
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator + "0" + File.separator
                 + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(getSgName(i)).get(0L).add(file);
-        correctToBeSyncedFiles.get(getSgName(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
+        correctToBeSyncedFiles.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -179,35 +184,41 @@ public class SyncFileManagerTest {
       }
     }
     int count = 0;
-    Map<String, Map<Long, Set<File>>> correctDeleteFile = new HashMap<>();
-    for (Entry<String, Map<Long, Set<File>>> entry : allFileList.entrySet()) {
+    Map<String, Map<Long, Map<Long, Set<File>>>> correctDeleteFile = new HashMap<>();
+    for (Entry<String, Map<Long, Map<Long, Set<File>>>> entry : allFileList.entrySet()) {
       correctDeleteFile.put(entry.getKey(), new HashMap<>());
-      for (Entry<Long, Set<File>> innerEntry : entry.getValue().entrySet()) {
-        Set<File> files = innerEntry.getValue();
-        correctDeleteFile.get(entry.getKey()).putIfAbsent(innerEntry.getKey(), new HashSet<>());
-        for (File file : files) {
-          count++;
-          if (count % 3 == 0 && lastFileMap.get(entry.getKey()).get(0L).contains(file)) {
-            correctDeleteFile.get(entry.getKey()).get(0L).add(file);
+      for (Entry<Long, Map<Long, Set<File>>> vgEntry : entry.getValue().entrySet()) {
+        correctDeleteFile.get(entry.getKey()).putIfAbsent(vgEntry.getKey(), new HashMap<>());
+        for (Entry<Long, Set<File>> innerEntry : vgEntry.getValue().entrySet()) {
+          Set<File> files = innerEntry.getValue();
+          correctDeleteFile.get(entry.getKey()).get(vgEntry.getKey()).putIfAbsent(innerEntry.getKey(), new HashSet<>());
+          for (File file : files) {
+            count++;
+            if (count % 3 == 0 && lastFileMap.get(entry.getKey()).get(0L).get(0L).contains(file)) {
+              correctDeleteFile.get(entry.getKey()).get(0L).get(0L).add(file);
+            }
           }
         }
       }
     }
-    for (Entry<String, Map<Long, Set<File>>> entry : correctDeleteFile.entrySet()) {
+    for (Entry<String, Map<Long, Map<Long, Set<File>>>> entry : correctDeleteFile.entrySet()) {
       correctDeleteFile.put(entry.getKey(), new HashMap<>());
-      for (Entry<Long, Set<File>> innerEntry : entry.getValue().entrySet()) {
-        Set<File> files = innerEntry.getValue();
-        correctDeleteFile.get(entry.getKey()).putIfAbsent(innerEntry.getKey(), new HashSet<>());
-        for (File file : innerEntry.getValue()) {
-          file.delete();
-          new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).delete();
-          allFileList.get(entry.getKey()).get(0L).remove(file);
+      for (Entry<Long, Map<Long, Set<File>>> vgEntry : entry.getValue().entrySet()) {
+        correctDeleteFile.get(entry.getKey()).putIfAbsent(vgEntry.getKey(), new HashMap<>());
+        for (Entry<Long, Set<File>> innerEntry : vgEntry.getValue().entrySet()) {
+          Set<File> files = innerEntry.getValue();
+          correctDeleteFile.get(entry.getKey()).get(vgEntry.getKey()).putIfAbsent(innerEntry.getKey(), new HashSet<>());
+          for (File file : innerEntry.getValue()) {
+            file.delete();
+            new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).delete();
+            allFileList.get(entry.getKey()).get(0L).get(0L).remove(file);
+          }
         }
       }
     }
     manager.getValidFiles(dataDir);
     curFileMap = manager.getCurrentSealedLocalFilesMap();
-    Map<String, Map<Long, Set<File>>> deletedFilesMap = manager.getDeletedFilesMap();
+    Map<String, Map<Long, Map<Long, Set<File>>>> deletedFilesMap = manager.getDeletedFilesMap();
     toBeSyncedFilesMap = manager.getToBeSyncedFilesMap();
     assertFileMap(allFileList, curFileMap);
     assertFileMap(correctDeleteFile, deletedFilesMap);
@@ -218,14 +229,15 @@ public class SyncFileManagerTest {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 5; j++) {
         allFileList.computeIfAbsent(getSgName(i), k -> new HashMap<>())
-            .computeIfAbsent(0L, k -> new HashSet<>());
+          .computeIfAbsent(0L, k -> new HashMap<>())
+          .computeIfAbsent(0L, k -> new HashSet<>());
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             FilePathUtils.regularizePath(dataDir) + IoTDBConstant.SEQUENCE_FLODER_NAME
-                + File.separator + getSgName(i) + File.separator + "0" + File.separator
+                + File.separator + getSgName(i) + File.separator + "0" + File.separator + "0" + File.separator
                 + File.separator + rand;
         File file = new File(fileName);
-        allFileList.get(getSgName(i)).get(0L).add(file);
+        allFileList.get(getSgName(i)).get(0L).get(0L).add(file);
         if (!file.getParentFile().exists()) {
           file.getParentFile().mkdirs();
         }
@@ -245,13 +257,17 @@ public class SyncFileManagerTest {
     assertFileMap(correctToBeSyncedFiles, toBeSyncedFilesMap);
   }
 
-  private void assertFileMap(Map<String, Map<Long, Set<File>>> correctMap,
-      Map<String, Map<Long, Set<File>>> curMap) {
-    for (Entry<String, Map<Long, Set<File>>> entry : correctMap.entrySet()) {
+  private void assertFileMap(Map<String, Map<Long, Map<Long, Set<File>>>> correctMap,
+      Map<String, Map<Long, Map<Long, Set<File>>>> curMap) {
+    for (Entry<String, Map<Long, Map<Long, Set<File>>>> entry : correctMap.entrySet()) {
       assertTrue(curMap.containsKey(entry.getKey()));
-      for (Entry<Long, Set<File>> innerEntry : entry.getValue().entrySet()) {
-        assertTrue(
-            curMap.get(entry.getKey()).get(innerEntry.getKey()).containsAll(innerEntry.getValue()));
+      for (Entry<Long, Map<Long, Set<File>>> innerEntry : entry.getValue().entrySet()) {
+        assertTrue(curMap.get(entry.getKey()).containsKey(innerEntry.getKey()));
+        for (Entry<Long, Set<File>> fileEntry : innerEntry.getValue().entrySet()) {
+          assertTrue(
+            curMap.get(entry.getKey()).get(innerEntry.getKey())
+              .get(fileEntry.getKey()).containsAll(fileEntry.getValue()));
+        }
       }
     }
   }
@@ -260,16 +276,18 @@ public class SyncFileManagerTest {
     return IoTDBConstant.PATH_ROOT + IoTDBConstant.PATH_SEPARATOR + i;
   }
 
-  private void updateLastLocalFiles(Map<String, Map<Long, Set<File>>> lastLocalFilesMap) {
+  private void updateLastLocalFiles(Map<String, Map<Long, Map<Long, Set<File>>>> lastLocalFilesMap) {
     try (BufferedWriter bw = new BufferedWriter(
         new FileWriter(new File(config.getLastFileInfoPath())))) {
-      for (Map<Long, Set<File>> currentLocalFiles : lastLocalFilesMap.values()) {
-        for (Set<File> files : currentLocalFiles.values()) {
-          for (File file : files) {
-            bw.write(file.getAbsolutePath());
-            bw.newLine();
+      for (Map<Long, Map<Long, Set<File>>> currentLocalFiles : lastLocalFilesMap.values()) {
+        for (Map<Long, Set<File>> vgFiles : currentLocalFiles.values()) {
+          for (Set<File> files : vgFiles.values()) {
+            for (File file : files) {
+              bw.write(file.getAbsolutePath());
+              bw.newLine();
+            }
+            bw.flush();
           }
-          bw.flush();
         }
       }
     } catch (IOException e) {
