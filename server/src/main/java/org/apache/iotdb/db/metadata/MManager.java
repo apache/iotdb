@@ -1837,7 +1837,7 @@ public class MManager {
     return deviceMNode;
   }
 
-  private MeasurementMNode getOrCreateMeasurementMNode(MNode deviceMNode, String measurement,
+  public MeasurementMNode getOrCreateMeasurementMNode(MNode deviceMNode, String measurement,
       TSDataType dataType, PartialPath deviceId)
       throws MetadataException {
     MNode child = deviceMNode.getChild(measurement);

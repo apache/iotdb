@@ -21,6 +21,10 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -627,4 +631,45 @@ public class MManagerBasicTest {
     }
   }
 
+  /**
+   * test 4 conditions inside getOrCreateMeasurementMNode method
+   */
+  @Test
+  public void testGetOrCreateMeasurementMNode() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+
+    manager.createTimeseries(new PartialPath("root.laptop1.a.b.c"), TSDataType.INT32, TSEncoding.PLAIN, CompressionType.GZIP, null);
+
+    //1.
+    PartialPath devicePath = new PartialPath("root.laptop1");
+    MNode deviceNode = manager.getNodeByPath(devicePath);
+    MeasurementMNode measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "a", TSDataType.FLOAT, devicePath);
+    Assert.assertEquals("a", measurementMNode.getName());
+    Assert.assertTrue(measurementMNode.getParent() instanceof StorageGroupMNode);
+
+    //2.
+    devicePath = new PartialPath("root.laptop1.a.b.c");
+    deviceNode = manager.getNodeByPath(devicePath);
+    measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
+    measurementMNode.setAlias("dd");
+    Assert.assertEquals("d", measurementMNode.getName());
+
+    //3.
+    manager.setStorageGroup(new PartialPath("root.sg1.a.b"));
+    devicePath = new PartialPath("root.sg1.a");
+    deviceNode = manager.getNodeByPath(devicePath);
+    try {
+      manager.getOrCreateMeasurementMNode(deviceNode, "b", TSDataType.FLOAT, devicePath);
+    } catch (PathAlreadyExistException e) {
+      Assert.assertEquals("Path [root.sg1.a.b] already exist", e.getMessage());
+    }
+
+    //4.
+    devicePath = new PartialPath("root.laptop1.a.b.c");
+    deviceNode = manager.getNodeByPath(devicePath);
+    measurementMNode = manager.getOrCreateMeasurementMNode(deviceNode, "d", TSDataType.FLOAT, devicePath);
+    Assert.assertEquals("d", measurementMNode.getName());
+    Assert.assertEquals("dd", measurementMNode.getAlias());
+
+  }
 }
