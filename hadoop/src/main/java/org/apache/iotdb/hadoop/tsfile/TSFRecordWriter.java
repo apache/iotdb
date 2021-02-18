@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
+import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.apache.iotdb.hadoop.fileSystem.HDFSOutput;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.hadoop.tsfile.record.HDFSTSRecord;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,6 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
   private static final Logger logger = LoggerFactory.getLogger(TSFRecordWriter.class);
 
   private TsFileWriter writer;
-
 
   public TSFRecordWriter(TaskAttemptContext job, Path path, Schema schema) throws IOException {
     HDFSOutput hdfsOutput = new HDFSOutput(path.toString(), job.getConfiguration(), false);
@@ -59,5 +59,4 @@ public class TSFRecordWriter extends RecordWriter<NullWritable, HDFSTSRecord> {
     logger.info("Close the record writer, the task attempt id is {}", context.getTaskAttemptID());
     writer.close();
   }
-
 }

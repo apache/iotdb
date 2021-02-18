@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.File;
-import java.io.IOException;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
 
 public class FilePathUtilsTest {
 
@@ -36,8 +38,15 @@ public class FilePathUtilsTest {
   private static final long partitionId = 0;
   private static final String tsFileName = "1611199237113-4-0.tsfile";
   private static final String fullPath =
-      "target" + File.separator + storageGroupName + File.separator + virtualSgName + File.separator
-          + partitionId + File.separator + tsFileName;
+      "target"
+          + File.separator
+          + storageGroupName
+          + File.separator
+          + virtualSgName
+          + File.separator
+          + partitionId
+          + File.separator
+          + tsFileName;
 
   private File tsFile;
 
@@ -58,8 +67,8 @@ public class FilePathUtilsTest {
   public void getLogicalSgNameAndTimePartitionIdPairTest() {
     TsFileResource tsFileResource = new TsFileResource();
     tsFileResource.setFile(tsFile);
-    Pair<String, Long> sgNameAndTimePartitionIdPair = FilePathUtils
-        .getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
+    Pair<String, Long> sgNameAndTimePartitionIdPair =
+        FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
     Assert.assertEquals(storageGroupName, sgNameAndTimePartitionIdPair.left);
     Assert.assertEquals(partitionId, sgNameAndTimePartitionIdPair.right.longValue());
   }
@@ -93,8 +102,8 @@ public class FilePathUtilsTest {
     TsFileResource tsFileResource = new TsFileResource();
     tsFileResource.setFile(tsFile);
     TsFileResource newTsFileResource = tsFileResource.createHardlink();
-    String tsFileNameWithoutHardLink = FilePathUtils
-        .getTsFileNameWithoutHardLink(newTsFileResource);
+    String tsFileNameWithoutHardLink =
+        FilePathUtils.getTsFileNameWithoutHardLink(newTsFileResource);
     Assert.assertEquals(tsFileName, tsFileNameWithoutHardLink);
     Assert.assertTrue(newTsFileResource.getTsFile().delete());
   }
@@ -103,8 +112,7 @@ public class FilePathUtilsTest {
   public void getTsFilePrefixPathTest() {
     TsFileResource tsFileResource = new TsFileResource();
     tsFileResource.setFile(tsFile);
-    String tsFilePrefixPath = FilePathUtils
-        .getTsFilePrefixPath(tsFileResource);
+    String tsFilePrefixPath = FilePathUtils.getTsFilePrefixPath(tsFileResource);
     String exceptPrefixPath =
         storageGroupName + File.separator + virtualSgName + File.separator + partitionId;
     Assert.assertEquals(exceptPrefixPath, tsFilePrefixPath);

@@ -17,17 +17,18 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.client.sync;
 
-import java.io.IOException;
-import java.net.ServerSocket;
 import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.net.ServerSocket;
 
 public class SyncDataHeartbeatClientTest {
 
@@ -36,15 +37,17 @@ public class SyncDataHeartbeatClientTest {
     Node node = new Node();
     node.setDataPort(40010).setIp("localhost");
     ServerSocket serverSocket = new ServerSocket(node.getDataPort() + 1);
-    Thread listenThread = new Thread(() -> {
-      while (!Thread.interrupted()) {
-        try {
-          serverSocket.accept();
-        } catch (IOException e) {
-          return;
-        }
-      }
-    });
+    Thread listenThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted()) {
+                try {
+                  serverSocket.accept();
+                } catch (IOException e) {
+                  return;
+                }
+              }
+            });
     listenThread.start();
 
     try {

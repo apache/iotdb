@@ -88,11 +88,11 @@ public class OrNode implements Node {
       long leftValue = getLeftValue();
       long rightValue = getRightValue();
       if (ascending) {
-        return popAndFillNextCache(leftValue < rightValue, leftValue > rightValue, leftValue,
-            rightValue);
+        return popAndFillNextCache(
+            leftValue < rightValue, leftValue > rightValue, leftValue, rightValue);
       }
-      return popAndFillNextCache(leftValue > rightValue, leftValue < rightValue, leftValue,
-          rightValue);
+      return popAndFillNextCache(
+          leftValue > rightValue, leftValue < rightValue, leftValue, rightValue);
     }
     throw new IOException("no more data");
   }

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -32,6 +27,12 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ClusterQueryManager {
 
@@ -42,14 +43,16 @@ public class ClusterQueryManager {
   private Map<Long, IAggregateReader> aggrReaderMap = new ConcurrentHashMap<>();
   private Map<Long, GroupByExecutor> groupByExecutorMap = new ConcurrentHashMap<>();
 
-
-  public synchronized RemoteQueryContext getQueryContext(Node node, long queryId, int fetchSize,
-      int deduplicatedPathNum) {
-    Map<Long, RemoteQueryContext> nodeContextMap = queryContextMap.computeIfAbsent(node,
-        n -> new HashMap<>());
-    return nodeContextMap.computeIfAbsent(queryId,
-        qId -> new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true,
-            fetchSize, deduplicatedPathNum)));
+  public synchronized RemoteQueryContext getQueryContext(
+      Node node, long queryId, int fetchSize, int deduplicatedPathNum) {
+    Map<Long, RemoteQueryContext> nodeContextMap =
+        queryContextMap.computeIfAbsent(node, n -> new HashMap<>());
+    return nodeContextMap.computeIfAbsent(
+        queryId,
+        qId ->
+            new RemoteQueryContext(
+                QueryResourceManager.getInstance()
+                    .assignQueryId(true, fetchSize, deduplicatedPathNum)));
   }
 
   public long registerReader(IBatchReader reader) {

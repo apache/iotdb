@@ -19,69 +19,69 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
-import java.io.IOException;
-import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import java.util.Objects;
 
 public class RemoveNodeLog extends Log {
 
-    private Node removedNode;
+  private Node removedNode;
 
-    @Override
-    public ByteBuffer serialize() {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
-            dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
-            dataOutputStream.writeLong(getCurrLogIndex());
-            dataOutputStream.writeLong(getCurrLogTerm());
+  @Override
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
+      dataOutputStream.writeLong(getCurrLogIndex());
+      dataOutputStream.writeLong(getCurrLogTerm());
 
-            SerializeUtils.serialize(removedNode, dataOutputStream);
-        } catch (IOException e) {
-            // ignored
-        }
-        return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+      SerializeUtils.serialize(removedNode, dataOutputStream);
+    } catch (IOException e) {
+      // ignored
     }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) {
-        setCurrLogIndex(buffer.getLong());
-        setCurrLogTerm(buffer.getLong());
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    setCurrLogIndex(buffer.getLong());
+    setCurrLogTerm(buffer.getLong());
 
-        removedNode = new Node();
-        SerializeUtils.deserialize(removedNode, buffer);
+    removedNode = new Node();
+    SerializeUtils.deserialize(removedNode, buffer);
+  }
+
+  public Node getRemovedNode() {
+    return removedNode;
+  }
+
+  public void setRemovedNode(Node removedNode) {
+    this.removedNode = removedNode;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-
-    public Node getRemovedNode() {
-        return removedNode;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
     }
-
-    public void setRemovedNode(Node removedNode) {
-        this.removedNode = removedNode;
+    if (!super.equals(o)) {
+      return false;
     }
+    RemoveNodeLog that = (RemoveNodeLog) o;
+    return Objects.equals(removedNode, that.removedNode);
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        RemoveNodeLog that = (RemoveNodeLog) o;
-        return Objects.equals(removedNode, that.removedNode);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), removedNode);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), removedNode);
+  }
 }

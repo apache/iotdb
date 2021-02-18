@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.record.datapoint;
 
-import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 /**
  * a subclass for Float data type extends DataPoint.
@@ -32,12 +34,10 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 public class FloatDataPoint extends DataPoint {
 
   private static final Logger LOG = LoggerFactory.getLogger(FloatDataPoint.class);
-  /** actual value. **/
+  /** actual value. */
   private float value;
 
-  /**
-   * constructor of FloatDataPoint, the value type will be set automatically.
-   */
+  /** constructor of FloatDataPoint, the value type will be set automatically. */
   public FloatDataPoint(String measurementId, float v) {
     super(TSDataType.FLOAT, measurementId);
     this.value = v;
@@ -50,7 +50,6 @@ public class FloatDataPoint extends DataPoint {
       return;
     }
     writer.write(time, value);
-
   }
 
   @Override

@@ -18,33 +18,29 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
- * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement
- * write method which takes a timestamp(in TimeValue class) and a list of data points as input.
- * It should also provide flushing method for serializing to local file system or HDFS.
+ * A chunk group in TsFile contains several series. A ChunkGroupWriter should implement write method
+ * which takes a timestamp(in TimeValue class) and a list of data points as input. It should also
+ * provide flushing method for serializing to local file system or HDFS.
  */
 public interface IChunkGroupWriter {
 
   /**
    * receive a timestamp and a list of data points, write them to their series writers.
    *
-   * @param time
-   *            - all data points have unify time stamp.
-   * @param data
-   *            - data point list to input
-   * @throws WriteProcessException
-   *             exception in write process
-   * @throws IOException
-   *             exception in IO
+   * @param time - all data points have unify time stamp.
+   * @param data - data point list to input
+   * @throws WriteProcessException exception in write process
+   * @throws IOException exception in IO
    */
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
@@ -57,38 +53,36 @@ public interface IChunkGroupWriter {
   void write(Tablet tablet) throws WriteProcessException, IOException;
 
   /**
-   * flushing method for serializing to local file system or HDFS.
-   * Implemented by ChunkWriterImpl.writeToFileWriter().
+   * flushing method for serializing to local file system or HDFS. Implemented by
+   * ChunkWriterImpl.writeToFileWriter().
    *
-   * @param tsfileWriter
-   *            - TSFileIOWriter
-   * @throws IOException
-   *             exception in IO
+   * @param tsfileWriter - TSFileIOWriter
+   * @throws IOException exception in IO
    * @return current ChunkGroupDataSize
    */
   long flushToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
 
   /**
-   * get the max memory occupied at this time.
-   * Note that, this method should be called after running {@code long calcAllocatedSize()}
+   * get the max memory occupied at this time. Note that, this method should be called after running
+   * {@code long calcAllocatedSize()}
    *
    * @return - allocated memory size.
    */
   long updateMaxGroupMemSize();
 
   /**
-   * given a measurement descriptor, create a corresponding writer
-   * and put into this ChunkGroupWriter.
+   * given a measurement descriptor, create a corresponding writer and put into this
+   * ChunkGroupWriter.
    *
-   * @param measurementSchema
-   *            a measurement descriptor containing the message of the series
-   * @param pageSize
-   *            the specified page size
+   * @param measurementSchema a measurement descriptor containing the message of the series
+   * @param pageSize the specified page size
    */
   void tryToAddSeriesWriter(MeasurementSchema measurementSchema, int pageSize);
 
-  /** get the serialized size of current chunkGroup header + all chunks.
-   *        Notice, the value does not include any un-sealed page in the chunks.
+  /**
+   * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not
+   * include any un-sealed page in the chunks.
+   *
    * @return the serialized size of current chunkGroup header + all chunk
    */
   long getCurrentChunkGroupSize();

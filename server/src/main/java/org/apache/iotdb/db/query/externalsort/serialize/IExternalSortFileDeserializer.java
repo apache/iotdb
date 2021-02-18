@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.query.externalsort.serialize;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
+import java.io.IOException;
 
 public interface IExternalSortFileDeserializer extends IPointReader {
 

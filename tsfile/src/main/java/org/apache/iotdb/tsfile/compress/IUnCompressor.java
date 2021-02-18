@@ -19,21 +19,20 @@
 
 package org.apache.iotdb.tsfile.compress;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4SafeDecompressor;
-import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-/**
- * uncompress data according to type in metadata.
- */
+/** uncompress data according to type in metadata. */
 public interface IUnCompressor {
 
   /**
@@ -81,9 +80,9 @@ public interface IUnCompressor {
    * uncompress the byte array.
    *
    * @param byteArray -to be uncompressed bytes
-   * @param offset    -offset
-   * @param length    -length
-   * @param output    -output byte
+   * @param offset -offset
+   * @param length -length
+   * @param output -output byte
    * @param outOffset -
    * @return the valid length of the output array
    */
@@ -93,7 +92,7 @@ public interface IUnCompressor {
   /**
    * if the data is large, using this function is better.
    *
-   * @param compressed   MUST be DirectByteBuffer
+   * @param compressed MUST be DirectByteBuffer
    * @param uncompressed MUST be DirectByteBuffer
    */
   int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
@@ -190,15 +189,14 @@ public interface IUnCompressor {
     }
   }
 
-
   class LZ4UnCompressor implements IUnCompressor {
 
     private static final Logger logger = LoggerFactory.getLogger(LZ4Compressor.class);
-    private static final String UNCOMPRESS_INPUT_ERROR = "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte";
+    private static final String UNCOMPRESS_INPUT_ERROR =
+        "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte";
 
     private static final int MAX_COMPRESS_RATIO = 255;
     private LZ4SafeDecompressor decompressor;
-
 
     public LZ4UnCompressor() {
       LZ4Factory factory = LZ4Factory.fastestInstance();
@@ -229,8 +227,7 @@ public interface IUnCompressor {
       try {
         return decompressor.decompress(bytes, MAX_COMPRESS_RATIO * bytes.length);
       } catch (RuntimeException e) {
-        logger.error(
-            UNCOMPRESS_INPUT_ERROR, e);
+        logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }
@@ -240,10 +237,8 @@ public interface IUnCompressor {
         throws IOException {
       try {
         return decompressor.decompress(byteArray, offset, length, output, offset);
-      }
-      catch (RuntimeException e){
-        logger.error(
-            UNCOMPRESS_INPUT_ERROR, e);
+      } catch (RuntimeException e) {
+        logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }
@@ -258,8 +253,7 @@ public interface IUnCompressor {
         decompressor.decompress(compressed, uncompressed);
         return compressed.limit();
       } catch (RuntimeException e) {
-        logger.error(
-            UNCOMPRESS_INPUT_ERROR, e);
+        logger.error(UNCOMPRESS_INPUT_ERROR, e);
         throw new IOException(e);
       }
     }
@@ -292,7 +286,8 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) throws IOException {
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
       byte[] dataBefore = new byte[length];
       System.arraycopy(byteArray, offset, dataBefore, 0, length);
       byte[] res = ICompressor.GZIPCompress.uncompress(dataBefore);

@@ -19,19 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -48,6 +35,20 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
  * to avoid unnecessary object creations and file openings.
@@ -60,7 +61,8 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<PartialPath, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
+  private Map<PartialPath, MeasurementSchema> measurementSchemaMap =
+      new HashMap<>(); // is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
@@ -68,23 +70,19 @@ public class MergeResource {
   private boolean cacheDeviceMeta = false;
 
   public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    this.seqFiles = seqFiles.stream().filter(this::filterResource)
-        .collect(Collectors.toList());
-    this.unseqFiles = unseqFiles.stream().filter(this::filterResource)
-        .collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists() && !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
-  public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      long timeLowerBound) {
+  public MergeResource(
+      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
     this.timeLowerBound = timeLowerBound;
-    this.seqFiles =
-        seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
-    this.unseqFiles =
-        unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
+    this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
   public void clear() throws IOException {
@@ -115,8 +113,9 @@ public class MergeResource {
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
-      writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory()
-          .getFile(resource.getTsFilePath() + MERGE_SUFFIX));
+      writer =
+          new RestorableTsFileIOWriter(
+              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX));
       fileWriterCache.put(resource, writer);
     }
     return writer;
@@ -180,8 +179,9 @@ public class MergeResource {
    */
   public List<Modification> getModifications(TsFileResource tsFileResource, PartialPath path) {
     // copy from TsFileResource so queries are not affected
-    List<Modification> modifications = modificationCache.computeIfAbsent(tsFileResource,
-        resource -> new LinkedList<>(resource.getModFile().getModifications()));
+    List<Modification> modifications =
+        modificationCache.computeIfAbsent(
+            tsFileResource, resource -> new LinkedList<>(resource.getModFile().getModifications()));
     List<Modification> pathModifications = new ArrayList<>();
     Iterator<Modification> modificationIterator = modifications.iterator();
     while (modificationIterator.hasNext()) {
@@ -231,8 +231,7 @@ public class MergeResource {
     return unseqFiles;
   }
 
-  public void setUnseqFiles(
-      List<TsFileResource> unseqFiles) {
+  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
     this.unseqFiles = unseqFiles;
   }
 
@@ -261,5 +260,4 @@ public class MergeResource {
   public void clearChunkWriterCache() {
     this.chunkWriterCache.clear();
   }
-
 }

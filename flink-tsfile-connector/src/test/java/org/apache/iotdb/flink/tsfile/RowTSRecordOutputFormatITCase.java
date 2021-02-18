@@ -27,30 +27,28 @@ import java.io.File;
 
 import static org.junit.Assert.assertArrayEquals;
 
-/**
- * ITCases for TSRecordOutputFormat.
- */
+/** ITCases for TSRecordOutputFormat. */
 public class RowTSRecordOutputFormatITCase extends RowTsFileOutputFormatTestBase {
 
-	@Test
-	public void testOutputFormat() throws Exception {
-		DataSet<Row> source = prepareDataSource();
-		String outputFilePath = tmpDir + File.separator + "test.tsfile";
-		TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputFilePath);
+  @Test
+  public void testOutputFormat() throws Exception {
+    DataSet<Row> source = prepareDataSource();
+    String outputFilePath = tmpDir + File.separator + "test.tsfile";
+    TSRecordOutputFormat<Row> outputFormat = prepareTSRecordOutputFormat(outputFilePath);
 
-		source.output(outputFormat).setParallelism(1);
-		env.execute();
+    source.output(outputFormat).setParallelism(1);
+    env.execute();
 
-		String[] actual = readTsFile(outputFilePath, paths);
-		String[] expected = {
-			"1,1.2,20,null,2.3,11,19",
-			"2,null,20,50,25.4,10,21",
-			"3,1.4,21,null,null,null,null",
-			"4,1.2,20,51,null,null,null",
-			"6,7.2,10,11,null,null,null",
-			"7,6.2,20,21,null,null,null",
-			"8,9.2,30,31,null,null,null"
-		};
-		assertArrayEquals(actual, expected);
-	}
+    String[] actual = readTsFile(outputFilePath, paths);
+    String[] expected = {
+      "1,1.2,20,null,2.3,11,19",
+      "2,null,20,50,25.4,10,21",
+      "3,1.4,21,null,null,null,null",
+      "4,1.2,20,51,null,null,null",
+      "6,7.2,10,11,null,null,null",
+      "7,6.2,20,21,null,null,null",
+      "8,9.2,30,31,null,null,null"
+    };
+    assertArrayEquals(actual, expected);
+  }
 }

@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
+import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
+import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
-import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.hadoop.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,7 +70,9 @@ public class TSFHadoopTest {
     String[] value = {"s1", "s2", "s3"};
     try {
       TSFInputFormat.setReadMeasurementIds(job, value);
-      Set<String> getValue = new HashSet<>(Objects.requireNonNull(TSFInputFormat.getReadMeasurementIds(job.getConfiguration())));
+      Set<String> getValue =
+          new HashSet<>(
+              Objects.requireNonNull(TSFInputFormat.getReadMeasurementIds(job.getConfiguration())));
       assertEquals(new HashSet<>(Arrays.asList(value)), getValue);
 
     } catch (TSFHadoopException e) {
@@ -117,9 +120,10 @@ public class TSFHadoopTest {
       // set input path to the job
       TSFInputFormat.setInputPaths(job, tsfilePath);
       List<InputSplit> inputSplits = inputFormat.getSplits(job);
-      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+      TsFileSequenceReader reader =
+          new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
       System.out.println(reader.readFileMetadata());
-      //assertEquals(tsFile.getRowGroupPosList().size(), inputSplits.size());
+      // assertEquals(tsFile.getRowGroupPosList().size(), inputSplits.size());
       for (InputSplit inputSplit : inputSplits) {
         System.out.println(inputSplit);
       }
@@ -144,13 +148,14 @@ public class TSFHadoopTest {
       TSFInputFormat.setReadDeviceId(job, false);
       TSFInputFormat.setReadTime(job, false);
       List<InputSplit> inputSplits = inputFormat.getSplits(job);
-      TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
+      TsFileSequenceReader reader =
+          new TsFileSequenceReader(new HDFSInput(tsfilePath, job.getConfiguration()));
 
       reader.close();
       // read one split
       TSFRecordReader recordReader = new TSFRecordReader();
-      TaskAttemptContextImpl attemptContextImpl = new TaskAttemptContextImpl(job.getConfiguration(),
-          new TaskAttemptID());
+      TaskAttemptContextImpl attemptContextImpl =
+          new TaskAttemptContextImpl(job.getConfiguration(), new TaskAttemptID());
       recordReader.initialize(inputSplits.get(0), attemptContextImpl);
       System.out.println(inputSplits.get(0));
       long value = 1000000L;

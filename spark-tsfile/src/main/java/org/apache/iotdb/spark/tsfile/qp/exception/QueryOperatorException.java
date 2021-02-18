@@ -25,5 +25,4 @@ public class QueryOperatorException extends LogicalOptimizeException {
   public QueryOperatorException(String msg) {
     super(msg);
   }
-
 }

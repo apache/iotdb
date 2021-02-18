@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -25,10 +30,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ShowTimeSeriesResult extends ShowResult {
 
@@ -39,8 +40,15 @@ public class ShowTimeSeriesResult extends ShowResult {
   private Map<String, String> tags;
   private Map<String, String> attributes;
 
-  public ShowTimeSeriesResult(String name, String alias, String sgName, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor, Map<String, String> tags, Map<String, String> attributes) {
+  public ShowTimeSeriesResult(
+      String name,
+      String alias,
+      String sgName,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> tags,
+      Map<String, String> attributes) {
     super(name, sgName);
     this.alias = alias;
     this.dataType = dataType;
@@ -95,7 +103,8 @@ public class ShowTimeSeriesResult extends ShowResult {
     return Objects.hash(name);
   }
 
-  private void writeNullable(Map<String,String> param, OutputStream outputStream) throws IOException {
+  private void writeNullable(Map<String, String> param, OutputStream outputStream)
+      throws IOException {
     ReadWriteIOUtils.write(param != null, outputStream);
     if (param != null) {
       ReadWriteIOUtils.write(tags.size(), outputStream);
@@ -108,7 +117,7 @@ public class ShowTimeSeriesResult extends ShowResult {
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(alias != null, outputStream); //flag
+    ReadWriteIOUtils.write(alias != null, outputStream); // flag
     if (alias != null) {
       ReadWriteIOUtils.write(alias, outputStream);
     }
@@ -117,7 +126,7 @@ public class ShowTimeSeriesResult extends ShowResult {
     ReadWriteIOUtils.write(encoding, outputStream);
     ReadWriteIOUtils.write(compressor, outputStream);
 
-    //flag for tags and attributes
+    // flag for tags and attributes
     writeNullable(tags, outputStream);
     writeNullable(attributes, outputStream);
   }
@@ -125,7 +134,7 @@ public class ShowTimeSeriesResult extends ShowResult {
   public static ShowTimeSeriesResult deserialize(ByteBuffer buffer) {
     ShowTimeSeriesResult result = new ShowTimeSeriesResult();
     result.name = ReadWriteIOUtils.readString(buffer);
-    if (buffer.get() == 1) { //flag
+    if (buffer.get() == 1) { // flag
       result.alias = ReadWriteIOUtils.readString(buffer);
     }
     result.sgName = ReadWriteIOUtils.readString(buffer);
@@ -133,7 +142,7 @@ public class ShowTimeSeriesResult extends ShowResult {
     result.encoding = ReadWriteIOUtils.readEncoding(buffer);
     result.compressor = ReadWriteIOUtils.readCompressionType(buffer);
 
-    //flag for tag
+    // flag for tag
     if (buffer.get() == 1) {
       int tagSize = buffer.getInt();
       result.tags = new HashMap<>(tagSize);
@@ -144,7 +153,7 @@ public class ShowTimeSeriesResult extends ShowResult {
       }
     }
 
-    //flag for attribute
+    // flag for attribute
     if (buffer.get() == 1) {
       int attributeSize = buffer.getInt();
       result.attributes = new HashMap<>(attributeSize);

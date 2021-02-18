@@ -22,9 +22,7 @@ import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Utils to convert between thrift format and TsFile format.
- */
+/** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
   static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
@@ -33,8 +31,7 @@ public class Utils {
    * Parse JDBC connection URL The only supported format of the URL is:
    * jdbc:iotdb://localhost:6667/.
    */
-  static IoTDBConnectionParams parseUrl(String url, Properties info)
-      throws IoTDBURLException {
+  static IoTDBConnectionParams parseUrl(String url, Properties info) throws IoTDBURLException {
     IoTDBConnectionParams params = new IoTDBConnectionParams(url);
     if (url.trim().equalsIgnoreCase(Config.IOTDB_URL_PREFIX)) {
       return params;
@@ -49,7 +46,8 @@ public class Utils {
       }
     }
     if (!isUrlLegal) {
-      throw new IoTDBURLException("Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
+      throw new IoTDBURLException(
+          "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
     }
     params.setHost(matcher.group(1));
     params.setPort(Integer.parseInt(matcher.group(2)));
@@ -61,8 +59,8 @@ public class Utils {
       params.setPassword(info.getProperty(Config.AUTH_PASSWORD));
     }
     if (info.containsKey(Config.INITIAL_BUFFER_CAPACITY)) {
-      params.setInitialBufferCapacity(Integer.parseInt(
-          info.getProperty(Config.INITIAL_BUFFER_CAPACITY)));
+      params.setInitialBufferCapacity(
+          Integer.parseInt(info.getProperty(Config.INITIAL_BUFFER_CAPACITY)));
     }
     if (info.containsKey(Config.MAX_FRAME_SIZE)) {
       params.setMaxFrameSize(Integer.parseInt(info.getProperty(Config.MAX_FRAME_SIZE)));
@@ -70,5 +68,4 @@ public class Utils {
 
     return params;
   }
-  
 }

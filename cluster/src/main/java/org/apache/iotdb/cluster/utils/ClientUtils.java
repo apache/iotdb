@@ -55,7 +55,7 @@ public class ClientUtils {
   public static void putBackSyncClient(Client client) {
     if (client instanceof SyncDataClient) {
       ((SyncDataClient) client).putBack();
-    } else if (client instanceof SyncMetaClient){
+    } else if (client instanceof SyncMetaClient) {
       ((SyncMetaClient) client).putBack();
     }
   }
