@@ -26,13 +26,14 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SlidingSizeWindowConstructorTester0 implements UDTF {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(SlidingSizeWindowConstructorTester0.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(SlidingSizeWindowConstructorTester0.class);
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {

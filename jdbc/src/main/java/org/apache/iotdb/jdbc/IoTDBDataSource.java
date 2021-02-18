@@ -16,18 +16,17 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.thrift.transport.TTransportException;
+
 import javax.sql.DataSource;
+
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
-import org.apache.thrift.transport.TTransportException;
 
-
-  
 public class IoTDBDataSource implements DataSource {
-
 
   private String url;
   private String user;
@@ -113,14 +112,10 @@ public class IoTDBDataSource implements DataSource {
   }
 
   @Override
-  public void setLogWriter(PrintWriter printWriter) throws SQLException {
-
-  }
+  public void setLogWriter(PrintWriter printWriter) throws SQLException {}
 
   @Override
-  public void setLoginTimeout(int i) throws SQLException {
-
-  }
+  public void setLoginTimeout(int i) throws SQLException {}
 
   @Override
   public int getLoginTimeout() throws SQLException {

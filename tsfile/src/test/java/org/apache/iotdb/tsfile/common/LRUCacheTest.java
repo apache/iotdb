@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.tsfile.common;
 
-import java.io.IOException;
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
+import java.io.IOException;
 
 public class LRUCacheTest {
 
@@ -34,13 +34,14 @@ public class LRUCacheTest {
     try {
       int testCount = 1000;
       int cacheSize = 5;
-      cache = new LRUCache<Integer, Integer>(cacheSize) {
+      cache =
+          new LRUCache<Integer, Integer>(cacheSize) {
 
-        @Override
-        public Integer loadObjectByKey(Integer key) {
-          return key * 10;
-        }
-      };
+            @Override
+            public Integer loadObjectByKey(Integer key) {
+              return key * 10;
+            }
+          };
 
       for (int i = 1; i < testCount; i++) {
         Assert.assertEquals(i * 10, (int) cache.get(i));
@@ -51,5 +52,4 @@ public class LRUCacheTest {
       Assert.fail();
     }
   }
-
 }

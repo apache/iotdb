@@ -25,5 +25,4 @@ public class IllegalIndexParamException extends IndexRuntimeException {
   public IllegalIndexParamException(String message) {
     super(message);
   }
-
 }

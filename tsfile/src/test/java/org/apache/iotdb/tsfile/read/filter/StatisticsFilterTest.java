@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class StatisticsFilterTest {
 
@@ -106,5 +105,4 @@ public class StatisticsFilterTest {
     Assert.assertTrue(orFilter.satisfy(statistics1));
     Assert.assertTrue(orFilter.satisfy(statistics2));
   }
-
 }

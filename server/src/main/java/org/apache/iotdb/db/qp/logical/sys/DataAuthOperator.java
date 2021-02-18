@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+
+import java.util.List;
 
 public class DataAuthOperator extends RootOperator {
 
@@ -39,5 +40,4 @@ public class DataAuthOperator extends RootOperator {
   public List<String> getUsers() {
     return users;
   }
-
 }

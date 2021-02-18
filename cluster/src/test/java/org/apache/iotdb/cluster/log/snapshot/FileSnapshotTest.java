@@ -19,17 +19,6 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -47,20 +36,32 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
-  public void testSerialize()
-      throws IOException, WriteProcessException {
+  public void testSerialize() throws IOException, WriteProcessException {
     FileSnapshot snapshot = new FileSnapshot();
     List<RemoteTsFileResource> dataFiles = new ArrayList<>();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
     for (int i = 0; i < 10; i++) {
-      RemoteTsFileResource dataFile = new RemoteTsFileResource(tsFileResources.get(i),
-          TestUtils.getNode(i));
+      RemoteTsFileResource dataFile =
+          new RemoteTsFileResource(tsFileResources.get(i), TestUtils.getNode(i));
       dataFiles.add(dataFile);
       snapshot.addFile(tsFileResources.get(i), TestUtils.getNode(i));
       timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(0, i));
@@ -79,19 +80,21 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallSingle()
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException {
     testInstallSingle(false);
   }
 
   @Test
   public void testInstallSingleWithFailure()
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException {
     testInstallSingle(true);
   }
 
-
   public void testInstallSingle(boolean addNetFailure)
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException {
     this.addNetFailure = addNetFailure;
 
     FileSnapshot snapshot = new FileSnapshot();
@@ -103,8 +106,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     snapshot.setTimeseriesSchemas(timeseriesSchemas);
 
-    SnapshotInstaller<FileSnapshot> defaultInstaller = snapshot
-        .getDefaultInstaller(dataGroupMember);
+    SnapshotInstaller<FileSnapshot> defaultInstaller =
+        snapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
     defaultInstaller.install(snapshot, 0);
     // after installation, the slot should be available again
@@ -113,8 +116,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor = StorageEngine.getInstance()
-        .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+    StorageGroupProcessor processor =
+        StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
@@ -131,7 +134,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallSync()
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException {
     boolean useAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(false);
 
@@ -145,8 +149,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
       }
       snapshot.setTimeseriesSchemas(timeseriesSchemas);
 
-      SnapshotInstaller<FileSnapshot> defaultInstaller = snapshot
-          .getDefaultInstaller(dataGroupMember);
+      SnapshotInstaller<FileSnapshot> defaultInstaller =
+          snapshot.getDefaultInstaller(dataGroupMember);
       dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
       defaultInstaller.install(snapshot, 0);
       // after installation, the slot should be available again
@@ -155,8 +159,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
       for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
         assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
       }
-      StorageGroupProcessor processor = StorageEngine.getInstance()
-          .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
       assertEquals(tsFileResources.size(), loadedFiles.size());
@@ -176,7 +180,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallWithModFile()
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException {
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
     List<TsFileResource> tsFileResources = TestUtils.prepareTsFileResources(0, 10, 10, 10, true);
@@ -193,8 +198,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
     FileSnapshot fileSnapshot = new FileSnapshot();
     fileSnapshot.deserialize(buffer);
 
-    SnapshotInstaller<FileSnapshot> defaultInstaller = fileSnapshot
-        .getDefaultInstaller(dataGroupMember);
+    SnapshotInstaller<FileSnapshot> defaultInstaller =
+        fileSnapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
     defaultInstaller.install(fileSnapshot, 0);
     // after installation, the slot should be available again
@@ -203,8 +208,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor = StorageEngine.getInstance()
-        .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+    StorageGroupProcessor processor =
+        StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
@@ -213,8 +218,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       ModificationFile modFile = loadedFiles.get(i).getModFile();
       assertTrue(modFile.exists());
 
-      Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0,
-          10);
+      Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 10);
       assertTrue(modFile.getModifications().contains(deletion));
       assertEquals(1, modFile.getModifications().size());
       modFile.close();
@@ -224,7 +228,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallMultiple()
-      throws IOException, WriteProcessException, SnapshotInstallationException, IllegalPathException, StorageEngineException {
+      throws IOException, WriteProcessException, SnapshotInstallationException,
+          IllegalPathException, StorageEngineException {
     Map<Integer, FileSnapshot> snapshotMap = new HashMap<>();
     for (int j = 0; j < 10; j++) {
       FileSnapshot snapshot = new FileSnapshot();
@@ -238,13 +243,13 @@ public class FileSnapshotTest extends DataSnapshotTest {
       snapshotMap.put(j, snapshot);
     }
 
-    SnapshotInstaller<FileSnapshot> defaultInstaller = snapshotMap.get(0)
-        .getDefaultInstaller(dataGroupMember);
+    SnapshotInstaller<FileSnapshot> defaultInstaller =
+        snapshotMap.get(0).getDefaultInstaller(dataGroupMember);
     defaultInstaller.install(snapshotMap);
 
     for (int j = 0; j < 10; j++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance()
-          .getProcessor(new PartialPath(TestUtils.getTestSg(j)));
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(j)));
       assertEquals(9, processor.getPartitionMaxFileVersions(0));
       List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
       assertEquals(10, loadedFiles.size());
@@ -257,7 +262,8 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
   @Test
   public void testInstallPartial()
-      throws IOException, SnapshotInstallationException, IllegalPathException, StorageEngineException, WriteProcessException, LoadFileException {
+      throws IOException, SnapshotInstallationException, IllegalPathException,
+          StorageEngineException, WriteProcessException, LoadFileException {
     // dataGroupMember already have some of the files
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
@@ -267,11 +273,11 @@ public class FileSnapshotTest extends DataSnapshotTest {
       timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(0, i));
     }
     for (int i = 0; i < 5; i++) {
-      StorageGroupProcessor processor = StorageEngine.getInstance()
-          .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
       TsFileResource resource = tsFileResources.get(i);
-      String pathWithoutHardlinkSuffix = resource.getTsFilePath().substring(0,
-          resource.getTsFilePath().lastIndexOf('.'));
+      String pathWithoutHardlinkSuffix =
+          resource.getTsFilePath().substring(0, resource.getTsFilePath().lastIndexOf('.'));
       File fileWithoutHardlinkSuffix = new File(pathWithoutHardlinkSuffix);
       resource.getTsFile().renameTo(fileWithoutHardlinkSuffix);
       resource.setFile(fileWithoutHardlinkSuffix);
@@ -280,15 +286,15 @@ public class FileSnapshotTest extends DataSnapshotTest {
     }
     snapshot.setTimeseriesSchemas(timeseriesSchemas);
 
-    SnapshotInstaller<FileSnapshot> defaultInstaller = snapshot
-        .getDefaultInstaller(dataGroupMember);
+    SnapshotInstaller<FileSnapshot> defaultInstaller =
+        snapshot.getDefaultInstaller(dataGroupMember);
     defaultInstaller.install(snapshot, 0);
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor = StorageEngine.getInstance()
-        .getProcessor(new PartialPath(TestUtils.getTestSg(0)));
+    StorageGroupProcessor processor =
+        StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());

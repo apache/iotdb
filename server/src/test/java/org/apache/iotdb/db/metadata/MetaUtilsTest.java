@@ -18,35 +18,44 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertArrayEquals;
-
-import java.util.Arrays;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Arrays;
+
+import static org.junit.Assert.assertArrayEquals;
 
 public class MetaUtilsTest {
 
   @Test
   public void testSplitPathToNodes() throws IllegalPathException {
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "s1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s\\\".1\""));
 
-    assertArrayEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
 
-    assertArrayEquals(Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
+    assertArrayEquals(
+        Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
 
-    assertArrayEquals(Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {
@@ -67,5 +76,4 @@ public class MetaUtilsTest {
       Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
     }
   }
-
 }

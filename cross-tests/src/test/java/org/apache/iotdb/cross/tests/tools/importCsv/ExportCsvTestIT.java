@@ -19,8 +19,14 @@
 
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -30,15 +36,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
-public class ExportCsvTestIT extends AbstractScript{
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class ExportCsvTestIT extends AbstractScript {
 
   private final String SQL_FILE = "target" + File.separator + "sql.txt";
 
@@ -58,34 +60,59 @@ public class ExportCsvTestIT extends AbstractScript{
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-            "------------------------------------------",
-            "Starting IoTDB Client Export Script",
-            "------------------------------------------",
-            "Start to export data from sql statement",
-            "successfully",
+      "------------------------------------------",
+      "Starting IoTDB Client Export Script",
+      "------------------------------------------",
+      "Start to export data from sql statement",
+      "successfully",
     };
     String dir = getCliPath();
-    ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "tools" + File.separator + "export-csv.bat",
-        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-td", "./target",
-        "-s", SQL_FILE);
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            dir + File.separator + "tools" + File.separator + "export-csv.bat",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6667",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-td",
+            "./target",
+            "-s",
+            SQL_FILE);
     testOutput(builder, output);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-        "------------------------------------------",
-        "Starting IoTDB Client Export Script",
-        "------------------------------------------",
-        "Start to export data from sql statement",
-        "successfully",
+      "------------------------------------------",
+      "Starting IoTDB Client Export Script",
+      "------------------------------------------",
+      "Start to export data from sql statement",
+      "successfully",
     };
     String dir = getCliPath();
-    ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "tools" + File.separator + "export-csv.sh",
-        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-td", "./target",
-        "-s", SQL_FILE);
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "sh",
+            dir + File.separator + "tools" + File.separator + "export-csv.sh",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6667",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-td",
+            "./target",
+            "-s",
+            SQL_FILE);
     testOutput(builder, output);
   }
 
@@ -108,9 +135,12 @@ public class ExportCsvTestIT extends AbstractScript{
   }
 
   @Test
-  public void testRawDataQuery() throws IOException, StatementExecutionException, IoTDBConnectionException {
-    final String[] expectCsv = new String[]{"Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2",
-        "abbe's,1.0,\"\\\"abc\\\",aa\""};
+  public void testRawDataQuery()
+      throws IOException, StatementExecutionException, IoTDBConnectionException {
+    final String[] expectCsv =
+        new String[] {
+          "Time,root.sg1.d1.s3,root.sg1.d1.s1,root.sg1.d1.s2", "abbe's,1.0,\"\\\"abc\\\",aa\""
+        };
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     String[] sql = {"select * from root"};
@@ -124,8 +154,8 @@ public class ExportCsvTestIT extends AbstractScript{
     BufferedReader br = new BufferedReader(fileReader);
     String line = br.readLine();
     int i = 0;
-    while(line != null) {
-      if(i == 0) {
+    while (line != null) {
+      if (i == 0) {
         assertEquals(expectCsv[i], line);
       } else {
         String lineWithoutTime = line.substring(line.indexOf(',') + 1);
@@ -141,9 +171,12 @@ public class ExportCsvTestIT extends AbstractScript{
   }
 
   @Test
-  public void testAggregationQuery() throws StatementExecutionException, IoTDBConnectionException, IOException {
-    final String[] expectCsv = new String[]{"Time,count(root.sg1.d1.s3),count(root.sg1.d1.s1),count(root.sg1.d1.s2)",
-            "1,1,1"};
+  public void testAggregationQuery()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    final String[] expectCsv =
+        new String[] {
+          "Time,count(root.sg1.d1.s3),count(root.sg1.d1.s1),count(root.sg1.d1.s2)", "1,1,1"
+        };
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     String[] sql = {"select count(*) from root"};
@@ -157,8 +190,8 @@ public class ExportCsvTestIT extends AbstractScript{
     BufferedReader br = new BufferedReader(fileReader);
     String line = br.readLine();
     int i = 0;
-    while(line != null) {
-      if(i == 0) {
+    while (line != null) {
+      if (i == 0) {
         assertEquals(expectCsv[i], line);
       } else {
         String lineWithoutTime = line.substring(line.indexOf(',') + 1);
@@ -189,5 +222,4 @@ public class ExportCsvTestIT extends AbstractScript{
     values.add("abbe's");
     session.insertRecord(deviceId, 1L, measurements, values);
   }
-
 }

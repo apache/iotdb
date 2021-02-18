@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.compress;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,7 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * @mail yuqi4733@gmail.com
  * @description your description
  * @time 13/12/20 下午10:08
- **/
+ */
 public class GZIPTest {
   private String randomString(int length) {
     StringBuilder builder = new StringBuilder(length);
@@ -45,12 +46,10 @@ public class GZIPTest {
   }
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() {
-  }
+  public void tearDown() {}
 
   @Test
   public void testBytes() throws IOException {
@@ -65,18 +64,20 @@ public class GZIPTest {
 
   @Test
   public void testByteBuffer() throws IOException {
-    for (int i = 1; i < 500000; i+= 1000) {
+    for (int i = 1; i < 500000; i += 1000) {
       String input = randomString(i);
       ByteBuffer source = ByteBuffer.allocateDirect(input.getBytes().length);
       source.put(input.getBytes());
       source.flip();
 
       ICompressor.GZIPCompressor compressor = new ICompressor.GZIPCompressor();
-      ByteBuffer compressed = ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
+      ByteBuffer compressed =
+          ByteBuffer.allocateDirect(Math.max(source.remaining() * 3 + 1, 28 + source.remaining()));
       compressor.compress(source, compressed);
 
       IUnCompressor.GZIPUnCompressor unCompressor = new IUnCompressor.GZIPUnCompressor();
-      ByteBuffer uncompressedByteBuffer = ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
+      ByteBuffer uncompressedByteBuffer =
+          ByteBuffer.allocateDirect(compressed.remaining() + 28 * 2);
       compressed.flip();
       unCompressor.uncompress(compressed, uncompressedByteBuffer);
 

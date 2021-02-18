@@ -20,21 +20,23 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class IoTDBTtlIT {
 
@@ -52,8 +54,10 @@ public class IoTDBTtlIT {
 
   @Test
   public void testTTL() throws SQLException {
-    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
@@ -76,12 +80,14 @@ public class IoTDBTtlIT {
 
       long now = System.currentTimeMillis();
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
-            now - 100 + i, i));
+        statement.execute(
+            String.format(
+                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
       }
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
-            now - 100000 + i, i));
+        statement.execute(
+            String.format(
+                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
@@ -103,8 +109,9 @@ public class IoTDBTtlIT {
       for (int i = 0; i < 100; i++) {
         boolean caught = false;
         try {
-          statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
-              now - 500000 + i, i));
+          statement.execute(
+              String.format(
+                  "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
         } catch (SQLException e) {
           if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
             caught = true;
@@ -122,8 +129,9 @@ public class IoTDBTtlIT {
 
       statement.execute("UNSET TTL TO root.TTL_SG1");
       for (int i = 0; i < 100; i++) {
-        statement.execute(String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)",
-            now - 30000 + i, i));
+        statement.execute(
+            String.format(
+                "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.TTL_SG1")) {
         int cnt = 0;
@@ -137,28 +145,33 @@ public class IoTDBTtlIT {
 
   @Test
   public void testShowTTL() throws SQLException {
-    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
       String result = doQuery(statement, "SHOW ALL TTL");
-      assertTrue(result.equals("root.group1,null\n" + "root.group2,null\n")
-          || result.equals("root.group2,null\n" + "root.group1,null\n"));
+      assertTrue(
+          result.equals("root.group1,null\n" + "root.group2,null\n")
+              || result.equals("root.group2,null\n" + "root.group1,null\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
 
       statement.execute("SET TTL TO root.group1 10000");
       result = doQuery(statement, "SHOW ALL TTL");
-      assertTrue(result.equals("root.group1,10000\n" + "root.group2,null\n")
-          || result.equals("root.group2,null\n" + "root.group1,10000\n"));
+      assertTrue(
+          result.equals("root.group1,10000\n" + "root.group2,null\n")
+              || result.equals("root.group2,null\n" + "root.group1,10000\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,10000\n", result);
 
       statement.execute("UNSET TTL TO root.group1");
       result = doQuery(statement, "SHOW ALL TTL");
-      assertTrue(result.equals("root.group1,null\n" + "root.group2,null\n")
-          || result.equals("root.group2,null\n" + "root.group1,null\n"));
+      assertTrue(
+          result.equals("root.group1,null\n" + "root.group2,null\n")
+              || result.equals("root.group2,null\n" + "root.group1,null\n"));
       result = doQuery(statement, "SHOW TTL ON root.group1");
       assertEquals("root.group1,null\n", result);
     }
@@ -181,15 +194,18 @@ public class IoTDBTtlIT {
   @Test
   public void testDefaultTTL() throws SQLException {
     IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(10000);
-    try (IoTDBConnection connection = (IoTDBConnection) DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
       statement.execute("SET STORAGE GROUP TO root.group2");
 
       String result = doQuery(statement, "SHOW ALL TTL");
-      assertTrue(result.equals("root.group1,10000\n" + "root.group2,10000\n")
-          || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
+      assertTrue(
+          result.equals("root.group1,10000\n" + "root.group2,10000\n")
+              || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
     }

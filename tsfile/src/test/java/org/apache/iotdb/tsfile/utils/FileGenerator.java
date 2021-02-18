@@ -18,12 +18,6 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Scanner;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.constant.TestConstant;
@@ -35,14 +29,22 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Scanner;
 
 public class FileGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FileGenerator.class);
-  public static String outputDataFile = TestConstant.BASE_OUTPUT_PATH
-      .concat("perTestOutputData.tsfile");
+  public static String outputDataFile =
+      TestConstant.BASE_OUTPUT_PATH.concat("perTestOutputData.tsfile");
   public static Schema schema;
   private static int ROW_COUNT = 1000;
   private static TsFileWriter innerWriter;
@@ -60,7 +62,8 @@ public class FileGenerator {
     config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
-  public static void generateFile(int rowCount, int maxNumberOfPointsInPage, String filePath) throws IOException {
+  public static void generateFile(int rowCount, int maxNumberOfPointsInPage, String filePath)
+      throws IOException {
     ROW_COUNT = rowCount;
     int oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
     config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
@@ -70,8 +73,8 @@ public class FileGenerator {
     config.setMaxNumberOfPointsInPage(oldMaxNumberOfPointsInPage);
   }
 
-  public static void generateFile(int maxNumberOfPointsInPage, int deviceNum,
-      int measurementNum) throws IOException {
+  public static void generateFile(int maxNumberOfPointsInPage, int deviceNum, int measurementNum)
+      throws IOException {
     ROW_COUNT = 1;
     int oldMaxNumberOfPointsInPage = config.getMaxNumberOfPointsInPage();
     config.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
@@ -118,7 +121,7 @@ public class FileGenerator {
     }
   }
 
-  static private void generateSampleInputDataFile() throws IOException {
+  private static void generateSampleInputDataFile() throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
       file.delete();
@@ -168,15 +171,19 @@ public class FileGenerator {
     }
     // write error
     String d =
-        "d2,3," + (startTime + ROW_COUNT) + ",s2," + (ROW_COUNT * 10 + 2) + ",s3," + (ROW_COUNT * 10
-            + 3);
+        "d2,3,"
+            + (startTime + ROW_COUNT)
+            + ",s2,"
+            + (ROW_COUNT * 10 + 2)
+            + ",s3,"
+            + (ROW_COUNT * 10 + 3);
     fw.write(d + "\r\n");
     d = "d2," + (startTime + ROW_COUNT + 1) + ",2,s-1," + (ROW_COUNT * 10 + 2);
     fw.write(d + "\r\n");
     fw.close();
   }
 
-  static private void generateSampleInputDataFile(int deviceNum, int measurementNum)
+  private static void generateSampleInputDataFile(int deviceNum, int measurementNum)
       throws IOException {
     File file = new File(inputDataFile);
     if (file.exists()) {
@@ -197,11 +204,11 @@ public class FileGenerator {
     fw.close();
   }
 
-  static public void write() throws IOException {
+  public static void write() throws IOException {
     write(outputDataFile);
   }
 
-  static public void write(String filePath) throws IOException {
+  public static void write(String filePath) throws IOException {
     File file = new File(filePath);
     File errorFile = new File(errorOutputDataFile);
     if (file.exists()) {
@@ -224,43 +231,50 @@ public class FileGenerator {
 
   private static void generateTestSchema() {
     schema = new Schema();
-    schema.registerTimeseries(new Path("d1", "s1"),
-        new MeasurementSchema("s1", TSDataType.INT32,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s2"),
-        new MeasurementSchema("s2", TSDataType.INT64,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s3"),
-        new MeasurementSchema("s3", TSDataType.INT64,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d1", "s4"),
-        new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s5"),
-        new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(new Path("d1", "s6"),
-        new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d1", "s7"),
-        new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
-    schema.registerTimeseries(new Path("d2", "s1"),
-        new MeasurementSchema("s1", TSDataType.INT32,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2", "s2"),
-        new MeasurementSchema("s2", TSDataType.INT64,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2", "s3"),
-        new MeasurementSchema("s3", TSDataType.INT64,
-            TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(new Path("d2", "s4"),
-        new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s1"),
+        new MeasurementSchema(
+            "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d1", "s2"),
+        new MeasurementSchema(
+            "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d1", "s3"),
+        new MeasurementSchema(
+            "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d1", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s5"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schema.registerTimeseries(
+        new Path("d1", "s6"), new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d1", "s7"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schema.registerTimeseries(
+        new Path("d2", "s1"),
+        new MeasurementSchema(
+            "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d2", "s2"),
+        new MeasurementSchema(
+            "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d2", "s3"),
+        new MeasurementSchema(
+            "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d2", "s4"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
   }
 
   private static void generateTestSchema(int deviceNum, int measurementNum) {
     schema = new Schema();
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
-        schema.registerTimeseries(new Path("d" + i, "s" + j),
-            new MeasurementSchema("s" + j, TSDataType.INT32,
-                TSEncoding.valueOf(config.getValueEncoder())));
+        schema.registerTimeseries(
+            new Path("d" + i, "s" + j),
+            new MeasurementSchema(
+                "s" + j, TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
       }
     }
   }
@@ -286,7 +300,7 @@ public class FileGenerator {
     in.close();
   }
 
-  static private Scanner getDataFile(String path) {
+  private static Scanner getDataFile(String path) {
     File file = new File(path);
     try {
       return new Scanner(file);

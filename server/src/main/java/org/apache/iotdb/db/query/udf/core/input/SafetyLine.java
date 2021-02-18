@@ -33,7 +33,7 @@ public class SafetyLine {
 
   /**
    * @return the index of the first element that cannot be evicted. in other words, elements whose
-   * index are <b>less than</b> the return value can be evicted.
+   *     index are <b>less than</b> the return value can be evicted.
    */
   public int getSafetyLine() {
     int min = safetyPiles[0];
@@ -68,8 +68,7 @@ public class SafetyLine {
 
     /**
      * @param safetyPilePosition the index of the first element that cannot be evicted. in other
-     *                           words, elements whose index are <b>less than</b> the
-     *                           safetyPilePosition can be evicted.
+     *     words, elements whose index are <b>less than</b> the safetyPilePosition can be evicted.
      */
     public void moveForwardTo(int safetyPilePosition) {
       safetyPiles[safetyPileIndex] = safetyPilePosition;

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.util.Collections;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -38,12 +37,13 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * BaseApplier use PlanExecutor to execute PhysicalPlans.
- */
+import java.util.Collections;
+
+/** BaseApplier use PlanExecutor to execute PhysicalPlans. */
 abstract class BaseApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
@@ -58,7 +58,7 @@ abstract class BaseApplier implements LogApplier {
   /**
    * @param plan
    * @param dataGroupMember the data group member that is applying the log, null if the log is
-   *                        applied by a meta group member
+   *     applied by a meta group member
    * @throws QueryProcessException
    * @throws StorageGroupNotSetException
    * @throws StorageEngineException
@@ -97,7 +97,7 @@ abstract class BaseApplier implements LogApplier {
   /**
    * @param plan
    * @param dataGroupMember the data group member that is applying the log, null if the log is
-   *                        applied by a meta group member
+   *     applied by a meta group member
    * @throws QueryProcessException
    * @throws StorageGroupNotSetException
    * @throws StorageEngineException
@@ -113,8 +113,10 @@ abstract class BaseApplier implements LogApplier {
 
       if (causedByPathNotExist) {
         if (logger.isDebugEnabled()) {
-          logger.debug("Timeseries is not found locally[{}], try pulling it from another group: {}",
-              metaGroupMember.getName(), e.getCause().getMessage());
+          logger.debug(
+              "Timeseries is not found locally[{}], try pulling it from another group: {}",
+              metaGroupMember.getName(),
+              e.getCause().getMessage());
         }
         pullTimeseriesSchema(plan, dataGroupMember.getHeader());
         plan.recoverFromFailure();
