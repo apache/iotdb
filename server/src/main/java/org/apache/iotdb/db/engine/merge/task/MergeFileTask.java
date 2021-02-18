@@ -219,6 +219,9 @@ class MergeFileTask {
         seqFile.updateStartTime(device, chunkMetadata.getStartTime());
         seqFile.updateEndTime(device, chunkMetadata.getEndTime());
       }
+      logger.info("{} file merged device {} with start time: {}, end time: {}",
+          seqFile.getTsFile().getName(), device, seqFile.getStartTime(device),
+          seqFile.getEndTime(device));
     }
   }
 
@@ -236,7 +239,9 @@ class MergeFileTask {
     }
   }
 
-  /** Open an appending writer for an old seq file so we can add new chunks to it. */
+  /**
+   * Open an appending writer for an old seq file so we can add new chunks to it.
+   */
   private TsFileIOWriter getOldFileWriter(TsFileResource seqFile) throws IOException {
     TsFileIOWriter oldFileWriter;
     try {

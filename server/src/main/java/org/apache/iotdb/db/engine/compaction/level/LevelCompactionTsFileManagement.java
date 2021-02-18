@@ -19,23 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.level;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,14 +40,26 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-/** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
+/**
+ * The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list
+ */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private static final Logger logger =
@@ -184,6 +184,28 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
             result.addAll(unSequenceTsFileList.get(i));
           }
+        }
+      }
+    }
+    return result;
+  }
+
+  private List<TsFileResource> getTsFileList(boolean sequence, long timePartition) {
+    List<TsFileResource> result = new ArrayList<>();
+    if (sequence) {
+      synchronized (sequenceTsFileResources) {
+        List<SortedSet<TsFileResource>> sequenceTsFileList = sequenceTsFileResources
+            .get(timePartition);
+        for (int i = sequenceTsFileList.size() - 1; i >= 0; i--) {
+          result.addAll(sequenceTsFileList.get(i));
+        }
+      }
+    } else {
+      synchronized (unSequenceTsFileResources) {
+        List<List<TsFileResource>> unSequenceTsFileList = unSequenceTsFileResources
+            .get(timePartition);
+        for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
+          result.addAll(unSequenceTsFileList.get(i));
         }
       }
     }
@@ -370,7 +392,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return result;
   }
 
-  /** recover files */
+  /**
+   * recover files
+   */
   @Override
   @SuppressWarnings("squid:S3776")
   public void recover() {
@@ -556,8 +580,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
       merge(
           isForceFullMerge,
-          getTsFileList(true),
-          forkedUnSequenceTsFileResources.get(0),
+          getTsFileList(true, timePartition),
+          getTsFileList(false, timePartition),
           Long.MAX_VALUE);
     } else {
       merge(
@@ -675,7 +699,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  /** if level < maxLevel-1, the file need compaction else, the file can be merged later */
+  /**
+   * if level < maxLevel-1, the file need compaction else, the file can be merged later
+   */
   private File createNewTsFileName(File sourceFile, int level) {
     String path = sourceFile.getPath();
     String prefixPath = path.substring(0, path.lastIndexOf(FILE_NAME_SEPARATOR) + 1);
