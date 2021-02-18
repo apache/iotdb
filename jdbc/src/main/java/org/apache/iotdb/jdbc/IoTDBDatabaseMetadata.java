@@ -58,7 +58,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
-    initWatermarkEncoder();
   }
   static{
 
@@ -129,16 +128,14 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     sqlKeywordsThatArentSQL92 = keywordBuf.toString();
   }
-private WatermarkEncoder getWatermarkEncoder(){
-  return groupedLSBWatermarkEncoder;
-}
-private void initWatermarkEncoder() {
+private WatermarkEncoder getWatermarkEncoder() {
   try {
     groupedLSBWatermarkEncoder=new GroupedLSBWatermarkEncoder(client.getProperties().getWatermarkSecretKey(),client.getProperties().getWatermarkBitString(),
             client.getProperties().getWatermarkParamMarkRate(),client.getProperties().getWatermarkParamMaxRightBit());
   } catch (TException e) {
     e.printStackTrace();
   }
+  return groupedLSBWatermarkEncoder;
 
 }
   @Override
@@ -614,7 +611,9 @@ private void initWatermarkEncoder() {
     try {
       String version=client.getProperties().getVersion();
       String[] versions=version.split(".");
-      major_version=Integer.valueOf(versions[0]);
+      if(versions.length>=2){
+        major_version=Integer.valueOf(versions[0]);
+      }
     } catch (TException e) {
       e.printStackTrace();
     }
@@ -627,7 +626,9 @@ private void initWatermarkEncoder() {
     try {
       String version=client.getProperties().getVersion();
       String[] versions=version.split(".");
-      minor_version=Integer.valueOf(versions[1]);
+      if(versions.length>=2){
+        minor_version=Integer.valueOf(versions[1]);
+      }
     } catch (TException e) {
       e.printStackTrace();
     }
