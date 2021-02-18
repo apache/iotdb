@@ -559,7 +559,6 @@
                             <exclude>**/.git/**</exclude>
                             <exclude>**/.mvn/**</exclude>
                             <exclude>**/.gitignore</exclude>
-                            <exclude>**/.git-blame-ignore-revs</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -613,7 +612,7 @@
                             <importOrder>
                                 <order>org.apache.iotdb,,javax,java,\#</order>
                             </importOrder>
-                            <removeUnusedImports/>
+                            <removeUnusedImports />
                         </java>
                     </configuration>
                     <executions>
