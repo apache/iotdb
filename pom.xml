@@ -141,7 +141,7 @@
         <sonar.organization>apache</sonar.organization>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
-        <sonar.java.checkstyle.reportPaths>checkstyle.xml</sonar.java.checkstyle.reportPaths>
+        <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
@@ -368,7 +368,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>2.4.0-b180725.0644</version>
+                <version>3.0.0</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -767,6 +767,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <outputFile>target/checkstyle-report.xml</outputFile>
                             <configLocation>checkstyle.xml</configLocation>
                         </configuration>
                     </execution>

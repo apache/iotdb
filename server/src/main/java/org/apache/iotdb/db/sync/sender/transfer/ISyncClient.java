@@ -71,10 +71,11 @@ public interface ISyncClient {
    * receiver.
    *
    * @param sgName storage group name
+   * @param vgId virtual group id
    * @param timeRangeId id of time range
    * @param deletedFilesName list of deleted file names
    */
-  void syncDeletedFilesNameInOneGroup(String sgName, Long timeRangeId, Set<File> deletedFilesName)
+  void syncDeletedFilesNameInOneGroup(String sgName, Long vgId, Long timeRangeId, Set<File> deletedFilesName)
       throws SyncConnectionException, IOException;
 
   /**
@@ -92,10 +93,11 @@ public interface ISyncClient {
    * receiver.
    *
    * @param sgName storage group name
+   * @param vgId virtual group id
    * @param timeRangeId id of time range
    * @param toBeSyncFiles list of new tsfile names
    */
-  void syncDataFilesInOneGroup(String sgName, Long timeRangeId, Set<File> toBeSyncFiles)
+  void syncDataFilesInOneGroup(String sgName, Long vgId, Long timeRangeId, Set<File> toBeSyncFiles)
       throws SyncConnectionException, IOException, SyncDeviceOwnerConflictException;
 
   /**
