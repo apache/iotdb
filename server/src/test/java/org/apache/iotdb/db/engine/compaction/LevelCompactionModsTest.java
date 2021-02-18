@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -38,9 +30,19 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class LevelCompactionModsTest extends LevelCompactionTest {
 
@@ -61,15 +63,15 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionMods() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement = new LevelCompactionTsFileManagement(
-        COMPACTION_TEST_SG, tempSGDir.getPath());
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource sourceTsFileResource = seqResources.get(0);
     TsFileResource targetTsFileResource = seqResources.get(1);
     List<Modification> filterModifications = new ArrayList<>();
     Modification modification1;
     Modification modification2;
-    try (ModificationFile sourceModificationFile = new ModificationFile(
-        sourceTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+    try (ModificationFile sourceModificationFile =
+        new ModificationFile(sourceTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
       modification1 = new Deletion(new PartialPath(deviceIds[0], "sensor0"), 0, 0);
       modification2 = new Deletion(new PartialPath(deviceIds[0], "sensor1"), 0, 0);
       sourceModificationFile.write(modification1);
@@ -78,10 +80,10 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
     }
     List<TsFileResource> sourceTsFileResources = new ArrayList<>();
     sourceTsFileResources.add(sourceTsFileResource);
-    levelCompactionTsFileManagement
-        .renameLevelFilesMods(filterModifications, sourceTsFileResources, targetTsFileResource);
-    try (ModificationFile targetModificationFile = new ModificationFile(
-        targetTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+    levelCompactionTsFileManagement.renameLevelFilesMods(
+        filterModifications, sourceTsFileResources, targetTsFileResource);
+    try (ModificationFile targetModificationFile =
+        new ModificationFile(targetTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
       Collection<Modification> modifications = targetModificationFile.getModifications();
       assertEquals(1, modifications.size());
       assertEquals(modification2, modifications.stream().findFirst().get());

@@ -18,98 +18,101 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBClearCacheIT {
 
-  private static String[] sqls = new String[]{
-      "set storage group to root.ln",
-      "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465720000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465780000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465840000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465900000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509465960000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509466020000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509466080000,false)",
-      "insert into root.ln.wf01.wt01(timestamp,status) values(1509466140000,false)",
-      "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT,encoding=RLE",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,25.957603)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465660000,24.359503)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465720000,20.092794)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465780000,20.182663)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465840000,21.125198)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465900000,22.720892)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465960000,20.71)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466020000,21.451046)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466080000,22.57987)",
-      "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466140000,20.98177)",
-      "create timeseries root.ln.wf02.wt02.hardware with datatype=TEXT,encoding=PLAIN",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465600000,\"v2\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465660000,\"v2\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465720000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465780000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465840000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465900000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465960000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466020000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466080000,\"v1\")",
-      "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466140000,\"v1\")",
-      "create timeseries root.ln.wf02.wt02.status with datatype=BOOLEAN,encoding=PLAIN",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465600000,true)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465660000,true)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465720000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465780000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465840000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465900000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509465960000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
-      "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
-      "set storage group to root.sgcc",
-      "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465720000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465780000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465840000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465900000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465960000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466020000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466080000,false)",
-      "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466140000,false)",
-      "create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465600000,25.957603)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465660000,24.359503)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465720000,20.092794)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465780000,20.182663)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465840000,21.125198)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465900000,22.720892)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465960000,20.71)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466020000,21.451046)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466080000,22.57987)",
-      "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466140000,20.98177)",
-      "flush"
-  };
+  private static String[] sqls =
+      new String[] {
+        "set storage group to root.ln",
+        "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465660000,true)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465720000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465780000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465840000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465900000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509465960000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509466020000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509466080000,false)",
+        "insert into root.ln.wf01.wt01(timestamp,status) values(1509466140000,false)",
+        "create timeseries root.ln.wf01.wt01.temperature with datatype=FLOAT,encoding=RLE",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465600000,25.957603)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465660000,24.359503)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465720000,20.092794)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465780000,20.182663)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465840000,21.125198)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465900000,22.720892)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509465960000,20.71)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466020000,21.451046)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466080000,22.57987)",
+        "insert into root.ln.wf01.wt01(timestamp,temperature) values(1509466140000,20.98177)",
+        "create timeseries root.ln.wf02.wt02.hardware with datatype=TEXT,encoding=PLAIN",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465600000,\"v2\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465660000,\"v2\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465720000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465780000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465840000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465900000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509465960000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466020000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466080000,\"v1\")",
+        "insert into root.ln.wf02.wt02(timestamp,hardware) values(1509466140000,\"v1\")",
+        "create timeseries root.ln.wf02.wt02.status with datatype=BOOLEAN,encoding=PLAIN",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465600000,true)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465660000,true)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465720000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465780000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465840000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465900000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509465960000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
+        "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
+        "set storage group to root.sgcc",
+        "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465720000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465780000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465840000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465900000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465960000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466020000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466080000,false)",
+        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466140000,false)",
+        "create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465600000,25.957603)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465660000,24.359503)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465720000,20.092794)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465780000,20.182663)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465840000,21.125198)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465900000,22.720892)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465960000,20.71)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466020000,21.451046)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466080000,22.57987)",
+        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466140000,20.98177)",
+        "flush"
+      };
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -126,8 +129,9 @@ public class IoTDBClearCacheIT {
 
   private static void importData() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
@@ -142,11 +146,11 @@ public class IoTDBClearCacheIT {
   @Test
   public void clearCacheTest() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(
-          "select * from root where time > 10");
+      boolean hasResultSet = statement.execute("select * from root where time > 10");
       assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

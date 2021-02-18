@@ -29,9 +29,7 @@ public class IoTThreadFactory implements ThreadFactory {
   private final String namePrefix;
   private Thread.UncaughtExceptionHandler handler = new IoTDBDefaultThreadExceptionHandler();
 
-  /**
-   * Constructor of IoTThreadFactory.
-   */
+  /** Constructor of IoTThreadFactory. */
   public IoTThreadFactory(String poolName) {
     SecurityManager s = System.getSecurityManager();
     group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();

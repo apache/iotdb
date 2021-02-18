@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
-/**
- * for test
- */
+/** for test */
 public class FakeChunkReaderWrap extends ChunkReaderWrap {
   private IPointReader pointReader;
-  public FakeChunkReaderWrap(IPointReader pointReader){
+
+  public FakeChunkReaderWrap(IPointReader pointReader) {
     super();
     this.pointReader = pointReader;
   }
@@ -41,5 +40,4 @@ public class FakeChunkReaderWrap extends ChunkReaderWrap {
   public IReaderByTimestamp getIReaderByTimestamp() {
     return null;
   }
-
 }

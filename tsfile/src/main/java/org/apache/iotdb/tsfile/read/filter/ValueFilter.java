@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
-import java.util.Set;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
@@ -30,10 +29,11 @@ import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
+import java.util.Set;
+
 public class ValueFilter {
 
-  private ValueFilter() {
-  }
+  private ValueFilter() {}
 
   public static <T extends Comparable<T>> ValueEq<T> eq(T value) {
     return new ValueEq(value);
@@ -55,7 +55,7 @@ public class ValueFilter {
     return new ValueLtEq(value);
   }
 
-  public static <T extends  Comparable<T>> ValueIn<T> in(Set<T> values, boolean not){
+  public static <T extends Comparable<T>> ValueIn<T> in(Set<T> values, boolean not) {
     return new ValueIn(values, not);
   }
 

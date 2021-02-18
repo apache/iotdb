@@ -17,16 +17,17 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.client.async;
 
-import java.io.IOException;
-import junit.framework.TestCase;
 import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient.FactoryAsync;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+
+import junit.framework.TestCase;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class AsyncDataHeartbeatClientTest extends TestCase {
 

@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
@@ -40,8 +32,17 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
@@ -50,21 +51,23 @@ import org.slf4j.LoggerFactory;
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(FilePartitionedSnapshotLogManager.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
-  public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, Node thisNode, DataGroupMember dataGroupMember) {
+  public FilePartitionedSnapshotLogManager(
+      LogApplier logApplier,
+      PartitionTable partitionTable,
+      Node header,
+      Node thisNode,
+      DataGroupMember dataGroupMember) {
     super(logApplier, partitionTable, header, thisNode, Factory.INSTANCE, dataGroupMember);
   }
 
-  /**
-   * send FlushPlan to all nodes in one dataGroup
-   */
+  /** send FlushPlan to all nodes in one dataGroup */
   private void syncFlushAllProcessor() {
     logger.info("{}: Start flush all storage group processor in one data group", getName());
-    Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions = StorageEngine.getInstance()
-        .getWorkingStorageGroupPartitions();
+    Map<String, List<Pair<Long, Boolean>>> storageGroupPartitions =
+        StorageEngine.getInstance().getWorkingStorageGroupPartitions();
     if (storageGroupPartitions.size() == 0) {
       logger.info("{}: no need to flush processor", getName());
       return;
@@ -113,11 +116,10 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     // 1.collect tsfile
     collectTsFiles();
 
-    //2.register the measurement
+    // 2.register the measurement
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
       int slotNum = entry.getKey();
-      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-          s -> new FileSnapshot());
+      FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum, s -> new FileSnapshot());
       if (snapshot.getTimeseriesSchemas().isEmpty()) {
         snapshot.setTimeseriesSchemas(entry.getValue());
       }
@@ -126,8 +128,8 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   private void collectTsFiles() throws IOException {
     slotSnapshots.clear();
-    Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
-        .getInstance().getAllClosedStorageGroupTsFile();
+    Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile =
+        StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
     List<TsFileResource> createdHardlinks = new ArrayList<>();
     // group the TsFiles by their slots
     for (Entry<PartialPath, Map<Long, List<TsFileResource>>> entry :
@@ -158,15 +160,22 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
    * @param storageGroupName
    * @param createdHardlinks
    * @return true if all hardlinks are created successfully or false if some of them failed to
-   * create
+   *     create
    * @throws IOException
    */
-  private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
-      PartialPath storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
-    int slotNum = SlotPartitionTable.getSlotStrategy().calculateSlotByPartitionNum(storageGroupName.getFullPath(),
-        partitionNum, ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
-    FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-        s -> new FileSnapshot());
+  private boolean collectTsFiles(
+      Long partitionNum,
+      List<TsFileResource> resourceList,
+      PartialPath storageGroupName,
+      List<TsFileResource> createdHardlinks)
+      throws IOException {
+    int slotNum =
+        SlotPartitionTable.getSlotStrategy()
+            .calculateSlotByPartitionNum(
+                storageGroupName.getFullPath(),
+                partitionNum,
+                ((SlotPartitionTable) partitionTable).getTotalSlotNumbers());
+    FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum, s -> new FileSnapshot());
     for (TsFileResource tsFileResource : resourceList) {
       TsFileResource hardlink = tsFileResource.createHardlink();
       if (hardlink == null) {
@@ -182,14 +191,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   /**
    * Check if the plan index of 'resource' overlaps any one in 'others' from the same time
-   * partition. For example, we have plan {1,2,3,4,5,6}, plan 1 and 6 are written into an
-   * unsequnce file Unseq1， and {2,3} and {4,5} are written to sequence files Seq1 and Seq2
-   * respectively (notice the numbers are just indexes, not timestamps, so they can be written
-   * anywhere if properly constructed). So Unseq1 both overlaps Seq1 and Seq2. If Unseq1 merges
-   * with Seq1 and generated Seq1' (ranges [1, 6]), it will also overlap with Seq2. But if Seq1'
-   * further merge with Seq2, its range remains to be [1,6], and we cannot find any other files
-   * that overlap with it, so we can conclude with confidence that the file contains all plans
-   * within [1,6].
+   * partition. For example, we have plan {1,2,3,4,5,6}, plan 1 and 6 are written into an unsequnce
+   * file Unseq1， and {2,3} and {4,5} are written to sequence files Seq1 and Seq2 respectively
+   * (notice the numbers are just indexes, not timestamps, so they can be written anywhere if
+   * properly constructed). So Unseq1 both overlaps Seq1 and Seq2. If Unseq1 merges with Seq1 and
+   * generated Seq1' (ranges [1, 6]), it will also overlap with Seq2. But if Seq1' further merge
+   * with Seq2, its range remains to be [1,6], and we cannot find any other files that overlap with
+   * it, so we can conclude with confidence that the file contains all plans within [1,6].
+   *
    * @param resource
    * @param others
    * @return

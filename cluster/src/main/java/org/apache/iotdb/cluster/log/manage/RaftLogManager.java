@@ -19,19 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
@@ -45,26 +32,35 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
+
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public abstract class RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
-  /**
-   * manage uncommitted entries
-   */
+  /** manage uncommitted entries */
   private UnCommittedEntryManager unCommittedEntryManager;
 
-  /**
-   * manage committed entries in memory as a cache
-   */
+  /** manage committed entries in memory as a cache */
   private CommittedEntryManager committedEntryManager;
 
-  /**
-   * manage committed entries in disk for safety
-   */
+  /** manage committed entries in disk for safety */
   private StableEntryManager stableEntryManager;
 
   private long commitIndex;
@@ -76,6 +72,7 @@ public abstract class RaftLogManager {
    * used for asyncLogApplier
    */
   private volatile long maxHaveAppliedCommitIndex;
+
   private final Object changeApplyCommitIndexCond = new Object();
 
   /**
@@ -84,12 +81,9 @@ public abstract class RaftLogManager {
    */
   private volatile long blockAppliedCommitIndex;
 
-
   private LogApplier logApplier;
 
-  /**
-   * to distinguish managers of different members
-   */
+  /** to distinguish managers of different members */
   private String name;
 
   private ScheduledExecutorService deleteLogExecutorService;
@@ -98,17 +92,13 @@ public abstract class RaftLogManager {
   private ExecutorService checkLogApplierExecutorService;
   private Future<?> checkLogApplierFuture;
 
-  /**
-   * minimum number of committed logs in memory
-   */
-  private int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
-      .getMinNumOfLogsInMem();
+  /** minimum number of committed logs in memory */
+  private int minNumOfLogsInMem =
+      ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem();
 
-  /**
-   * maximum number of committed logs in memory
-   */
-  private int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig()
-      .getMaxNumOfLogsInMem();
+  /** maximum number of committed logs in memory */
+  private int maxNumOfLogsInMem =
+      ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
 
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
@@ -132,14 +122,12 @@ public abstract class RaftLogManager {
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
 
-    /**
-     * must have applied entry [compactIndex,last] to state machine
-     */
+    /** must have applied entry [compactIndex,last] to state machine */
     this.commitIndex = last;
 
     /**
-     * due to the log operation is idempotent, so we can just reapply the log from the
-     * first index of committed logs
+     * due to the log operation is idempotent, so we can just reapply the log from the first index
+     * of committed logs
      */
     this.maxHaveAppliedCommitIndex = first;
 
@@ -147,32 +135,37 @@ public abstract class RaftLogManager {
 
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
-    this.deleteLogExecutorService = new ScheduledThreadPoolExecutor(1,
-        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-" + name).daemon(true)
-            .build());
+    this.deleteLogExecutorService =
+        new ScheduledThreadPoolExecutor(
+            1,
+            new BasicThreadFactory.Builder()
+                .namingPattern("raft-log-delete-" + name)
+                .daemon(true)
+                .build());
 
-    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
-            .build());
+    this.checkLogApplierExecutorService =
+        Executors.newSingleThreadExecutor(
+            new BasicThreadFactory.Builder()
+                .namingPattern("check-log-applier-" + name)
+                .daemon(true)
+                .build());
 
-    /**
-     * deletion check period of the submitted log
-     */
-    int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
-        .getLogDeleteCheckIntervalSecond();
+    /** deletion check period of the submitted log */
+    int logDeleteCheckIntervalSecond =
+        ClusterDescriptor.getInstance().getConfig().getLogDeleteCheckIntervalSecond();
 
     if (logDeleteCheckIntervalSecond > 0) {
-      this.deleteLogFuture = deleteLogExecutorService
-          .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
+      this.deleteLogFuture =
+          deleteLogExecutorService.scheduleAtFixedRate(
+              this::checkDeleteLog,
+              logDeleteCheckIntervalSecond,
               logDeleteCheckIntervalSecond,
               TimeUnit.SECONDS);
     }
 
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
 
-    /**
-     * flush log to file periodically
-     */
+    /** flush log to file periodically */
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
       this.applyAllCommittedLogWhenStartUp();
     }
@@ -190,9 +183,10 @@ public abstract class RaftLogManager {
 
   /**
    * IMPORTANT!!!
-   * <p>
-   * The subclass's takeSnapshot() must call this method to insure that all logs have been applied
-   * before take snapshot
+   *
+   * <p>The subclass's takeSnapshot() must call this method to insure that all logs have been
+   * applied before take snapshot
+   *
    * <p>
    *
    * @throws IOException timeout exception
@@ -207,16 +201,21 @@ public abstract class RaftLogManager {
     }
     logger.info(
         "{}: before take snapshot, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={}, commitIndex={}",
-        name, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
+        name,
+        blockAppliedCommitIndex,
+        maxHaveAppliedCommitIndex,
+        commitIndex);
     while (blockAppliedCommitIndex > maxHaveAppliedCommitIndex) {
       long waitTime = System.currentTimeMillis() - startTime;
-      if (waitTime > ClusterDescriptor.getInstance().getConfig()
-          .getCatchUpTimeoutMS()) {
+      if (waitTime > ClusterDescriptor.getInstance().getConfig().getCatchUpTimeoutMS()) {
         logger.error(
             "{}: wait all log applied time out, time cost={}, blockAppliedCommitIndex={}, maxHaveAppliedCommitIndex={},commitIndex={}",
-            name, waitTime, blockAppliedCommitIndex, maxHaveAppliedCommitIndex, commitIndex);
-        throw new IOException(
-            "wait all log applied time out");
+            name,
+            waitTime,
+            blockAppliedCommitIndex,
+            maxHaveAppliedCommitIndex,
+            commitIndex);
+        throw new IOException("wait all log applied time out");
       }
     }
   }
@@ -275,7 +274,7 @@ public abstract class RaftLogManager {
    *
    * @param index request entry index
    * @return throw EntryCompactedException if index < dummyIndex, -1 if index > lastIndex or the
-   * entry is compacted, otherwise return the entry's term for given index
+   *     entry is compacted, otherwise return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long getTerm(long index) throws EntryCompactedException {
@@ -319,8 +318,7 @@ public abstract class RaftLogManager {
     try {
       term = getTerm(getLastLogIndex());
     } catch (Exception e) {
-      logger
-          .error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
+      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -335,8 +333,7 @@ public abstract class RaftLogManager {
     try {
       term = getTerm(getCommitLogIndex());
     } catch (Exception e) {
-      logger
-          .error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
+      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -345,11 +342,11 @@ public abstract class RaftLogManager {
    * Used by follower node to support leader's complicated log replication rpc parameters and try to
    * commit entries.
    *
-   * @param lastIndex    leader's matchIndex for this follower node
-   * @param lastTerm     the entry's term which index is leader's matchIndex for this follower node
+   * @param lastIndex leader's matchIndex for this follower node
+   * @param lastTerm the entry's term which index is leader's matchIndex for this follower node
    * @param leaderCommit leader's commitIndex
-   * @param entries      entries sent from the leader node Note that the leader must ensure
-   *                     entries[0].index = lastIndex + 1
+   * @param entries entries sent from the leader node Note that the leader must ensure
+   *     entries[0].index = lastIndex + 1
    * @return -1 if the entries cannot be appended, otherwise the last index of new entries
    */
   public long maybeAppend(long lastIndex, long lastTerm, long leaderCommit, List<Log> entries) {
@@ -358,13 +355,18 @@ public abstract class RaftLogManager {
       long ci = findConflict(entries);
       if (ci <= commitIndex) {
         if (ci != -1) {
-          logger
-              .error("{}: entry {} conflict with committed entry [commitIndex({})]", name, ci,
-                  commitIndex);
+          logger.error(
+              "{}: entry {} conflict with committed entry [commitIndex({})]",
+              name,
+              ci,
+              commitIndex);
         } else {
           if (logger.isDebugEnabled() && !entries.isEmpty()) {
-            logger.debug("{}: Appending entries [{} and other {} logs] all exist locally",
-                name, entries.get(0), entries.size() - 1);
+            logger.debug(
+                "{}: Appending entries [{} and other {} logs] all exist locally",
+                name,
+                entries.get(0),
+                entries.size() - 1);
           }
         }
 
@@ -386,20 +388,21 @@ public abstract class RaftLogManager {
    * Used by follower node to support leader's complicated log replication rpc parameters and try to
    * commit entry.
    *
-   * @param lastIndex    leader's matchIndex for this follower node
-   * @param lastTerm     the entry's term which index is leader's matchIndex for this follower node
+   * @param lastIndex leader's matchIndex for this follower node
+   * @param lastTerm the entry's term which index is leader's matchIndex for this follower node
    * @param leaderCommit leader's commitIndex
-   * @param entry        entry sent from the leader node
+   * @param entry entry sent from the leader node
    * @return -1 if the entries cannot be appended, otherwise the last index of new entries
    */
   public long maybeAppend(long lastIndex, long lastTerm, long leaderCommit, Log entry) {
     if (matchTerm(lastTerm, lastIndex)) {
       long newLastIndex = lastIndex + 1;
       if (entry.getCurrLogIndex() <= commitIndex) {
-        logger
-            .debug("{}: entry {} conflict with committed entry [commitIndex({})]",
-                name, entry.getCurrLogIndex(),
-                commitIndex);
+        logger.debug(
+            "{}: entry {} conflict with committed entry [commitIndex({})]",
+            name,
+            entry.getCurrLogIndex(),
+            commitIndex);
       } else {
         append(entry);
       }
@@ -430,8 +433,8 @@ public abstract class RaftLogManager {
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
-    Object logUpdateCondition = getLogUpdateCondition(
-        entries.get(entries.size() - 1).getCurrLogIndex());
+    Object logUpdateCondition =
+        getLogUpdateCondition(entries.get(entries.size() - 1).getCurrLogIndex());
     synchronized (logUpdateCondition) {
       logUpdateCondition.notifyAll();
     }
@@ -463,7 +466,7 @@ public abstract class RaftLogManager {
    * Used by leader node to try to commit entries.
    *
    * @param leaderCommit leader's commitIndex
-   * @param term         the entry's term which index is leaderCommit in leader's log module
+   * @param term the entry's term which index is leaderCommit in leader's log module
    * @return true or false
    */
   public synchronized boolean maybeCommit(long leaderCommit, long term) {
@@ -484,8 +487,11 @@ public abstract class RaftLogManager {
    * @param snapshot leader's snapshot
    */
   public void applySnapshot(Snapshot snapshot) {
-    logger.info("{}: log module starts to restore snapshot [index: {}, term: {}]",
-        name, snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
+    logger.info(
+        "{}: log module starts to restore snapshot [index: {}, term: {}]",
+        name,
+        snapshot.getLastLogIndex(),
+        snapshot.getLastLogTerm());
     try {
       getCommittedEntryManager().compactEntries(snapshot.getLastLogIndex());
       getStableEntryManager().removeCompactedEntries(snapshot.getLastLogIndex());
@@ -514,20 +520,20 @@ public abstract class RaftLogManager {
    * then whichever log has the larger lastIndex is more up-to-date. If the logs are the same, the
    * given log is up-to-date.
    *
-   * @param lastTerm  candidate's lastTerm
+   * @param lastTerm candidate's lastTerm
    * @param lastIndex candidate's lastIndex
    * @return true or false
    */
   public boolean isLogUpToDate(long lastTerm, long lastIndex) {
-    return lastTerm > getLastLogTerm() || (lastTerm == getLastLogTerm()
-        && lastIndex >= getLastLogIndex());
+    return lastTerm > getLastLogTerm()
+        || (lastTerm == getLastLogTerm() && lastIndex >= getLastLogIndex());
   }
 
   /**
    * Pack entries from low through high - 1, just like slice (entries[low:high]). firstIndex <= low
    * <= high <= lastIndex.
    *
-   * @param low  request index low bound
+   * @param low request index low bound
    * @param high request index upper bound
    */
   public List<Log> getEntries(long low, long high) {
@@ -557,8 +563,7 @@ public abstract class RaftLogManager {
     long startTime = Statistic.RAFT_SENDER_COMMIT_GET_LOGS.getOperationStartTime();
     long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
     long hi = newCommitIndex + 1;
-    List<Log> entries = new ArrayList<>(getUnCommittedEntryManager()
-        .getEntries(lo, hi));
+    List<Log> entries = new ArrayList<>(getUnCommittedEntryManager().getEntries(lo, hi));
     Statistic.RAFT_SENDER_COMMIT_GET_LOGS.calOperationCostTimeFromStart(startTime);
 
     if (entries.isEmpty()) {
@@ -568,10 +573,12 @@ public abstract class RaftLogManager {
     long commitLogIndex = getCommitLogIndex();
     long firstLogIndex = entries.get(0).getCurrLogIndex();
     if (commitLogIndex >= firstLogIndex) {
-      logger.warn("Committing logs that has already been committed: {} >= {}", commitLogIndex,
+      logger.warn(
+          "Committing logs that has already been committed: {} >= {}",
+          commitLogIndex,
           firstLogIndex);
-      entries.subList(0,
-          (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+      entries
+          .subList(0, (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
           .clear();
     }
     try {
@@ -603,8 +610,10 @@ public abstract class RaftLogManager {
 
       long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
       if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
-        logger.debug("There are too many unapplied logs [{}], wait for a while to avoid memory "
-            + "overflow", unappliedLogSize);
+        logger.debug(
+            "There are too many unapplied logs [{}], wait for a while to avoid memory "
+                + "overflow",
+            unappliedLogSize);
         Thread.sleep(
             unappliedLogSize - ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
       }
@@ -620,7 +629,7 @@ public abstract class RaftLogManager {
   /**
    * Returns whether the index and term passed in match.
    *
-   * @param term  request entry term
+   * @param term request entry term
    * @param index request entry index
    * @return true or false
    */
@@ -658,7 +667,7 @@ public abstract class RaftLogManager {
    * Check whether the parameters passed in satisfy the following properties. firstIndex <= low <=
    * high.
    *
-   * @param low  request index low bound
+   * @param low request index low bound
    * @param high request index upper bound
    * @throws EntryCompactedException
    * @throws GetEntriesWrongParametersException
@@ -671,8 +680,8 @@ public abstract class RaftLogManager {
     }
     long first = getFirstIndex();
     if (low < first) {
-      logger.error("{}: CheckBound out of index: parameter: {} , lower bound: {} ", name, low,
-          high);
+      logger.error(
+          "{}: CheckBound out of index: parameter: {} , lower bound: {} ", name, low, high);
       throw new EntryCompactedException(low, first);
     }
   }
@@ -693,8 +702,7 @@ public abstract class RaftLogManager {
     for (Log entry : entries) {
       if (!matchTerm(entry.getCurrLogTerm(), entry.getCurrLogIndex())) {
         if (entry.getCurrLogIndex() <= getLastLogIndex()) {
-          logger.info("found conflict at index {}",
-              entry.getCurrLogIndex());
+          logger.info("found conflict at index {}", entry.getCurrLogIndex());
         }
         return entry.getCurrLogIndex();
       }
@@ -703,7 +711,8 @@ public abstract class RaftLogManager {
   }
 
   @TestOnly
-  protected RaftLogManager(CommittedEntryManager committedEntryManager,
+  protected RaftLogManager(
+      CommittedEntryManager committedEntryManager,
       StableEntryManager stableEntryManager,
       LogApplier applier) {
     this.setCommittedEntryManager(committedEntryManager);
@@ -716,9 +725,12 @@ public abstract class RaftLogManager {
     this.maxHaveAppliedCommitIndex = first;
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
-    this.checkLogApplierExecutorService = Executors.newSingleThreadExecutor(
-        new BasicThreadFactory.Builder().namingPattern("check-log-applier-" + name).daemon(true)
-            .build());
+    this.checkLogApplierExecutorService =
+        Executors.newSingleThreadExecutor(
+            new BasicThreadFactory.Builder()
+                .namingPattern("check-log-applier-" + name)
+                .daemon(true)
+                .build());
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
     for (int i = 0; i < logUpdateConditions.length; i++) {
       logUpdateConditions[i] = new Object();
@@ -779,8 +791,7 @@ public abstract class RaftLogManager {
     return unCommittedEntryManager;
   }
 
-  private void setUnCommittedEntryManager(
-      UnCommittedEntryManager unCommittedEntryManager) {
+  private void setUnCommittedEntryManager(UnCommittedEntryManager unCommittedEntryManager) {
     this.unCommittedEntryManager = unCommittedEntryManager;
   }
 
@@ -788,8 +799,7 @@ public abstract class RaftLogManager {
     return committedEntryManager;
   }
 
-  private void setCommittedEntryManager(
-      CommittedEntryManager committedEntryManager) {
+  private void setCommittedEntryManager(CommittedEntryManager committedEntryManager) {
     this.committedEntryManager = committedEntryManager;
   }
 
@@ -805,9 +815,7 @@ public abstract class RaftLogManager {
     return maxHaveAppliedCommitIndex;
   }
 
-  /**
-   * check whether delete the committed log
-   */
+  /** check whether delete the committed log */
   void checkDeleteLog() {
     try {
       synchronized (this) {
@@ -827,25 +835,33 @@ public abstract class RaftLogManager {
       return;
     }
 
-    long compactIndex = Math
-        .min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
+    long compactIndex =
+        Math.min(committedEntryManager.getDummyIndex() + removeSize, maxHaveAppliedCommitIndex - 1);
     try {
       logger.debug(
           "{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, committedLogSize "
               + "{}, maxAppliedLog {}",
-          name, getFirstIndex(), getLastLogIndex(), compactIndex, removeSize,
-          committedEntryManager.getTotalSize(), maxHaveAppliedCommitIndex);
+          name,
+          getFirstIndex(),
+          getLastLogIndex(),
+          compactIndex,
+          removeSize,
+          committedEntryManager.getTotalSize(),
+          maxHaveAppliedCommitIndex);
       getCommittedEntryManager().compactEntries(compactIndex);
       if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()) {
         getStableEntryManager().removeCompactedEntries(compactIndex);
       }
-      logger.debug("{}: After compaction index {}-{}, committedLogSize {}", name,
-          getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
+      logger.debug(
+          "{}: After compaction index {}-{}, committedLogSize {}",
+          name,
+          getFirstIndex(),
+          getLastLogIndex(),
+          committedEntryManager.getTotalSize());
     } catch (EntryUnavailableException e) {
       logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
     }
   }
-
 
   public Object getLogUpdateCondition(long logIndex) {
     return logUpdateConditions[(int) (logIndex % logUpdateConditions.length)];
@@ -855,8 +871,11 @@ public abstract class RaftLogManager {
     long lo = maxHaveAppliedCommitIndex;
     long hi = getCommittedEntryManager().getLastIndex() + 1;
     if (lo >= hi) {
-      logger.info("{}: the maxHaveAppliedCommitIndex={}, lastIndex={}, no need to reapply",
-          name, maxHaveAppliedCommitIndex, hi);
+      logger.info(
+          "{}: the maxHaveAppliedCommitIndex={}, lastIndex={}, no need to reapply",
+          name,
+          maxHaveAppliedCommitIndex,
+          hi);
       return;
     }
 
@@ -872,16 +891,18 @@ public abstract class RaftLogManager {
         logger.error("{}, an exception occurred when checking the applied log index", name, e);
       }
     }
-    logger.info("{}, the check-log-applier thread {} is interrupted", name,
+    logger.info(
+        "{}, the check-log-applier thread {} is interrupted",
+        name,
         Thread.currentThread().getName());
   }
 
   void doCheckAppliedLogIndex() {
     long nextToCheckIndex = maxHaveAppliedCommitIndex + 1;
     try {
-      if (nextToCheckIndex > commitIndex || nextToCheckIndex > getCommittedEntryManager()
-          .getLastIndex() || (blockAppliedCommitIndex > 0
-          && blockAppliedCommitIndex < nextToCheckIndex)) {
+      if (nextToCheckIndex > commitIndex
+          || nextToCheckIndex > getCommittedEntryManager().getLastIndex()
+          || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
         Thread.sleep(5);
         return;
@@ -890,7 +911,9 @@ public abstract class RaftLogManager {
       if (log == null || log.getCurrLogIndex() != nextToCheckIndex) {
         logger.warn(
             "{}, get log error when checking the applied log index, log={}, nextToCheckIndex={}",
-            name, log, nextToCheckIndex);
+            name,
+            log,
+            nextToCheckIndex);
         return;
       }
       synchronized (log) {
@@ -905,7 +928,11 @@ public abstract class RaftLogManager {
       }
       logger.debug(
           "{}: log={} is applied, nextToCheckIndex={}, commitIndex={}, maxHaveAppliedCommitIndex={}",
-          name, log, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
+          name,
+          log,
+          nextToCheckIndex,
+          commitIndex,
+          maxHaveAppliedCommitIndex);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.info("{}: do check applied log index is interrupt", name);
@@ -914,9 +941,13 @@ public abstract class RaftLogManager {
         // maxHaveAppliedCommitIndex may change if a snapshot is applied concurrently
         maxHaveAppliedCommitIndex = Math.max(maxHaveAppliedCommitIndex, nextToCheckIndex);
       }
-      logger.debug("{}: compacted log is assumed applied, nextToCheckIndex={}, commitIndex={}, "
+      logger.debug(
+          "{}: compacted log is assumed applied, nextToCheckIndex={}, commitIndex={}, "
               + "maxHaveAppliedCommitIndex={}",
-          name, nextToCheckIndex, commitIndex, maxHaveAppliedCommitIndex);
+          name,
+          nextToCheckIndex,
+          commitIndex,
+          maxHaveAppliedCommitIndex);
     }
   }
 
@@ -940,9 +971,7 @@ public abstract class RaftLogManager {
     this.blockAppliedCommitIndex = blockAppliedCommitIndex;
   }
 
-  /**
-   * Apply the committed logs that were previously blocked by `blockAppliedCommitIndex` if any.
-   */
+  /** Apply the committed logs that were previously blocked by `blockAppliedCommitIndex` if any. */
   private void reapplyBlockedLogs() {
     if (!blockedUnappliedLogList.isEmpty()) {
       applyEntries(blockedUnappliedLogList);

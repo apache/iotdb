@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
 
@@ -29,14 +30,13 @@ public class MultiSourceExternalSortJobPart extends ExternalSortJobPart {
   private List<ExternalSortJobPart> source;
   private long queryId;
 
-  public MultiSourceExternalSortJobPart(long queryId, String tmpFilePath,
-      List<ExternalSortJobPart> source) {
+  public MultiSourceExternalSortJobPart(
+      long queryId, String tmpFilePath, List<ExternalSortJobPart> source) {
     super(ExternalSortJobPartType.MULTIPLE_SOURCE);
     this.source = source;
     this.tmpFilePath = tmpFilePath;
     this.queryId = queryId;
   }
-
 
   @Override
   public IPointReader executeForIPointReader() throws IOException {

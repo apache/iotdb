@@ -18,6 +18,17 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
+import org.apache.iotdb.db.writelog.node.WriteLogNode;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -27,15 +38,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * MultiFileLogNodeManager manages all ExclusiveWriteLogNodes, each manages WALs of a TsFile (either
@@ -75,7 +77,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   public static MultiFileLogNodeManager getInstance() {
     return InstanceHolder.instance;
   }
-
 
   @Override
   public WriteLogNode getNode(String identifier, Supplier<ByteBuffer[]> supplier) {
@@ -122,8 +123,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       }
       if (config.getForceWalPeriodInMs() > 0) {
         executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleWithFixedDelay(this::forceTask, config.getForceWalPeriodInMs(),
-            config.getForceWalPeriodInMs(), TimeUnit.MILLISECONDS);
+        executorService.scheduleWithFixedDelay(
+            this::forceTask,
+            config.getForceWalPeriodInMs(),
+            config.getForceWalPeriodInMs(),
+            TimeUnit.MILLISECONDS);
       }
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -154,10 +158,8 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static class InstanceHolder {
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
 
     private static final MultiFileLogNodeManager instance = new MultiFileLogNodeManager();
   }
-
 }

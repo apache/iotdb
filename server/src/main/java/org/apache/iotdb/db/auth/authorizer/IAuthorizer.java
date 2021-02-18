@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 
-/**
- * This interface provides all authorization-relative operations.
- */
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/** This interface provides all authorization-relative operations. */
 public interface IAuthorizer {
 
   /**
@@ -54,34 +53,33 @@ public interface IAuthorizer {
    *
    * @param username the username of the user.
    * @throws AuthException When attempting to delete the default administrator or the user does not
-   *                       exists.
+   *     exists.
    */
   void deleteUser(String username) throws AuthException;
 
   /**
    * Grant a privilege on a seriesPath to a user.
    *
-   * @param username    The username of the user to which the privilege should be added.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param username The username of the user to which the privilege should be added.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
-   *                       or the permission already exists.
+   *     or the permission already exists.
    */
   void grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
    *
-   * @param username    The username of the user from which the privilege should be removed.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param username The username of the user from which the privilege should be removed.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @throws AuthException If the user does not exist or the privilege or the seriesPath is illegal
-   *                       or if the permission does not exist.
+   *     or if the permission does not exist.
    */
-  void revokePrivilegeFromUser(String username, String path,
-      int privilegeId) throws AuthException;
+  void revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException;
 
   /**
    * Add a role.
@@ -102,35 +100,33 @@ public interface IAuthorizer {
   /**
    * Add a privilege on a seriesPath to a role.
    *
-   * @param roleName    The name of the role to which the privilege is added.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param roleName The name of the role to which the privilege is added.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
-   *                       or the privilege already exists.
+   *     or the privilege already exists.
    */
   void grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException;
 
   /**
    * Remove a privilege on a seriesPath from a role.
    *
-   * @param roleName    The name of the role from which the privilege is removed.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param roleName The name of the role from which the privilege is removed.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @throws AuthException If the role does not exist or the privilege or the seriesPath is illegal
-   *                       or the privilege does not exists.
+   *     or the privilege does not exists.
    */
-  void revokePrivilegeFromRole(String roleName, String path,
-      int privilegeId) throws AuthException;
+  void revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException;
 
   /**
    * Add a role to a user.
    *
    * @param roleName The name of the role to be added.
    * @param username The name of the user to which the role is added.
-   * @throws AuthException If either the role or the user does not exist or the role already
-   *                       exists.
+   * @throws AuthException If either the role or the user does not exist or the role already exists.
    */
   void grantRoleToUser(String roleName, String username) throws AuthException;
 
@@ -139,8 +135,7 @@ public interface IAuthorizer {
    *
    * @param roleName The name of the role to be removed.
    * @param username The name of the user from which the role is removed.
-   * @throws AuthException If either the role or the user does not exist or the role already
-   *                       exists.
+   * @throws AuthException If either the role or the user does not exist or the role already exists.
    */
   void revokeRoleFromUser(String roleName, String username) throws AuthException;
 
@@ -148,8 +143,8 @@ public interface IAuthorizer {
    * Get the all the privileges of a user on a seriesPath.
    *
    * @param username The user whose privileges are to be queried.
-   * @param path     The seriesPath on which the privileges take effect. If the privilege is a
-   *                 seriesPath-free privilege, this should be "root".
+   * @param path The seriesPath on which the privileges take effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @return A set of integers each present a privilege.
    * @throws AuthException if exception raised when finding the privileges.
    */
@@ -158,27 +153,25 @@ public interface IAuthorizer {
   /**
    * Modify the password of a user.
    *
-   * @param username    The user whose password is to be modified.
+   * @param username The user whose password is to be modified.
    * @param newPassword The new password.
-   * @throws AuthException If the user does not exists or  the new password is illegal.
+   * @throws AuthException If the user does not exists or the new password is illegal.
    */
   void updateUserPassword(String username, String newPassword) throws AuthException;
 
   /**
    * Check if the user have the privilege on the seriesPath.
    *
-   * @param username    The name of the user whose privileges are checked.
-   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
-   *                    seriesPath-free privilege, this should be "root".
+   * @param username The name of the user whose privileges are checked.
+   * @param path The seriesPath on which the privilege takes effect. If the privilege is a
+   *     seriesPath-free privilege, this should be "root".
    * @param privilegeId An integer that represents a privilege.
    * @return True if the user has such privilege, false if the user does not have such privilege.
    * @throws AuthException If the seriesPath or the privilege is illegal.
    */
   boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException;
 
-  /**
-   * Reset the Authorizer to initiative status.
-   */
+  /** Reset the Authorizer to initiative status. */
   void reset() throws AuthException;
 
   /**

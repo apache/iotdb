@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -27,11 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import static org.junit.Assert.assertEquals;
 
 public class ReadWriteStreamUtilsTest {
 
@@ -68,8 +66,7 @@ public class ReadWriteStreamUtilsTest {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testGetIntMinBitWidth() {
@@ -82,7 +79,9 @@ public class ReadWriteStreamUtilsTest {
     for (int i = 0; i < 10; i++) {
       uvIntList.add(uvInt);
       uvIntList.add(uvInt - 1);
-      assertEquals(32 - Integer.numberOfLeadingZeros(uvInt), ReadWriteForEncodingUtils.getIntMaxBitWidth(uvIntList));
+      assertEquals(
+          32 - Integer.numberOfLeadingZeros(uvInt),
+          ReadWriteForEncodingUtils.getIntMaxBitWidth(uvIntList));
       uvInt *= 3;
     }
   }
@@ -98,7 +97,9 @@ public class ReadWriteStreamUtilsTest {
     for (int i = 0; i < 10; i++) {
       uvLongList.add(uvLong);
       uvLongList.add(uvLong - 1);
-      assertEquals(64 - Long.numberOfLeadingZeros(uvLong), ReadWriteForEncodingUtils.getLongMaxBitWidth(uvLongList));
+      assertEquals(
+          64 - Long.numberOfLeadingZeros(uvLong),
+          ReadWriteForEncodingUtils.getLongMaxBitWidth(uvLongList));
       uvLong *= 7;
     }
   }
@@ -114,26 +115,17 @@ public class ReadWriteStreamUtilsTest {
     }
   }
 
-  /**
-   * @see {@link #testReadUnsignedVarInt()}
-   */
+  /** @see {@link #testReadUnsignedVarInt()} */
   @Test
-  public void testWriteUnsignedVarInt() {
-  }
+  public void testWriteUnsignedVarInt() {}
 
-  /**
-   * @see {@link #testReadIntLittleEndianPaddedOnBitWidth()}
-   */
+  /** @see {@link #testReadIntLittleEndianPaddedOnBitWidth()} */
   @Test
-  public void testWriteIntLittleEndianPaddedOnBitWidth() {
-  }
+  public void testWriteIntLittleEndianPaddedOnBitWidth() {}
 
-  /**
-   * @see {@link #testReadLongLittleEndianPaddedOnBitWidth()}
-   */
+  /** @see {@link #testReadLongLittleEndianPaddedOnBitWidth()} */
   @Test
-  public void testWriteLongLittleEndianPaddedOnBitWidth() {
-  }
+  public void testWriteLongLittleEndianPaddedOnBitWidth() {}
 
   @Test
   public void testReadIntLittleEndianPaddedOnBitWidth() throws IOException {
@@ -143,7 +135,8 @@ public class ReadWriteStreamUtilsTest {
       ReadWriteForEncodingUtils.writeIntLittleEndianPaddedOnBitWidth(value, baos, bitWidth);
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      int value_read = ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(buffer, bitWidth);
+      int value_read =
+          ReadWriteForEncodingUtils.readIntLittleEndianPaddedOnBitWidth(buffer, bitWidth);
       assertEquals(value_read, value);
     }
   }
@@ -156,9 +149,9 @@ public class ReadWriteStreamUtilsTest {
       ReadWriteForEncodingUtils.writeLongLittleEndianPaddedOnBitWidth(value, baos, bitWidth);
       ByteBuffer buffer = ByteBuffer.wrap(baos.toByteArray());
 
-      long value_read = ReadWriteForEncodingUtils.readLongLittleEndianPaddedOnBitWidth(buffer, bitWidth);
+      long value_read =
+          ReadWriteForEncodingUtils.readLongLittleEndianPaddedOnBitWidth(buffer, bitWidth);
       assertEquals(value_read, value);
     }
   }
-
 }

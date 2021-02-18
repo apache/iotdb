@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -150,8 +151,8 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
     if (metaGroupMember.getCharacter() == NodeCharacter.FOLLOWER
         && metaGroupMember.getLeader() != null) {
-      logger.info("Forward the node removal request of {} to leader {}", node,
-          metaGroupMember.getLeader());
+      logger.info(
+          "Forward the node removal request of {} to leader {}", node, metaGroupMember.getLeader());
       Long rst = forwardRemoveNode(node);
       if (rst != null) {
         return rst;

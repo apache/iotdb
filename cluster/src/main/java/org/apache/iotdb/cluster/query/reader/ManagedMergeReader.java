@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
-import java.util.NoSuchElementException;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.util.NoSuchElementException;
 
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ManagedMergeReader extends PriorityMergeReader implements ManagedSeriesReader {

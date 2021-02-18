@@ -34,7 +34,9 @@ public interface TsFileFlushPolicy {
   class DirectFlushPolicy implements TsFileFlushPolicy {
 
     @Override
-    public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor tsFileProcessor,
+    public void apply(
+        StorageGroupProcessor storageGroupProcessor,
+        TsFileProcessor tsFileProcessor,
         boolean isSeq) {
       if (tsFileProcessor.shouldClose()) {
         storageGroupProcessor.asyncCloseOneTsFileProcessor(isSeq, tsFileProcessor);

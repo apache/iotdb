@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.cluster.query.dataset;
 
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -33,13 +29,15 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
 
-
   public ClusterAlignByDeviceDataSet(
-      AlignByDevicePlan alignByDevicePlan,
-      QueryContext context,
-      IQueryRouter queryRouter) {
+      AlignByDevicePlan alignByDevicePlan, QueryContext context, IQueryRouter queryRouter) {
     super(alignByDevicePlan, context, queryRouter);
   }
 
@@ -49,8 +47,11 @@ public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
       List<PartialPath> matchedPaths = ((CMManager) IoTDB.metaManager).getMatchedPaths(device);
       Set<String> deviceMeasurements = new HashSet<>();
       for (PartialPath matchedPath : matchedPaths) {
-        deviceMeasurements.add(matchedPath.getFullPath().substring(
-            matchedPath.getFullPath().lastIndexOf(IoTDBConstant.PATH_SEPARATOR) + 1));
+        deviceMeasurements.add(
+            matchedPath
+                .getFullPath()
+                .substring(
+                    matchedPath.getFullPath().lastIndexOf(IoTDBConstant.PATH_SEPARATOR) + 1));
       }
       return deviceMeasurements;
     } catch (MetadataException e) {

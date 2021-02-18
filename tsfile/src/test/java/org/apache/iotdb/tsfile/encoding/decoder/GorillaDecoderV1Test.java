@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV1;
+import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
 
 import org.junit.After;
 import org.junit.Before;
@@ -33,9 +28,14 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.encoding.encoder.DoublePrecisionEncoderV1;
-import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoderV1;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class GorillaDecoderV1Test {
 
@@ -83,8 +83,7 @@ public class GorillaDecoderV1Test {
   }
 
   @After
-  public void tearDown() throws Exception {
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testNegativeNumber() throws IOException {

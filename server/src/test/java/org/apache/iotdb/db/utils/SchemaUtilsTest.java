@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -28,8 +25,13 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class SchemaUtilsTest {
   @Test
@@ -50,15 +52,20 @@ public class SchemaUtilsTest {
     measurementTypes.add(TSDataType.TEXT);
     measurementTypes.add(TSDataType.BOOLEAN);
     measurementTypes.add(TSDataType.DOUBLE);
-    Assert.assertEquals(Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
+    Assert.assertEquals(
+        Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MIN_TIME));
-    Assert.assertEquals(Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
+    Assert.assertEquals(
+        Collections.nCopies(measurementTypes.size(), TSDataType.INT64),
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.COUNT));
-    Assert.assertEquals(Collections.nCopies(measurementTypes.size(), TSDataType.DOUBLE),
+    Assert.assertEquals(
+        Collections.nCopies(measurementTypes.size(), TSDataType.DOUBLE),
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.SUM));
-    Assert.assertEquals(measurementTypes,
+    Assert.assertEquals(
+        measurementTypes,
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.LAST_VALUE));
-    Assert.assertEquals(measurementTypes,
+    Assert.assertEquals(
+        measurementTypes,
         SchemaUtils.getAggregatedDataTypes(measurementTypes, SQLConstant.MAX_VALUE));
   }
 }

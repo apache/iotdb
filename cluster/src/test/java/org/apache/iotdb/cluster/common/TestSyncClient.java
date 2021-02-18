@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+
 import org.apache.thrift.protocol.TProtocol;
 
 public class TestSyncClient extends Client {
@@ -43,5 +44,4 @@ public class TestSyncClient extends Client {
   public int getSerialNum() {
     return serialNum;
   }
-
 }

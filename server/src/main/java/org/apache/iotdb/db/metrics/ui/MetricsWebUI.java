@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.db.metrics.ui;
 
-import com.codahale.metrics.MetricRegistry;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.metrics.server.JettyUtil;
 import org.apache.iotdb.db.metrics.server.QueryServlet;
+
+import com.codahale.metrics.MetricRegistry;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MetricsWebUI {
 
@@ -55,7 +57,7 @@ public class MetricsWebUI {
     MetricsPage masterPage = new MetricsPage(metricRegistry);
     QueryServlet queryServlet = new QueryServlet(masterPage);
     ServletContextHandler staticHandler = JettyUtil.createStaticHandler();
-    ServletContextHandler queryHandler = JettyUtil.createServletHandler("/",queryServlet);
+    ServletContextHandler queryHandler = JettyUtil.createServletHandler("/", queryServlet);
     handlers.add(staticHandler);
     handlers.add(queryHandler);
   }
