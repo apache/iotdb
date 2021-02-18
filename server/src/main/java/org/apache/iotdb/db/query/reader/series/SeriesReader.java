@@ -428,7 +428,7 @@ public class SeriesReader {
       return true;
     }
 
-    // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
+    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
       unpackFirstPageReader();
@@ -652,10 +652,10 @@ public class SeriesReader {
           if (orderUtils.isExcessEndpoint(timeValuePair.getTimestamp(), currentPageEndPointTime)) {
             /*
              * when the merged point excesses the currentPageEndPointTime, we have read all overlapped data before currentPageEndPointTime
-             * 1. has cached batch data, we need not to read more data, just use the cached data later
-             * 2. has first page reader, means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * 1. has cached batch data, we don't need to read more data, just use the cached data later
+             * 2. has first page reader, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
              * we could just use the first page reader later
-             * 3. sequence page reader is not empty,  means first page reader last endTime < currentTimeValuePair.getTimestamp(),
+             * 3. sequence page reader is not empty, which means first page reader last endTime < currentTimeValuePair.getTimestamp(),
              * we could use the first sequence page reader later
              */
             if (cachedBatchData.hasCurrent()
@@ -663,7 +663,7 @@ public class SeriesReader {
                 || !seqPageReaders.isEmpty()) {
               break;
             }
-            // so, we does not has other data except mergeReader
+            // so, we don't have other data except mergeReader
             currentPageEndPointTime = mergeReader.getCurrentReadStopTime();
           }
 
@@ -674,7 +674,7 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToCachedPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
-          // from now, the unsequence reader is all unpacked, so we need not to consider it
+          // from now, the unsequence reader is all unpacked, so we don't need to consider it
           // we has first page reader now
           if (firstPageReader != null) {
             // if current timeValuePair excesses the first page reader's end time, we just use the
