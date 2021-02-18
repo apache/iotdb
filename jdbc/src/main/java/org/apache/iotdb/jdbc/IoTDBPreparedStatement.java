@@ -50,7 +50,6 @@ import java.util.*;
 
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -840,17 +839,15 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 		case "ms":			
 			break;
 		case "us":
-			time=time/1000;
+			time=time*1000;
 			break;
 		case "ns":
-			time=time/1000000;
+			time=time*1000000;
 			break;
 		default:
 			break;
 		}
-		ZonedDateTime zonedDateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(time),
-				 super.zoneId);
-		this.parameters.put(parameterIndex, zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)); 
+		setLong(parameterIndex,time);
 	} catch (TException e) {
 		e.printStackTrace();
 	}
@@ -867,10 +864,10 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 			case "ms":			
 				break;
 			case "us":
-				time=time/1000;
+				time=time*1000;
 				break;
 			case "ns":
-				time=time/1000000;
+				time=time*1000000;
 				break;
 			default:
 				break;
